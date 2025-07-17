@@ -1,5 +1,5 @@
 [package]
-name = "bibcite"
+name = "BibCite"
 version = "0.1.0"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
@@ -11,3 +11,15 @@ arboard = "3.6"
 biblatex = "0.10"
 dioxus = { version = "0.6", features = ["desktop"] }
 enigo = "0.5"
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
