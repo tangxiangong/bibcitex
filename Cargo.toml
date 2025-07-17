@@ -1,0 +1,13 @@
+[package]
+name = "bibcite"
+version = "0.1.0"
+authors = ["tangxiangong <tangxiangong@gmail.com>"]
+edition = "2024"
+description = "A BibTeX citation inserter tool"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+arboard = "3.6"
+biblatex = "0.10"
+dioxus = { version = "0.6", features = ["desktop"] }
+enigo = "0.5"

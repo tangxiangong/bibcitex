@@ -1,0 +1,7 @@
+[project]
+name = "icon"
+version = "0.1.0"
+description = "BibCite Icon Generator"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["pillow>=11.3.0"]
