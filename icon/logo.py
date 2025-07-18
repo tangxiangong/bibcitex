@@ -39,8 +39,8 @@ except Exception as e:
 texts = [
     # "Bib"
     {"pos": (260, 195), "text": "B", "fill": (0, 0, 150), "shadow": (0, 0, 100)},
-    {"pos": (370, 195), "text": "i", "fill": (0, 0, 150), "shadow": (0, 0, 100)},
-    {"pos": (420, 195), "text": "b", "fill": (0, 0, 150), "shadow": (0, 0, 100)},
+    {"pos": (367, 195), "text": "i", "fill": (0, 0, 150), "shadow": (0, 0, 100)},
+    {"pos": (410, 195), "text": "b", "fill": (0, 0, 150), "shadow": (0, 0, 100)},
     # "CiTeX"
     {"pos": (150, 320), "text": "C", "fill": (180, 0, 0), "shadow": (120, 0, 0)},
     {"pos": (260, 320), "text": "i", "fill": (180, 0, 0), "shadow": (120, 0, 0)},
