@@ -1,7 +1,7 @@
 [application]
 
 [bundle]
-identifier = "com.bibcite.app"
+identifier = "com.tangxiangong.bibcitex.app"
 publisher = "tangxiangong"
 icon = [
     "assets/icons/32x32.png",
@@ -15,7 +15,7 @@ icon = [
 [web.app]
 
 # HTML title tag content
-title = "BibCite"
+title = "BibCiTeX"
 
 # include `assets` in web platform
 [web.resource]

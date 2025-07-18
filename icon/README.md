@@ -1,2 +1,2 @@
-# BibCite Icon
-BibCite 的图标生成代码
+# BibCiTeX Icon
+BibCiTeX 的图标生成代码
