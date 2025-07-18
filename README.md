@@ -1,6 +1,6 @@
 <div align=center>
 <h1 aligh="center">
-<img src="assets/logo.png" width="40"> BibCite
+<img src="assets/transparent_logo.png" width="40"> BibCiTeX
 </h1>
 <p align="center">
 BibTeX 快捷插入工具
