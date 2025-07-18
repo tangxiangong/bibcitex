@@ -4,7 +4,7 @@ mod components;
 
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-const LOGO: Asset = asset!("/assets/logo.png");
+const LOGO: Asset = asset!("/assets/transparent_logo.png");
 
 fn main() {
     dioxus::launch(App);
