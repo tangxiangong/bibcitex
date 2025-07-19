@@ -7,6 +7,12 @@ pub enum Error {
     /// BibTeX Parse Error
     #[error("{0}")]
     BibParseError(String),
+    /// JSON Serialize Error
+    #[error("{0}")]
+    JSONError(#[from] serde_json::Error),
+    /// Bibliography Not Found Error
+    #[error("Bibliography {0} not found")]
+    BibNotFound(String),
 }
 
 impl From<biblatex::ParseError> for Error {
