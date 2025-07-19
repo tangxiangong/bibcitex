@@ -7,3 +7,6 @@ description.workspace = true
 license.workspace = true
 
 [dependencies]
+biblatex = { workspace = true }
+fs-err = { workspace = true }
+thiserror = { workspace = true }
