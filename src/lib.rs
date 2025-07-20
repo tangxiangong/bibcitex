@@ -5,9 +5,9 @@ use dioxus::prelude::*;
 pub mod components;
 pub mod route;
 pub mod views;
-pub const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
-pub const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-pub const LOGO: Asset = asset!("/assets/transparent_logo.png");
+pub static MAIN_CSS: Asset = asset!("/assets/styling/main.css");
+pub static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+pub static LOGO: Asset = asset!("/assets/transparent_logo.png");
 
 #[component]
 pub fn App() -> Element {
