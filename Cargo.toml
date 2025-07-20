@@ -11,14 +11,15 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 anyhow = "1"
 arboard = "3.6"
+bibcitex-core = { path = "bibcitex-core" }
 biblatex = "0.10"
 config = "0.15"
-dioxus = { version = "0.6", features = ["desktop", "html"] }
+dioxus = { version = "0.6", features = ["desktop", "html", "router"] }
 dirs = "6.0.0"
 enigo = "0.5"
 fs-err = "3.1"
 katex = "0.4.6"
-opener = "0.8.2"
+rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -32,16 +33,13 @@ description.workspace = true
 license.workspace = true
 
 [dependencies]
+bibcitex-core = { workspace = true }
 dioxus = { workspace = true }
 katex = { workspace = true }
+rfd = { workspace = true }
 
 [lib]
 name = "bibcitex_ui"
-
-[features]
-default = ["test-ui"]
-test-ui = []
-build-ui = []
 
 [profile]
 
