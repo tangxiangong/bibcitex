@@ -2,6 +2,8 @@ use crate::{LOGO, components::AddItem, route::Route};
 use dioxus::prelude::*;
 use std::{collections::BTreeMap, path::PathBuf};
 
+static NAV_CSS: Asset = asset!("/assets/styling/nav.css");
+
 #[component]
 pub fn NavBar() -> Element {
     let mut show_modal = use_signal(|| false);
@@ -12,8 +14,9 @@ pub fn NavBar() -> Element {
     };
 
     rsx! {
+        document::Link { rel: "stylesheet", href: NAV_CSS }
         div {
-            div { style: "display: flex; align-items: center; justify-content: space-between;",
+            div { id: "navbar-link",
                 Link { to: Route::Home {},
                     img { src: LOGO, width: "100px" }
                 }

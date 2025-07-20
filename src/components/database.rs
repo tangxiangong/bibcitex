@@ -2,6 +2,8 @@ use dioxus::prelude::*;
 use rfd::FileDialog;
 use std::{collections::BTreeMap, path::PathBuf};
 
+static MODAL_CSS: Asset = asset!("/assets/styling/modal.css");
+
 #[component]
 pub fn Database(db: BTreeMap<String, PathBuf>) -> Element {
     let pairs = db
@@ -51,37 +53,20 @@ pub fn AddItem(mut db: Signal<BTreeMap<String, PathBuf>>, mut show: Signal<bool>
         show.set(false);
     };
 
-    let cursor_style = use_memo(move || {
-        if save_available() {
-            "pointer"
-        } else {
-            "not-allowed"
-        }
-    });
-
     rsx! {
-        div {
-            style: "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.3); display: flex; align-items: center; justify-content: center; z-index: 1000;",
-            onclick: close_modal,
+        document::Link { rel: "stylesheet", href: MODAL_CSS }
+        div { id: "background", onclick: close_modal,
 
-            div {
-                style: "background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); width: 500px; max-height: 600px; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;",
-                onclick: |e| e.stop_propagation(),
+            div { id: "content", onclick: |e| e.stop_propagation(),
 
                 // 对话框标题
-                div { style: "padding: 20px 24px 16px; border-bottom: 1px solid #e5e5e7; display: flex; align-items: center; justify-content: space-between;",
-                    h2 { style: "margin: 0; font-size: 17px; font-weight: 600; color: #1d1d1f;",
-                        "添加文献库"
-                    }
-                    button {
-                        style: "background: none; border: none; font-size: 18px; color: #86868b; cursor: pointer; padding: 4px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background-color 0.2s;",
-                        onclick: close_modal,
-                        "✕"
-                    }
+                div { id: "header",
+                    h2 { "添加文献库" }
+                    button { onclick: close_modal, "✕" }
                 }
 
                 // 对话框内容
-                div { style: "padding: 20px 24px; max-height: 400px; overflow-y: auto;",
+                div { id: "form",
                     label { "名称" }
                     input {
                         r#type: "text",
@@ -93,23 +78,19 @@ pub fn AddItem(mut db: Signal<BTreeMap<String, PathBuf>>, mut show: Signal<bool>
                     br {}
                     label { "路径" }
                     input {
+                        id: "path-input",
                         r#type: "text",
                         value: "{path_string}",
                         readonly: true,
-                        style: "background-color: #f0f0f0; cursor: not-allowed;",
                     }
                     button { onclick: select_file, "浏览" }
                 }
 
                 // 底部按钮区域
-                div { style: "padding: 16px 24px 20px; border-top: 1px solid #e5e5e7; display: flex; justify-content: flex-end; gap: 12px;",
+                div { id: "footer",
+                    button { id: "cancle-button", onclick: close_modal, "取消" }
                     button {
-                        style: "padding: 8px 16px; border: 1px solid #d2d2d7; background: white; color: #1d1d1f; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background-color 0.2s;",
-                        onclick: close_modal,
-                        "取消"
-                    }
-                    button {
-                        style: "padding: 8px 16px; border: none; background: #007aff; color: white; border-radius: 6px; cursor: {cursor_style}; font-size: 14px; transition: background-color 0.2s;",
+                        style: if save_available() { "#save-button-available" } else { "#save-button-unavailable" },
                         onclick: close_modal,
                         disabled: !save_available(),
                         "保存"
