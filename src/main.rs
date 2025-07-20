@@ -1,5 +1,5 @@
-use bibcitex_ui::run_app;
+use bibcitex_ui::App;
 
 fn main() {
-    run_app();
+    dioxus::launch(App);
 }
