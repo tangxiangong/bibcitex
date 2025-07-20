@@ -111,6 +111,7 @@ mod tests {
 
     #[test]
     fn test_load() {
+        Setting::delete().unwrap();
         let setting = Setting::load();
         assert!(setting.bibliographies.is_empty());
         Setting::delete().unwrap();
@@ -119,27 +120,25 @@ mod tests {
     #[test]
     fn test_add_update_bibliography() {
         let mut setting = Setting::default();
+        let path = PathBuf::from("../database.bib");
         setting
-            .add_update_bibliography("test", "../database.bib".into())
+            .add_update_bibliography("test", path.clone())
             .unwrap();
         assert!(setting.bibliographies.contains_key("test"));
-        assert_eq!(
-            setting.bibliographies.get("test"),
-            Some(&"../database.bib".into())
-        );
+        assert_eq!(setting.bibliographies.get("test"), Some(&path));
+        Setting::delete().unwrap();
     }
 
     #[test]
     fn test_update() {
         let mut setting = Setting::load();
+        let path = PathBuf::from("../database.bib");
         setting
-            .add_update_bibliography(
-                "test",
-                "/Users/xiaoyu/Projects/bibcitex/bibcitex-core/database.bib".into(),
-            )
+            .add_update_bibliography("test", path.clone())
             .unwrap();
         setting.update_file().unwrap();
         let reload_setting = Setting::load();
         assert_eq!(setting, reload_setting);
+        Setting::delete().unwrap();
     }
 }
