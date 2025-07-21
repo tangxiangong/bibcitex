@@ -1,4 +1,4 @@
-use crate::components::{AddBibliographyItem, Bibliographies};
+use crate::components::{AddBibliography, Bibliographies};
 use dioxus::prelude::*;
 
 #[component]
@@ -7,7 +7,7 @@ pub fn Home() -> Element {
     rsx! {
         Bibliographies { show_modal }
         if show_modal() {
-            AddBibliographyItem { show: show_modal }
+            AddBibliography { show: show_modal }
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::views::{Detail, Home, NavBar};
+use crate::views::{Home, NavBar, References};
 use dioxus::prelude::*;
 
 #[derive(Debug, Clone, Routable)]
@@ -7,5 +7,5 @@ pub enum Route {
     #[route("/")]
     Home {},
     #[route("/detail")]
-    Detail {},
+    References { bib: biblatex::Bibliography },
 }

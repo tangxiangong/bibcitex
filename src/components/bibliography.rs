@@ -1,10 +1,12 @@
 use crate::{STATE, route::Route};
+use bibcitex_core::bib::parse;
 use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
 static MODAL_CSS: Asset = asset!("/assets/styling/modal.css");
+static BIB_CSS: Asset = asset!("/assets/styling/bib.css");
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
@@ -34,26 +36,46 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
                 button { onclick: open_modal, font_size: "16px", "+ 添加" }
             }
             for (name , path , updated_at) in pairs() {
-                BibliographyItem { name, path, updated_at }
+                Bibliography { name, path, updated_at }
             }
         }
     }
 }
 
 #[component]
-pub fn BibliographyItem(name: String, path: String, updated_at: String) -> Element {
+pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
+    let mut error_message = use_signal(|| None::<String>);
+    let navigator = use_navigator();
+    let path_clone = path.clone();
+
+    let handle_click = move |_| {
+        error_message.set(None);
+        match parse(&path_clone) {
+            Ok(bib) => {
+                navigator.push(Route::References { bib });
+            }
+            Err(e) => {
+                error_message.set(Some(format!("❌ 解析文件失败: {e}")));
+            }
+        }
+    };
+
     rsx! {
+        document::Link { rel: "stylesheet", href: BIB_CSS }
         div {
-            Link { to: Route::Detail {},
+            div { id: "bibliography-item", onclick: handle_click,
                 h3 { {name} }
                 p { "{path} ({updated_at})" }
             }
+            if let Some(error) = error_message() {
+                p { "{error}" }
+            }
         }
     }
 }
 
 #[component]
-pub fn AddBibliographyItem(mut show: Signal<bool>) -> Element {
+pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     let exist_names = use_memo(|| {
         STATE
             .read()
@@ -77,7 +99,8 @@ pub fn AddBibliographyItem(mut show: Signal<bool>) -> Element {
             .pick_file();
         if let Some(file) = file {
             path.set(file);
-            add_path.set(true)
+            add_path.set(true);
+            error_message.set(None);
         }
     };
 
