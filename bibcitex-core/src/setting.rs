@@ -1,14 +1,26 @@
 use crate::{Error, Result, bib::parse};
 use biblatex::Bibliography;
+use chrono::{DateTime, Local};
 use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, io::Write, path::PathBuf};
+
+/// Bibliography information
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+pub struct BibliographyInfo {
+    /// Path to the bibliography file
+    pub path: PathBuf,
+    /// Last modified time
+    pub created_at: DateTime<Local>,
+    /// Last modified time
+    pub updated_at: DateTime<Local>,
+}
 
 /// Setting for BibCiTeX
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct Setting {
     /// List of bibliographies
-    pub bibliographies: BTreeMap<String, PathBuf>,
+    pub bibliographies: BTreeMap<String, BibliographyInfo>,
 }
 
 impl Setting {
@@ -80,28 +92,47 @@ impl Setting {
         &mut self,
         name: &str,
         path: PathBuf,
-    ) -> Result<Option<PathBuf>> {
+    ) -> Result<Option<BibliographyInfo>> {
         if !path.exists() {
             return Err(Error::BibNotFound(
                 path.as_os_str().to_str().unwrap().to_string(),
             ));
         }
-        Ok(self.bibliographies.insert(name.to_string(), path))
+        if let Some(info) = self.bibliographies.get(name) {
+            Ok(self.bibliographies.insert(
+                name.to_string(),
+                BibliographyInfo {
+                    path,
+                    created_at: info.created_at,
+                    updated_at: Local::now(),
+                },
+            ))
+        } else {
+            let created_at = Local::now();
+            Ok(self.bibliographies.insert(
+                name.to_string(),
+                BibliographyInfo {
+                    path,
+                    created_at,
+                    updated_at: created_at,
+                },
+            ))
+        }
     }
 
     /// Remove a bibliography
     ///
     /// If the name does not exist, `None` will be returned.
-    pub fn remove_bibliography(&mut self, name: &str) -> Option<PathBuf> {
+    pub fn remove_bibliography(&mut self, name: &str) -> Option<BibliographyInfo> {
         self.bibliographies.remove(name)
     }
 
     pub fn parse(&self, name: &str) -> Result<Bibliography> {
-        let path = self
+        let info = self
             .bibliographies
             .get(name)
             .ok_or(Error::BibNotFound(name.to_string()))?;
-        parse(path)
+        parse(&info.path)
     }
 }
 
@@ -125,7 +156,7 @@ mod tests {
             .add_update_bibliography("test", path.clone())
             .unwrap();
         assert!(setting.bibliographies.contains_key("test"));
-        assert_eq!(setting.bibliographies.get("test"), Some(&path));
+        assert_eq!(setting.bibliographies.get("test").unwrap().path, path);
         Setting::delete().unwrap();
     }
 
