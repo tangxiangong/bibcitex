@@ -9,7 +9,6 @@ description = "A BibTeX citation inserter tool"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-anyhow = "1"
 arboard = "3.6"
 bibcitex-core = { path = "bibcitex-core" }
 biblatex = "0.10"
