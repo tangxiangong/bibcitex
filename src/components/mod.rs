@@ -3,5 +3,5 @@
 //! component  to be used in our app.
 pub mod math;
 pub use math::*;
-pub mod database;
-pub use database::*;
+pub mod bibliography;
+pub use bibliography::*;
