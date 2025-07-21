@@ -1,4 +1,4 @@
-use crate::STATE;
+use crate::{STATE, route::Route};
 use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
@@ -29,11 +29,9 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
 
     rsx! {
         div {
-            div {
-                h2 {
-                    "文献列表"
-                    button { onclick: open_modal, font_size: "16px", "+ 添加" }
-                }
+            h2 {
+                "Bibliographies"
+                button { onclick: open_modal, font_size: "16px", "+ 添加" }
             }
             for (name , path , updated_at) in pairs() {
                 BibliographyItem { name, path, updated_at }
@@ -46,8 +44,10 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
 pub fn BibliographyItem(name: String, path: String, updated_at: String) -> Element {
     rsx! {
         div {
-            h3 { {name} }
-            p { "{path} ({updated_at})" }
+            Link { to: Route::Detail {},
+                h3 { {name} }
+                p { "{path} ({updated_at})" }
+            }
         }
     }
 }
