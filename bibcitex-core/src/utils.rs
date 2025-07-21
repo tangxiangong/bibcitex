@@ -2,11 +2,20 @@ use crate::bib::Reference;
 use biblatex::Bibliography;
 use rayon::prelude::*;
 
-/// Read a bibliography and convert it to a vector of references
-pub fn read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
+/// Read a bibliography and convert it to a vector of references parallelly.
+pub fn par_read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
     bibliography
         .into_vec()
         .par_iter()
+        .map(Reference::from)
+        .collect()
+}
+
+/// Read a bibliography and convert it to a vector of references serially.
+pub fn read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
+    bibliography
+        .into_vec()
+        .iter()
         .map(Reference::from)
         .collect()
 }
