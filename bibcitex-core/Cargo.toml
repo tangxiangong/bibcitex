@@ -16,3 +16,10 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.6"
+
+[[bench]]
+name = "bibliography2references"
+harness = false
