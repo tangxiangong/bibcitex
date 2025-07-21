@@ -5,7 +5,7 @@ members = [".", "bibcitex-core"]
 version = "0.1.0"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
-description = "A BibTeX citation inserter tool"
+description = "A BibTeX citation tool"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]

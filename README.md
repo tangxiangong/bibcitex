@@ -1,7 +1,7 @@
 <div align=center>
 <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
 <p align="center">
-BibTeX 快捷插入工具
+BibTeX 快捷引用工具
 </p>
 </div>
 
