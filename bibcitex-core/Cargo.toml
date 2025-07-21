@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 biblatex = { workspace = true }
+chrono = { workspace = true }
 config = { workspace = true }
 dirs = { workspace = true }
 fs-err = { workspace = true }
