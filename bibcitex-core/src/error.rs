@@ -13,11 +13,26 @@ pub enum Error {
     /// Bibliography Not Found Error
     #[error("Bibliography {0} not found")]
     BibNotFound(String),
+    /// Missing Field Error
+    #[error("{0}")]
+    MissingFiled(String),
+    /// Field Type Error
+    #[error("{0}")]
+    FieldType(String),
 }
 
 impl From<biblatex::ParseError> for Error {
     fn from(value: biblatex::ParseError) -> Self {
         Error::BibParseError(value.to_string())
+    }
+}
+
+impl From<biblatex::RetrievalError> for Error {
+    fn from(value: biblatex::RetrievalError) -> Self {
+        match value {
+            biblatex::RetrievalError::Missing(key) => Error::BibNotFound(key),
+            biblatex::RetrievalError::TypeError(key) => Error::FieldType(key.to_string()),
+        }
     }
 }
 
