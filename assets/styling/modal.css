@@ -83,7 +83,7 @@
 
 #save-button-available {
     padding: 8px 16px;
-    border: none;
+    border: 1px solid #d2d2d7;
     background: #007aff;
     color: white;
     border-radius: 6px;
