@@ -7,6 +7,7 @@ name = "BibCiTeX"
 version = "0.1.0"
 dependencies = [
  "bibcitex-core",
+ "biblatex",
  "dioxus",
  "itertools 0.14.0",
  "katex",

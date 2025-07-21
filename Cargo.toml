@@ -36,6 +36,7 @@ license.workspace = true
 
 [dependencies]
 bibcitex-core = { workspace = true }
+biblatex = { workspace = true }
 dioxus = { workspace = true }
 itertools = { workspace = true }
 katex = { workspace = true }
