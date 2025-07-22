@@ -1,4 +1,4 @@
-use crate::{Error, Result};
+use crate::{Error, Result, merge_chunks};
 use biblatex::{Bibliography, Chunk, EntryType, PermissiveType, Person, Spanned};
 use fs_err as fs;
 use std::{ops::Range, path::Path};
@@ -45,18 +45,14 @@ impl From<&biblatex::Entry> for Reference {
         let key = entry.key.clone();
         let type_ = entry.entry_type.clone();
         let author = entry.author().ok();
-        let title = entry.title().ok().map(|spanned_chunks| {
-            spanned_chunks
-                .iter()
-                .map(|spanned_chunk| spanned_chunk.v.clone())
-                .collect()
-        });
-        let journal = entry.journal().ok().map(|spanned_chunks| {
-            spanned_chunks
-                .iter()
-                .map(|spanned_chunk| spanned_chunk.v.clone())
-                .collect()
-        });
+        let title = entry
+            .title()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
+        let journal = entry
+            .journal()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
         let year = parse_year(entry).ok();
         let full_journal = parse_optional_field(entry, "fjournal");
         let volume = match entry.volume().ok() {
@@ -82,12 +78,10 @@ impl From<&biblatex::Entry> for Reference {
             _ => None,
         }
         .and_then(|pages| pages.first().cloned());
-        let note = entry.note().ok().map(|chunks| {
-            chunks
-                .iter()
-                .map(|spanned_chunk| spanned_chunk.v.clone())
-                .collect()
-        });
+        let note = entry
+            .note()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
         let doi = entry.doi().ok();
         let mrclass = parse_optional_field(entry, "mrclass");
         Self {
