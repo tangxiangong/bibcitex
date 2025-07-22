@@ -1,4 +1,4 @@
-use crate::{Error, Result, merge_chunks};
+use crate::{Error, Result, utils::merge_chunks};
 use biblatex::{Bibliography, Chunk, EntryType, PermissiveType, Person, Spanned};
 use fs_err as fs;
 use std::{ops::Range, path::Path};

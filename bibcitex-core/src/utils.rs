@@ -12,12 +12,25 @@ pub fn par_read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
 }
 
 /// Read a bibliography and convert it to a vector of references serially.
-pub fn read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
+pub fn serial_read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
     bibliography
         .into_vec()
         .iter()
         .map(Reference::from)
         .collect()
+}
+
+/// Read a bibliography and convert it to a vector of references.
+///
+/// # Note
+///
+/// If the length of the bibliography is greater than 80, it will use parallel reading.
+pub fn read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
+    if bibliography.len() > 80 {
+        par_read_bibliography(bibliography)
+    } else {
+        serial_read_bibliography(bibliography)
+    }
 }
 
 /// Merge [`Chunk::Normal`] and [`Chunk::Verbatim`] chunks.
