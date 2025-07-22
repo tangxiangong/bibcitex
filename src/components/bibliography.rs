@@ -52,9 +52,7 @@ pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
         error_message.set(None);
         match parse(&path_clone) {
             Ok(bib) => {
-                println!("biblen: {}", bib.len());
                 let refs = read_bibliography(bib);
-                println!("refslen: {}", refs.len());
                 let mut current_ref = CURRENT_REF.write();
                 *current_ref = Some(refs);
                 navigator.push(Route::References {});
