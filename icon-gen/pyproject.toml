@@ -1,5 +1,5 @@
 [project]
-name = "icon"
+name = "icon-gen"
 version = "0.1.0"
 description = "BibCiTeX Icon Generator"
 readme = "README.md"
