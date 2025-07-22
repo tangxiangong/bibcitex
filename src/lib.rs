@@ -1,6 +1,6 @@
 //! Collections of components, views and tests.
 
-use bibcitex_core::Setting;
+use bibcitex_core::{Setting, bib::Reference};
 use dioxus::prelude::*;
 
 pub mod components;
@@ -9,6 +9,7 @@ pub mod views;
 pub static MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 pub static LOGO: Asset = asset!("/assets/transparent_logo.png");
 pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
+pub static CURRENT_REF: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
 
 #[component]
 pub fn App() -> Element {
