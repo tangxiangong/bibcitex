@@ -1,5 +1,6 @@
 use crate::{Error, Result, utils::merge_chunks};
 use biblatex::{Bibliography, Chunk, EntryType, PermissiveType, Person, Spanned};
+use dioxus::prelude::Props;
 use fs_err as fs;
 use std::{ops::Range, path::Path};
 
@@ -10,18 +11,18 @@ pub fn parse(file_path: impl AsRef<Path>) -> Result<Bibliography> {
 }
 
 /// Wrap a `biblatex::Entry` into a `Reference`, with detailed fields.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Props)]
 pub struct Reference {
     /// key
-    pub key: String,
+    pub cite_key: String,
     /// type
     pub type_: EntryType,
     /// author
-    pub author: Option<Vec<Person>>,
+    pub author: Option<Vec<String>>,
     /// title
     pub title: Option<Vec<Chunk>>,
     /// journal
-    pub journal: Option<Vec<Chunk>>,
+    pub journal: Option<String>,
     /// year
     pub year: Option<i32>,
     /// full_journal
@@ -38,23 +39,34 @@ pub struct Reference {
     pub doi: Option<String>,
     /// mrclass
     pub mrclass: Option<String>,
+    /// publisher
+    pub publisher: Option<Vec<String>>,
+    /// isbn
+    pub isbn: Option<String>,
+    /// series
+    pub series: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
     fn from(entry: &biblatex::Entry) -> Self {
         let key = entry.key.clone();
         let type_ = entry.entry_type.clone();
-        let author = entry.author().ok();
+        let author = entry
+            .author()
+            .ok()
+            .map(|persons| persons.iter().map(get_name).collect());
         let title = entry
             .title()
             .ok()
             .map(|chunks| merge_chunks(chunks.to_owned()));
-        let journal = entry
-            .journal()
-            .ok()
-            .map(|chunks| merge_chunks(chunks.to_owned()));
+        let journal = entry.journal().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
         let year = parse_year(entry).ok();
-        let full_journal = parse_optional_field(entry, "fjournal");
+        let full_journal = parse_optional_field(entry, "fjournal")
+            .and_then(|chunk| chunk.first().map(|chunk| chunk.get().to_string()));
         let volume = match entry.volume().ok() {
             Some(PermissiveType::Typed(value)) => Some(value),
             _ => None,
@@ -83,9 +95,29 @@ impl From<&biblatex::Entry> for Reference {
             .ok()
             .map(|chunks| merge_chunks(chunks.to_owned()));
         let doi = entry.doi().ok();
-        let mrclass = parse_optional_field(entry, "mrclass");
+        let mrclass = parse_optional_field(entry, "mrclass")
+            .and_then(|chunks| chunks.first().map(|chunk| chunk.get().to_string()));
+        let publisher = entry.publisher().ok().and_then(|v| {
+            v.into_iter()
+                .map(|chunks| {
+                    merge_chunks(chunks)
+                        .first()
+                        .map(|chunk| chunk.get().to_string())
+                })
+                .collect::<Option<Vec<_>>>()
+        });
+        let series = entry.series().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
+        let isbn = entry.isbn().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
         Self {
-            key,
+            cite_key: key,
             type_,
             author,
             title,
@@ -98,6 +130,9 @@ impl From<&biblatex::Entry> for Reference {
             doi,
             mrclass,
             full_journal,
+            publisher,
+            series,
+            isbn,
         }
     }
 }
@@ -105,9 +140,9 @@ impl From<&biblatex::Entry> for Reference {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Article {
     pub key: String,
-    pub author: Vec<Person>,
+    pub author: Vec<String>,
     pub title: Vec<Chunk>,
-    pub journal: Vec<Chunk>,
+    pub journal: String,
     pub year: i32,
     pub full_journal: Option<String>,
     pub volume: Option<i64>,
@@ -122,7 +157,7 @@ impl TryFrom<Reference> for Article {
     type Error = Error;
     fn try_from(value: Reference) -> Result<Self> {
         Ok(Self {
-            key: value.key,
+            key: value.cite_key,
             author: value.author.ok_or(Error::MissingFiled(
                 "The field `author` is missing or not compatible!".to_string(),
             ))?,
@@ -144,6 +179,10 @@ impl TryFrom<Reference> for Article {
             mrclass: value.mrclass,
         })
     }
+}
+
+fn get_name(person: &Person) -> String {
+    format!("{} {}", person.given_name, person.name)
 }
 
 /// Parse the year field
@@ -180,21 +219,10 @@ pub(crate) fn parse_year(entry: &biblatex::Entry) -> Result<i32> {
 }
 
 /// Parse optional field
-pub(crate) fn parse_optional_field(entry: &biblatex::Entry, field: &str) -> Option<String> {
-    if let Some(chunks) = entry.get(field) {
-        let chunk = chunks.first()?;
-        if let Spanned {
-            v: Chunk::Normal(chunk),
-            ..
-        } = chunk
-        {
-            Some(chunk.trim().to_owned())
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+pub(crate) fn parse_optional_field(entry: &biblatex::Entry, field: &str) -> Option<Vec<Chunk>> {
+    entry
+        .get(field)
+        .map(|chunks| merge_chunks(chunks.to_owned()))
 }
 
 #[cfg(test)]
@@ -215,7 +243,7 @@ mod tests {
     fn test_show_article() {
         let path = Path::new("../database.bib");
         let bib = parse(path).unwrap();
-        let entry = bib.get("MR2864664").unwrap();
+        let entry = bib.get("MR0404849").unwrap();
         let article = Reference::from(entry);
         println!("{article:#?}");
     }
