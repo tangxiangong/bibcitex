@@ -1,5 +1,5 @@
-use crate::{STATE, route::Route};
-use bibcitex_core::bib::parse;
+use crate::{CURRENT_REF, STATE, route::Route};
+use bibcitex_core::{bib::parse, utils::read_bibliography};
 use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
@@ -18,7 +18,7 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
         state
             .bibliographies
             .iter()
-            .sorted_by(|a, b| a.1.updated_at.cmp(&b.1.updated_at))
+            .sorted_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at))
             .map(|(name, info)| {
                 (
                     name.clone(),
@@ -52,7 +52,12 @@ pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
         error_message.set(None);
         match parse(&path_clone) {
             Ok(bib) => {
-                navigator.push(Route::References { bib });
+                println!("biblen: {}", bib.len());
+                let refs = read_bibliography(bib);
+                println!("refslen: {}", refs.len());
+                let mut current_ref = CURRENT_REF.write();
+                *current_ref = Some(refs);
+                navigator.push(Route::References {});
             }
             Err(e) => {
                 error_message.set(Some(format!("❌ 解析文件失败: {e}")));
@@ -63,7 +68,7 @@ pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: BIB_CSS }
         div {
-            div { id: "bibliography-item", onclick: handle_click,
+            div { class: "item", onclick: handle_click,
                 h3 { {name} }
                 p { "{path} ({updated_at})" }
             }

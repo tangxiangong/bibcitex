@@ -7,5 +7,5 @@ pub enum Route {
     #[route("/")]
     Home {},
     #[route("/detail")]
-    References { bib: biblatex::Bibliography },
+    References {},
 }
