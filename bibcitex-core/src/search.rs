@@ -28,7 +28,7 @@ pub fn seq_search_references(references: &[Reference], query: &str) -> Vec<Refer
 }
 
 fn check_key(reference: &Reference, query: &str) -> bool {
-    reference.cite_key.contains(query)
+    reference.cite_key.to_lowercase().contains(query)
 }
 
 fn check_title(reference: &Reference, query: &str) -> bool {
