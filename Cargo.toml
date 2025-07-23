@@ -51,6 +51,11 @@ name = "bibcitex_ui"
 
 [profile]
 
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+
 [profile.wasm-dev]
 inherits = "dev"
 opt-level = 1
