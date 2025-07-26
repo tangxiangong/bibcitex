@@ -22,13 +22,10 @@ BibCiteX 是一个使用 Rust 和 Dioxus 框架开发的跨平台 BibTeX 文献�
 
 ## 许可协议
 
-本项目采用以下任一许可协议：
+本项目采用 MIT 许可协议。
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) 或 https://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) 或 https://opensource.org/licenses/MIT)
-
-您可以选择其中任意一种。
+详见 [LICENSE](LICENSE) 或 https://opensource.org/licenses/MIT
 
 ### 贡献
 
-除非您明确声明，否则根据 Apache-2.0 许可协议的定义，您有意提交的任何贡献都将按照上述双重许可协议进行许可，不附加任何额外条款或条件。
+除非您明确声明，否则您有意提交的任何贡献都将按照 MIT 许可协议进行许可，不附加任何额外条款或条件。
