@@ -1,4 +1,5 @@
 use arboard::Clipboard;
+use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
         Config, DesktopService, WindowBuilder,
@@ -10,23 +11,22 @@ use dioxus::{
     prelude::*,
 };
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
+use itertools::Itertools;
 use std::rc::Weak;
+
+use crate::{STATE, components::SelectBib};
 
 static CSS: Asset = asset!("/assets/styling/helper.css");
 
 // 全局状态跟踪Helper窗口是否打开
 static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
-/// 跨应用粘贴功能：复制到剪切板并模拟粘贴按键
+pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
+
 fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // 复制到系统剪切板
     let mut clipboard = Clipboard::new()?;
     clipboard.set_text(text.to_string())?;
-
-    // 短暂延迟确保剪切板操作完成
     std::thread::sleep(std::time::Duration::from_millis(50));
-
-    // 模拟粘贴按键 (Cmd+V on macOS, Ctrl+V on others)
     let mut enigo = Enigo::new(&enigo::Settings::default())?;
 
     #[cfg(target_os = "macos")]
@@ -46,24 +46,21 @@ fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Helper function to toggle the spotlight window (open/close)
 pub fn open_spotlight_window() {
     // 检查是否已经有Helper窗口打开
     let should_close = {
-        let window_signal = HELPER_WINDOW_OPEN.read();
+        let window_signal = HELPER_WINDOW_OPEN();
         if let Some(helper_window_weak) = window_signal.as_ref() {
-            // 尝试升级Weak引用为强引用
             if let Some(helper_window) = helper_window_weak.upgrade() {
-                // 如果已经打开，关闭现有窗口
                 helper_window.close();
                 true
             } else {
-                true // 窗口已经被销毁，需要清理状态
+                true
             }
         } else {
             false
         }
-    }; // 这里释放读引用
+    };
 
     if should_close {
         HELPER_WINDOW_OPEN.write().take();
@@ -83,6 +80,7 @@ pub fn open_spotlight_window() {
         .with_inner_size(LogicalSize::new(window_width, min_window_height))
         .with_min_inner_size(LogicalSize::new(window_width, min_window_height))
         .with_max_inner_size(LogicalSize::new(window_width, max_window_height))
+        .with_focused(false)
         .with_decorations(false) // 移除窗口装饰
         .with_transparent(true) // 支持透明背景
         .with_always_on_top(true) // 保持在最上层
@@ -100,11 +98,13 @@ pub fn open_spotlight_window() {
 pub fn Helper() -> Element {
     let mut search_query = use_signal(String::new);
 
+    let has_bib = use_memo(|| HELPER_BIB().is_some());
+
     // 动态调整窗口大小
     let window = use_window();
     use_effect(move || {
         let has_results = !search_query().is_empty();
-        if has_results {
+        if has_results || !has_bib() {
             // 有搜索结果时扩展窗口高度
             window.set_inner_size(LogicalSize::new(600.0, 300.0));
         } else {
@@ -135,6 +135,22 @@ pub fn Helper() -> Element {
         // 窗口关闭时的清理逻辑将在上面的事件处理中执行
     });
 
+    let bibs = use_memo(|| {
+        let state = STATE.read();
+        state
+            .bibliographies
+            .iter()
+            .sorted_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at))
+            .map(|(name, info)| {
+                (
+                    name.clone(),
+                    info.path.as_os_str().to_str().unwrap().to_string(),
+                    info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                )
+            })
+            .collect::<Vec<_>>()
+    });
+
     rsx! {
         document::Link { rel: "stylesheet", href: CSS }
 
@@ -147,37 +163,41 @@ pub fn Helper() -> Element {
                     HELPER_WINDOW_OPEN.write().take();
                 }
             },
-            // 搜索输入框
-            input {
-                class: "helper-input",
-                r#type: "text",
-                placeholder: "搜索文献、作者、标题...",
-                value: "{search_query}",
-                oninput: move |evt| search_query.set(evt.value()),
-                onkeydown: move |evt| {
-                    if evt.key() == Key::Enter && !search_query().is_empty() {
-                        let text = search_query().clone();
-                        let window = use_window();
-                        window.close();
-                        HELPER_WINDOW_OPEN.write().take();
-                        tokio::spawn(async move {
-                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                            if let Err(e) = paste_to_active_app(&text) {
-                                eprintln!("跨应用粘贴失败: {e}");
-                            }
-                        });
-                    }
-                },
-                autofocus: true,
-            }
+            if !has_bib() {
+                SelectBib { bibs }
+            } else {
+                // 搜索输入框
+                input {
+                    class: "helper-input",
+                    r#type: "text",
+                    placeholder: "搜索文献、作者、标题...",
+                    value: "{search_query}",
+                    oninput: move |evt| search_query.set(evt.value()),
+                    onkeydown: move |evt| {
+                        if evt.key() == Key::Enter && !search_query().is_empty() {
+                            let text = search_query().clone();
+                            let window = use_window();
+                            window.close();
+                            HELPER_WINDOW_OPEN.write().take();
+                            tokio::spawn(async move {
+                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                                if let Err(e) = paste_to_active_app(&text) {
+                                    eprintln!("跨应用粘贴失败: {e}");
+                                }
+                            });
+                        }
+                    },
+                    autofocus: true,
+                }
 
-            // 搜索结果区域 - 只在有输入时显示
-            if !search_query().is_empty() {
-                div { class: "helper-results",
-                    // TODO: 这里将显示实际的搜索结果
-                    div { class: "helper-no-results",
-                        p { "搜索: \"{search_query()}\"" }
-                        p { "（搜索功能正在开发中）" }
+                // 搜索结果区域 - 只在有输入时显示
+                if !search_query().is_empty() {
+                    div { class: "helper-results",
+                        // TODO: 这里将显示实际的搜索结果
+                        div { class: "helper-no-results",
+                            p { "搜索: \"{search_query()}\"" }
+                            p { "（搜索功能正在开发中）" }
+                        }
                     }
                 }
             }
