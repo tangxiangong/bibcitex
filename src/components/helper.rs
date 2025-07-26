@@ -1,7 +1,13 @@
-use bibcitex_core::{bib::parse, utils::read_bibliography};
-use dioxus::prelude::*;
-
-use crate::views::HELPER_BIB;
+use crate::{
+    components::Entry,
+    views::{HELPER_BIB, HELPER_WINDOW_OPEN, paste_to_active_app},
+};
+use bibcitex_core::{
+    bib::{Reference, parse},
+    search_references,
+    utils::read_bibliography,
+};
+use dioxus::{desktop::use_window, prelude::*};
 
 #[component]
 pub fn BibItem(name: String, path: String, updated_at: String) -> Element {
@@ -17,12 +23,15 @@ pub fn BibItem(name: String, path: String, updated_at: String) -> Element {
             Ok(bib) => {
                 let refs = read_bibliography(bib);
                 let mut current_ref = HELPER_BIB.write();
-                *current_ref = Some(refs);
                 selected_bib.set(Some((
                     name_clone.clone(),
                     path_clone.clone(),
                     updated_at_clone.clone(),
                 )));
+                spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                    *current_ref = Some(refs);
+                });
             }
             Err(e) => {
                 error_message.set(Some(e.to_string()));
@@ -53,6 +62,52 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
             }
             if let Some(selected) = selected_bib() {
                 p { "已选择: {selected.0}" }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn SearchBib() -> Element {
+    let mut query = use_context::<Signal<String>>();
+    let mut result = use_signal(Vec::<Reference>::new);
+    let current_bib = HELPER_BIB().unwrap();
+    let search = move |e: Event<FormData>| {
+        query.set(e.value());
+        let res = search_references(&current_bib, &query());
+        result.set(res);
+    };
+    rsx! {
+        input {
+            class: "helper-input",
+            r#type: "text",
+            placeholder: "搜索文献、作者、标题...",
+            value: "{query}",
+            oninput: search,
+            onkeydown: move |evt| {
+                if evt.key() == Key::Enter && !query().is_empty() {
+                    let text = query().clone();
+                    let window = use_window();
+                    window.close();
+                    HELPER_WINDOW_OPEN.write().take();
+                    tokio::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                        if let Err(e) = paste_to_active_app(&text) {
+                            eprintln!("跨应用粘贴失败: {e}");
+                        }
+                    });
+                }
+            },
+            autofocus: true,
+        }
+
+        if !query().is_empty() {
+            div { class: "helper-results",
+                div { class: "helper-no-results",
+                    for bib in result() {
+                        Entry { entry: bib }
+                    }
+                }
             }
         }
     }

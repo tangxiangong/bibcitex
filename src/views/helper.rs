@@ -14,16 +14,19 @@ use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
 use std::rc::Weak;
 
-use crate::{STATE, components::SelectBib};
+use crate::{
+    STATE,
+    components::{SearchBib, SelectBib},
+};
 
 static CSS: Asset = asset!("/assets/styling/helper.css");
 
 // 全局状态跟踪Helper窗口是否打开
-static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
+pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
 pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
 
-fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut clipboard = Clipboard::new()?;
     clipboard.set_text(text.to_string())?;
     std::thread::sleep(std::time::Duration::from_millis(50));
@@ -96,14 +99,14 @@ pub fn open_spotlight_window() {
 /// The actual Helper window content
 #[component]
 pub fn Helper() -> Element {
-    let mut search_query = use_signal(String::new);
+    let query = use_context_provider(|| Signal::new(String::new()));
 
     let has_bib = use_memo(|| HELPER_BIB().is_some());
 
     // 动态调整窗口大小
     let window = use_window();
     use_effect(move || {
-        let has_results = !search_query().is_empty();
+        let has_results = !query().is_empty();
         if has_results || !has_bib() {
             // 有搜索结果时扩展窗口高度
             window.set_inner_size(LogicalSize::new(600.0, 300.0));
@@ -166,40 +169,7 @@ pub fn Helper() -> Element {
             if !has_bib() {
                 SelectBib { bibs }
             } else {
-                // 搜索输入框
-                input {
-                    class: "helper-input",
-                    r#type: "text",
-                    placeholder: "搜索文献、作者、标题...",
-                    value: "{search_query}",
-                    oninput: move |evt| search_query.set(evt.value()),
-                    onkeydown: move |evt| {
-                        if evt.key() == Key::Enter && !search_query().is_empty() {
-                            let text = search_query().clone();
-                            let window = use_window();
-                            window.close();
-                            HELPER_WINDOW_OPEN.write().take();
-                            tokio::spawn(async move {
-                                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                                if let Err(e) = paste_to_active_app(&text) {
-                                    eprintln!("跨应用粘贴失败: {e}");
-                                }
-                            });
-                        }
-                    },
-                    autofocus: true,
-                }
-
-                // 搜索结果区域 - 只在有输入时显示
-                if !search_query().is_empty() {
-                    div { class: "helper-results",
-                        // TODO: 这里将显示实际的搜索结果
-                        div { class: "helper-no-results",
-                            p { "搜索: \"{search_query()}\"" }
-                            p { "（搜索功能正在开发中）" }
-                        }
-                    }
-                }
+                SearchBib {}
             }
         }
     }
