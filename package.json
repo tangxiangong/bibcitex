@@ -5,7 +5,7 @@
   "main": "tailwind.config.js",
   "scripts": {},
   "devDependencies": {
-    "@tailwindcss/cli": "^4.0.0",
+    "@tailwindcss/cli": "^4.1.11",
     "tailwindcss": "^4.1.11"
   }
 }
