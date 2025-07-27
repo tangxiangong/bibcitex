@@ -44,7 +44,6 @@ pub fn App() -> Element {
 
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
-        document::Stylesheet { href: asset!("/assets/tailwind.css") }
         Router::<route::Route> {}
     }
 }
