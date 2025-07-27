@@ -1,4 +1,2 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-@source inline("modal modal-box modal-action");
+@import "tailwindcss";
+@source './src/**/*.rs';

@@ -6,7 +6,6 @@
   "scripts": {},
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",
-    "daisyui": "^5.0.47",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^4.1.11"
   }
 }
