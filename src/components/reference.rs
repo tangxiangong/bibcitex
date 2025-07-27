@@ -65,34 +65,57 @@ pub fn Entry(entry: Reference) -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: REFERENCE_CSS }
         div { class: "entry",
-            p {
-                span { style: "color: red", "{entry.type_.to_string()} " }
+            p { class: "entry-header",
+                div {
+                    span { class: "entry-type", "{entry.type_.to_string().to_uppercase()} " }
+                    if let Some(journal) = &entry.journal {
+                        span { class: "entry-journal", "{journal}" }
+                    }
+                }
                 span {
+                    class: "entry-key",
                     onmouseover: mouseover,
                     onmouseout: mouseout,
-                    cursor: "help",
                     " {key}"
-                }
-                button { onclick: copy_key,
-                    if !copied() {
-                        "📋"
-                    } else {
-                        if copy_success() {
-                            "✅"
+                    button { onclick: copy_key,
+                        if !copied() {
+                            "📋"
                         } else {
-                            "❌"
+                            if copy_success() {
+                                "✅"
+                            } else {
+                                "❌"
+                            }
                         }
                     }
                 }
             }
             if let Some(title) = &entry.title {
-                ChunksComp { chunks: title.clone(), cite_key: key.clone() }
-            } else {
-                p { "No title found" }
+                p {
+                    ChunksComp { chunks: title.clone(), cite_key: key.clone() }
+                }
+            }
+            if let Some(authors) = &entry.author {
+                p {
+                    if authors.len() > 5 {
+                        for author in authors.iter().take(5) {
+                            span { class: "author-tag", "{author}" }
+                        }
+                        span { " et al." }
+                    } else {
+                        for author in authors {
+                            span { class: "author-tag-alt", "{author}" }
+                        }
+                    }
+                }
             }
         }
         if is_hovered() {
-            Hover { entry, mouse_x: mouse_pos().0, mouse_y: mouse_pos().1 }
+            Hover {
+                entry,
+                mouse_x: mouse_pos().0 - 30.0,
+                mouse_y: mouse_pos().1,
+            }
         }
     }
 }
@@ -107,14 +130,12 @@ pub fn Hover(entry: Reference, mouse_x: f64, mouse_y: f64) -> Element {
             class: "hover",
             style: "left: {mouse_x + 1.0}px; top: {mouse_y + 10.0}px;",
             p {
-                span { style: "color: red", "{entry.type_.to_string()} " }
+                span { class: "hover-type", "{entry.type_.to_string()} " }
                 " {key}"
             }
             p {
                 if let Some(title) = &entry.title {
                     ChunksComp { chunks: title.clone(), cite_key: key.clone() }
-                } else {
-                    span { "No title found" }
                 }
 
                 if let Some(authors) = &entry.author {

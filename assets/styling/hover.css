@@ -12,3 +12,7 @@
     overflow-wrap: break-word;
     hyphens: auto;
 }
+
+.hover-type {
+    color: red;
+}
