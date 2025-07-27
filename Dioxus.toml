@@ -21,7 +21,7 @@ title = "BibCiTeX"
 [web.resource]
 
 # Additional CSS style files
-style = []
+style = ["assets/tailwind.css"]
 
 # Additional JavaScript files
 script = []

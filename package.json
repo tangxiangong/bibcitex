@@ -1,0 +1,12 @@
+{
+  "name": "bibcitex",
+  "version": "0.1.0",
+  "description": "BibTeX 快捷引用工具",
+  "main": "tailwind.config.js",
+  "scripts": {},
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "daisyui": "^5.0.47",
+    "tailwindcss": "^3.4.17"
+  }
+}
