@@ -185,3 +185,42 @@ html {
     outline: 2px solid var(--color-primary);
     outline-offset: -2px;
 }
+
+/* Helper item styles for search results */
+.helper-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-radius: 8px;
+    margin: 2px 8px;
+}
+
+.helper-item:hover {
+    background-color: var(--bg-secondary);
+}
+
+.helper-item-selected {
+    padding: 8px 16px;
+    cursor: pointer;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 8px;
+    margin: 2px 8px;
+    transition: background-color 0.15s ease;
+}
+
+.helper-item-selected:hover {
+    background-color: var(--color-primary);
+    opacity: 0.9;
+}
+
+/* Smooth scrolling for results container */
+.helper-results {
+    scroll-behavior: smooth;
+}
+
+/* Ensure selected items scroll into view smoothly */
+.helper-item-selected {
+    scroll-margin-top: 8px;
+    scroll-margin-bottom: 8px;
+}

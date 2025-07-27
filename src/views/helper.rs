@@ -1,3 +1,8 @@
+use std::{
+    rc::Weak,
+    sync::{Arc, Mutex},
+};
+
 use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
@@ -12,11 +17,10 @@ use dioxus::{
 };
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
-use std::rc::Weak;
 
 use crate::{
     STATE,
-    components::{SearchBib, SelectBib},
+    components::{SearchRef, SelectBib},
 };
 
 static CSS: Asset = asset!("/assets/styling/helper.css");
@@ -24,12 +28,29 @@ static CSS: Asset = asset!("/assets/styling/helper.css");
 // 全局状态跟踪Helper窗口是否打开
 pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
-pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
+// 使用 Arc<Mutex<>> 来确保状态在不同 VirtualDom 实例间共享
+static HELPER_BIB_STATE: std::sync::LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
+    std::sync::LazyLock::new(|| Arc::new(Mutex::new(None)));
 
+pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> =
+    Signal::global(|| HELPER_BIB_STATE.lock().unwrap().clone());
+
+// 辅助函数来设置和获取 HELPER_BIB 状态
+pub fn set_helper_bib(refs: Option<Vec<Reference>>) {
+    *HELPER_BIB_STATE.lock().unwrap() = refs.clone();
+    *HELPER_BIB.write() = refs;
+}
+
+pub fn get_helper_bib() -> Option<Vec<Reference>> {
+    HELPER_BIB_STATE.lock().unwrap().clone()
+}
+
+#[allow(dead_code)]
 pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut clipboard = Clipboard::new()?;
     clipboard.set_text(text.to_string())?;
     std::thread::sleep(std::time::Duration::from_millis(50));
+
     let mut enigo = Enigo::new(&enigo::Settings::default())?;
 
     #[cfg(target_os = "macos")]
@@ -92,6 +113,7 @@ pub fn open_spotlight_window() {
     let config = Config::new().with_window(window_builder);
 
     // 创建新窗口并保存窗口句柄
+    // 使用 new_window_with_vdom 而不是 new_window 来确保全局状态共享
     let helper_window = window.new_window(VirtualDom::new(Helper), config);
     *HELPER_WINDOW_OPEN.write() = Some(helper_window);
 }
@@ -100,6 +122,14 @@ pub fn open_spotlight_window() {
 #[component]
 pub fn Helper() -> Element {
     let query = use_context_provider(|| Signal::new(String::new()));
+
+    // 在组件初始化时从持久化状态恢复 HELPER_BIB
+    use_effect(move || {
+        let stored_bib = get_helper_bib();
+        if stored_bib.is_some() && HELPER_BIB().is_none() {
+            *HELPER_BIB.write() = stored_bib;
+        }
+    });
 
     let has_bib = use_memo(|| HELPER_BIB().is_some());
 
@@ -169,7 +199,7 @@ pub fn Helper() -> Element {
             if !has_bib() {
                 SelectBib { bibs }
             } else {
-                SearchBib {}
+                SearchRef {}
             }
         }
     }
