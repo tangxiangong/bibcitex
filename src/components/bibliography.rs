@@ -31,13 +31,21 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
 
     rsx! {
         div {
-            h2 {
-                "Bibliographies"
-                button { onclick: open_modal, font_size: "16px", "+ 添加" }
+            div { style: "display: flex; justify-content: space-between; align-items: center;",
+                h2 { "Bibliographies" }
+                span { style: "text-align: right;",
+                    ""
+                    button {
+                        class: "btn btn-dash",
+                        onclick: open_modal,
+                        font_size: "16px",
+                        "添加"
+                    }
+                }
             }
-            for (name , path , updated_at) in pairs() {
-                Bibliography { name, path, updated_at }
-            }
+        }
+        for (name , path , updated_at) in pairs() {
+            Bibliography { name, path, updated_at }
         }
     }
 }
@@ -139,28 +147,34 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
                 // 对话框内容
                 div { id: "form",
-                    label { "名称" }
-                    input {
-                        r#type: "text",
-                        value: "{name}",
-                        oninput: move |e| {
-                            name.set(e.data.value());
-                        },
+                    label { class: "input",
+                        "名称"
+                        input {
+                            class: "grow",
+                            r#type: "text",
+                            value: "{name}",
+                            oninput: move |e| {
+                                name.set(e.data.value());
+                            },
+                        }
+                        if name_is_valid() {
+                            span { "✅" }
+                        } else {
+                            span { "❌" }
+                        }
                     }
-                    if name_is_valid() {
-                        span { "✅" }
-                    } else {
-                        span { "❌" }
-                    }
+
                     br {}
-                    label { "路径" }
-                    input {
-                        id: "path-input",
-                        r#type: "text",
-                        value: "{path_string}",
-                        readonly: true,
+                    label { class: "input",
+                        "路径"
+                        input {
+                            class: "grow",
+                            r#type: "text",
+                            value: "{path_string}",
+                            readonly: true,
+                        }
+                        button { onclick: select_file, "🔍" }
                     }
-                    button { onclick: select_file, "🔍" }
                 }
 
                 if let Some(error) = error_message() {
@@ -169,9 +183,9 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
                 // 底部按钮区域
                 div { id: "footer",
-                    button { id: "cancle-button", onclick: close_modal, "🚫取消" }
+                    button { class: "btn btn-soft btn-error", onclick: close_modal, "🚫取消" }
                     button {
-                        style: if save_available() { "#save-button-available" } else { "#save-button-unavailable" },
+                        class: if save_available() { "btn" } else { "btn btn-soft btn-disabled" },
                         onclick: save,
                         disabled: !save_available(),
                         "💾保存"
