@@ -8,4 +8,4 @@
 
 **/*.bib
 
-node_modules/
+scripts/

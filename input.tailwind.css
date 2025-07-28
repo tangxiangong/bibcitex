@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+@source "./src/**/*.rs";
+@source inline("modal modal-box modal-action");
