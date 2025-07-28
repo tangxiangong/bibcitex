@@ -32,8 +32,8 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
     rsx! {
         div {
             div { style: "display: flex; justify-content: space-between; align-items: center;",
-                h2 { "Bibliographies" }
-                span { style: "text-align: right;",
+                h2 { style: "font-size: 24px; font-weight: bold; padding: 10px;", "Bibliographies" }
+                span { style: "text-align: right; padding: 20px;",
                     ""
                     button {
                         class: "btn btn-dash",
