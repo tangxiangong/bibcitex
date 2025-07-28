@@ -7,11 +7,10 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
-
 pub mod components;
 pub mod route;
 pub mod views;
-pub static MAIN_CSS: Asset = asset!("/assets/styling/main.css");
+
 pub static LOGO: Asset = asset!("/assets/transparent_logo.png");
 pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
 static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");
@@ -44,7 +43,6 @@ pub fn App() -> Element {
     });
 
     rsx! {
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Stylesheet { href: TAILWINDCSS }
         Router::<route::Route> {}
     }
