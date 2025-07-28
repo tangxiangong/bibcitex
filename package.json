@@ -1,0 +1,15 @@
+{
+  "name": "bibcitex",
+  "private": true,
+  "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^7.0.2",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "daisyui": "^5.0.48",
+    "tailwindcss": "^4.1.11"
+  }
+}

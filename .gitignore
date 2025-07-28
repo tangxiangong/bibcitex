@@ -9,3 +9,5 @@
 **/*.bib
 
 scripts/
+
+node_modules/
