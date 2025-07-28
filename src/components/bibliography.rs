@@ -5,7 +5,6 @@ use itertools::Itertools;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
-static MODAL_CSS: Asset = asset!("/assets/styling/modal.css");
 static BIB_CSS: Asset = asset!("/assets/styling/bib.css");
 
 #[component]
@@ -134,55 +133,42 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     };
 
     rsx! {
-        document::Link { rel: "stylesheet", href: MODAL_CSS }
-        div { id: "background", onclick: close_modal,
-
-            div { id: "content", onclick: |e| e.stop_propagation(),
-
-                // 对话框标题
-                div { id: "header",
-                    h2 { "添加文献库" }
-                    button { onclick: close_modal, "✕" }
-                }
-
-                // 对话框内容
-                div { id: "form",
-                    label { class: "input",
-                        "名称"
-                        input {
-                            class: "grow",
-                            r#type: "text",
-                            value: "{name}",
-                            oninput: move |e| {
-                                name.set(e.data.value());
-                            },
-                        }
-                        if name_is_valid() {
-                            span { "✅" }
-                        } else {
-                            span { "❌" }
-                        }
+        div { class: if show() { "modal modal-open" } else { "modal" },
+            div { class: "modal-box",
+                h2 { class: "text-lg font-bold", "添加文献库" }
+                label { class: "input",
+                    "名称"
+                    input {
+                        class: "grow",
+                        r#type: "text",
+                        value: "{name}",
+                        oninput: move |e| {
+                            name.set(e.data.value());
+                        },
                     }
-
-                    br {}
-                    label { class: "input",
-                        "路径"
-                        input {
-                            class: "grow",
-                            r#type: "text",
-                            value: "{path_string}",
-                            readonly: true,
-                        }
-                        button { onclick: select_file, "🔍" }
+                    if name_is_valid() {
+                        span { "✅" }
+                    } else {
+                        span { "❌" }
                     }
                 }
 
+                br {}
+                label { class: "input",
+                    "路径"
+                    input {
+                        class: "grow",
+                        r#type: "text",
+                        value: "{path_string}",
+                        readonly: true,
+                    }
+                    button { onclick: select_file, "🔍" }
+                }
                 if let Some(error) = error_message() {
-                    div { "❌{error}" }
+                    p { "❌{error}" }
                 }
 
-                // 底部按钮区域
-                div { id: "footer",
+                div { class: "modal-action",
                     button { class: "btn btn-soft btn-error", onclick: close_modal, "🚫取消" }
                     button {
                         class: if save_available() { "btn" } else { "btn btn-soft btn-disabled" },
@@ -192,6 +178,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                     }
                 }
             }
+            div { class: "modal-backdrop", onclick: close_modal }
         }
     }
 }
