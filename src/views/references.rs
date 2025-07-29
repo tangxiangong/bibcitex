@@ -23,21 +23,38 @@ pub fn References() -> Element {
     };
 
     rsx! {
+        div { class: "join p-4",
+            select { class: "select join-item w-24",
+                option { disabled: true, selected: true, "Filter" }
+                option { "Author" }
+                option { "Title" }
+                option { "Journal" }
+            }
+            div {
+                div {
+                    input {
+                        r#type: "search",
+                        class: "input input-primary  join-item w-100",
+                        value: "{query}",
+                        oninput: search,
+                    }
+                }
+            }
+        }
         div {
-            input { r#type: "text", value: "{query}", oninput: search }
             if !is_input() {
-                h2 { "References (total: {refs.len()})" }
+                h2 { class: "text-lg p-2", "References (total: {refs.len()})" }
                 for reference in refs {
                     Entry { entry: reference }
                 }
             } else {
-                h2 { "References ({search_result().len()}/{refs.len()})" }
+                h2 { class: "text-lg p-2", "References ({search_result().len()}/{refs.len()})" }
                 if !search_result().is_empty() {
                     for reference in search_result() {
                         Entry { entry: reference }
                     }
                 } else {
-                    p { "No results" }
+                    p { class: "p-2 text-lg text-red-500", "No results" }
                 }
             }
         }

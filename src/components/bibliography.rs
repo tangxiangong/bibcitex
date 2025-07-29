@@ -135,7 +135,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     rsx! {
         div { class: if show() { "modal modal-open" } else { "modal" },
             div { class: "modal-box",
-                h2 { class: "text-lg font-bold", "添加文献库" }
+                h2 { class: "text-lg font-bold p-4", "添加文献库" }
                 label { class: "input",
                     "名称"
                     input {

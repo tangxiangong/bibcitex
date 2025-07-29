@@ -1,8 +1,7 @@
-use std::{
-    rc::Weak,
-    sync::{Arc, Mutex},
+use crate::{
+    STATE,
+    components::{SearchRef, SelectBib},
 };
-
 use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
@@ -17,10 +16,9 @@ use dioxus::{
 };
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
-
-use crate::{
-    STATE,
-    components::{SearchRef, SelectBib},
+use std::{
+    rc::Weak,
+    sync::{Arc, Mutex},
 };
 
 static CSS: Asset = asset!("/assets/styling/helper.css");
