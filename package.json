@@ -2,7 +2,6 @@
   "name": "bibcitex",
   "private": true,
   "devDependencies": {
-    "@fullhuman/postcss-purgecss": "^7.0.2",
     "@types/bun": "latest"
   },
   "peerDependencies": {
