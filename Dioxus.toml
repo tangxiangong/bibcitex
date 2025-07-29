@@ -4,11 +4,11 @@
 identifier = "com.tangxiangong.bibcitex.app"
 publisher = "tangxiangong"
 icon = [
-    "assets/icons/32x32.png",
-    "assets/icons/128x128.png",
-    "assets/icons/128x128@2x.png",
-    "assets/icons/icon.icns",
-    "assets/icons/icon.ico",
+    "assets/app-icons/32x32.png",
+    "assets/app-icons/128x128.png",
+    "assets/app-icons/128x128@2x.png",
+    "assets/app-icons/icon.icns",
+    "assets/app-icons/icon.ico",
 ]
 
 
