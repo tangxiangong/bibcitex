@@ -25,7 +25,8 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
             h2 { class: "p-4 text-lg",
                 "Bibliographies"
                 button {
-                    class: "btn btn-sm btn-circle btn-ghost bg-base-100",
+                    class: "btn btn-sm btn-circle btn-ghost bg-base-100 tooltip tooltip-right",
+                    "data-tip": "Add bibliography",
                     onclick: open_modal,
                     img { width: 20, src: ADD_ICON }
                 }
@@ -174,6 +175,7 @@ pub fn BibliographyTable() -> Element {
                 (
                     name.clone(),
                     info.path.as_os_str().to_str().unwrap().to_string(),
+                    info.path.as_os_str().to_str().unwrap().to_string(),
                     info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
                 )
             })
@@ -201,6 +203,10 @@ pub fn BibliographyTable() -> Element {
         let _ = state.update_file();
     };
 
+    let open_bib_file = |path: String| {
+        let _ = opener::open(&path);
+    };
+
     rsx! {
         div {
             div { class: "overflow-x-auto rounded-box border border-base-content/5 bg-base-100",
@@ -214,17 +220,25 @@ pub fn BibliographyTable() -> Element {
                         }
                     }
                     tbody {
-                        for (name , path , updated_at) in pairs() {
+                        for (name , path , path_clone , updated_at) in pairs() {
                             tr {
                                 td { "{name}" }
-                                td { "{path}" }
+                                td {
+                                    a {
+                                        class: "link tooltip",
+                                        "data-tip": "以默认应用程序打开",
+                                        onclick: move |_| open_bib_file(path.clone()),
+                                        "{path}"
+                                    }
+                                }
                                 td { "{updated_at}" }
                                 td {
                                     div { class: "flex w-full",
                                         div { class: "grid grow place-items-center",
                                             button {
-                                                class: "btn btn-ghost btn-circle bg-base-100",
-                                                onclick: move |_| open_bib(path.clone()),
+                                                class: "btn btn-ghost btn-circle bg-base-100 tooltip",
+                                                "data-tip": "details",
+                                                onclick: move |_| open_bib(path_clone.clone()),
                                                 img {
                                                     alt: "details",
                                                     width: 30,
