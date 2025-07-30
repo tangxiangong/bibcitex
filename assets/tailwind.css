@@ -7,6 +7,7 @@
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-red-400: oklch(70.4% 0.191 22.216);
     --color-red-500: oklch(63.7% 0.237 25.331);
     --spacing: 0.25rem;
     --text-lg: 1.125rem;
@@ -656,6 +657,16 @@
       inset: var(--tt-tail) auto auto 50%;
     }
   }
+  .tooltip-right {
+    > .tooltip-content, &[data-tip]:before {
+      transform: translateX(calc(var(--tt-pos, -0.25rem) + 0.25rem)) translateY(-50%);
+      inset: 50% auto auto var(--tt-off);
+    }
+    &:after {
+      transform: translateX(var(--tt-pos, -0.25rem)) translateY(-50%) rotate(90deg);
+      inset: 50% auto auto calc(var(--tt-tail) + 1px);
+    }
+  }
   .modal-backdrop {
     grid-column-start: 1;
     grid-row-start: 1;
@@ -921,6 +932,22 @@
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
   }
+  .link {
+    cursor: pointer;
+    text-decoration-line: underline;
+    &:focus {
+      --tw-outline-style: none;
+      outline-style: none;
+      @media (forced-colors: active) {
+        outline: 2px solid transparent;
+        outline-offset: 2px;
+      }
+    }
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+    }
+  }
   .place-items-center {
     place-items: center;
   }
@@ -974,6 +1001,9 @@
     > .tooltip-content, &[data-tip]:before {
       color: var(--color-success-content);
     }
+  }
+  .text-red-400 {
+    color: var(--color-red-400);
   }
   .text-red-500 {
     color: var(--color-red-500);
