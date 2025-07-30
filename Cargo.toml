@@ -21,6 +21,7 @@ enigo = "0.5"
 fs-err = "3.1"
 itertools = "0.14"
 katex = "0.4.6"
+opener = "0.8"
 rayon = "1"
 rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
@@ -44,6 +45,7 @@ dioxus = { workspace = true }
 enigo = { workspace = true }
 itertools = { workspace = true }
 katex = { workspace = true }
+opener = { workspace = true }
 rfd = { workspace = true }
 tokio = { workspace = true }
 
