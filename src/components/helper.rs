@@ -51,7 +51,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     let error_message = use_context_provider(|| Signal::new(None::<String>));
     let selected_bib = use_context_provider(|| Signal::new(None::<(String, String, String)>));
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("/assets/styling/bib.css") }
+
         div {
             p { "请选择文献库" }
             for (name , path , updated_at) in bibs() {
