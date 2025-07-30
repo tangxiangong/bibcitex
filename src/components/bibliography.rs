@@ -1,11 +1,18 @@
 use crate::{CURRENT_REF, STATE, route::Route};
-use bibcitex_core::{bib::parse, utils::read_bibliography};
+use bibcitex_core::{
+    bib::parse,
+    utils::{abbr_path, read_bibliography},
+};
 use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
 static BIB_CSS: Asset = asset!("/assets/styling/bib.css");
+static ADD_ICON: Asset = asset!("/assets/icons/add.svg");
+static ERR_ICON: Asset = asset!("/assets/icons/error.svg");
+static OK_ICON: Asset = asset!("/assets/icons/ok.svg");
+static CANCEL_ICON: Asset = asset!("/assets/icons/cancel.svg");
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
@@ -35,9 +42,10 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
                 span { style: "text-align: right; padding: 20px;",
                     ""
                     button {
-                        class: "btn btn-dash",
+                        class: "btn btn-soft",
                         onclick: open_modal,
                         font_size: "16px",
+                        img { width: 20, src: ADD_ICON }
                         "添加"
                     }
                 }
@@ -95,12 +103,26 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
             .collect::<Vec<_>>()
     });
     let mut name = use_signal(|| "".to_string());
-    let mut path = use_signal(PathBuf::new);
+    let mut path = use_signal(|| None::<PathBuf>);
     let mut add_path = use_signal(|| false);
     let mut error_message = use_signal(|| Option::<String>::None);
     let name_is_valid = use_memo(move || !name().is_empty() && !exist_names().contains(&name()));
     let save_available = use_memo(move || add_path() && name_is_valid());
-    let path_string = use_memo(move || path().as_os_str().to_str().unwrap().to_owned());
+    let path_string = use_memo(move || {
+        if let Some(path) = path() {
+            path.as_os_str().to_str().unwrap().to_owned()
+        } else {
+            "未选择文件，点击选择".to_string()
+        }
+    });
+    let path_abbr_string = use_memo(move || {
+        if let Some(path) = path() {
+            let path_str = path.as_os_str().to_str().unwrap().to_owned();
+            abbr_path(&path_str, 40)
+        } else {
+            "".to_string()
+        }
+    });
 
     let select_file = move |_| {
         let file = FileDialog::new()
@@ -108,7 +130,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
             .set_title("选择文献文件")
             .pick_file();
         if let Some(file) = file {
-            path.set(file);
+            path.set(Some(file));
             add_path.set(true);
             error_message.set(None);
         }
@@ -120,15 +142,17 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
     let save = move |_| {
         let mut state = STATE.write();
-        match state.add_update_bibliography(&name(), path()) {
-            Ok(_) => {
-                if let Err(e) = state.update_file() {
-                    error_message.set(Some(e.to_string()));
-                } else {
-                    show.set(false);
+        if let Some(path) = path() {
+            match state.add_update_bibliography(&name(), path) {
+                Ok(_) => {
+                    if let Err(e) = state.update_file() {
+                        error_message.set(Some(e.to_string()));
+                    } else {
+                        show.set(false);
+                    }
                 }
+                Err(e) => error_message.set(Some(e.to_string())),
             }
-            Err(e) => error_message.set(Some(e.to_string())),
         }
     };
 
@@ -147,34 +171,44 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                         },
                     }
                     if name_is_valid() {
-                        span { "✅" }
+                        img { width: 20, src: OK_ICON }
                     } else {
-                        span { "❌" }
+                        img { width: 20, src: ERR_ICON }
                     }
                 }
 
                 br {}
-                label { class: "input",
+                label {
+                    class: format!(
+                        "input tooltip tooltip-bottom {}",
+                        if path().is_some() { "tooltip-success" } else { "tooltip-error" },
+                    ),
+                    "data-tip": "{path_string}",
                     "路径"
                     input {
                         class: "grow",
                         r#type: "text",
-                        value: "{path_string}",
+                        placeholder: "请选择文件",
+                        value: "{path_abbr_string}",
                         readonly: true,
                     }
-                    button { onclick: select_file, "🔍" }
+                    button { onclick: select_file, "选取文件" }
                 }
                 if let Some(error) = error_message() {
                     p { "❌{error}" }
                 }
 
-                div { class: "modal-action",
-                    button { class: "btn btn-soft btn-error", onclick: close_modal, "🚫取消" }
+                div { class: "modal-action p-3",
+                    button { class: "btn btn-soft btn-error", onclick: close_modal,
+                        img { width: 20, src: CANCEL_ICON }
+                        "取消"
+                    }
                     button {
-                        class: if save_available() { "btn" } else { "btn btn-soft btn-disabled" },
+                        class: if save_available() { "btn btn-soft btn-success" } else { "btn btn-soft btn-disabled" },
                         onclick: save,
                         disabled: !save_available(),
-                        "💾保存"
+                        img { width: 20, src: OK_ICON }
+                        "保存"
                     }
                 }
             }
