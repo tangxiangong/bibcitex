@@ -13,28 +13,13 @@ static ERR_ICON: Asset = asset!("/assets/icons/error.svg");
 static OK_ICON: Asset = asset!("/assets/icons/ok.svg");
 static CANCEL_ICON: Asset = asset!("/assets/icons/cancel.svg");
 static DELETE_ICON: Asset = asset!("/assets/icons/delete.svg");
+static DETAILS_ICON: Asset = asset!("/assets/icons/detail.svg");
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
     let open_modal = move |_| {
         show_modal.set(true);
     };
-    let pairs = use_memo(|| {
-        let state = STATE.read();
-        state
-            .bibliographies
-            .iter()
-            .sorted_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at))
-            .map(|(name, info)| {
-                (
-                    name.clone(),
-                    info.path.as_os_str().to_str().unwrap().to_string(),
-                    info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-                )
-            })
-            .collect::<Vec<_>>()
-    });
-
     rsx! {
         div {
             h2 { class: "p-4 text-lg",
@@ -45,58 +30,7 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
                     img { width: 20, src: ADD_ICON }
                 }
             }
-            for (name , path , updated_at) in pairs() {
-                Bibliography { name, path, updated_at }
-            }
-        }
-    }
-}
-
-#[component]
-pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
-    let mut error_message = use_signal(|| None::<String>);
-    let navigator = use_navigator();
-    let path_clone = path.clone();
-
-    let handle_click = move |_| {
-        error_message.set(None);
-        match parse(&path_clone) {
-            Ok(bib) => {
-                let refs = read_bibliography(bib);
-                let mut current_ref = CURRENT_REF.write();
-                *current_ref = Some(refs);
-                navigator.push(Route::References {});
-            }
-            Err(e) => {
-                error_message.set(Some(format!("❌ 解析文件失败: {e}")));
-            }
-        }
-    };
-
-    let delete_bib = |bib_name: String| {
-        let mut state = STATE.write();
-        state.remove_bibliography(&bib_name);
-        let _ = state.update_file();
-    };
-
-    rsx! {
-        div {
-            div { class: "card card-border bg-base-100 card-xs shadow-sm",
-                div { class: "card-body",
-                    h2 { class: "card-title", onclick: handle_click, "{name}" }
-                    p { "{path} ({updated_at})" }
-                    div { class: "card-actions justify-end",
-                        button {
-                            class: "btn btn-ghost btn-circle",
-                            onclick: move |_| delete_bib(name.clone()),
-                            img { width: 30, src: DELETE_ICON }
-                        }
-                    }
-                }
-            }
-            if let Some(error) = error_message() {
-                p { "{error}" }
-            }
+            BibliographyTable {}
         }
     }
 }
@@ -222,6 +156,105 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                 }
             }
             div { class: "modal-backdrop", onclick: close_modal }
+        }
+    }
+}
+
+#[component]
+pub fn BibliographyTable() -> Element {
+    let mut error_message = use_signal(|| None::<String>);
+    let navigator = use_navigator();
+    let pairs = use_memo(|| {
+        let state = STATE.read();
+        state
+            .bibliographies
+            .iter()
+            .sorted_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at))
+            .map(|(name, info)| {
+                (
+                    name.clone(),
+                    info.path.as_os_str().to_str().unwrap().to_string(),
+                    info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                )
+            })
+            .collect::<Vec<_>>()
+    });
+
+    let mut open_bib = move |path: String| {
+        error_message.set(None);
+        match parse(&path) {
+            Ok(bib) => {
+                let refs = read_bibliography(bib);
+                let mut current_ref = CURRENT_REF.write();
+                *current_ref = Some(refs);
+                navigator.push(Route::References {});
+            }
+            Err(e) => {
+                error_message.set(Some(format!("❌ 解析文件失败: {e}")));
+            }
+        }
+    };
+
+    let delete_bib = |bib_name: String| {
+        let mut state = STATE.write();
+        state.remove_bibliography(&bib_name);
+        let _ = state.update_file();
+    };
+
+    rsx! {
+        div {
+            div { class: "overflow-x-auto rounded-box border border-base-content/5 bg-base-100",
+                table { class: "table",
+                    thead {
+                        tr {
+                            th { "name" }
+                            th { "path" }
+                            th { "update at" }
+                            th {}
+                        }
+                    }
+                    tbody {
+                        for (name , path , updated_at) in pairs() {
+                            tr {
+                                td { "{name}" }
+                                td { "{path}" }
+                                td { "{updated_at}" }
+                                td {
+                                    div { class: "flex w-full",
+                                        div { class: "grid grow place-items-center",
+                                            button {
+                                                class: "btn btn-ghost btn-circle bg-base-100",
+                                                onclick: move |_| open_bib(path.clone()),
+                                                img {
+                                                    alt: "details",
+                                                    width: 30,
+                                                    src: DETAILS_ICON,
+                                                }
+                                            }
+                                        }
+                                        div { class: "divider divider-horizontal" }
+                                        div { class: "grid grow place-items-center",
+                                            button {
+                                                class: "btn btn-ghost btn-circle bg-base-100",
+                                                onclick: move |_| delete_bib(name.clone()),
+                                                img {
+                                                    alt: "delete",
+                                                    width: 30,
+                                                    src: DELETE_ICON,
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if let Some(error) = error_message() {
+                p { "{error}" }
+            }
         }
     }
 }
