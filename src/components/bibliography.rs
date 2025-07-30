@@ -8,11 +8,11 @@ use itertools::Itertools;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
-static BIB_CSS: Asset = asset!("/assets/styling/bib.css");
 static ADD_ICON: Asset = asset!("/assets/icons/add.svg");
 static ERR_ICON: Asset = asset!("/assets/icons/error.svg");
 static OK_ICON: Asset = asset!("/assets/icons/ok.svg");
 static CANCEL_ICON: Asset = asset!("/assets/icons/cancel.svg");
+static DELETE_ICON: Asset = asset!("/assets/icons/delete.svg");
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
@@ -37,22 +37,17 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
 
     rsx! {
         div {
-            div { style: "display: flex; justify-content: space-between; align-items: center;",
-                h2 { style: "font-size: 24px; font-weight: bold; padding: 10px;", "Bibliographies" }
-                span { style: "text-align: right; padding: 20px;",
-                    ""
-                    button {
-                        class: "btn btn-soft",
-                        onclick: open_modal,
-                        font_size: "16px",
-                        img { width: 20, src: ADD_ICON }
-                        "添加"
-                    }
+            h2 { class: "p-4 text-lg",
+                "Bibliographies"
+                button {
+                    class: "btn btn-sm btn-circle btn-ghost bg-base-100",
+                    onclick: open_modal,
+                    img { width: 20, src: ADD_ICON }
                 }
             }
-        }
-        for (name , path , updated_at) in pairs() {
-            Bibliography { name, path, updated_at }
+            for (name , path , updated_at) in pairs() {
+                Bibliography { name, path, updated_at }
+            }
         }
     }
 }
@@ -78,12 +73,26 @@ pub fn Bibliography(name: String, path: String, updated_at: String) -> Element {
         }
     };
 
+    let delete_bib = |bib_name: String| {
+        let mut state = STATE.write();
+        state.remove_bibliography(&bib_name);
+        let _ = state.update_file();
+    };
+
     rsx! {
-        document::Link { rel: "stylesheet", href: BIB_CSS }
         div {
-            div { class: "item", onclick: handle_click,
-                h3 { {name} }
-                p { "{path} ({updated_at})" }
+            div { class: "card card-border bg-base-100 card-xs shadow-sm",
+                div { class: "card-body",
+                    h2 { class: "card-title", onclick: handle_click, "{name}" }
+                    p { "{path} ({updated_at})" }
+                    div { class: "card-actions justify-end",
+                        button {
+                            class: "btn btn-ghost btn-circle",
+                            onclick: move |_| delete_bib(name.clone()),
+                            img { width: 30, src: DELETE_ICON }
+                        }
+                    }
+                }
             }
             if let Some(error) = error_message() {
                 p { "{error}" }
