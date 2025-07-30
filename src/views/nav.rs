@@ -20,8 +20,11 @@ pub fn NavBar() -> Element {
         div {
             div { class: "navbar bg-base-100 shadow-sm",
                 div { class: "navbar-start",
-                    Link { to: Route::Home {},
-                        img { src: LOGO, width: "60px" }
+                    div { class: "tooltip tooltip-right",
+                        div { class: "tooltip-content bg-base-100 text-red-400", "Home" }
+                        Link { to: Route::Home {},
+                            img { src: LOGO, width: "60px" }
+                        }
                     }
                 }
 
