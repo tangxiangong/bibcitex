@@ -1,4 +1,7 @@
-use crate::{CURRENT_REF, STATE, route::Route};
+use crate::{
+    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, DETAILS_ICON, ERR_ICON, OK_ICON, STATE,
+    route::Route,
+};
 use bibcitex_core::{
     bib::parse,
     utils::{abbr_path, read_bibliography},
@@ -7,13 +10,6 @@ use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
 use std::path::PathBuf;
-
-static ADD_ICON: Asset = asset!("/assets/icons/add.svg");
-static ERR_ICON: Asset = asset!("/assets/icons/error.svg");
-static OK_ICON: Asset = asset!("/assets/icons/ok.svg");
-static CANCEL_ICON: Asset = asset!("/assets/icons/cancel.svg");
-static DELETE_ICON: Asset = asset!("/assets/icons/delete.svg");
-static DETAILS_ICON: Asset = asset!("/assets/icons/detail.svg");
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
