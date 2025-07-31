@@ -31,7 +31,7 @@ pub fn NavBar() -> Element {
                 div { class: "navbar-center", "" }
 
                 div { class: "navbar-end p-2",
-                    button { class: "btn btn-secondary", onclick: helper,
+                    button { class: "btn btn-outline", onclick: helper,
                         "快捷助手"
                         kbd { class: "kbd", "{cmd_ctrl}" }
                         kbd { class: "kbd", "K" }

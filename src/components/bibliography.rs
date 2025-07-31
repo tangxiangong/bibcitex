@@ -249,7 +249,8 @@ pub fn BibliographyTable() -> Element {
                                         div { class: "divider divider-horizontal" }
                                         div { class: "grid grow place-items-center",
                                             button {
-                                                class: "btn btn-ghost btn-circle bg-base-100",
+                                                class: "btn btn-ghost btn-circle bg-base-100 tooltip",
+                                                "data-tip": "delete",
                                                 onclick: move |_| delete_bib(name.clone()),
                                                 img {
                                                     alt: "delete",
