@@ -21,10 +21,10 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
             h2 { class: "p-4 text-lg",
                 "Bibliographies"
                 button {
-                    class: "btn btn-sm btn-circle btn-ghost bg-base-100 tooltip tooltip-right",
+                    class: "tooltip tooltip-right ml-2 cursor-pointer",
                     "data-tip": "Add bibliography",
                     onclick: open_modal,
-                    img { width: 20, src: ADD_ICON }
+                    img { width: 14, src: ADD_ICON }
                 }
             }
             BibliographyTable {}
@@ -132,7 +132,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                         value: "{path_abbr_string}",
                         readonly: true,
                     }
-                    button { onclick: select_file, "选取文件" }
+                    button { class: "cursor-pointer", onclick: select_file, "选取文件" }
                 }
                 if let Some(error) = error_message() {
                     p { "❌{error}" }
@@ -232,7 +232,7 @@ pub fn BibliographyTable() -> Element {
                                     div { class: "flex w-full",
                                         div { class: "grid grow place-items-center",
                                             button {
-                                                class: "btn btn-ghost btn-circle bg-base-100 tooltip",
+                                                class: "tooltip cursor-pointer",
                                                 "data-tip": "details",
                                                 onclick: move |_| open_bib(path_clone.clone()),
                                                 img {
@@ -245,7 +245,7 @@ pub fn BibliographyTable() -> Element {
                                         div { class: "divider divider-horizontal" }
                                         div { class: "grid grow place-items-center",
                                             button {
-                                                class: "btn btn-ghost btn-circle bg-base-100 tooltip",
+                                                class: "tooltip cursor-pointer",
                                                 "data-tip": "delete",
                                                 onclick: move |_| delete_bib(name.clone()),
                                                 img {
