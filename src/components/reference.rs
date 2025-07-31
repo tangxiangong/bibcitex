@@ -171,6 +171,14 @@ pub fn Article(entry: Reference) -> Element {
             });
         }
     };
+    let open_doi = |doi: String| {
+        let _ = opener::open_browser(&doi);
+    };
+    let doi_url = if let Some(doi) = entry.doi.clone() {
+        format!("https://doi.org/{doi}")
+    } else {
+        "".to_string()
+    };
     rsx! {
         div { class: "card card-border",
             div { class: "card-body",
@@ -187,9 +195,12 @@ pub fn Article(entry: Reference) -> Element {
                             span { class: "text-lg", "No title available" }
                         }
                     }
-                    div { class: "badge badge-soft badge-primary text-lg ml-2",
-                        "{key}"
-                        button { onclick: copy_key,
+                    div {
+                        button {
+                            class: "tooltip badge badge-soft badge-primary text-lg ml-2 cursor-pointer",
+                            onclick: copy_key,
+                            "data-tip": "点击以复制",
+                            "{key}"
                             if !copied() {
                                 img { width: 20, src: COPY_ICON }
                             } else {
@@ -232,6 +243,14 @@ pub fn Article(entry: Reference) -> Element {
                         div { class: "badge badge-soft badge-primary mr-1", "{year}" }
                     } else {
                         div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                    }
+                    if let Some(doi) = &entry.doi {
+                        button {
+                            class: "tooltip cursor-pointer",
+                            "data-tip": "在浏览器中打开",
+                            onclick: move |_| open_doi(doi_url.clone()),
+                            div { class: "badge badge-soft badge-primary mr-1", " DOI: {doi}" }
+                        }
                     }
                 }
             }
