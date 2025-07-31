@@ -1,10 +1,7 @@
-use crate::components::InlineMath;
+use crate::{COPY_ICON, ERR_ICON, OK_ICON, components::InlineMath};
 use bibcitex_core::bib::Reference;
 use biblatex::Chunk;
 use dioxus::prelude::*;
-
-static REFERENCE_CSS: Asset = asset!("/assets/styling/reference.css");
-static HOVER_CSS: Asset = asset!("/assets/styling/hover.css");
 
 #[component]
 fn ChunksComp(chunks: Vec<Chunk>, cite_key: String) -> Element {
@@ -63,7 +60,6 @@ pub fn Entry(entry: Reference) -> Element {
     };
 
     rsx! {
-        document::Link { rel: "stylesheet", href: REFERENCE_CSS }
         div { class: "entry",
             p { class: "entry-header",
                 div {
@@ -125,7 +121,6 @@ pub fn Hover(entry: Reference, mouse_x: f64, mouse_y: f64) -> Element {
     let key = &entry.cite_key;
 
     rsx! {
-        document::Link { rel: "stylesheet", href: HOVER_CSS }
         div {
             class: "hover",
             style: "left: {mouse_x + 1.0}px; top: {mouse_y + 10.0}px;",
@@ -144,6 +139,100 @@ pub fn Hover(entry: Reference, mouse_x: f64, mouse_y: f64) -> Element {
                     }
                 } else {
                     span { "No author found" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn Article(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+    let mut copy_success = use_signal(|| true);
+    let mut copied = use_signal(|| false);
+
+    let copy_key = {
+        let key_clone = key.clone();
+        move |_| {
+            copied.set(true);
+            if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                if clipboard.set_text(&key_clone).is_ok() {
+                    copy_success.set(true);
+                } else {
+                    copy_success.set(false);
+                }
+            } else {
+                copy_success.set(false);
+            }
+
+            spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
+                copied.set(false);
+            });
+        }
+    };
+    rsx! {
+        div { class: "card card-border",
+            div { class: "card-body",
+                div { class: "flex justify-between items-start",
+                    div { class: "flex items-start",
+                        div { class: "badge badge-soft badge-primary mr-2 text-lg",
+                            "Article"
+                        }
+                        if let Some(title) = entry.title {
+                            span { class: "text-lg",
+                                ChunksComp { chunks: title, cite_key: key.clone() }
+                            }
+                        } else {
+                            span { class: "text-lg", "No title available" }
+                        }
+                    }
+                    div { class: "badge badge-soft badge-primary text-lg ml-2",
+                        "{key}"
+                        button { onclick: copy_key,
+                            if !copied() {
+                                img { width: 20, src: COPY_ICON }
+                            } else {
+                                if copy_success() {
+                                    img { width: 20, src: OK_ICON }
+                                } else {
+                                    img { width: 20, src: ERR_ICON }
+                                }
+                            }
+                        }
+                    }
+                }
+                p {
+                    if let Some(authors) = entry.author {
+                        if authors.len() > 3 {
+                            for author in authors.iter().take(3) {
+                                div { class: "badge badge-soft badge-primary mr-1",
+                                    "{author}"
+                                }
+                            }
+                            div { class: "badge badge-soft badge-primary mr-1", " et al." }
+                        } else {
+                            for author in authors {
+                                div { class: "badge badge-soft badge-primary mr-1",
+                                    "{author}"
+                                }
+                            }
+                        }
+                    } else {
+                        div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                    }
+                }
+                p {
+                    if let Some(journal) = &entry.journal {
+                        div { class: "badge badge-soft badge-primary mr-1", "{journal}" }
+                    } else {
+                        div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                    }
+                    if let Some(year) = &entry.year {
+                        div { class: "badge badge-soft badge-primary mr-1", "{year}" }
+                    } else {
+                        div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                    }
                 }
             }
         }

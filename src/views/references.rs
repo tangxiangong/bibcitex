@@ -1,9 +1,13 @@
-use crate::CURRENT_REF;
+use crate::{
+    CURRENT_REF,
+    components::{Article, Entry},
+};
 use bibcitex_core::{
     bib::Reference, filter_article, filter_book, filter_phdthesis, search_references,
     search_references_by_author, search_references_by_journal, search_references_by_title,
     search_references_by_year,
 };
+use biblatex::EntryType;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -270,13 +274,20 @@ pub fn References() -> Element {
             if !is_input() {
                 h2 { class: "text-lg p-2", "{show_type()} ({refs().len()}/{total_num})" }
                 for reference in refs() {
-                    crate::components::Entry { entry: reference }
+                    match reference.type_.clone() {
+                        EntryType::Article => rsx! {
+                            Article { entry: reference }
+                        },
+                        _ => rsx! {
+                            Entry { entry: reference }
+                        },
+                    }
                 }
             } else {
                 h2 { class: "text-lg p-2", "{show_type()} ({search_result().len()}/{refs().len()})" }
                 if !search_result().is_empty() {
                     for reference in search_result() {
-                        crate::components::Entry { entry: reference }
+                        Article { entry: reference }
                     }
                 } else {
                     p { class: "p-2 text-lg text-red-500", "No results" }
