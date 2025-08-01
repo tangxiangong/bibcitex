@@ -113,7 +113,7 @@ pub fn Entry(entry: Reference) -> Element {
 }
 
 #[component]
-pub fn Article(entry: Reference) -> Element {
+pub fn Article(entry: Reference, has_drawer: bool) -> Element {
     let key = &entry.cite_key;
     let mut copy_success = use_signal(|| true);
     let mut copied = use_signal(|| false);
@@ -166,13 +166,15 @@ pub fn Article(entry: Reference) -> Element {
                         }
                     }
                     div {
-                        button {
-                            class: "cursor-pointer ml-1",
-                            onclick: open_drawer,
-                            img { width: 20, src: DETAILS_ICON }
+                        if has_drawer {
+                            button {
+                                class: "cursor-pointer ml-1",
+                                onclick: open_drawer,
+                                img { width: 20, src: DETAILS_ICON }
+                            }
                         }
                         button {
-                            class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono  hover:text-gray-600 cursor-pointer",
+                            class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono ml-1 hover:text-gray-600 cursor-pointer",
                             onclick: copy_key,
                             "data-tip": "点击以复制",
                             "{key}"
