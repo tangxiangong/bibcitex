@@ -1,0 +1,55 @@
+// Folder-specific settings
+//
+// For a full list of overridable settings, and general information on folder-specific settings,
+// see the documentation: https://zed.dev/docs/configuring-zed#settings-files
+{
+  "languages": {
+    "Rust": {
+      "language_servers": ["rust-analyzer", "tailwindcss-language-server"],
+      "format_on_save": "on",
+      "inlay_hints": {
+        "enabled": true
+      }
+    }
+  },
+  "lsp": {
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "rust": "html",
+          "*.rs": "html"
+        },
+        "experimental": {
+          "classRegex": [
+            "class:\\s*\"([^\"]*)",
+            "class:\\s*if[^{]*{[^}]*\"([^\"]*)",
+            "class:\\s*else[^{]*{[^}]*\"([^\"]*)"
+          ]
+        },
+        "colorDecorators": {
+          "enabled": true
+        },
+        "validate": true,
+        "hovers": true,
+        "suggestions": true,
+        "codeActions": true,
+        "emmetCompletions": false,
+        "classAttributes": ["class"],
+        "lint": {
+          "cssConflict": "warning",
+          "invalidApply": "error",
+          "invalidScreen": "error",
+          "invalidVariant": "error",
+          "invalidConfigPath": "error",
+          "invalidTailwindDirective": "error",
+          "recommendedVariantOrder": "warning"
+        },
+        "showPixelEquivalents": true,
+        "rootFontSize": 16
+      }
+    }
+  },
+  "inlay_hints": {
+    "enabled": true
+  }
+}
