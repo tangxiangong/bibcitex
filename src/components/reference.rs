@@ -174,21 +174,25 @@ pub fn Article(entry: Reference) -> Element {
     let open_doi = |doi: String| {
         let _ = opener::open_browser(&doi);
     };
+    let open_url = |url: String| {
+        let _ = opener::open_browser(&url);
+    };
+    let open_file = |file: String| {
+        let _ = opener::open(&file);
+    };
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
         "".to_string()
     };
     rsx! {
-        div { class: "card card-border",
+        div { class: "bg-blue-100 border-blue-500 border-l-4 px-3 py-2 rounded-r",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-start",
-                        div { class: "badge badge-soft badge-primary mr-2 text-lg",
-                            "Article"
-                        }
+                        div { class: "mr-2 text-lg text-blue-800", "Article" }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg",
+                            span { class: "text-lg text-grey-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
@@ -197,7 +201,7 @@ pub fn Article(entry: Reference) -> Element {
                     }
                     div {
                         button {
-                            class: "tooltip badge badge-soft badge-primary text-lg ml-2 cursor-pointer",
+                            class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono  hover:text-gray-600 ml-1 cursor-pointer",
                             onclick: copy_key,
                             "data-tip": "点击以复制",
                             "{key}"
@@ -217,39 +221,56 @@ pub fn Article(entry: Reference) -> Element {
                     if let Some(authors) = entry.author {
                         if authors.len() > 3 {
                             for author in authors.iter().take(3) {
-                                div { class: "badge badge-soft badge-primary mr-1",
-                                    "{author}"
-                                }
+                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
                             }
-                            div { class: "badge badge-soft badge-primary mr-1", " et al." }
+                            span { class: "font-semibold mr-1", " et al." }
                         } else {
                             for author in authors {
-                                div { class: "badge badge-soft badge-primary mr-1",
-                                    "{author}"
+                                span { class: "text-blue-700 font-semibold bg-blue-100 mr-2",
+                                    "{author} "
                                 }
                             }
                         }
                     } else {
-                        div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
                     }
                 }
                 p {
                     if let Some(journal) = &entry.journal {
-                        div { class: "badge badge-soft badge-primary mr-1", "{journal}" }
+                        span { class: "text-purple-600 mr-2", "{journal}" }
                     } else {
                         div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
                     }
                     if let Some(year) = &entry.year {
-                        div { class: "badge badge-soft badge-primary mr-1", "{year}" }
+                        span { class: "text-emerald-700 mr-2", "{year}" }
                     } else {
-                        div { class: "badge badge-soft badge-primary mr-1", "Unknown" }
+                        div { class: "text-emerald-700 mr-1", "year" }
                     }
                     if let Some(doi) = &entry.doi {
                         button {
                             class: "tooltip cursor-pointer",
                             "data-tip": "在浏览器中打开",
                             onclick: move |_| open_doi(doi_url.clone()),
-                            div { class: "badge badge-soft badge-primary mr-1", " DOI: {doi}" }
+                            div { class: "text-cyan-600 mr-2", " DOI: {doi}" }
+                        }
+                    } else {
+                        if let Some(url) = entry.url {
+                            button {
+                                class: "tooltip cursor-pointer",
+                                "data-tip": "在浏览器中打开",
+                                onclick: move |_| open_url(url.clone()),
+                                div { class: "badge badge-soft badge-primary mr-1",
+                                    "URL"
+                                }
+                            }
+                        }
+                    }
+                    if let Some(file) = entry.file {
+                        button {
+                            class: "tooltip cursor-pointer",
+                            "data-tip": "打开文献",
+                            onclick: move |_| open_file(file.clone()),
+                            div { class: "badge badge-soft badge-primary mr-1", "PDF" }
                         }
                     }
                 }
