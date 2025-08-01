@@ -15,6 +15,8 @@ pub fn parse(file_path: impl AsRef<Path>) -> Result<Bibliography> {
 pub struct Reference {
     /// key
     pub cite_key: String,
+    /// parse result
+    pub source: String,
     /// type
     pub type_: EntryType,
     /// author
@@ -45,11 +47,18 @@ pub struct Reference {
     pub isbn: Option<String>,
     /// series
     pub series: Option<String>,
+    /// url
+    pub url: Option<String>,
+    /// pdf
+    pub file: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
     fn from(entry: &biblatex::Entry) -> Self {
         let key = entry.key.clone();
+        let source = entry
+            .to_bibtex_string()
+            .unwrap_or_else(|_| entry.to_biblatex_string());
         let type_ = entry.entry_type.clone();
         let author = entry
             .author()
@@ -116,8 +125,11 @@ impl From<&biblatex::Entry> for Reference {
                 .first()
                 .map(|chunk| chunk.get().to_string())
         });
+        let url = entry.url().ok();
+        let file = entry.file().ok();
         Self {
             cite_key: key,
+            source,
             type_,
             author,
             title,
@@ -133,51 +145,9 @@ impl From<&biblatex::Entry> for Reference {
             publisher,
             series,
             isbn,
+            url,
+            file,
         }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Article {
-    pub key: String,
-    pub author: Vec<String>,
-    pub title: Vec<Chunk>,
-    pub journal: String,
-    pub year: i32,
-    pub full_journal: Option<String>,
-    pub volume: Option<i64>,
-    pub number: Option<String>,
-    pub pages: Option<Range<u32>>,
-    pub note: Option<Vec<Chunk>>,
-    pub doi: Option<String>,
-    pub mrclass: Option<String>,
-}
-
-impl TryFrom<Reference> for Article {
-    type Error = Error;
-    fn try_from(value: Reference) -> Result<Self> {
-        Ok(Self {
-            key: value.cite_key,
-            author: value.author.ok_or(Error::MissingFiled(
-                "The field `author` is missing or not compatible!".to_string(),
-            ))?,
-            title: value.title.ok_or(Error::MissingFiled(
-                "The field `title` is missing or not compatible!".to_string(),
-            ))?,
-            journal: value.journal.ok_or(Error::MissingFiled(
-                "The field `journal` is missing or not compatible!".to_string(),
-            ))?,
-            year: value.year.ok_or(Error::MissingFiled(
-                "The field `year` is missing or not compatible!".to_string(),
-            ))?,
-            full_journal: value.full_journal,
-            volume: value.volume,
-            number: value.number,
-            pages: value.pages,
-            note: value.note,
-            doi: value.doi,
-            mrclass: value.mrclass,
-        })
     }
 }
 
