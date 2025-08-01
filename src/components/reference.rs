@@ -1,4 +1,4 @@
-use crate::{COPY_ICON, ERR_ICON, OK_ICON, components::InlineMath};
+use crate::{COPY_ICON, DETAILS_ICON, ERR_ICON, OK_ICON, components::InlineMath};
 use bibcitex_core::bib::Reference;
 use biblatex::Chunk;
 use dioxus::prelude::*;
@@ -106,42 +106,6 @@ pub fn Entry(entry: Reference) -> Element {
                 }
             }
         }
-        if is_hovered() {
-            Hover {
-                entry,
-                mouse_x: mouse_pos().0 - 30.0,
-                mouse_y: mouse_pos().1,
-            }
-        }
-    }
-}
-
-#[component]
-pub fn Hover(entry: Reference, mouse_x: f64, mouse_y: f64) -> Element {
-    let key = &entry.cite_key;
-
-    rsx! {
-        div {
-            class: "hover",
-            style: "left: {mouse_x + 1.0}px; top: {mouse_y + 10.0}px;",
-            p {
-                span { class: "hover-type", "{entry.type_.to_string()} " }
-                " {key}"
-            }
-            p {
-                if let Some(title) = &entry.title {
-                    ChunksComp { chunks: title.clone(), cite_key: key.clone() }
-                }
-
-                if let Some(authors) = &entry.author {
-                    for author in authors {
-                        span { "{author}" }
-                    }
-                } else {
-                    span { "No author found" }
-                }
-            }
-        }
     }
 }
 
@@ -201,6 +165,9 @@ pub fn Article(entry: Reference) -> Element {
                     }
                     div {
                         button {
+                            img { width: 20, src: DETAILS_ICON }
+                        }
+                        button {
                             class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono  hover:text-gray-600 ml-1 cursor-pointer",
                             onclick: copy_key,
                             "data-tip": "点击以复制",
@@ -251,7 +218,7 @@ pub fn Article(entry: Reference) -> Element {
                             class: "tooltip cursor-pointer",
                             "data-tip": "在浏览器中打开",
                             onclick: move |_| open_doi(doi_url.clone()),
-                            div { class: "text-cyan-600 mr-2", " DOI: {doi}" }
+                            div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
                         }
                     } else {
                         if let Some(url) = entry.url {
@@ -259,9 +226,7 @@ pub fn Article(entry: Reference) -> Element {
                                 class: "tooltip cursor-pointer",
                                 "data-tip": "在浏览器中打开",
                                 onclick: move |_| open_url(url.clone()),
-                                div { class: "badge badge-soft badge-primary mr-1",
-                                    "URL"
-                                }
+                                div { class: "text-cyan-600 mr-2", "URL: {url}" }
                             }
                         }
                     }
@@ -271,6 +236,125 @@ pub fn Article(entry: Reference) -> Element {
                             "data-tip": "打开文献",
                             onclick: move |_| open_file(file.clone()),
                             div { class: "badge badge-soft badge-primary mr-1", "PDF" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn ArticleDrawer(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+    rsx! {
+        div { class: "overflow-x-auto",
+            table { class: "table",
+                thead {
+                    tr {
+                        th {}
+                        th {}
+                    }
+                }
+                tbody {
+                    tr {
+                        td { "Type" }
+                        td { "Journal Article" }
+                    }
+                    tr {
+                        td { "title" }
+                        if let Some(title) = entry.title {
+                            td {
+                                ChunksComp { chunks: title, cite_key: key.clone() }
+                            }
+                        } else {
+                            td { "" }
+                        }
+                    }
+                    if let Some(authors) = entry.author {
+                        for author in authors {
+                            tr {
+                                td { "Author" }
+                                td { "{author}" }
+                            }
+                        }
+                    } else {
+                        tr {
+                            td { "Author" }
+                            td { "" }
+                        }
+                    }
+                    if let Some(full_journal) = entry.full_journal {
+                        tr {
+                            td { "Journal" }
+                            td { "{full_journal}" }
+                        }
+                        if let Some(journal) = entry.journal {
+                            tr {
+                                td { "Journal Abbr" }
+                                td { "{journal}" }
+                            }
+                        } else {
+                            tr {
+                                td { "Journal Abbr" }
+                                td { "" }
+                            }
+                        }
+                    } else {
+                        if let Some(journal) = entry.journal {
+                            tr {
+                                td { "Journal" }
+                                td { "{journal}" }
+                            }
+                        } else {
+                            tr {
+                                td { "Journal" }
+                                td { "" }
+                            }
+                        }
+                    }
+                    if let Some(volume) = entry.volume {
+                        tr {
+                            td { "Volume" }
+                            td { "{volume}" }
+                        }
+                    } else {
+                        tr {
+                            td { "Volume" }
+                            td { "" }
+                        }
+                    }
+                    if let Some(number) = entry.number {
+                        tr {
+                            td { "Number" }
+                            td { "{number}" }
+                        }
+                    } else {
+                        tr {
+                            td { "Number" }
+                            td { "" }
+                        }
+                    }
+                    if let Some(pages) = entry.pages {
+                        tr {
+                            td { "Pages" }
+                            td { "{pages.start}--{pages.end}" }
+                        }
+                    } else {
+                        tr {
+                            td { "Pages" }
+                            td { "" }
+                        }
+                    }
+                    if let Some(year) = entry.year {
+                        tr {
+                            td { "Date" }
+                            td { "{year}" }
+                        }
+                    } else {
+                        tr {
+                            td { "Date" }
+                            td { "" }
                         }
                     }
                 }
