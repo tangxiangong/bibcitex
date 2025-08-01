@@ -2,94 +2,77 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Common Development Commands
+## Project Overview
+
+BibCiTeX is a cross-platform BibTeX citation management tool built with Rust and Dioxus framework. It provides a desktop application for researchers to manage, search, and quickly cite BibTeX references with global shortcuts.
+
+## Architecture
+
+### Workspace Structure
+- **Root package**: Main desktop application using Dioxus UI framework
+- **bibcitex-core**: Core library containing BibTeX parsing, search, settings, and utilities
+- **Components**: UI components in `src/components/` (bibliography, reference, helper, math)
+- **Views**: Application views in `src/views/` (home, references, navigation, helper)
+- **Assets**: Icons, styling, and app icons in `assets/`
+
+### Key Technologies
+- **Frontend**: Dioxus (React-like framework for Rust)
+- **Styling**: TailwindCSS with DaisyUI components
+- **BibTeX Parsing**: biblatex crate
+- **Desktop Integration**: Global shortcuts (Cmd+K), file dialogs, clipboard access
+- **Build Tool**: Just (Justfile for task automation)
+
+## Development Commands
 
 ### Development Server
 ```bash
-dx serve
+just serve          # Start dev server with CSS watch (parallel tasks)
+# Or separately:
+just dx-serve       # Start Dioxus dev server
+just css-watch      # Watch and compile TailwindCSS
 ```
-Start the Dioxus development server for the desktop application.
 
-### Building
+### CSS Management
 ```bash
-cargo build
+just css            # Compile TailwindCSS once
+just css-minify     # Compile and minify CSS for production
 ```
-Build the project in debug mode.
 
+### Code Formatting
 ```bash
-cargo build --release
+just fmt            # Format all code (Dioxus + Cargo + sort dependencies)
 ```
-Build an optimized release version.
 
-### Testing
+### Standard Rust Commands
 ```bash
-cargo test
+cargo build         # Build the project
+cargo run           # Run the application
+cargo test          # Run tests
+cargo clippy        # Lint with Clippy
 ```
-Run all tests in the workspace.
 
-```bash
-cargo test --package bibcitex-core
-```
-Run tests specifically for the core library.
+## Key Application Features
 
-### Benchmarking
-```bash
-cargo bench --package bibcitex-core
-```
-Run benchmarks for the core library (available in `bibcitex-core/benches/`).
+### Global State Management
+- `STATE`: Application settings and configuration
+- `CURRENT_REF`: Currently loaded bibliography references
+- `DRAWER_OPEN`/`DRAWER_REFERENCE`: UI drawer state for reference details
 
-### Linting
-```bash
-cargo clippy
-```
-Run Clippy linter with project-specific configuration from `clippy.toml`.
+### Core Functionality
+- **Bibliography Import**: Load and parse BibTeX files
+- **Reference Search**: Real-time search through imported references
+- **Global Shortcuts**: Cmd+K to open spotlight search window
+- **Citation Copy**: Copy formatted citations to clipboard
+- **Reference Details**: Drawer component for detailed reference information
 
-## High-Level Architecture
+### File Structure Notes
+- Main entry point: `src/main.rs` (desktop launcher)
+- App component: `src/lib.rs` with global shortcuts and routing
+- Core logic: `bibcitex-core/src/` (bib parsing, search, settings, utils)
+- Styling: Input CSS in `input.tailwind.css`, compiled to `assets/tailwind.css`
 
-### Project Structure
-This is a Rust workspace with two main crates:
-- **Root crate (`BibCiTeX`)**: Desktop UI application using Dioxus framework
-- **`bibcitex-core`**: Core library handling BibTeX parsing, search, and data structures
-
-### UI Architecture (Dioxus Framework)
-- **Router-based navigation**: Uses `dioxus::router` with routes defined in `src/route.rs`
-- **Component hierarchy**: Main components in `src/components/`, views in `src/views/`
-- **Global state management**: Uses Dioxus global signals for application state
-- **CSS styling**: Located in `assets/styling/` directory with modular CSS files
-
-### Key Components
-- **Main App** (`src/lib.rs`): Entry point with global shortcut handler (Cmd+K)
-- **Routing** (`src/route.rs`): Two main routes - Home and References with NavBar layout
-- **Spotlight Window** (`src/views/helper.rs`): Cmd+K triggered overlay for quick citation access
-- **Bibliography Management**: Components for importing and managing BibTeX files
-
-### Core Library Architecture
-- **BibTeX Parsing**: Handles parsing of BibTeX files into structured data
-- **Search Functionality**: Provides search capabilities across references
-- **Settings Management**: Configuration and user preferences
-- **Error Handling**: Centralized error types and handling
-
-### Cross-Platform Keyboard Automation
-The application uses `enigo` crate for cross-platform clipboard and keyboard automation, enabling citation pasting into external applications.
-
-### Global Shortcuts and Window Management
-- **Global shortcut**: Cmd+K opens spotlight-style helper window
-- **Window management**: Desktop-specific features using Dioxus desktop capabilities
-- **Focus handling**: Automatic window closing when losing focus
-
-### State Management
-- **Global signals**: Used for application-wide state (settings, current references)
-- **Local signals**: Component-specific state management
-- **Debouncing**: Implemented for global shortcuts to prevent double-triggering
-
-### Asset Management
-- **Static assets**: Icons, logos, and CSS files served from `assets/` directory
-- **Icon generation**: Python-based icon generation tool in `icon-gen/` directory
-
-### Note
-In macOS,  `no_focused` in `tao` does not work well, so we should call
+## Note (NEED TO IMPLEMENT)
+In macOS,  `with_focused(false)` in `tao` does not work well, so we should call
 system APIs to implement the **NO FOCUSED**  spotlight-style helper window,
-such as [tauri-plugin-spotlight](https://github.com/zzzze/tauri-plugin-spotlight),
-who uses `tauri`, which is based on `tao`, saming as `Dioxus` we use here.
-However, the API used in `tauri-plugin-spotlight` is deprecated, so we
-should use latest `objc2` to implement this feature.
+such as [tauri-nspanel](https://github.com/ahkohd/tauri-nspanel),
+which uses `tauri`, which is based on `tao`, saming as `Dioxus` we use here.
