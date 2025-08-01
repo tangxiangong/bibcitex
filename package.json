@@ -8,7 +8,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "daisyui": "^5.0.48",
+    "daisyui": "^5.0.50",
     "tailwindcss": "^4.1.11"
   }
 }
