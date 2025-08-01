@@ -1,6 +1,9 @@
-use crate::{COPY_ICON, DETAILS_ICON, ERR_ICON, OK_ICON, components::InlineMath};
+use crate::{
+    COPY_ICON, DETAILS_ICON, DRAWER_OPEN, DRAWER_REFERENCE, ERR_ICON, OK_ICON,
+    components::InlineMath,
+};
 use bibcitex_core::bib::Reference;
-use biblatex::Chunk;
+use biblatex::{Chunk, EntryType};
 use dioxus::prelude::*;
 
 #[component]
@@ -135,19 +138,18 @@ pub fn Article(entry: Reference) -> Element {
             });
         }
     };
-    let open_doi = |doi: String| {
-        let _ = opener::open_browser(&doi);
-    };
-    let open_url = |url: String| {
-        let _ = opener::open_browser(&url);
-    };
-    let open_file = |file: String| {
-        let _ = opener::open(&file);
-    };
+
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
         "".to_string()
+    };
+    let open_drawer = {
+        let entry_for_drawer = entry.clone();
+        move |_| {
+            *DRAWER_REFERENCE.write() = Some(entry_for_drawer.clone());
+            *DRAWER_OPEN.write() = true;
+        }
     };
     rsx! {
         div { class: "bg-blue-100 border-blue-500 border-l-4 px-3 py-2 rounded-r",
@@ -165,10 +167,12 @@ pub fn Article(entry: Reference) -> Element {
                     }
                     div {
                         button {
+                            class: "cursor-pointer ml-1",
+                            onclick: open_drawer,
                             img { width: 20, src: DETAILS_ICON }
                         }
                         button {
-                            class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono  hover:text-gray-600 ml-1 cursor-pointer",
+                            class: "badge tooltip bg-blue-100 text-gray-400 text-sm font-mono  hover:text-gray-600 cursor-pointer",
                             onclick: copy_key,
                             "data-tip": "点击以复制",
                             "{key}"
@@ -217,7 +221,9 @@ pub fn Article(entry: Reference) -> Element {
                         button {
                             class: "tooltip cursor-pointer",
                             "data-tip": "在浏览器中打开",
-                            onclick: move |_| open_doi(doi_url.clone()),
+                            onclick: move |_| {
+                                let _ = opener::open_browser(&doi_url);
+                            },
                             div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
                         }
                     } else {
@@ -225,7 +231,9 @@ pub fn Article(entry: Reference) -> Element {
                             button {
                                 class: "tooltip cursor-pointer",
                                 "data-tip": "在浏览器中打开",
-                                onclick: move |_| open_url(url.clone()),
+                                onclick: move |_| {
+                                    let _ = opener::open_browser(&url);
+                                },
                                 div { class: "text-cyan-600 mr-2", "URL: {url}" }
                             }
                         }
@@ -234,7 +242,9 @@ pub fn Article(entry: Reference) -> Element {
                         button {
                             class: "tooltip cursor-pointer",
                             "data-tip": "打开文献",
-                            onclick: move |_| open_file(file.clone()),
+                            onclick: move |_| {
+                                let _ = opener::open(&file);
+                            },
                             div { class: "badge badge-soft badge-primary mr-1", "PDF" }
                         }
                     }
@@ -245,24 +255,34 @@ pub fn Article(entry: Reference) -> Element {
 }
 
 #[component]
-pub fn ArticleDrawer(entry: Reference) -> Element {
+pub fn ReferenceDrawer(entry: Reference) -> Element {
+    match entry.type_.clone() {
+        EntryType::Article => rsx! {
+            ArticleDrawer { entry }
+        },
+        _ => rsx! {},
+    }
+}
+
+#[component]
+fn ArticleDrawer(entry: Reference) -> Element {
     let key = &entry.cite_key;
     rsx! {
         div { class: "overflow-x-auto",
             table { class: "table",
                 thead {
                     tr {
-                        th {}
+                        th { class: "text-right" }
                         th {}
                     }
                 }
                 tbody {
                     tr {
-                        td { "Type" }
+                        td { class: "text-right", "Type" }
                         td { "Journal Article" }
                     }
                     tr {
-                        td { "title" }
+                        td { class: "text-right", "title" }
                         if let Some(title) = entry.title {
                             td {
                                 ChunksComp { chunks: title, cite_key: key.clone() }
@@ -274,86 +294,86 @@ pub fn ArticleDrawer(entry: Reference) -> Element {
                     if let Some(authors) = entry.author {
                         for author in authors {
                             tr {
-                                td { "Author" }
+                                td { class: "text-right", "Author" }
                                 td { "{author}" }
                             }
                         }
                     } else {
                         tr {
-                            td { "Author" }
+                            td { class: "text-right", "Author" }
                             td { "" }
                         }
                     }
                     if let Some(full_journal) = entry.full_journal {
                         tr {
-                            td { "Journal" }
+                            td { class: "text-right", "Journal" }
                             td { "{full_journal}" }
                         }
                         if let Some(journal) = entry.journal {
                             tr {
-                                td { "Journal Abbr" }
+                                td { class: "text-right", "Journal Abbr" }
                                 td { "{journal}" }
                             }
                         } else {
                             tr {
-                                td { "Journal Abbr" }
+                                td { class: "text-right", "Journal Abbr" }
                                 td { "" }
                             }
                         }
                     } else {
                         if let Some(journal) = entry.journal {
                             tr {
-                                td { "Journal" }
+                                td { class: "text-right", "Journal" }
                                 td { "{journal}" }
                             }
                         } else {
                             tr {
-                                td { "Journal" }
+                                td { class: "text-right", "Journal" }
                                 td { "" }
                             }
                         }
                     }
                     if let Some(volume) = entry.volume {
                         tr {
-                            td { "Volume" }
+                            td { class: "text-right", "Volume" }
                             td { "{volume}" }
                         }
                     } else {
                         tr {
-                            td { "Volume" }
+                            td { class: "text-right", "Volume" }
                             td { "" }
                         }
                     }
                     if let Some(number) = entry.number {
                         tr {
-                            td { "Number" }
+                            td { class: "text-right", "Number" }
                             td { "{number}" }
                         }
                     } else {
                         tr {
-                            td { "Number" }
+                            td { class: "text-right", "Number" }
                             td { "" }
                         }
                     }
                     if let Some(pages) = entry.pages {
                         tr {
-                            td { "Pages" }
+                            td { class: "text-right", "Pages" }
                             td { "{pages.start}--{pages.end}" }
                         }
                     } else {
                         tr {
-                            td { "Pages" }
+                            td { class: "text-right", "Pages" }
                             td { "" }
                         }
                     }
                     if let Some(year) = entry.year {
                         tr {
-                            td { "Date" }
+                            td { class: "text-right", "Date" }
                             td { "{year}" }
                         }
                     } else {
                         tr {
-                            td { "Date" }
+                            td { class: "text-right", "Date" }
                             td { "" }
                         }
                     }

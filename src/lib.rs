@@ -24,6 +24,8 @@ pub static DETAILS_ICON: Asset = asset!("/assets/icons/detail.svg");
 /// global state
 pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
 pub static CURRENT_REF: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
+pub static DRAWER_OPEN: GlobalSignal<bool> = Signal::global(|| false);
+pub static DRAWER_REFERENCE: GlobalSignal<Option<Reference>> = Signal::global(|| None);
 
 // tailwindcss
 static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");

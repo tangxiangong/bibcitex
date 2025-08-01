@@ -1,4 +1,7 @@
-use crate::{LOGO, route::Route, views::open_spotlight_window};
+use crate::{
+    DRAWER_OPEN, DRAWER_REFERENCE, LOGO, components::reference::ReferenceDrawer, route::Route,
+    views::open_spotlight_window,
+};
 use dioxus::prelude::*;
 
 #[component]
@@ -38,7 +41,37 @@ pub fn NavBar() -> Element {
                     }
                 }
             }
-            Outlet::<Route> {}
+            div { class: "drawer drawer-end",
+                input {
+                    id: "global-drawer",
+                    r#type: "checkbox",
+                    class: "drawer-toggle",
+                    checked: DRAWER_OPEN(),
+                }
+                div { class: "drawer-content", Outlet::<Route> {} }
+                div { class: "drawer-side z-50",
+                    label {
+                        class: "drawer-overlay",
+                        r#for: "global-drawer",
+                        onclick: move |_| *DRAWER_OPEN.write() = false,
+                    }
+                    div { class: "min-h-full w-96 bg-base-200 p-4",
+                        div { class: "flex justify-between items-center mb-4",
+                            h3 { class: "font-bold text-lg", "Reference Details" }
+                            button {
+                                class: "btn btn-sm btn-circle btn-ghost",
+                                onclick: move |_| *DRAWER_OPEN.write() = false,
+                                "✕"
+                            }
+                        }
+                        if let Some(ref entry) = DRAWER_REFERENCE() {
+                            ReferenceDrawer { entry: entry.clone() }
+                        } else {
+                            div { class: "text-center text-gray-500", "No reference selected" }
+                        }
+                    }
+                }
+            }
         }
     }
 }
