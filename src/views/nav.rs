@@ -1,5 +1,7 @@
 use crate::{
-    DRAWER_OPEN, DRAWER_REFERENCE, LOGO, components::reference::ReferenceDrawer, route::Route,
+    DRAWER_OPEN, DRAWER_REFERENCE, LOGO,
+    components::{ChunksComp, reference::ReferenceDrawer},
+    route::Route,
     views::open_spotlight_window,
 };
 use dioxus::prelude::*;
@@ -18,6 +20,14 @@ pub fn NavBar() -> Element {
     };
     let helper = move |_| {
         open_spotlight_window();
+    };
+    let (drawer_title, drawer_key) = if let Some(ref entry) = DRAWER_REFERENCE() {
+        (
+            entry.title.clone().unwrap_or_default(),
+            entry.cite_key.clone(),
+        )
+    } else {
+        (vec![], String::new())
     };
     rsx! {
         div {
@@ -57,15 +67,20 @@ pub fn NavBar() -> Element {
                     }
                     div { class: "min-h-full w-96 bg-base-200 p-4",
                         div { class: "flex justify-between items-center mb-4",
-                            h3 { class: "font-bold text-lg", "Reference Details" }
+                            h3 { class: "text-grey-900 font-serif text-lg",
+                                ChunksComp {
+                                    chunks: drawer_title,
+                                    cite_key: drawer_key,
+                                }
+                            }
                             button {
                                 class: "btn btn-sm btn-circle btn-ghost",
                                 onclick: move |_| *DRAWER_OPEN.write() = false,
                                 "✕"
                             }
                         }
-                        if let Some(ref entry) = DRAWER_REFERENCE() {
-                            ReferenceDrawer { entry: entry.clone() }
+                        if let Some(entry) = DRAWER_REFERENCE() {
+                            ReferenceDrawer { entry }
                         } else {
                             div { class: "text-center text-gray-500", "No reference selected" }
                         }
