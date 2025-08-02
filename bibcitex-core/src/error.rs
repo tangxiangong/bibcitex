@@ -19,6 +19,8 @@ pub enum Error {
     /// Field Type Error
     #[error("{0}")]
     FieldType(String),
+    #[error("MSC Error: {0}")]
+    MSCError(String),
 }
 
 impl From<biblatex::ParseError> for Error {
@@ -33,6 +35,12 @@ impl From<biblatex::RetrievalError> for Error {
             biblatex::RetrievalError::Missing(key) => Error::BibNotFound(key),
             biblatex::RetrievalError::TypeError(key) => Error::FieldType(key.to_string()),
         }
+    }
+}
+
+impl From<csv::Error> for Error {
+    fn from(value: csv::Error) -> Self {
+        Error::MSCError(value.to_string())
     }
 }
 
