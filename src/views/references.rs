@@ -1,6 +1,6 @@
 use crate::{
     CURRENT_REF,
-    components::{Article, Entry},
+    components::{Article, Book, Entry},
 };
 use bibcitex_core::{
     bib::Reference, filter_article, filter_book, filter_phdthesis, search_references,
@@ -278,6 +278,9 @@ pub fn References() -> Element {
                         EntryType::Article => rsx! {
                             Article { entry: reference, has_drawer: true }
                         },
+                        EntryType::Book => rsx! {
+                            Book { entry: reference, has_drawer: true }
+                        },
                         _ => rsx! {
                             Entry { entry: reference }
                         },
@@ -287,7 +290,17 @@ pub fn References() -> Element {
                 h2 { class: "text-lg p-2", "{show_type()} ({search_result().len()}/{refs().len()})" }
                 if !search_result().is_empty() {
                     for reference in search_result() {
-                        Article { entry: reference, has_drawer: true }
+                        match reference.type_.clone() {
+                            EntryType::Article => rsx! {
+                                Article { entry: reference, has_drawer: true }
+                            },
+                            EntryType::Book => rsx! {
+                                Book { entry: reference, has_drawer: true }
+                            },
+                            _ => rsx! {
+                                Entry { entry: reference }
+                            },
+                        }
                     }
                 } else {
                     p { class: "p-2 text-lg text-red-500", "No results" }
