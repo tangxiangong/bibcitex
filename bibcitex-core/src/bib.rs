@@ -51,6 +51,8 @@ pub struct Reference {
     pub url: Option<String>,
     /// pdf
     pub file: Option<String>,
+    /// abstract
+    pub abstract_: Option<Vec<Chunk>>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -127,6 +129,10 @@ impl From<&biblatex::Entry> for Reference {
         });
         let url = entry.url().ok();
         let file = entry.file().ok();
+        let abstract_ = entry
+            .abstract_()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
         Self {
             cite_key: key,
             source,
@@ -147,6 +153,7 @@ impl From<&biblatex::Entry> for Reference {
             isbn,
             url,
             file,
+            abstract_,
         }
     }
 }
