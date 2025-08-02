@@ -2,12 +2,12 @@ use crate::{
     COPY_ICON, DETAILS_ICON, DRAWER_OPEN, DRAWER_REFERENCE, ERR_ICON, OK_ICON,
     components::InlineMath,
 };
-use bibcitex_core::bib::Reference;
+use bibcitex_core::{MSC_MAP, bib::Reference, parse_code};
 use biblatex::{Chunk, EntryType};
 use dioxus::prelude::*;
 
 #[component]
-fn ChunksComp(chunks: Vec<Chunk>, cite_key: String) -> Element {
+pub fn ChunksComp(chunks: Vec<Chunk>, cite_key: String) -> Element {
     rsx! {
         for (i , chunk) in chunks.into_iter().enumerate() {
             match chunk {
@@ -139,6 +139,23 @@ pub fn Article(entry: Reference, has_drawer: bool) -> Element {
         }
     };
 
+    let msc_text = if let Some(ref raw) = entry.mrclass {
+        if MSC_MAP.is_empty() {
+            Vec::new()
+        } else {
+            let codes = parse_code(raw);
+            let mut texts = Vec::with_capacity(codes.len() + 1);
+            for code in codes {
+                if let Some(text) = MSC_MAP.get(&code) {
+                    texts.push(text.clone());
+                }
+            }
+            texts
+        }
+    } else {
+        Vec::new()
+    };
+
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
@@ -250,6 +267,21 @@ pub fn Article(entry: Reference, has_drawer: bool) -> Element {
                             div { class: "badge badge-soft badge-primary mr-1", "PDF" }
                         }
                     }
+
+                    if let Some(mrclass) = entry.mrclass {
+                        div { class: "tooltip",
+                            div { class: "tooltip-content",
+                                if msc_text.is_empty() {
+                                    p { "The MR Class code is not available" }
+                                } else {
+                                    for text in msc_text {
+                                        p { class: "text-left", "{text}" }
+                                    }
+                                }
+                            }
+                            div { class: "text-red-500", "{mrclass}" }
+                        }
+                    }
                 }
             }
         }
@@ -269,115 +301,259 @@ pub fn ReferenceDrawer(entry: Reference) -> Element {
 #[component]
 fn ArticleDrawer(entry: Reference) -> Element {
     let key = &entry.cite_key;
+    let pages_string = if let Some(ref pages) = entry.pages {
+        if pages.start == pages.end {
+            pages.start.to_string()
+        } else {
+            format!("{}-{}", pages.start, pages.end)
+        }
+    } else {
+        "".to_string()
+    };
+    let bibtex = entry.source.split('\n').collect::<Vec<_>>();
+    let doi_url = if let Some(doi) = entry.doi.clone() {
+        format!("https://doi.org/{doi}")
+    } else {
+        "".to_string()
+    };
+    let msc_text = if let Some(ref raw) = entry.mrclass {
+        if MSC_MAP.is_empty() {
+            Vec::new()
+        } else {
+            let codes = parse_code(raw);
+            let mut texts = Vec::with_capacity(codes.len() + 1);
+            for code in codes {
+                if let Some(text) = MSC_MAP.get(&code) {
+                    texts.push(text.clone());
+                }
+            }
+            texts
+        }
+    } else {
+        Vec::new()
+    };
+
     rsx! {
-        div { class: "overflow-x-auto",
-            table { class: "table",
-                thead {
-                    tr {
-                        th { class: "text-right" }
-                        th {}
+        div {
+            div { class: "collapse collapse-arrow",
+                input { r#type: "checkbox", checked: true }
+                div { class: "collapse-title", "Info" }
+                div { class: "collapse-content",
+                    table { class: "table",
+                        tbody {
+                            tr {
+                                td { class: "text-right", "Type" }
+                                td { "Journal Article" }
+                            }
+                            tr {
+                                td { class: "text-right", "title" }
+                                if let Some(title) = entry.title {
+                                    td {
+                                        ChunksComp {
+                                            chunks: title,
+                                            cite_key: key.clone(),
+                                        }
+                                    }
+                                } else {
+                                    td { "" }
+                                }
+                            }
+                            if let Some(authors) = entry.author {
+                                for author in authors {
+                                    tr {
+                                        td { class: "text-right", "Author" }
+                                        td { "{author}" }
+                                    }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "Author" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(full_journal) = entry.full_journal {
+                                tr {
+                                    td { class: "text-right", "Journal" }
+                                    td { "{full_journal}" }
+                                }
+                                if let Some(journal) = entry.journal {
+                                    tr {
+                                        td { class: "text-right", "Journal Abbr" }
+                                        td { "{journal}" }
+                                    }
+                                } else {
+                                    tr {
+                                        td { class: "text-right", "Journal Abbr" }
+                                        td { "" }
+                                    }
+                                }
+                            } else {
+                                if let Some(journal) = entry.journal {
+                                    tr {
+                                        td { class: "text-right", "Journal" }
+                                        td { "{journal}" }
+                                    }
+                                } else {
+                                    tr {
+                                        td { class: "text-right", "Journal" }
+                                        td { "" }
+                                    }
+                                }
+                            }
+                            if let Some(volume) = entry.volume {
+                                tr {
+                                    td { class: "text-right", "Volume" }
+                                    td { "{volume}" }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "Volume" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(number) = entry.number {
+                                tr {
+                                    td { class: "text-right", "Number" }
+                                    td { "{number}" }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "Number" }
+                                    td { "" }
+                                }
+                            }
+                            if entry.pages.is_some() {
+                                tr {
+                                    td { class: "text-right", "Pages" }
+                                    td { "{pages_string}" }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "Pages" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(year) = entry.year {
+                                tr {
+                                    td { class: "text-right", "Year" }
+                                    td { "{year}" }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "Year" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(mrclass) = entry.mrclass {
+                                tr {
+                                    td { class: "text-right", "MR Class" }
+                                    td {
+                                        div { class: "tooltip",
+                                            div { class: "tooltip-content",
+                                                if msc_text.is_empty() {
+                                                    p { "The MR Class code is not available" }
+                                                } else {
+                                                    for text in msc_text {
+                                                        p { class: "text-left", "{text}" }
+                                                    }
+                                                }
+                                            }
+                                            div { class: "break-all", "{mrclass}" }
+                                        }
+                                    }
+                                }
+                            }
+                            if let Some(doi) = entry.doi {
+                                tr {
+                                    td { class: "text-right", "DOI" }
+                                    td { class: "break-all",
+                                        button {
+                                            class: "tooltip cursor-pointer text-left break-all",
+                                            "data-tip": "在浏览器中打开",
+                                            onclick: move |_| {
+                                                let _ = opener::open_browser(&doi_url);
+                                            },
+                                            "{doi}"
+                                        }
+                                    }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "DOI" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(url) = entry.url {
+                                tr {
+                                    td { class: "text-right", "URL" }
+                                    td { class: "break-all",
+                                        button {
+                                            class: "tooltip cursor-pointer text-left break-all",
+                                            "data-tip": "在浏览器中打开",
+                                            onclick: move |_| {
+                                                let _ = opener::open_browser(&url);
+                                            },
+                                            "{url}"
+                                        }
+                                    }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "URL" }
+                                    td { "" }
+                                }
+                            }
+                            if let Some(file) = entry.file {
+                                tr {
+                                    td { class: "text-right", "File" }
+                                    td {
+                                        button {
+                                            class: "tooltip cursor-pointer text-left break-all",
+                                            "data-tip": "打开",
+                                            onclick: move |_| {
+                                                let _ = opener::open(&file);
+                                            },
+                                            "{file}"
+                                        }
+                                    }
+                                }
+                            } else {
+                                tr {
+                                    td { class: "text-right", "File" }
+                                    td { "" }
+                                }
+                            }
+                        }
                     }
                 }
-                tbody {
-                    tr {
-                        td { class: "text-right", "Type" }
-                        td { "Journal Article" }
-                    }
-                    tr {
-                        td { class: "text-right", "title" }
-                        if let Some(title) = entry.title {
-                            td {
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            td { "" }
+            }
+            div { class: "collapse collapse-arrow",
+                input { r#type: "checkbox" }
+                div { class: "collapse-title", "Abstract" }
+                div { class: "collapse-content",
+                    if let Some(abstract_chunks) = entry.abstract_ {
+                        ChunksComp {
+                            chunks: abstract_chunks,
+                            cite_key: format!("{key}-abstract"),
                         }
                     }
-                    if let Some(authors) = entry.author {
-                        for author in authors {
-                            tr {
-                                td { class: "text-right", "Author" }
-                                td { "{author}" }
-                            }
-                        }
-                    } else {
-                        tr {
-                            td { class: "text-right", "Author" }
-                            td { "" }
-                        }
+                }
+            }
+            div { class: "collapse collapse-arrow",
+                input { r#type: "checkbox" }
+                div { class: "collapse-title", "Note" }
+                div { class: "collapse-content",
+                    if let Some(note) = entry.note {
+                        ChunksComp { chunks: note, cite_key: format!("{key}-note") }
                     }
-                    if let Some(full_journal) = entry.full_journal {
-                        tr {
-                            td { class: "text-right", "Journal" }
-                            td { "{full_journal}" }
-                        }
-                        if let Some(journal) = entry.journal {
-                            tr {
-                                td { class: "text-right", "Journal Abbr" }
-                                td { "{journal}" }
-                            }
-                        } else {
-                            tr {
-                                td { class: "text-right", "Journal Abbr" }
-                                td { "" }
-                            }
-                        }
-                    } else {
-                        if let Some(journal) = entry.journal {
-                            tr {
-                                td { class: "text-right", "Journal" }
-                                td { "{journal}" }
-                            }
-                        } else {
-                            tr {
-                                td { class: "text-right", "Journal" }
-                                td { "" }
-                            }
-                        }
-                    }
-                    if let Some(volume) = entry.volume {
-                        tr {
-                            td { class: "text-right", "Volume" }
-                            td { "{volume}" }
-                        }
-                    } else {
-                        tr {
-                            td { class: "text-right", "Volume" }
-                            td { "" }
-                        }
-                    }
-                    if let Some(number) = entry.number {
-                        tr {
-                            td { class: "text-right", "Number" }
-                            td { "{number}" }
-                        }
-                    } else {
-                        tr {
-                            td { class: "text-right", "Number" }
-                            td { "" }
-                        }
-                    }
-                    if let Some(pages) = entry.pages {
-                        tr {
-                            td { class: "text-right", "Pages" }
-                            td { "{pages.start}--{pages.end}" }
-                        }
-                    } else {
-                        tr {
-                            td { class: "text-right", "Pages" }
-                            td { "" }
-                        }
-                    }
-                    if let Some(year) = entry.year {
-                        tr {
-                            td { class: "text-right", "Date" }
-                            td { "{year}" }
-                        }
-                    } else {
-                        tr {
-                            td { class: "text-right", "Date" }
-                            td { "" }
-                        }
+                }
+            }
+            div { class: "collapse collapse-arrow",
+                input { r#type: "checkbox" }
+                div { class: "collapse-title", "BibTeX" }
+                div { class: "collapse-content",
+                    for line in bibtex {
+                        p { "{line}" }
                     }
                 }
             }
