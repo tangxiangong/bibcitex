@@ -53,6 +53,12 @@ pub struct Reference {
     pub file: Option<String>,
     /// abstract
     pub abstract_: Option<Vec<Chunk>>,
+    /// edition
+    pub edition: Option<i64>,
+    /// issue
+    pub issue: Option<Vec<Chunk>>,
+    /// book pages
+    pub book_pages: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -133,6 +139,16 @@ impl From<&biblatex::Entry> for Reference {
             .abstract_()
             .ok()
             .map(|chunks| merge_chunks(chunks.to_owned()));
+        let edition = match entry.edition().ok() {
+            Some(PermissiveType::Typed(value)) => Some(value),
+            _ => None,
+        };
+        let issue = entry
+            .issue()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
+        let book_pages = parse_optional_field(entry, "fjournal")
+            .and_then(|chunk| chunk.first().map(|chunk| chunk.get().to_string()));
         Self {
             cite_key: key,
             source,
@@ -154,6 +170,9 @@ impl From<&biblatex::Entry> for Reference {
             url,
             file,
             abstract_,
+            edition,
+            issue,
+            book_pages,
         }
     }
 }
