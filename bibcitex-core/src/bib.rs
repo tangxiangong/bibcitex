@@ -147,7 +147,7 @@ impl From<&biblatex::Entry> for Reference {
             .issue()
             .ok()
             .map(|chunks| merge_chunks(chunks.to_owned()));
-        let book_pages = parse_optional_field(entry, "fjournal")
+        let book_pages = parse_optional_field(entry, "pages")
             .and_then(|chunk| chunk.first().map(|chunk| chunk.get().to_string()));
         Self {
             cite_key: key,
