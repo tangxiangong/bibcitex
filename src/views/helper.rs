@@ -21,7 +21,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-static CSS: Asset = asset!("/assets/styling/helper.css");
+static CSS: Asset = asset!("/assets/tailwind.css");
 
 // 全局状态跟踪Helper窗口是否打开
 pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
@@ -108,7 +108,20 @@ pub fn open_spotlight_window() {
         .with_always_on_top(true) // 保持在最上层
         .with_resizable(true); // 允许调整大小以显示搜索结果
 
-    let config = Config::new().with_window(window_builder);
+    let helper_html = r#"<!doctype html>
+<html data-theme="nord">
+    <head>
+        <title>BibCiteX Helper</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    </head>
+    <body>
+        <div id="main"></div>
+    </body>
+</html>"#;
+
+    let config = Config::new()
+        .with_window(window_builder)
+        .with_custom_index(helper_html.to_string());
 
     // 创建新窗口并保存窗口句柄
     // 使用 new_window_with_vdom 而不是 new_window 来确保全局状态共享
@@ -186,7 +199,7 @@ pub fn Helper() -> Element {
         document::Link { rel: "stylesheet", href: CSS }
 
         div {
-            class: "helper-container",
+            class: "w-full h-auto rounded-xl shadow-2xl overflow-hidden",
             onkeydown: move |evt| {
                 if evt.key() == Key::Escape {
                     let window = use_window();
