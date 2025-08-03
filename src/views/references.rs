@@ -129,145 +129,147 @@ pub fn References() -> Element {
     };
 
     rsx! {
-        div { class: "join p-4",
-            select { class: "select join-item w-24", onchange: on_type_change,
-                option {
-                    value: "{FilterType::All}",
-                    selected: filter_type() == FilterType::All,
-                    "{FilterType::All}"
+        div { class: "p-4",
+            div { class: "join w-full",
+                select { class: "select join-item w-24", onchange: on_type_change,
+                    option {
+                        value: "{FilterType::All}",
+                        selected: filter_type() == FilterType::All,
+                        "{FilterType::All}"
+                    }
+                    option {
+                        value: "{FilterType::Book}",
+                        selected: filter_type() == FilterType::Book,
+                        "{FilterType::Book}"
+                    }
+                    option {
+                        value: "{FilterType::Article}",
+                        selected: filter_type() == FilterType::Article,
+                        "{FilterType::Article}"
+                    }
+                    option {
+                        value: "{FilterType::PhdThesis}",
+                        selected: filter_type() == FilterType::PhdThesis,
+                        "{FilterType::PhdThesis}"
+                    }
                 }
-                option {
-                    value: "{FilterType::Book}",
-                    selected: filter_type() == FilterType::Book,
-                    "{FilterType::Book}"
+                {
+                    match filter_type() {
+                        FilterType::All => rsx! {
+                            select { class: "select join-item w-24", onchange: on_filter_change,
+                                option {
+                                    value: "{FilterField::All}",
+                                    selected: filter_field() == FilterField::All,
+                                    "{FilterField::All}"
+                                }
+                                option {
+                                    value: "{FilterField::Author}",
+                                    selected: filter_field() == FilterField::Author,
+                                    "{FilterField::Author}"
+                                }
+                                option {
+                                    value: "{FilterField::Journal}",
+                                    selected: filter_field() == FilterField::Journal,
+                                    "{FilterField::Journal}"
+                                }
+                                option {
+                                    value: "{FilterField::Title}",
+                                    selected: filter_field() == FilterField::Title,
+                                    "{FilterField::Title}"
+                                }
+                                option {
+                                    value: "{FilterField::Year}",
+                                    selected: filter_field() == FilterField::Year,
+                                    "{FilterField::Year}"
+                                }
+                            }
+                        },
+                        FilterType::Article => rsx! {
+                            select { class: "select join-item w-24", onchange: on_filter_change,
+                                option {
+                                    value: "{FilterField::All}",
+                                    selected: filter_field() == FilterField::All,
+                                    "{FilterField::All}"
+                                }
+                                option {
+                                    value: "{FilterField::Author}",
+                                    selected: filter_field() == FilterField::Author,
+                                    "{FilterField::Author}"
+                                }
+                                option {
+                                    value: "{FilterField::Journal}",
+                                    selected: filter_field() == FilterField::Journal,
+                                    "{FilterField::Journal}"
+                                }
+                                option {
+                                    value: "{FilterField::Title}",
+                                    selected: filter_field() == FilterField::Title,
+                                    "{FilterField::Title}"
+                                }
+                                option {
+                                    value: "{FilterField::Year}",
+                                    selected: filter_field() == FilterField::Year,
+                                    "{FilterField::Year}"
+                                }
+                            }
+                        },
+                        FilterType::Book => rsx! {
+                            select { class: "select join-item w-24", onchange: on_filter_change,
+                                option {
+                                    value: "{FilterField::All}",
+                                    selected: filter_field() == FilterField::All,
+                                    "{FilterField::All}"
+                                }
+                                option {
+                                    value: "{FilterField::Author}",
+                                    selected: filter_field() == FilterField::Author,
+                                    "{FilterField::Author}"
+                                }
+                                option {
+                                    value: "{FilterField::Title}",
+                                    selected: filter_field() == FilterField::Title,
+                                    "{FilterField::Title}"
+                                }
+                                option {
+                                    value: "{FilterField::Year}",
+                                    selected: filter_field() == FilterField::Year,
+                                    "{FilterField::Year}"
+                                }
+                            }
+                        },
+                        FilterType::PhdThesis => rsx! {
+                            select { class: "select join-item w-24", onchange: on_filter_change,
+                                option {
+                                    value: "{FilterField::All}",
+                                    selected: filter_field() == FilterField::All,
+                                    "{FilterField::All}"
+                                }
+                                option {
+                                    value: "{FilterField::Author}",
+                                    selected: filter_field() == FilterField::Author,
+                                    "{FilterField::Author}"
+                                }
+                                option {
+                                    value: "{FilterField::Title}",
+                                    selected: filter_field() == FilterField::Title,
+                                    "{FilterField::Title}"
+                                }
+                                option {
+                                    value: "{FilterField::Year}",
+                                    selected: filter_field() == FilterField::Year,
+                                    "{FilterField::Year}"
+                                }
+                            }
+                        },
+                    }
                 }
-                option {
-                    value: "{FilterType::Article}",
-                    selected: filter_type() == FilterType::Article,
-                    "{FilterType::Article}"
+                input {
+                    r#type: "search",
+                    class: "input input-primary join-item flex-1",
+                    placeholder: "搜索文献...",
+                    value: "{query}",
+                    oninput: search,
                 }
-                option {
-                    value: "{FilterType::PhdThesis}",
-                    selected: filter_type() == FilterType::PhdThesis,
-                    "{FilterType::PhdThesis}"
-                }
-            }
-            {
-                match filter_type() {
-                    FilterType::All => rsx! {
-                        select { class: "select join-item w-24", onchange: on_filter_change,
-                            option {
-                                value: "{FilterField::All}",
-                                selected: filter_field() == FilterField::All,
-                                "{FilterField::All}"
-                            }
-                            option {
-                                value: "{FilterField::Author}",
-                                selected: filter_field() == FilterField::Author,
-                                "{FilterField::Author}"
-                            }
-                            option {
-                                value: "{FilterField::Journal}",
-                                selected: filter_field() == FilterField::Journal,
-                                "{FilterField::Journal}"
-                            }
-                            option {
-                                value: "{FilterField::Title}",
-                                selected: filter_field() == FilterField::Title,
-                                "{FilterField::Title}"
-                            }
-                            option {
-                                value: "{FilterField::Year}",
-                                selected: filter_field() == FilterField::Year,
-                                "{FilterField::Year}"
-                            }
-                        }
-                    },
-                    FilterType::Article => rsx! {
-                        select { class: "select join-item w-24", onchange: on_filter_change,
-                            option {
-                                value: "{FilterField::All}",
-                                selected: filter_field() == FilterField::All,
-                                "{FilterField::All}"
-                            }
-                            option {
-                                value: "{FilterField::Author}",
-                                selected: filter_field() == FilterField::Author,
-                                "{FilterField::Author}"
-                            }
-                            option {
-                                value: "{FilterField::Journal}",
-                                selected: filter_field() == FilterField::Journal,
-                                "{FilterField::Journal}"
-                            }
-                            option {
-                                value: "{FilterField::Title}",
-                                selected: filter_field() == FilterField::Title,
-                                "{FilterField::Title}"
-                            }
-                            option {
-                                value: "{FilterField::Year}",
-                                selected: filter_field() == FilterField::Year,
-                                "{FilterField::Year}"
-                            }
-                        }
-                    },
-                    FilterType::Book => rsx! {
-                        select { class: "select join-item w-24", onchange: on_filter_change,
-                            option {
-                                value: "{FilterField::All}",
-                                selected: filter_field() == FilterField::All,
-                                "{FilterField::All}"
-                            }
-                            option {
-                                value: "{FilterField::Author}",
-                                selected: filter_field() == FilterField::Author,
-                                "{FilterField::Author}"
-                            }
-                            option {
-                                value: "{FilterField::Title}",
-                                selected: filter_field() == FilterField::Title,
-                                "{FilterField::Title}"
-                            }
-                            option {
-                                value: "{FilterField::Year}",
-                                selected: filter_field() == FilterField::Year,
-                                "{FilterField::Year}"
-                            }
-                        }
-                    },
-                    FilterType::PhdThesis => rsx! {
-                        select { class: "select join-item w-24", onchange: on_filter_change,
-                            option {
-                                value: "{FilterField::All}",
-                                selected: filter_field() == FilterField::All,
-                                "{FilterField::All}"
-                            }
-                            option {
-                                value: "{FilterField::Author}",
-                                selected: filter_field() == FilterField::Author,
-                                "{FilterField::Author}"
-                            }
-                            option {
-                                value: "{FilterField::Title}",
-                                selected: filter_field() == FilterField::Title,
-                                "{FilterField::Title}"
-                            }
-                            option {
-                                value: "{FilterField::Year}",
-                                selected: filter_field() == FilterField::Year,
-                                "{FilterField::Year}"
-                            }
-                        }
-                    },
-                }
-            }
-
-            input {
-                r#type: "search",
-                class: "input input-primary join-item w-100",
-                value: "{query}",
-                oninput: search,
             }
         }
         div {
