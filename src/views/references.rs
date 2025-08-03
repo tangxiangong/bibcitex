@@ -1,6 +1,6 @@
 use crate::{
     CURRENT_REF,
-    components::{Article, Book, Entry},
+    components::{Article, Book, Entry, Thesis},
 };
 use bibcitex_core::{
     bib::Reference, filter_article, filter_book, filter_phdthesis, search_references,
@@ -283,6 +283,11 @@ pub fn References() -> Element {
                         EntryType::Book => rsx! {
                             Book { entry: reference, is_helper: false }
                         },
+                        EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
+                            rsx! {
+                                Thesis { entry: reference, is_helper: false }
+                            }
+                        }
                         _ => rsx! {
                             Entry { entry: reference }
                         },
@@ -299,6 +304,11 @@ pub fn References() -> Element {
                             EntryType::Book => rsx! {
                                 Book { entry: reference, is_helper: false }
                             },
+                            EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
+                                rsx! {
+                                    Thesis { entry: reference, is_helper: false }
+                                }
+                            }
                             _ => rsx! {
                                 Entry { entry: reference }
                             },
