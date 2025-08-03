@@ -59,6 +59,10 @@ pub struct Reference {
     pub issue: Option<Vec<Chunk>>,
     /// book pages
     pub book_pages: Option<String>,
+    /// thesis school
+    pub school: Option<String>,
+    /// address
+    pub address: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -149,6 +153,16 @@ impl From<&biblatex::Entry> for Reference {
             .map(|chunks| merge_chunks(chunks.to_owned()));
         let book_pages = parse_optional_field(entry, "pages")
             .and_then(|chunk| chunk.first().map(|chunk| chunk.get().to_string()));
+        let school = entry.school().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
+        let address = entry.address().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
         Self {
             cite_key: key,
             source,
@@ -173,6 +187,8 @@ impl From<&biblatex::Entry> for Reference {
             edition,
             issue,
             book_pages,
+            school,
+            address,
         }
     }
 }
