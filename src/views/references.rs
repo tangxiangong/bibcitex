@@ -3,7 +3,7 @@ use crate::{
     components::{Article, Book, Entry, Thesis},
 };
 use bibcitex_core::{
-    bib::Reference, filter_article, filter_book, filter_phdthesis, search_references,
+    bib::Reference, filter_article, filter_book, filter_thesis, search_references,
     search_references_by_author, search_references_by_journal, search_references_by_title,
     search_references_by_year,
 };
@@ -23,7 +23,7 @@ enum FilterField {
 enum FilterType {
     Book,
     Article,
-    PhdThesis,
+    Thesis,
     All,
 }
 
@@ -44,7 +44,7 @@ impl std::fmt::Display for FilterType {
         match self {
             FilterType::Book => write!(f, "Book"),
             FilterType::Article => write!(f, "Article"),
-            FilterType::PhdThesis => write!(f, "PhD Thesis"),
+            FilterType::Thesis => write!(f, "Thesis"),
             FilterType::All => write!(f, "Type"),
         }
     }
@@ -63,7 +63,7 @@ pub fn References() -> Element {
         match filter_type() {
             FilterType::Book => filter_book(total_refs),
             FilterType::Article => filter_article(total_refs),
-            FilterType::PhdThesis => filter_phdthesis(total_refs),
+            FilterType::Thesis => filter_thesis(total_refs),
             FilterType::All => total_refs,
         }
     });
@@ -71,7 +71,7 @@ pub fn References() -> Element {
         FilterType::All => "References".to_string(),
         FilterType::Article => "Articles".to_string(),
         FilterType::Book => "Books".to_string(),
-        FilterType::PhdThesis => "PhD Thesis".to_string(),
+        FilterType::Thesis => "Thesis".to_string(),
     });
 
     use_effect(move || {
@@ -122,7 +122,7 @@ pub fn References() -> Element {
         let new_type = match selected_value.as_str() {
             "Article" => FilterType::Article,
             "Book" => FilterType::Book,
-            "PhD Thesis" => FilterType::PhdThesis,
+            "Thesis" => FilterType::Thesis,
             _ => FilterType::All,
         };
         filter_type.set(new_type);
@@ -148,9 +148,9 @@ pub fn References() -> Element {
                         "{FilterType::Article}"
                     }
                     option {
-                        value: "{FilterType::PhdThesis}",
-                        selected: filter_type() == FilterType::PhdThesis,
-                        "{FilterType::PhdThesis}"
+                        value: "{FilterType::Thesis}",
+                        selected: filter_type() == FilterType::Thesis,
+                        "{FilterType::Thesis}"
                     }
                 }
                 {
@@ -237,7 +237,7 @@ pub fn References() -> Element {
                                 }
                             }
                         },
-                        FilterType::PhdThesis => rsx! {
+                        FilterType::Thesis => rsx! {
                             select { class: "select join-item w-24", onchange: on_filter_change,
                                 option {
                                     value: "{FilterField::All}",

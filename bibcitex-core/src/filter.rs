@@ -17,10 +17,14 @@ pub fn filter_book(references: Vec<Reference>) -> Vec<Reference> {
         .collect()
 }
 
-/// Filters references to PhD theses.
-pub fn filter_phdthesis(references: Vec<Reference>) -> Vec<Reference> {
+/// Filters references to theses.
+pub fn filter_thesis(references: Vec<Reference>) -> Vec<Reference> {
     references
         .into_iter()
-        .filter(|r| r.type_ == EntryType::PhdThesis)
+        .filter(|r| {
+            r.type_ == EntryType::PhdThesis
+                || r.type_ == EntryType::MastersThesis
+                || r.type_ == EntryType::Thesis
+        })
         .collect()
 }
