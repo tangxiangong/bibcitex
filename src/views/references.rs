@@ -276,10 +276,10 @@ pub fn References() -> Element {
                 for reference in refs() {
                     match reference.type_.clone() {
                         EntryType::Article => rsx! {
-                            Article { entry: reference, has_drawer: true }
+                            Article { entry: reference, is_helper: false }
                         },
                         EntryType::Book => rsx! {
-                            Book { entry: reference, has_drawer: true }
+                            Book { entry: reference, is_helper: false }
                         },
                         _ => rsx! {
                             Entry { entry: reference }
@@ -292,10 +292,10 @@ pub fn References() -> Element {
                     for reference in search_result() {
                         match reference.type_.clone() {
                             EntryType::Article => rsx! {
-                                Article { entry: reference, has_drawer: true }
+                                Article { entry: reference, is_helper: false }
                             },
                             EntryType::Book => rsx! {
-                                Book { entry: reference, has_drawer: true }
+                                Book { entry: reference, is_helper: false }
                             },
                             _ => rsx! {
                                 Entry { entry: reference }

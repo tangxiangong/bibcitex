@@ -126,7 +126,7 @@ pub fn Entry(entry: Reference) -> Element {
 }
 
 #[component]
-pub fn Article(entry: Reference, has_drawer: bool) -> Element {
+pub fn Article(entry: Reference, is_helper: bool) -> Element {
     let key = &entry.cite_key;
     let mut copy_success = use_signal(|| true);
     let mut copied = use_signal(|| false);
@@ -182,7 +182,7 @@ pub fn Article(entry: Reference, has_drawer: bool) -> Element {
         }
     };
     rsx! {
-        div { class: "bg-blue-100 border-blue-500 border-l-4 px-3 py-2 rounded-r",
+        div { class: "bg-blue-100 border-blue-500 border-l-4",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-start",
@@ -196,21 +196,23 @@ pub fn Article(entry: Reference, has_drawer: bool) -> Element {
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
-                        button {
-                            class: "tooltip ml-2 mr-2 cursor-pointer",
-                            onclick: copy_key,
-                            "data-tip": "{key}",
-                            if !copied() {
-                                img { width: 20, src: COPY_ICON }
-                            } else {
-                                if copy_success() {
-                                    img { width: 20, src: OK_ICON }
+                        if is_helper {
+                            div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                        } else {
+                            button {
+                                class: "tooltip ml-2 mr-2 cursor-pointer",
+                                onclick: copy_key,
+                                "data-tip": "{key}",
+                                if !copied() {
+                                    img { width: 20, src: COPY_ICON }
                                 } else {
-                                    img { width: 20, src: ERR_ICON }
+                                    if copy_success() {
+                                        img { width: 20, src: OK_ICON }
+                                    } else {
+                                        img { width: 20, src: ERR_ICON }
+                                    }
                                 }
                             }
-                        }
-                        if has_drawer {
                             button {
                                 class: "tooltip cursor-pointer ml-2",
                                 onclick: open_drawer,
@@ -292,7 +294,7 @@ pub fn Article(entry: Reference, has_drawer: bool) -> Element {
                                     }
                                 }
                             }
-                            div { class: "text-red-500", "{mrclass}" }
+                            div { class: "text-red-500 cursor-pointer", "{mrclass}" }
                         }
                     }
                 }
@@ -383,96 +385,84 @@ fn ArticleDrawer(entry: Reference) -> Element {
                                     td { class: "text-right", "Journal" }
                                     td { "{full_journal}" }
                                 }
-                                if let Some(journal) = entry.journal {
-                                    tr {
-                                        td { class: "text-right", "Journal Abbr" }
+                                tr {
+                                    td { class: "text-right", "Journal Abbr" }
+                                    if let Some(journal) = entry.journal {
                                         td { "{journal}" }
-                                    }
-                                } else {
-                                    tr {
-                                        td { class: "text-right", "Journal Abbr" }
+                                    } else {
                                         td { "" }
                                     }
                                 }
                             } else {
-                                if let Some(journal) = entry.journal {
-                                    tr {
-                                        td { class: "text-right", "Journal" }
+                                tr {
+                                    td { class: "text-right", "Journal" }
+                                    if let Some(journal) = entry.journal {
                                         td { "{journal}" }
-                                    }
-                                } else {
-                                    tr {
-                                        td { class: "text-right", "Journal" }
+                                    } else {
                                         td { "" }
                                     }
                                 }
                             }
-                            if let Some(volume) = entry.volume {
-                                tr {
-                                    td { class: "text-right", "Volume" }
+                            tr {
+                                td { class: "text-right", "Volume" }
+                                if let Some(volume) = entry.volume {
                                     td { "{volume}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Volume" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(number) = entry.number {
-                                tr {
-                                    td { class: "text-right", "Number" }
+                            tr {
+                                td { class: "text-right", "Number" }
+                                if let Some(number) = entry.number {
                                     td { "{number}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Number" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if entry.pages.is_some() {
-                                tr {
-                                    td { class: "text-right", "Pages" }
+                            tr {
+                                td { class: "text-right", "Pages" }
+                                if entry.pages.is_some() {
                                     td { "{pages_string}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Pages" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(year) = entry.year {
-                                tr {
-                                    td { class: "text-right", "Year" }
+                            tr {
+                                td { class: "text-right", "Year" }
+                                if let Some(year) = entry.year {
                                     td { "{year}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Year" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(mrclass) = entry.mrclass {
-                                tr {
-                                    td { class: "text-right", "MR Class" }
-                                    td {
-                                        div { class: "tooltip",
-                                            div { class: "tooltip-content",
-                                                if msc_text.is_empty() {
-                                                    p { "The MR Class code is not available" }
-                                                } else {
-                                                    for text in msc_text {
-                                                        p { class: "text-left", "{text}" }
+                            tr {
+                                td { class: "text-right", "MR Class" }
+                                if let Some(mrclass) = entry.mrclass {
+                                    tr {
+                                        td {
+                                            div { class: "tooltip",
+                                                div { class: "tooltip-content",
+                                                    if msc_text.is_empty() {
+                                                        p { "The MR Class code is not available" }
+                                                    } else {
+                                                        for text in msc_text {
+                                                            p { class: "text-left",
+                                                                "{text}"
+                                                            }
+                                                        }
                                                     }
                                                 }
+                                                div { class: "break-all", "{mrclass}" }
                                             }
-                                            div { class: "break-all", "{mrclass}" }
                                         }
                                     }
+                                } else {
+                                    td { "" }
                                 }
                             }
-                            if let Some(doi) = entry.doi {
-                                tr {
-                                    td { class: "text-right", "DOI" }
+                            tr {
+                                td { class: "text-right", "DOI" }
+                                if let Some(doi) = entry.doi {
                                     td { class: "break-all",
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -483,16 +473,13 @@ fn ArticleDrawer(entry: Reference) -> Element {
                                             "{doi}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "DOI" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(url) = entry.url {
-                                tr {
-                                    td { class: "text-right", "URL" }
+                            tr {
+                                td { class: "text-right", "URL" }
+                                if let Some(url) = entry.url {
                                     td { class: "break-all",
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -503,16 +490,13 @@ fn ArticleDrawer(entry: Reference) -> Element {
                                             "{url}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "URL" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(file) = entry.file {
-                                tr {
-                                    td { class: "text-right", "File" }
+                            tr {
+                                td { class: "text-right", "File" }
+                                if let Some(file) = entry.file {
                                     td {
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -523,10 +507,7 @@ fn ArticleDrawer(entry: Reference) -> Element {
                                             "{file}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "File" }
+                                } else {
                                     td { "" }
                                 }
                             }
@@ -569,7 +550,7 @@ fn ArticleDrawer(entry: Reference) -> Element {
 }
 
 #[component]
-pub fn Book(entry: Reference, has_drawer: bool) -> Element {
+pub fn Book(entry: Reference, is_helper: bool) -> Element {
     let key = &entry.cite_key;
     let mut copy_success = use_signal(|| true);
     let mut copied = use_signal(|| false);
@@ -625,7 +606,7 @@ pub fn Book(entry: Reference, has_drawer: bool) -> Element {
         }
     };
     rsx! {
-        div { class: "bg-emerald-100 border-emerald-500 border-l-4 px-3 py-2 rounded-r",
+        div { class: "bg-emerald-100 border-emerald-500 border-l-4",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-start",
@@ -639,21 +620,23 @@ pub fn Book(entry: Reference, has_drawer: bool) -> Element {
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
-                        button {
-                            class: "tooltip ml-2 mr-2 cursor-pointer",
-                            onclick: copy_key,
-                            "data-tip": "{key}",
-                            if !copied() {
-                                img { width: 20, src: COPY_ICON }
-                            } else {
-                                if copy_success() {
-                                    img { width: 20, src: OK_ICON }
+                        if is_helper {
+                            div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                        } else {
+                            button {
+                                class: "tooltip ml-2 mr-2 cursor-pointer",
+                                onclick: copy_key,
+                                "data-tip": "{key}",
+                                if !copied() {
+                                    img { width: 20, src: COPY_ICON }
                                 } else {
-                                    img { width: 20, src: ERR_ICON }
+                                    if copy_success() {
+                                        img { width: 20, src: OK_ICON }
+                                    } else {
+                                        img { width: 20, src: ERR_ICON }
+                                    }
                                 }
                             }
-                        }
-                        if has_drawer {
                             button {
                                 class: "tooltip cursor-pointer ml-2",
                                 onclick: open_drawer,
@@ -737,7 +720,7 @@ pub fn Book(entry: Reference, has_drawer: bool) -> Element {
                                     }
                                 }
                             }
-                            div { class: "text-red-500", "{mrclass}" }
+                            div { class: "text-red-500 cursor-pointer", "{mrclass}" }
                         }
                     }
                 }
@@ -814,14 +797,11 @@ fn BookDrawer(entry: Reference) -> Element {
                                     td { "" }
                                 }
                             }
-                            if let Some(series) = entry.series {
-                                tr {
-                                    td { class: "text-right", "Series" }
+                            tr {
+                                td { class: "text-right", "Series" }
+                                if let Some(series) = entry.series {
                                     td { "{series}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Series" }
+                                } else {
                                     td { "" }
                                 }
                             }
@@ -838,64 +818,49 @@ fn BookDrawer(entry: Reference) -> Element {
                                     td { "" }
                                 }
                             }
-                            if let Some(volume) = entry.volume {
-                                tr {
-                                    td { class: "text-right", "Volume" }
+                            tr {
+                                td { class: "text-right", "Volume" }
+                                if let Some(volume) = entry.volume {
                                     td { "{volume}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Volume" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(edition) = entry.edition {
-                                tr {
-                                    td { class: "text-right", "Edition" }
+                            tr {
+                                td { class: "text-right", "Edition" }
+                                if let Some(edition) = entry.edition {
                                     td { "{edition}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Edition" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(book_pages) = entry.book_pages {
-                                tr {
-                                    td { class: "text-right", "Pages" }
+                            tr {
+                                td { class: "text-right", "Pages" }
+                                if let Some(book_pages) = entry.book_pages {
                                     td { "{book_pages}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Pages" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(year) = entry.year {
-                                tr {
-                                    td { class: "text-right", "Year" }
+                            tr {
+                                td { class: "text-right", "Year" }
+                                if let Some(year) = entry.year {
                                     td { "{year}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "Year" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(isbn) = entry.isbn {
-                                tr {
-                                    td { class: "text-right", "ISBN" }
+                            tr {
+                                td { class: "text-right", "ISBN" }
+                                if let Some(isbn) = entry.isbn {
                                     td { "{isbn}" }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "ISBN" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(mrclass) = entry.mrclass {
-                                tr {
-                                    td { class: "text-right", "MR Class" }
+                            tr {
+                                td { class: "text-right", "MR Class" }
+                                if let Some(mrclass) = entry.mrclass {
                                     td {
                                         div { class: "tooltip",
                                             div { class: "tooltip-content",
@@ -910,11 +875,13 @@ fn BookDrawer(entry: Reference) -> Element {
                                             div { class: "break-all", "{mrclass}" }
                                         }
                                     }
+                                } else {
+                                    td { "" }
                                 }
                             }
-                            if let Some(doi) = entry.doi {
-                                tr {
-                                    td { class: "text-right", "DOI" }
+                            tr {
+                                td { class: "text-right", "DOI" }
+                                if let Some(doi) = entry.doi {
                                     td { class: "break-all",
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -925,16 +892,13 @@ fn BookDrawer(entry: Reference) -> Element {
                                             "{doi}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "DOI" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(url) = entry.url {
-                                tr {
-                                    td { class: "text-right", "URL" }
+                            tr {
+                                td { class: "text-right", "URL" }
+                                if let Some(url) = entry.url {
                                     td { class: "break-all",
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -945,16 +909,13 @@ fn BookDrawer(entry: Reference) -> Element {
                                             "{url}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "URL" }
+                                } else {
                                     td { "" }
                                 }
                             }
-                            if let Some(file) = entry.file {
-                                tr {
-                                    td { class: "text-right", "File" }
+                            tr {
+                                td { class: "text-right", "File" }
+                                if let Some(file) = entry.file {
                                     td {
                                         button {
                                             class: "tooltip cursor-pointer text-left break-all",
@@ -965,10 +926,7 @@ fn BookDrawer(entry: Reference) -> Element {
                                             "{file}"
                                         }
                                     }
-                                }
-                            } else {
-                                tr {
-                                    td { class: "text-right", "File" }
+                                } else {
                                     td { "" }
                                 }
                             }
