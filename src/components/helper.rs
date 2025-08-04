@@ -97,7 +97,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
         div { class: "w-full h-auto bg-transparent", onkeydown: handle_keydown,
 
             // Floating container with backdrop blur like Spotlight
-            div { class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden",
+            div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden",
                 // Header matching exact Spotlight style
                 div { class: "flex items-center px-5 h-14 border-b border-base-300",
                     div { class: "text-lg text-base-content mr-3 font-medium", "BibCiTeX" }
@@ -229,7 +229,7 @@ pub fn SearchRef() -> Element {
         div { class: "w-full h-auto bg-transparent",
             if !query().is_empty() {
                 // Complete connected container - input fixed at top, results scroll below
-                div { class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+                div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
                     // Fixed input at top
                     div {
                         class: "flex-shrink-0 overflow-hidden no-scroll",
@@ -317,7 +317,7 @@ pub fn SearchRef() -> Element {
             } else {
                 // Standalone input when no query
                 div {
-                    class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden no-scroll",
+                    class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden no-scroll",
                     style: "overscroll-behavior: none;",
                     onwheel: move |evt| {
                         evt.prevent_default();
