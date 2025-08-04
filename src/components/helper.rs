@@ -94,49 +94,50 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     };
 
     rsx! {
-        div {
-            class: "w-full h-auto text-gray-900 overflow-hidden",
-            onkeydown: handle_keydown,
+        div { class: "w-full h-auto bg-transparent", onkeydown: handle_keydown,
 
-            // Header matching exact Spotlight style
-            div { class: "flex items-center px-5 h-14 border-b border-base-300",
-                div { class: "text-lg text-base-content/60 mr-3 font-medium", "BibCiTeX" }
-                div { class: "flex-1 text-lg text-base-content/60", "选择文献库..." }
-            }
-
-            div { class: "px-5 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider",
-                "Bibliographies"
-            }
-
-            if bibs().is_empty() {
-                div { class: "px-5 py-10 text-center text-base-content/60 text-sm",
-                    "没有可用的文献库"
+            // Floating container with backdrop blur like Spotlight
+            div { class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden",
+                // Header matching exact Spotlight style
+                div { class: "flex items-center px-5 h-14 border-b border-base-300",
+                    div { class: "text-lg text-base-content mr-3 font-medium", "BibCiTeX" }
+                    div { class: "flex-1 text-lg text-base-content/60", "选择文献库..." }
                 }
-            } else {
-                div { class: "max-h-[448px] overflow-y-auto",
-                    for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
-                        div {
-                            class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-primary text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-base-200 cursor-pointer transition-colors duration-100" },
-                            onclick: move |_| {
-                                selected_bib.set(Some((name.clone(), path.clone(), updated_at.clone())));
-                                if let Ok(parsed_bib) = parse(&path) {
-                                    let refs = read_bibliography(parsed_bib);
-                                    set_helper_bib(Some(refs));
+
+                div { class: "px-5 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider",
+                    "Bibliographies"
+                }
+
+                if bibs().is_empty() {
+                    div { class: "px-5 py-10 text-center text-base-content/60 text-sm",
+                        "没有可用的文献库"
+                    }
+                } else {
+                    div { class: "max-h-[448px] overflow-y-auto",
+                        for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
+                            div {
+                                class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-primary text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                onclick: move |_| {
+                                    selected_bib.set(Some((name.clone(), path.clone(), updated_at.clone())));
+                                    if let Ok(parsed_bib) = parse(&path) {
+                                        let refs = read_bibliography(parsed_bib);
+                                        set_helper_bib(Some(refs));
+                                    }
+                                },
+
+                                // Content
+                                div { class: "flex-1 min-w-0 mr-3",
+                                    div { class: "text-sm font-medium text-base-content truncate",
+                                        "{name}"
+                                    }
+                                    div { class: if selected_index() == Some(index) { "text-xs text-primary-content/70 truncate mt-0.5" } else { "text-xs text-base-content/60 truncate mt-0.5" },
+                                        "{path}"
+                                    }
                                 }
-                            },
-
-
-
-                            // Content
-                            div { class: "flex-1 min-w-0 mr-3",
-                                div { class: "text-sm font-medium text-base-content truncate",
-                                    "{name}"
-                                }
-                                div { class: if selected_index() == Some(index) { "text-xs text-primary-content/70 truncate mt-0.5" } else { "text-xs text-base-content/60 truncate mt-0.5" },
-                                    "{path}"
+                                div { class: "text-xs text-base-content/50 ml-3 flex-shrink-0",
+                                    "{updated_at}"
                                 }
                             }
-                                                // Right info - removed type badge
                         }
                     }
                 }
@@ -225,67 +226,115 @@ pub fn SearchRef() -> Element {
     });
 
     rsx! {
-        div { class: "w-full h-auto text-gray-900 overflow-hidden",
-            // Header with search input - exact Spotlight style
-            div { class: "flex items-center px-5 h-14 border-b border-gray-200",
-                div { class: "text-lg text-gray-500 mr-3 font-medium", "BibCiteX" }
-                input {
-                    class: "flex-1 bg-transparent text-lg text-gray-900 placeholder-gray-400 border-none outline-none font-normal",
-                    r#type: "text",
-                    placeholder: "搜索文献、作者、标题...",
-                    value: "{query}",
-                    oninput: search,
-                    onkeydown: handle_keydown,
-                    autofocus: true,
-                }
-            }
-
+        div { class: "w-full h-auto bg-transparent",
             if !query().is_empty() {
-                div { class: "px-5 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider",
-                    "Results"
-                }
-                if result().is_empty() {
-                    div { class: "px-5 py-10 text-center text-base-content/60 text-sm",
-                        "没有找到结果"
+                // Complete connected container - input fixed at top, results scroll below
+                div { class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+                    // Fixed input at top
+                    div {
+                        class: "flex-shrink-0 overflow-hidden no-scroll",
+                        style: "overscroll-behavior: none;",
+                        onwheel: move |evt| {
+                            evt.prevent_default();
+                            evt.stop_propagation();
+                        },
+                        onscroll: move |evt| {
+                            evt.prevent_default();
+                            evt.stop_propagation();
+                        },
+                        input {
+                            class: "w-full h-14 px-5 text-lg text-base-content placeholder-base-content/50 font-normal bg-transparent border-0 focus:outline-none",
+                            r#type: "text",
+                            placeholder: "搜索文献、作者、标题...",
+                            value: "{query}",
+                            oninput: search,
+                            onkeydown: handle_keydown,
+                            autofocus: true,
+                        }
                     }
-                } else {
-                    div { class: "max-h-[448px] overflow-y-auto",
-                        for (index , bib) in result().into_iter().enumerate() {
-                            div {
-                                id: format!("helper-item-{}", index),
-                                class: if selected_index() == Some(index) { "block bg-primary cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
-                                onclick: move |_| {
-                                    let text = bib.cite_key.clone();
-                                    let window = use_window();
-                                    window.close();
-                                    HELPER_WINDOW_OPEN.write().take();
-                                    let mut clipboard = Clipboard::new().unwrap();
-                                    clipboard.set_text(text.to_string()).unwrap();
-                                },
 
-                                div { class: "flex items-start px-5 py-3 min-h-[56px]",
-                                    // Content area with ArticleHelper components
-                                    div { class: "flex-1 min-w-0",
-                                        match bib.type_ {
-                                            EntryType::Article => rsx! {
-                                                ArticleHelper { entry: bib.clone() }
-                                            },
-                                            EntryType::Book => rsx! {
-                                                BookHelper { entry: bib.clone() }
-                                            },
-                                            EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
-                                                rsx! {
-                                                    ThesisHelper { entry: bib.clone() }
+                    // Results header
+                    div {
+                        class: "flex-shrink-0 px-5 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider border-t border-base-300 overflow-hidden no-scroll",
+                        style: "overscroll-behavior: none;",
+                        onwheel: move |evt| {
+                            evt.prevent_default();
+                            evt.stop_propagation();
+                        },
+                        onscroll: move |evt| {
+                            evt.prevent_default();
+                            evt.stop_propagation();
+                        },
+                        "Results"
+                    }
+
+                    // Scrollable results area
+                    if result().is_empty() {
+                        div { class: "flex-shrink-0 px-5 py-10 text-center text-base-content/60 text-sm",
+                            "没有找到结果"
+                        }
+                    } else {
+                        div { class: "flex-1 overflow-y-auto",
+                            for (index , bib) in result().into_iter().enumerate() {
+                                div {
+                                    id: format!("helper-item-{}", index),
+                                    class: if selected_index() == Some(index) { "block bg-primary text-primary-content cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                    onclick: move |_| {
+                                        let text = bib.cite_key.clone();
+                                        let window = use_window();
+                                        window.close();
+                                        HELPER_WINDOW_OPEN.write().take();
+                                        let mut clipboard = Clipboard::new().unwrap();
+                                        clipboard.set_text(text.to_string()).unwrap();
+                                    },
+
+                                    div { class: "flex items-start px-5 py-3 min-h-[56px]",
+                                        // Content area with ArticleHelper components
+                                        div { class: "flex-1 min-w-0",
+                                            match bib.type_ {
+                                                EntryType::Article => rsx! {
+                                                    ArticleHelper { entry: bib.clone() }
+                                                },
+                                                EntryType::Book => rsx! {
+                                                    BookHelper { entry: bib.clone() }
+                                                },
+                                                EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
+                                                    rsx! {
+                                                        ThesisHelper { entry: bib.clone() }
+                                                    }
                                                 }
+                                                _ => rsx! {
+                                                    ArticleHelper { entry: bib.clone() }
+                                                },
                                             }
-                                            _ => rsx! {
-                                                ArticleHelper { entry: bib.clone() }
-                                            },
                                         }
                                     }
                                 }
                             }
                         }
+                    }
+                }
+            } else {
+                // Standalone input when no query
+                div {
+                    class: "bg-base-100/90 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden no-scroll",
+                    style: "overscroll-behavior: none;",
+                    onwheel: move |evt| {
+                        evt.prevent_default();
+                        evt.stop_propagation();
+                    },
+                    onscroll: move |evt| {
+                        evt.prevent_default();
+                        evt.stop_propagation();
+                    },
+                    input {
+                        class: "w-full h-14 px-5 text-lg text-base-content placeholder-base-content/50 font-normal bg-transparent border-0 focus:outline-none",
+                        r#type: "text",
+                        placeholder: "搜索文献、作者、标题...",
+                        value: "{query}",
+                        oninput: search,
+                        onkeydown: handle_keydown,
+                        autofocus: true,
                     }
                 }
             }

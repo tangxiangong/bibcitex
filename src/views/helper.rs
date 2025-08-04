@@ -93,7 +93,7 @@ pub fn open_spotlight_window() {
 
     // Spotlight风格的窗口尺寸
     let window_width = 600.0;
-    let min_window_height = 56.0; // 最小高度：输入框高度
+    let min_window_height = 80.0; // 最小高度：输入框高度
     let max_window_height = 500.0; // 最大高度
 
     // 创建Spotlight风格的窗口配置（不指定位置，让系统居中）
@@ -109,13 +109,13 @@ pub fn open_spotlight_window() {
         .with_resizable(true); // 允许调整大小以显示搜索结果
 
     let helper_html = r#"<!doctype html>
-<html data-theme="nord">
+<html data-theme="nord" style="background: transparent;">
     <head>
         <title>BibCiteX Helper</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     </head>
-    <body>
-        <div id="main"></div>
+    <body style="background: transparent; margin: 0; padding: 0;">
+        <div id="main" style="background: transparent;"></div>
     </body>
 </html>"#;
 
@@ -150,10 +150,10 @@ pub fn Helper() -> Element {
         let has_results = !query().is_empty();
         if has_results || !has_bib() {
             // 有搜索结果时扩展窗口高度
-            window.set_inner_size(LogicalSize::new(600.0, 300.0));
+            window.set_inner_size(LogicalSize::new(600.0, 480.0));
         } else {
             // 无搜索结果时缩小到最小高度
-            window.set_inner_size(LogicalSize::new(600.0, 56.0));
+            window.set_inner_size(LogicalSize::new(600.0, 80.0));
         }
     });
 
@@ -199,7 +199,7 @@ pub fn Helper() -> Element {
         document::Link { rel: "stylesheet", href: CSS }
 
         div {
-            class: "w-full h-auto rounded-xl shadow-2xl overflow-hidden",
+            class: "w-full h-auto bg-transparent",
             onkeydown: move |evt| {
                 if evt.key() == Key::Escape {
                     let window = use_window();
