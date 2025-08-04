@@ -67,7 +67,7 @@ pub fn NavBar() -> Element {
                     }
                     div { class: "min-h-full w-96 bg-base-200 p-4",
                         div { class: "flex justify-between items-center mb-4",
-                            h3 { class: "text-grey-900 font-serif text-lg",
+                            h3 { class: "text-gray-900 font-serif text-lg",
                                 ChunksComp {
                                     chunks: drawer_title,
                                     cite_key: drawer_key,

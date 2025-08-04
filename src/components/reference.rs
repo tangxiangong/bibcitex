@@ -191,7 +191,7 @@ pub fn Article(entry: Reference, is_helper: bool) -> Element {
                     div { class: "flex items-start",
                         div { class: "mr-2 text-lg text-blue-800", "Article" }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
+                            span { class: "text-lg text-gray-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
@@ -615,7 +615,7 @@ pub fn Book(entry: Reference, is_helper: bool) -> Element {
                     div { class: "flex items-start",
                         div { class: "mr-2 text-lg text-emerald-800", "Book" }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
+                            span { class: "text-lg text-gray-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
@@ -1032,7 +1032,7 @@ pub fn Thesis(entry: Reference, is_helper: bool) -> Element {
                             "{type_}"
                         }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
+                            span { class: "text-lg text-gray-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
