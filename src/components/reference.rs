@@ -227,17 +227,8 @@ pub fn Article(entry: Reference, is_helper: bool) -> Element {
                 }
                 p {
                     if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: "text-blue-700 font-semibold bg-blue-100 mr-2",
-                                    "{author} "
-                                }
-                            }
+                        for author in authors {
+                            span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                         }
                     } else {
                         span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
@@ -651,17 +642,8 @@ pub fn Book(entry: Reference, is_helper: bool) -> Element {
                 }
                 p {
                     if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: "text-blue-700 font-semibold bg-emerald-100 mr-2",
-                                    "{author} "
-                                }
-                            }
+                        for author in authors {
+                            span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                         }
                     } else {
                         span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
@@ -1068,17 +1050,8 @@ pub fn Thesis(entry: Reference, is_helper: bool) -> Element {
                 }
                 p {
                     if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold bg-pink-100 mr-2" } else { "text-blue-700 font-semibold bg-rose-100 mr-2" },
-                                    "{author} "
-                                }
-                            }
+                        for author in authors {
+                            span { class: "text-blue-700 font-semibold mr-2", "{author}" }
                         }
                     } else {
                         span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
