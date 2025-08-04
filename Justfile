@@ -15,3 +15,9 @@ css-minify:
 
 [parallel]
 serve: css-watch dx-serve
+
+icon:
+    cd icon-gen && source .venv/bin/activate && uv run main.py
+
+desktop-icon: icon
+    cargo tauri icon assets/logo.png -o assets/icons && cd assets/icons && rm -rf android && rm -rf ios
