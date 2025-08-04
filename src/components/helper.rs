@@ -1,4 +1,5 @@
 use crate::{
+    LOGO,
     components::ChunksComp,
     views::{HELPER_BIB, HELPER_WINDOW_OPEN, set_helper_bib},
 };
@@ -227,23 +228,21 @@ pub fn SearchRef() -> Element {
 
     rsx! {
         div { class: "w-full h-auto bg-transparent",
-            if !query().is_empty() {
-                // Complete connected container - input fixed at top, results scroll below
-                div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
-                    // Fixed input at top
-                    div {
-                        class: "flex-shrink-0 overflow-hidden no-scroll",
-                        style: "overscroll-behavior: none;",
-                        onwheel: move |evt| {
-                            evt.prevent_default();
-                            evt.stop_propagation();
-                        },
-                        onscroll: move |evt| {
-                            evt.prevent_default();
-                            evt.stop_propagation();
-                        },
+            div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+                div {
+                    class: "flex-shrink-0 overflow-hidden no-scroll",
+                    style: "overscroll-behavior: none;",
+                    onwheel: move |evt| {
+                        evt.prevent_default();
+                        evt.stop_propagation();
+                    },
+                    onscroll: move |evt| {
+                        evt.prevent_default();
+                        evt.stop_propagation();
+                    },
+                    div { class: if !query().is_empty() && !result().is_empty() { "relative w-full h-14 bg-transparent rounded-t-lg" } else { "relative w-full h-14 bg-transparent rounded-lg" },
                         input {
-                            class: "w-full h-14 px-5 text-lg text-base-content placeholder-base-content/50 font-normal bg-transparent border-0 focus:outline-none",
+                            class: if !query().is_empty() && !result().is_empty() { "w-full h-full pl-5 pr-12 text-lg text-base-content placeholder-base-content/50 font-normal bg-base-100 border-0 rounded-t-lg focus:outline-none" } else { "w-full h-full pl-5 pr-12 text-lg text-base-content placeholder-base-content/50 font-normal bg-base-100 border-0 rounded-lg focus:outline-none" },
                             r#type: "text",
                             placeholder: "搜索文献、作者、标题...",
                             value: "{query}",
@@ -251,8 +250,12 @@ pub fn SearchRef() -> Element {
                             onkeydown: handle_keydown,
                             autofocus: true,
                         }
+                        div { class: "absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center",
+                            img { class: "opacity-60", width: 50, src: LOGO }
+                        }
                     }
-
+                }
+                if !query().is_empty() {
                     // Results header
                     div {
                         class: "flex-shrink-0 px-5 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider border-t border-base-300 overflow-hidden no-scroll",
@@ -312,29 +315,6 @@ pub fn SearchRef() -> Element {
                                 }
                             }
                         }
-                    }
-                }
-            } else {
-                // Standalone input when no query
-                div {
-                    class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden no-scroll",
-                    style: "overscroll-behavior: none;",
-                    onwheel: move |evt| {
-                        evt.prevent_default();
-                        evt.stop_propagation();
-                    },
-                    onscroll: move |evt| {
-                        evt.prevent_default();
-                        evt.stop_propagation();
-                    },
-                    input {
-                        class: "w-full h-14 px-5 text-lg text-base-content placeholder-base-content/50 font-normal bg-transparent border-0 focus:outline-none",
-                        r#type: "text",
-                        placeholder: "搜索文献、作者、标题...",
-                        value: "{query}",
-                        oninput: search,
-                        onkeydown: handle_keydown,
-                        autofocus: true,
                     }
                 }
             }
