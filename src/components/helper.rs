@@ -5,9 +5,8 @@ use crate::{
 };
 use arboard::Clipboard;
 use bibcitex_core::{
-    MSC_MAP,
     bib::{Reference, parse},
-    parse_code, search_references,
+    search_references,
     utils::read_bibliography,
 };
 use biblatex::EntryType;
@@ -204,24 +203,25 @@ pub fn SearchRef() -> Element {
         }
     };
 
-    // Pure Rust scrolling implementation
-    let scroll_top = use_signal(|| 0.0);
-    // Calculate real heights based on actual CSS:
-    // .helper-item: padding: 8px (top) + 8px (bottom) = 16px
-    // .helper-item: margin: 2px (top) + 2px (bottom) = 4px
-    // .entry: margin: 10px (top) + 10px (bottom) = 20px
-    // Estimated text content height: ~20px
-    // Total: 16 + 4 + 20 + 20 + 20 = 80px per item
-    let item_height = 80.0;
-
+    // Scroll the selected item into view using JavaScript
     use_effect(move || {
         if let Some(index) = selected_index() {
-            // Simply scroll to the selected item position, no assumptions
-            let target_scroll = index as f64 * item_height;
-            // Use spawn to break the reactive cycle
-            let mut scroll_top = scroll_top;
             spawn(async move {
-                scroll_top.set(target_scroll);
+                let eval_instance = document::eval(&format!(
+                    r#"
+                    setTimeout(() => {{
+                        const item = document.querySelector('[data-item-index="{index}"]');
+                        if (item) {{
+                            item.scrollIntoView({{
+                                behavior: 'smooth',
+                                block: 'nearest',
+                                inline: 'nearest'
+                            }});
+                        }}
+                    }}, 10);
+                    "#
+                ));
+                let _ = eval_instance.await;
             });
         }
     });
@@ -256,32 +256,20 @@ pub fn SearchRef() -> Element {
                     }
                 }
                 if !query().is_empty() {
-                    // Results header
-                    div {
-                        class: "flex-shrink-0 px-5 py-2 text-xs font-semibold text-base-content/60 uppercase tracking-wider border-t border-base-300 overflow-hidden no-scroll",
-                        style: "overscroll-behavior: none;",
-                        onwheel: move |evt| {
-                            evt.prevent_default();
-                            evt.stop_propagation();
-                        },
-                        onscroll: move |evt| {
-                            evt.prevent_default();
-                            evt.stop_propagation();
-                        },
-                        "Results"
-                    }
-
                     // Scrollable results area
                     if result().is_empty() {
                         div { class: "flex-shrink-0 px-5 py-10 text-center text-base-content/60 text-sm",
                             "没有找到结果"
                         }
                     } else {
-                        div { class: "flex-1 overflow-y-auto",
+                        div {
+                            class: "flex-1 overflow-y-auto",
+                            style: "scroll-behavior: smooth; max-height: 400px;",
                             for (index , bib) in result().into_iter().enumerate() {
                                 div {
-                                    id: format!("helper-item-{}", index),
-                                    class: if selected_index() == Some(index) { "block bg-primary text-primary-content cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                    key: "{index}",
+                                    "data-item-index": "{index}",
+                                    class: if selected_index() == Some(index) { "block bg-success rounded-lg text-primary-content cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
                                     onclick: move |_| {
                                         let text = bib.cite_key.clone();
                                         let window = use_window();
@@ -291,8 +279,7 @@ pub fn SearchRef() -> Element {
                                         clipboard.set_text(text.to_string()).unwrap();
                                     },
 
-                                    div { class: "flex items-start px-5 py-3 min-h-[56px]",
-                                        // Content area with ArticleHelper components
+                                    div { class: "flex px-3 py-3 min-h-[56px]",
                                         div { class: "flex-1 min-w-0",
                                             match bib.type_ {
                                                 EntryType::Article => rsx! {
@@ -325,123 +312,40 @@ pub fn SearchRef() -> Element {
 #[component]
 pub fn ArticleHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
-
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
+    rsx! {
+        div {
+            div { class: "flex justify-between items-start",
+                div { class: "flex items-start",
+                    div { class: "mr-2 text-blue-800", "Article" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
+                        }
+                    } else {
+                        span { "No title available" }
+                    }
+                }
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
                 }
             }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
-    let doi_url = if let Some(doi) = entry.doi.clone() {
-        format!("https://doi.org/{doi}")
-    } else {
-        "".to_string()
-    };
-
-    rsx! {
-        div { class: "bg-blue-100 border-blue-500 border-l-4",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-start",
-                        div { class: "mr-2 text-lg text-blue-800", "Article" }
-                        if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-lg", "No title available" }
-                        }
+            p { class: "text-xs",
+                if let Some(authors) = entry.author {
+                    for author in authors {
+                        span { class: "text-blue-700 font-semibold mr-2", "{author}" }
                     }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
-                    }
+                } else {
+                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
                 }
-                p {
-                    if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: "text-blue-700 font-semibold bg-blue-100 mr-2",
-                                    "{author} "
-                                }
-                            }
-                        }
-                    } else {
-                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
-                    }
+                if let Some(journal) = &entry.journal {
+                    span { class: "text-purple-600 mr-2", "{journal}" }
+                } else {
+                    span { class: "text-purple-600 mr-2", "journal" }
                 }
-                p {
-                    if let Some(journal) = &entry.journal {
-                        span { class: "text-purple-600 mr-2", "{journal}" }
-                    } else {
-                        span { class: "text-purple-600 mr-2", "Unknown" }
-                    }
-                    if let Some(year) = &entry.year {
-                        span { class: "text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "text-emerald-700 mr-1", "year" }
-                    }
-                    if let Some(doi) = &entry.doi {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "在浏览器中打开",
-                            onclick: move |_| {
-                                let _ = opener::open_browser(&doi_url);
-                            },
-                            div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
-                        }
-                    } else {
-                        if let Some(url) = entry.url {
-                            button {
-                                class: "tooltip cursor-pointer",
-                                "data-tip": "在浏览器中打开",
-                                onclick: move |_| {
-                                    let _ = opener::open_browser(&url);
-                                },
-                                div { class: "text-cyan-600 mr-2", "URL" }
-                            }
-                        }
-                    }
-                    if let Some(file) = entry.file {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "打开文献",
-                            onclick: move |_| {
-                                let _ = opener::open(&file);
-                            },
-                            div { class: "text-amber-700 mr-2", "PDF" }
-                        }
-                    }
-
-                    if let Some(mrclass) = entry.mrclass {
-                        div { class: "tooltip",
-                            div { class: "tooltip-content",
-                                if msc_text.is_empty() {
-                                    p { "The MR Class code is not available" }
-                                } else {
-                                    for text in msc_text {
-                                        p { class: "text-left", "{text}" }
-                                    }
-                                }
-                            }
-                            div { class: "text-red-500 cursor-pointer", "{mrclass}" }
-                        }
-                    }
+                if let Some(year) = &entry.year {
+                    span { class: "text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "text-emerald-700 mr-1", "year" }
                 }
             }
         }
@@ -451,125 +355,42 @@ pub fn ArticleHelper(entry: Reference) -> Element {
 #[component]
 pub fn BookHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
-
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
+    rsx! {
+        div {
+            div { class: "flex justify-between items-start",
+                div { class: "flex items-start",
+                    div { class: "mr-2 text-emerald-800", "Book" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
+                        }
+                    } else {
+                        span { "No title available" }
+                    }
+                }
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
                 }
             }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
-    let doi_url = if let Some(doi) = entry.doi.clone() {
-        format!("https://doi.org/{doi}")
-    } else {
-        "".to_string()
-    };
-
-    rsx! {
-        div { class: "bg-emerald-100 border-emerald-500 border-l-4",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-start",
-                        div { class: "mr-2 text-lg text-emerald-800", "Book" }
-                        if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-lg", "No title available" }
-                        }
+            p { class: "text-xs",
+                if let Some(authors) = entry.author {
+                    for author in authors {
+                        span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                     }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
-                    }
+                } else {
+                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
                 }
-                p {
-                    if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: "text-blue-700 font-semibold bg-emerald-100 mr-2",
-                                    "{author} "
-                                }
-                            }
-                        }
-                    } else {
-                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                if let Some(publishers) = &entry.publisher {
+                    for publisher in publishers {
+                        span { class: "text-purple-600 mr-2", "{publisher}" }
                     }
+                } else {
+                    span { class: "text-purple-600 mr-2", "Unknown" }
                 }
-                p {
-                    if let Some(publishers) = &entry.publisher {
-                        for publisher in publishers {
-                            span { class: "text-purple-600 mr-2", "{publisher}" }
-                        }
-                    } else {
-                        span { class: "text-purple-600 mr-2", "Unknown" }
-                    }
-                    if let Some(year) = &entry.year {
-                        span { class: "text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "text-emerald-700 mr-1", "year" }
-                    }
-                    if let Some(doi) = &entry.doi {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "在浏览器中打开",
-                            onclick: move |_| {
-                                let _ = opener::open_browser(&doi_url);
-                            },
-                            div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
-                        }
-                    } else {
-                        if let Some(url) = entry.url {
-                            button {
-                                class: "tooltip cursor-pointer",
-                                "data-tip": "在浏览器中打开",
-                                onclick: move |_| {
-                                    let _ = opener::open_browser(&url);
-                                },
-                                div { class: "text-cyan-600 mr-2", "URL" }
-                            }
-                        }
-                    }
-                    if let Some(file) = entry.file {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "打开文献",
-                            onclick: move |_| {
-                                let _ = opener::open(&file);
-                            },
-                            div { class: "text-amber-700 mr-2", "PDF" }
-                        }
-                    }
-
-                    if let Some(mrclass) = entry.mrclass {
-                        div { class: "tooltip",
-                            div { class: "tooltip-content",
-                                if msc_text.is_empty() {
-                                    p { "The MR Class code is not available" }
-                                } else {
-                                    for text in msc_text {
-                                        p { class: "text-left", "{text}" }
-                                    }
-                                }
-                            }
-                            div { class: "text-red-500 cursor-pointer", "{mrclass}" }
-                        }
-                    }
+                if let Some(year) = &entry.year {
+                    span { class: "text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "text-emerald-700 mr-1", "year" }
                 }
             }
         }
@@ -579,12 +400,6 @@ pub fn BookHelper(entry: Reference) -> Element {
 #[component]
 pub fn ThesisHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
-
-    let doi_url = if let Some(doi) = entry.doi.clone() {
-        format!("https://doi.org/{doi}")
-    } else {
-        "".to_string()
-    };
 
     let school_address = {
         if let Some(school) = entry.school {
@@ -604,44 +419,33 @@ pub fn ThesisHelper(entry: Reference) -> Element {
         _ => "Unknown",
     };
     rsx! {
-        div { class: if entry.type_ == EntryType::MastersThesis { "bg-pink-100 border-pink-500 border-l-4" } else { "bg-rose-100 border-rose-500 border-l-4" },
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-start",
-                        div { class: if entry.type_ == EntryType::MastersThesis { "mr-2 text-lg text-pink-800" } else { "mr-2 text-lg text-rose-800" },
-                            "{type_}"
-                        }
-                        if let Some(title) = entry.title {
-                            span { class: "text-lg text-grey-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-lg", "No title available" }
-                        }
+        div {
+            div { class: "flex justify-between items-start",
+                div { class: "flex items-start",
+                    div { class: if entry.type_ == EntryType::MastersThesis { "mr-2 text-pink-800" } else { "mr-2 text-rose-800" },
+                        "{type_}"
                     }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
+                        }
+                    } else {
+                        span { "No title available" }
                     }
                 }
-                p {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+                p { class: "text-xs",
                     if let Some(authors) = entry.author {
-                        if authors.len() > 3 {
-                            for author in authors.iter().take(3) {
-                                span { class: "text-blue-700 font-semibold mr-2", "{author}" }
-                            }
-                            span { class: "font-semibold mr-1", " et al." }
-                        } else {
-                            for author in authors {
-                                span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold bg-pink-100 mr-2" } else { "text-blue-700 font-semibold bg-rose-100 mr-2" },
-                                    "{author} "
-                                }
+                        for author in authors {
+                            span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold mr-2" } else { "text-blue-700 font-semibold mr-2" },
+                                "{author} "
                             }
                         }
                     } else {
                         span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
                     }
-                }
-                p {
                     if !school_address.is_empty() {
                         span { class: "text-purple-600 mr-2", "{school_address}" }
                     } else {
@@ -651,37 +455,6 @@ pub fn ThesisHelper(entry: Reference) -> Element {
                         span { class: "text-emerald-700 mr-2", "{year}" }
                     } else {
                         span { class: "text-emerald-700 mr-1", "year" }
-                    }
-                    if let Some(doi) = &entry.doi {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "在浏览器中打开",
-                            onclick: move |_| {
-                                let _ = opener::open_browser(&doi_url);
-                            },
-                            div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
-                        }
-                    } else {
-                        if let Some(url) = entry.url {
-                            button {
-                                class: "tooltip cursor-pointer",
-                                "data-tip": "在浏览器中打开",
-                                onclick: move |_| {
-                                    let _ = opener::open_browser(&url);
-                                },
-                                div { class: "text-cyan-600 mr-2", "URL" }
-                            }
-                        }
-                    }
-                    if let Some(file) = entry.file {
-                        button {
-                            class: "tooltip cursor-pointer",
-                            "data-tip": "打开文献",
-                            onclick: move |_| {
-                                let _ = opener::open(&file);
-                            },
-                            div { class: "text-amber-700 mr-2", "PDF" }
-                        }
                     }
                 }
             }
