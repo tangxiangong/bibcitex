@@ -30,8 +30,8 @@ pub fn NavBar() -> Element {
         (vec![], String::new())
     };
     rsx! {
-        div {
-            div { class: "navbar bg-base-100 shadow-sm",
+        div { class: "h-screen flex flex-col",
+            div { class: "navbar bg-base-100 shadow-sm flex-shrink-0",
                 div { class: "navbar-start",
                     div { class: "tooltip tooltip-right",
                         div { class: "tooltip-content bg-base-100 text-red-400", "Home" }
@@ -51,14 +51,14 @@ pub fn NavBar() -> Element {
                     }
                 }
             }
-            div { class: "drawer drawer-end",
+            div { class: "drawer drawer-end flex-1 overflow-hidden",
                 input {
                     id: "global-drawer",
                     r#type: "checkbox",
                     class: "drawer-toggle",
                     checked: DRAWER_OPEN(),
                 }
-                div { class: "drawer-content", Outlet::<Route> {} }
+                div { class: "drawer-content h-full overflow-hidden", Outlet::<Route> {} }
                 div { class: "drawer-side z-50",
                     label {
                         class: "drawer-overlay",
