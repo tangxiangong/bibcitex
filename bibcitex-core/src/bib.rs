@@ -63,6 +63,14 @@ pub struct Reference {
     pub school: Option<String>,
     /// address
     pub address: Option<String>,
+    /// book title
+    pub book_title: Option<Vec<Chunk>>,
+    /// editor
+    pub editor: Option<Vec<(String, String)>>,
+    /// month
+    pub month: Option<String>,
+    /// organization
+    pub organization: Option<Vec<String>>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -163,6 +171,32 @@ impl From<&biblatex::Entry> for Reference {
                 .first()
                 .map(|chunk| chunk.get().to_string())
         });
+        let book_title = entry
+            .book_title()
+            .ok()
+            .map(|chunks| merge_chunks(chunks.to_owned()));
+        let editor = entry.editors().ok().map(|editors| {
+            editors
+                .iter()
+                .flat_map(|(persons, editor_type)| {
+                    let _type = editor_type.to_string();
+                    persons
+                        .iter()
+                        .map(move |person| (get_name(person), _type.clone()))
+                })
+                .collect::<Vec<_>>()
+        });
+        let organization = entry.organization().ok().and_then(|v| {
+            v.into_iter()
+                .map(|chunks| {
+                    merge_chunks(chunks)
+                        .first()
+                        .map(|chunk| chunk.get().to_string())
+                })
+                .collect::<Option<Vec<_>>>()
+        });
+        let month = parse_optional_field(entry, "month")
+            .and_then(|chunks| chunks.first().map(|chunk| chunk.get().to_string()));
         Self {
             cite_key: key,
             source,
@@ -189,6 +223,10 @@ impl From<&biblatex::Entry> for Reference {
             book_pages,
             school,
             address,
+            book_title,
+            editor,
+            month,
+            organization,
         }
     }
 }
