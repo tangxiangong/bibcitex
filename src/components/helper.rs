@@ -186,6 +186,8 @@ pub fn SearchRef() -> Element {
     let current_bib = HELPER_BIB().unwrap();
     let mut content_height = use_context::<Signal<f64>>();
     let mut container_mounted = use_signal(|| None::<MountedEvent>);
+    let mut scrollable_container = use_signal(|| None::<MountedEvent>);
+    let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
     let search = move |e: Event<FormData>| {
         query.set(e.value());
         let res = search_references(&current_bib, &query());
@@ -234,26 +236,98 @@ pub fn SearchRef() -> Element {
         }
     };
 
-    // Scroll the selected item into view using JavaScript
+    // Scroll the selected item into view using pure Dioxus Rust API
     use_effect(move || {
         if let Some(index) = selected_index() {
-            spawn(async move {
-                let eval_instance = document::eval(&format!(
-                    r#"
-                    setTimeout(() => {{
-                        const item = document.querySelector('[data-item-index="{index}"]');
-                        if (item) {{
-                            item.scrollIntoView({{
-                                behavior: 'smooth',
-                                block: 'nearest',
-                                inline: 'nearest'
-                            }});
-                        }}
-                    }}, 10);
-                    "#
-                ));
-                let _ = eval_instance.await;
-            });
+            if let Some(container) = scrollable_container() {
+                spawn(async move {
+                    // Wait a short time for the DOM to update
+                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+                    let mut scroll_successful = false;
+
+                    // Calculate cumulative height using Dioxus API
+                    // Collect all element references before async operations
+                    let mut element_refs = Vec::new();
+                    let target_element_ref;
+                    {
+                        let elements = item_elements.read();
+
+                        // Collect elements before target index
+                        for i in 0..index {
+                            if let Some(element) = elements.get(&i) {
+                                element_refs.push(element.clone());
+                            }
+                        }
+
+                        // Get target element reference
+                        target_element_ref = elements.get(&index).cloned();
+                    }
+
+                    let mut cumulative_height = 0.0;
+
+                    // Get heights of all elements before target index using get_client_rect
+                    for element in element_refs {
+                        if let Ok(rect) = element.get_client_rect().await {
+                            cumulative_height += rect.size.height;
+                        } else {
+                            // Use fallback height if get_client_rect fails
+                            cumulative_height += 56.0;
+                        }
+                    }
+
+                    // Get target element height for centering
+                    let target_height = if let Some(target_element) = target_element_ref {
+                        if let Ok(rect) = target_element.get_client_rect().await {
+                            rect.size.height
+                        } else {
+                            56.0
+                        }
+                    } else {
+                        56.0
+                    };
+
+                    if let Ok(container_rect) = container.get_client_rect().await {
+                        let container_height = container_rect.size.height;
+
+                        // Calculate scroll position to center the target element
+                        let target_center = cumulative_height + (target_height / 2.0);
+                        let container_center = container_height / 2.0;
+                        let scroll_position = (target_center - container_center).max(0.0);
+
+                        // Use Dioxus native scroll with calculated position
+                        if container
+                            .scroll(
+                                dioxus::html::geometry::PixelsVector2D::new(0.0, scroll_position),
+                                dioxus::html::ScrollBehavior::Smooth,
+                            )
+                            .await
+                            .is_ok()
+                        {
+                            scroll_successful = true;
+                        }
+                    }
+
+                    // If Dioxus native scroll fails, fallback to JavaScript scrollIntoView
+                    if !scroll_successful {
+                        let eval_instance = document::eval(&format!(
+                            r#"
+                            setTimeout(() => {{
+                                const item = document.querySelector('[data-item-index="{index}"]');
+                                if (item) {{
+                                    item.scrollIntoView({{
+                                        behavior: 'smooth',
+                                        block: 'nearest',
+                                        inline: 'nearest'
+                                    }});
+                                }}
+                            }}, 10);
+                            "#
+                        ));
+                        let _ = eval_instance.await;
+                    }
+                });
+            }
         }
     });
 
@@ -323,11 +397,20 @@ pub fn SearchRef() -> Element {
                         div {
                             class: "flex-1 overflow-y-auto",
                             style: "scroll-behavior: smooth; max-height: 400px;",
+                            onmounted: move |event| {
+                                scrollable_container.set(Some(event));
+                            },
                             for (index , bib) in result().into_iter().enumerate() {
                                 div {
                                     key: "{index}",
                                     "data-item-index": "{index}",
                                     class: if selected_index() == Some(index) { "block bg-success rounded-lg text-primary-content cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                    onmounted: {
+                                        let mut item_elements = item_elements;
+                                        move |event| {
+                                            item_elements.write().insert(index, event);
+                                        }
+                                    },
                                     onclick: move |_| {
                                         let text = bib.cite_key.clone();
                                         let window = use_window();
