@@ -188,12 +188,15 @@ pub fn SearchRef() -> Element {
     let mut container_mounted = use_signal(|| None::<MountedEvent>);
     let mut scrollable_container = use_signal(|| None::<MountedEvent>);
     let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
+    let mut selected_index = use_signal(|| None::<usize>);
+
     let search = move |e: Event<FormData>| {
         query.set(e.value());
         let res = search_references(&current_bib, &query());
         result.set(res);
+        // 重置选中索引
+        selected_index.set(None);
     };
-    let mut selected_index = use_signal(|| None::<usize>);
     let max_index = use_memo(move || {
         let len = result().len();
         if len > 0 { len - 1 } else { 0 }
@@ -218,6 +221,7 @@ pub fn SearchRef() -> Element {
                     }
                 }
                 Key::ArrowDown => {
+                    evt.prevent_default(); // 阻止默认行为，防止光标移动
                     if let Some(index) = selected_index() {
                         let update_index = (index + 1).min(max_index());
                         selected_index.set(Some(update_index));
@@ -226,6 +230,7 @@ pub fn SearchRef() -> Element {
                     }
                 }
                 Key::ArrowUp => {
+                    evt.prevent_default(); // 阻止默认行为，防止光标移动
                     if let Some(index) = selected_index() {
                         let update_index = if index > 0 { index - 1 } else { 0 };
                         selected_index.set(Some(update_index));
@@ -349,6 +354,23 @@ pub fn SearchRef() -> Element {
                 } else {
                     content_height.set(140.0);
                 }
+            });
+        }
+    });
+
+    // 当查询变化时重置滚动位置
+    use_effect(move || {
+        let _query_val = query();
+        if let Some(container) = scrollable_container() {
+            spawn(async move {
+                // 短暂延迟确保DOM更新完成
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                let _ = container
+                    .scroll(
+                        dioxus::html::geometry::PixelsVector2D::new(0.0, 0.0),
+                        dioxus::html::ScrollBehavior::Smooth,
+                    )
+                    .await;
             });
         }
     });
