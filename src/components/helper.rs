@@ -53,6 +53,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     let error_message = use_context_provider(|| Signal::new(None::<String>));
     let mut selected_bib = use_context_provider(|| Signal::new(None::<(String, String, String)>));
     let mut selected_index = use_signal(|| None::<usize>);
+    let mut content_height = use_context::<Signal<f64>>();
 
     let handle_keydown = move |evt: Event<KeyboardData>| {
         let bib_list = bibs();
@@ -93,11 +94,39 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
         }
     };
 
+    let mut container_mounted = use_signal(|| None::<MountedEvent>);
+
+    // 动态计算内容高度并更新窗口大小
+    use_effect(move || {
+        let _bib_list = bibs();
+
+        if let Some(mounted) = container_mounted() {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+                if let Ok(rect) = mounted.get_client_rect().await {
+                    let measured_height = rect.height();
+                    let max_height = 460.0;
+                    let min_height = 160.0;
+                    let final_height = measured_height.max(min_height).min(max_height);
+                    content_height.set(final_height + 20.0);
+                } else {
+                    content_height.set(200.0);
+                }
+            });
+        }
+    });
+
     rsx! {
         div { class: "w-full h-auto bg-transparent", onkeydown: handle_keydown,
 
             // Floating container with backdrop blur like Spotlight
-            div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden",
+            div {
+                class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden",
+                "data-select-container": "true",
+                onmounted: move |event| {
+                    container_mounted.set(Some(event));
+                },
                 // Header matching exact Spotlight style
                 div { class: "flex items-center px-5 h-14 border-b border-base-300",
                     div { class: "text-lg text-base-content mr-3 font-medium", "BibCiTeX" }
@@ -152,9 +181,11 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
 
 #[component]
 pub fn SearchRef() -> Element {
-    let mut query = use_context::<Signal<String>>();
+    let mut query = use_signal(String::new);
     let mut result = use_signal(Vec::<Reference>::new);
     let current_bib = HELPER_BIB().unwrap();
+    let mut content_height = use_context::<Signal<f64>>();
+    let mut container_mounted = use_signal(|| None::<MountedEvent>);
     let search = move |e: Event<FormData>| {
         query.set(e.value());
         let res = search_references(&current_bib, &query());
@@ -226,9 +257,36 @@ pub fn SearchRef() -> Element {
         }
     });
 
+    // 动态计算内容高度并更新窗口大小
+    use_effect(move || {
+        let _query_val = query();
+        let _result_val = result();
+
+        if let Some(mounted) = container_mounted() {
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+                if let Ok(rect) = mounted.get_client_rect().await {
+                    let measured_height = rect.height();
+                    let max_height = 460.0;
+                    let min_height = 80.0;
+                    let final_height = measured_height.max(min_height).min(max_height);
+                    content_height.set(final_height + 20.0);
+                } else {
+                    content_height.set(140.0);
+                }
+            });
+        }
+    });
+
     rsx! {
         div { class: "w-full h-auto bg-transparent",
-            div { class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+            div {
+                class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+                "data-content-container": "true",
+                onmounted: move |event| {
+                    container_mounted.set(Some(event));
+                },
                 div {
                     class: "flex-shrink-0 overflow-hidden no-scroll",
                     style: "overscroll-behavior: none;",

@@ -132,7 +132,7 @@ pub fn open_spotlight_window() {
 /// The actual Helper window content
 #[component]
 pub fn Helper() -> Element {
-    let query = use_context_provider(|| Signal::new(String::new()));
+    let content_height = use_context_provider(|| Signal::new(80.0f64)); // 提供内容高度信号
 
     // 在组件初始化时从持久化状态恢复 HELPER_BIB
     use_effect(move || {
@@ -147,14 +147,14 @@ pub fn Helper() -> Element {
     // 动态调整窗口大小
     let window = use_window();
     use_effect(move || {
-        let has_results = !query().is_empty();
-        if has_results || !has_bib() {
-            // 有搜索结果时扩展窗口高度
-            window.set_inner_size(LogicalSize::new(600.0, 480.0));
-        } else {
-            // 无搜索结果时缩小到最小高度
-            window.set_inner_size(LogicalSize::new(600.0, 80.0));
-        }
+        let current_height = content_height();
+        let min_height = 80.0;
+        let max_height = 500.0;
+
+        // 确保高度在合理范围内
+        let adjusted_height = current_height.max(min_height).min(max_height);
+
+        window.set_inner_size(LogicalSize::new(600.0, adjusted_height));
     });
 
     // 使用 use_wry_event_handler 直接监听 tao 窗口事件
