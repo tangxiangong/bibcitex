@@ -6,25 +6,22 @@ use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
-        Config, DesktopService, WindowBuilder,
+        Config, WindowBuilder,
         tao::dpi::LogicalSize,
         tao::event::{Event, WindowEvent},
         use_window, use_wry_event_handler,
     },
-    events::Key,
     prelude::*,
 };
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
-use std::{
-    rc::Weak,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 static CSS: Asset = asset!("/assets/tailwind.css");
 
 // 全局状态跟踪Helper窗口是否打开
-pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
+pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<dioxus::desktop::PendingDesktopContext>> =
+    Signal::global(|| None);
 
 // 使用 Arc<Mutex<>> 来确保状态在不同 VirtualDom 实例间共享
 static HELPER_BIB_STATE: std::sync::LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
@@ -71,14 +68,10 @@ pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::
 pub fn open_spotlight_window() {
     // 检查是否已经有Helper窗口打开
     let should_close = {
-        let window_signal = HELPER_WINDOW_OPEN();
-        if let Some(helper_window_weak) = window_signal.as_ref() {
-            if let Some(helper_window) = helper_window_weak.upgrade() {
-                helper_window.close();
-                true
-            } else {
-                true
-            }
+        let window_signal = HELPER_WINDOW_OPEN.read();
+        if window_signal.is_some() {
+            // 如果已经有窗口打开，关闭它
+            true
         } else {
             false
         }
@@ -124,7 +117,6 @@ pub fn open_spotlight_window() {
         .with_custom_index(helper_html.to_string());
 
     // 创建新窗口并保存窗口句柄
-    // 使用 new_window_with_vdom 而不是 new_window 来确保全局状态共享
     let helper_window = window.new_window(VirtualDom::new(Helper), config);
     *HELPER_WINDOW_OPEN.write() = Some(helper_window);
 }
