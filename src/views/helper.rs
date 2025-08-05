@@ -1,6 +1,6 @@
 use crate::{
-    STATE,
-    components::{SearchRef, SelectBib},
+    STATE, TAILWINDCSS,
+    components::{Search, Select},
 };
 use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
@@ -19,17 +19,15 @@ use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
 use std::{
     rc::{Rc, Weak},
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex},
 };
 
-static CSS: Asset = asset!("/assets/tailwind.css");
-
 // 全局状态跟踪Helper窗口是否打开
-pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
+pub static HELPER_WINDOW: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
 // 使用 Arc<Mutex<>> 来确保状态在不同 VirtualDom 实例间共享
-static HELPER_BIB_STATE: std::sync::LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
-    std::sync::LazyLock::new(|| Arc::new(Mutex::new(None)));
+static HELPER_BIB_STATE: LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
 
 pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> =
     Signal::global(|| HELPER_BIB_STATE.lock().unwrap().clone());
@@ -72,7 +70,7 @@ pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::
 pub async fn open_spotlight_window() {
     // 检查是否已经有Helper窗口打开
     let should_close = {
-        let window_signal = HELPER_WINDOW_OPEN.read();
+        let window_signal = HELPER_WINDOW.read();
         if let Some(weak_window) = window_signal.as_ref() {
             if let Some(helper_window) = weak_window.upgrade() {
                 helper_window.close();
@@ -86,7 +84,7 @@ pub async fn open_spotlight_window() {
     };
 
     if should_close {
-        HELPER_WINDOW_OPEN.write().take();
+        HELPER_WINDOW.write().take();
         return;
     }
 
@@ -126,7 +124,7 @@ pub async fn open_spotlight_window() {
 
     // 创建新窗口并保存窗口句柄
     let helper_window = window.new_window(VirtualDom::new(Helper), config).await;
-    *HELPER_WINDOW_OPEN.write() = Some(Rc::downgrade(&helper_window));
+    *HELPER_WINDOW.write() = Some(Rc::downgrade(&helper_window));
 }
 
 /// The actual Helper window content
@@ -169,14 +167,9 @@ pub fn Helper() -> Element {
                 let window = use_window();
                 window.close();
                 // 清除窗口状态
-                HELPER_WINDOW_OPEN.write().take();
+                HELPER_WINDOW.write().take();
             }
         }
-    });
-
-    // 窗口初始化时的清理逼辑
-    use_effect(move || {
-        // 窗口关闭时的清理逻辑将在上面的事件处理中执行
     });
 
     let bibs = use_memo(|| {
@@ -196,7 +189,7 @@ pub fn Helper() -> Element {
     });
 
     rsx! {
-        document::Link { rel: "stylesheet", href: CSS }
+        document::Stylesheet { href: TAILWINDCSS }
 
         div {
             class: "w-full h-auto bg-transparent",
@@ -204,13 +197,13 @@ pub fn Helper() -> Element {
                 if evt.key() == Key::Escape {
                     let window = use_window();
                     window.close();
-                    HELPER_WINDOW_OPEN.write().take();
+                    HELPER_WINDOW.write().take();
                 }
             },
             if !has_bib() {
-                SelectBib { bibs }
+                Select { bibs }
             } else {
-                SearchRef {}
+                Search {}
             }
         }
     }

@@ -28,7 +28,7 @@ pub static DRAWER_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 pub static DRAWER_REFERENCE: GlobalSignal<Option<Reference>> = Signal::global(|| None);
 
 // tailwindcss
-static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");
+pub static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");
 
 #[component]
 pub fn App() -> Element {

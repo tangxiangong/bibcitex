@@ -1,7 +1,7 @@
 use crate::{
     LOGO,
     components::ChunksComp,
-    views::{HELPER_BIB, HELPER_WINDOW_OPEN, set_helper_bib},
+    views::{HELPER_BIB, HELPER_WINDOW, set_helper_bib},
 };
 use arboard::Clipboard;
 use bibcitex_core::{
@@ -13,43 +13,7 @@ use biblatex::EntryType;
 use dioxus::{desktop::use_window, prelude::*};
 
 #[component]
-pub fn BibItem(name: String, path: String, updated_at: String) -> Element {
-    let path_clone = path.clone();
-    let name_clone = name.clone();
-    let updated_at_clone = updated_at.clone();
-    let mut selected_bib = use_context::<Signal<Option<(String, String, String)>>>();
-    let mut error_message = use_context::<Signal<Option<String>>>();
-
-    let handle_click = move |_| {
-        error_message.set(None);
-        match parse(&path_clone) {
-            Ok(bib) => {
-                let refs = read_bibliography(bib);
-                selected_bib.set(Some((
-                    name_clone.clone(),
-                    path_clone.clone(),
-                    updated_at_clone.clone(),
-                )));
-                spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-                    set_helper_bib(Some(refs));
-                });
-            }
-            Err(e) => {
-                error_message.set(Some(e.to_string()));
-            }
-        }
-    };
-    rsx! {
-        div { class: "item", onclick: handle_click,
-            h3 { {name} }
-            p { "{path} ({updated_at})" }
-        }
-    }
-}
-
-#[component]
-pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
+pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     let error_message = use_context_provider(|| Signal::new(None::<String>));
     let mut selected_bib = use_context_provider(|| Signal::new(None::<(String, String, String)>));
     let mut selected_index = use_signal(|| None::<usize>);
@@ -63,7 +27,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                     if let Some(index) = selected_index() {
                         let (name, path, _) = &bib_list[index];
                         selected_bib.set(Some((name.clone(), path.clone(), "".to_string())));
-                        // Load the bibliography here
+                        // 解析bib
                         if let Ok(parsed_bib) = parse(path) {
                             let refs = read_bibliography(parsed_bib);
                             set_helper_bib(Some(refs));
@@ -98,7 +62,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
 
     // 动态计算内容高度并更新窗口大小
     use_effect(move || {
-        let _bib_list = bibs();
+        let _ = bibs();
 
         if let Some(mounted) = container_mounted() {
             spawn(async move {
@@ -119,15 +83,12 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
 
     rsx! {
         div { class: "w-full h-auto bg-transparent", onkeydown: handle_keydown,
-
-            // Floating container with backdrop blur like Spotlight
             div {
                 class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden",
                 "data-select-container": "true",
                 onmounted: move |event| {
                     container_mounted.set(Some(event));
                 },
-                // Header matching exact Spotlight style
                 div { class: "flex items-center px-5 h-14 border-b border-base-300",
                     div { class: "text-lg text-base-content mr-3 font-medium", "BibCiTeX" }
                     div { class: "flex-1 text-lg text-base-content/60", "选择文献库..." }
@@ -154,7 +115,6 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                                     }
                                 },
 
-                                // Content
                                 div { class: "flex-1 min-w-0 mr-3",
                                     div { class: "text-sm font-medium text-base-content truncate",
                                         "{name}"
@@ -180,7 +140,7 @@ pub fn SelectBib(bibs: Memo<Vec<(String, String, String)>>) -> Element {
 }
 
 #[component]
-pub fn SearchRef() -> Element {
+pub fn Search() -> Element {
     let mut query = use_signal(String::new);
     let mut result = use_signal(Vec::<Reference>::new);
     let current_bib = HELPER_BIB().unwrap();
@@ -209,7 +169,7 @@ pub fn SearchRef() -> Element {
                         let text = result()[index].cite_key.clone();
                         let window = use_window();
                         window.close();
-                        HELPER_WINDOW_OPEN.write().take();
+                        HELPER_WINDOW.write().take();
                         let mut clipboard = Clipboard::new().unwrap();
                         clipboard.set_text(text.to_string()).unwrap();
                         // spawn(async move {
@@ -241,47 +201,36 @@ pub fn SearchRef() -> Element {
         }
     };
 
-    // Scroll the selected item into view using pure Dioxus Rust API
+    // 跟随上下方向键滚动
     use_effect(move || {
         if let Some(index) = selected_index() {
             if let Some(container) = scrollable_container() {
                 spawn(async move {
-                    // Wait a short time for the DOM to update
+                    // 等待刷新
                     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-
                     let mut scroll_successful = false;
-
-                    // Calculate cumulative height using Dioxus API
-                    // Collect all element references before async operations
                     let mut element_refs = Vec::new();
                     let target_element_ref;
                     {
                         let elements = item_elements.read();
-
-                        // Collect elements before target index
                         for i in 0..index {
                             if let Some(element) = elements.get(&i) {
                                 element_refs.push(element.clone());
                             }
                         }
-
-                        // Get target element reference
                         target_element_ref = elements.get(&index).cloned();
                     }
 
                     let mut cumulative_height = 0.0;
 
-                    // Get heights of all elements before target index using get_client_rect
+                    // 高度
                     for element in element_refs {
                         if let Ok(rect) = element.get_client_rect().await {
                             cumulative_height += rect.size.height;
                         } else {
-                            // Use fallback height if get_client_rect fails
                             cumulative_height += 56.0;
                         }
                     }
-
-                    // Get target element height for centering
                     let target_height = if let Some(target_element) = target_element_ref {
                         if let Ok(rect) = target_element.get_client_rect().await {
                             rect.size.height
@@ -294,13 +243,10 @@ pub fn SearchRef() -> Element {
 
                     if let Ok(container_rect) = container.get_client_rect().await {
                         let container_height = container_rect.size.height;
-
-                        // Calculate scroll position to center the target element
                         let target_center = cumulative_height + (target_height / 2.0);
                         let container_center = container_height / 2.0;
                         let scroll_position = (target_center - container_center).max(0.0);
 
-                        // Use Dioxus native scroll with calculated position
                         if container
                             .scroll(
                                 dioxus::html::geometry::PixelsVector2D::new(0.0, scroll_position),
@@ -313,7 +259,7 @@ pub fn SearchRef() -> Element {
                         }
                     }
 
-                    // If Dioxus native scroll fails, fallback to JavaScript scrollIntoView
+                    // 备选方案
                     if !scroll_successful {
                         let eval_instance = document::eval(&format!(
                             r#"
@@ -338,13 +284,12 @@ pub fn SearchRef() -> Element {
 
     // 动态计算内容高度并更新窗口大小
     use_effect(move || {
-        let _query_val = query();
-        let _result_val = result();
+        let _ = query();
+        let _ = result();
 
         if let Some(mounted) = container_mounted() {
             spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-
                 if let Ok(rect) = mounted.get_client_rect().await {
                     let measured_height = rect.height();
                     let max_height = 460.0;
@@ -360,7 +305,7 @@ pub fn SearchRef() -> Element {
 
     // 当查询变化时重置滚动位置
     use_effect(move || {
-        let _query_val = query();
+        let _ = query();
         if let Some(container) = scrollable_container() {
             spawn(async move {
                 // 短暂延迟确保DOM更新完成
@@ -437,7 +382,7 @@ pub fn SearchRef() -> Element {
                                         let text = bib.cite_key.clone();
                                         let window = use_window();
                                         window.close();
-                                        HELPER_WINDOW_OPEN.write().take();
+                                        HELPER_WINDOW.write().take();
                                         let mut clipboard = Clipboard::new().unwrap();
                                         clipboard.set_text(text.to_string()).unwrap();
                                     },
