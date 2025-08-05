@@ -456,6 +456,11 @@ pub fn SearchRef() -> Element {
                                                         ThesisHelper { entry: bib.clone() }
                                                     }
                                                 }
+                                                EntryType::InProceedings => {
+                                                    rsx! {
+                                                        InProceedingsHelper { entry: bib.clone() }
+                                                    }
+                                                }
                                                 _ => rsx! {
                                                     ArticleHelper { entry: bib.clone() }
                                                 },
@@ -599,26 +604,83 @@ pub fn ThesisHelper(entry: Reference) -> Element {
                 div { class: "flex items-center flex-shrink-0",
                     div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
-                        for author in authors {
-                            span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold mr-2" } else { "text-blue-700 font-semibold mr-2" },
-                                "{author} "
-                            }
+            }
+            p { class: "text-xs",
+                if let Some(authors) = entry.author {
+                    for author in authors {
+                        span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold mr-2" } else { "text-blue-700 font-semibold mr-2" },
+                            "{author} "
+                        }
+                    }
+                } else {
+                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                }
+                if !school_address.is_empty() {
+                    span { class: "text-purple-600 mr-2", "{school_address}" }
+                } else {
+                    span { class: "text-purple-600 mr-2", "Unknown" }
+                }
+                if let Some(year) = &entry.year {
+                    span { class: "text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "text-emerald-700 mr-1", "year" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn InProceedingsHelper(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+    let date = if let Some(year) = entry.year {
+        if let Some(month) = entry.month {
+            format!("{year}-{month}")
+        } else {
+            year.to_string()
+        }
+    } else {
+        "".to_string()
+    };
+    rsx! {
+        div {
+            div { class: "flex justify-between items-start",
+                div { class: "flex items-start",
+                    div { class: "mr-2 text-purple-800", "InProceedings" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                        span { "No title available" }
                     }
-                    if !school_address.is_empty() {
-                        span { class: "text-purple-600 mr-2", "{school_address}" }
-                    } else {
-                        span { class: "text-purple-600 mr-2", "Unknown" }
+                }
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs",
+                if let Some(authors) = entry.author {
+                    for author in authors {
+                        span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                     }
-                    if let Some(year) = &entry.year {
-                        span { class: "text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "text-emerald-700 mr-1", "year" }
+                } else {
+                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                }
+                if let Some(booktitle) = entry.book_title {
+                    span { class: "text-purple-600 mr-2",
+                        ChunksComp {
+                            chunks: booktitle,
+                            cite_key: format!("booktitle-helper-{key}"),
+                        }
                     }
+                } else {
+                    span { class: "text-purple-600 mr-2", "Unknown" }
+                }
+                if !date.is_empty() {
+                    span { class: "text-emerald-700 mr-2", "{date}" }
+                } else {
+                    span { class: "text-emerald-700 mr-1", "date" }
                 }
             }
         }

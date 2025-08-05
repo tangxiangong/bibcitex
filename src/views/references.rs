@@ -1,6 +1,6 @@
 use crate::{
     CURRENT_REF,
-    components::{Article, Book, Entry, Thesis},
+    components::{Article, Book, Entry, InProceedings, Thesis},
 };
 use bibcitex_core::{
     bib::Reference, filter_article, filter_book, filter_thesis, search_references,
@@ -284,16 +284,19 @@ pub fn References() -> Element {
                     for reference in refs() {
                         match reference.type_.clone() {
                             EntryType::Article => rsx! {
-                                Article { entry: reference, is_helper: false }
+                                Article { entry: reference }
                             },
                             EntryType::Book => rsx! {
-                                Book { entry: reference, is_helper: false }
+                                Book { entry: reference }
                             },
                             EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
                                 rsx! {
-                                    Thesis { entry: reference, is_helper: false }
+                                    Thesis { entry: reference }
                                 }
                             }
+                            EntryType::InProceedings => rsx! {
+                                InProceedings { entry: reference }
+                            },
                             _ => rsx! {
                                 Entry { entry: reference }
                             },
@@ -307,16 +310,19 @@ pub fn References() -> Element {
                         for reference in search_result() {
                             match reference.type_.clone() {
                                 EntryType::Article => rsx! {
-                                    Article { entry: reference, is_helper: false }
+                                    Article { entry: reference }
                                 },
                                 EntryType::Book => rsx! {
-                                    Book { entry: reference, is_helper: false }
+                                    Book { entry: reference }
                                 },
                                 EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
                                     rsx! {
-                                        Thesis { entry: reference, is_helper: false }
+                                        Thesis { entry: reference }
                                     }
                                 }
+                                EntryType::InProceedings => rsx! {
+                                    InProceedings { entry: reference }
+                                },
                                 _ => rsx! {
                                     Entry { entry: reference }
                                 },
