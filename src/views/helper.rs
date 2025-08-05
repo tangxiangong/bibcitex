@@ -6,22 +6,26 @@ use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
-        Config, WindowBuilder,
-        tao::dpi::LogicalSize,
-        tao::event::{Event, WindowEvent},
+        Config, DesktopService, WindowBuilder,
+        tao::{
+            dpi::LogicalSize,
+            event::{Event, WindowEvent},
+        },
         use_window, use_wry_event_handler,
     },
     prelude::*,
 };
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
-use std::sync::{Arc, Mutex};
+use std::{
+    rc::{Rc, Weak},
+    sync::{Arc, Mutex},
+};
 
 static CSS: Asset = asset!("/assets/tailwind.css");
 
 // 全局状态跟踪Helper窗口是否打开
-pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<dioxus::desktop::PendingDesktopContext>> =
-    Signal::global(|| None);
+pub static HELPER_WINDOW_OPEN: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
 // 使用 Arc<Mutex<>> 来确保状态在不同 VirtualDom 实例间共享
 static HELPER_BIB_STATE: std::sync::LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
@@ -65,13 +69,17 @@ pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-pub fn open_spotlight_window() {
+pub async fn open_spotlight_window() {
     // 检查是否已经有Helper窗口打开
     let should_close = {
         let window_signal = HELPER_WINDOW_OPEN.read();
-        if window_signal.is_some() {
-            // 如果已经有窗口打开，关闭它
-            true
+        if let Some(weak_window) = window_signal.as_ref() {
+            if let Some(helper_window) = weak_window.upgrade() {
+                helper_window.close();
+                true
+            } else {
+                true
+            }
         } else {
             false
         }
@@ -95,7 +103,7 @@ pub fn open_spotlight_window() {
         .with_inner_size(LogicalSize::new(window_width, min_window_height))
         .with_min_inner_size(LogicalSize::new(window_width, min_window_height))
         .with_max_inner_size(LogicalSize::new(window_width, max_window_height))
-        .with_focused(false)
+        .with_focused(true)
         .with_decorations(false) // 移除窗口装饰
         .with_transparent(true) // 支持透明背景
         .with_always_on_top(true) // 保持在最上层
@@ -117,8 +125,8 @@ pub fn open_spotlight_window() {
         .with_custom_index(helper_html.to_string());
 
     // 创建新窗口并保存窗口句柄
-    let helper_window = window.new_window(VirtualDom::new(Helper), config);
-    *HELPER_WINDOW_OPEN.write() = Some(helper_window);
+    let helper_window = window.new_window(VirtualDom::new(Helper), config).await;
+    *HELPER_WINDOW_OPEN.write() = Some(Rc::downgrade(&helper_window));
 }
 
 /// The actual Helper window content

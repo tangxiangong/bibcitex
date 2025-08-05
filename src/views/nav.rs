@@ -15,11 +15,13 @@ pub fn NavBar() -> Element {
         }
         #[cfg(not(target_os = "macos"))]
         {
-            "Ctrl"
+            "Win"
         }
     };
     let helper = move |_| {
-        open_spotlight_window();
+        spawn(async move {
+            open_spotlight_window().await;
+        });
     };
     let (drawer_title, drawer_key) = if let Some(ref entry) = DRAWER_REFERENCE() {
         (

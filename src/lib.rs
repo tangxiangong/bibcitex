@@ -3,7 +3,7 @@
 use crate::views::open_spotlight_window;
 use bibcitex_core::{Setting, bib::Reference};
 use dioxus::{
-    desktop::{HotKeyState, use_global_shortcut},
+    desktop::{HotKeyState, tao::keyboard::ModifiersState, use_global_shortcut},
     prelude::*,
 };
 
@@ -33,11 +33,16 @@ static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");
 #[component]
 pub fn App() -> Element {
     // TODO: Error handling
-    let _ = use_global_shortcut("cmd+k", move |hotkey_state: HotKeyState| {
-        if hotkey_state == HotKeyState::Pressed {
-            open_spotlight_window();
-        }
-    });
+    let _ = use_global_shortcut(
+        (ModifiersState::SUPER, KeyCode::K),
+        move |hotkey_state: HotKeyState| {
+            if hotkey_state == HotKeyState::Pressed {
+                spawn(async move {
+                    open_spotlight_window().await;
+                });
+            }
+        },
+    );
 
     rsx! {
         document::Stylesheet { href: TAILWINDCSS }
