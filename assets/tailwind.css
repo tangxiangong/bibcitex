@@ -14,7 +14,10 @@
             "Liberation Mono", "Courier New", monospace;
         --color-red-400: oklch(70.4% 0.191 22.216);
         --color-red-500: oklch(63.7% 0.237 25.331);
+        --color-amber-100: oklch(96.2% 0.059 95.617);
+        --color-amber-500: oklch(76.9% 0.188 70.08);
         --color-amber-700: oklch(55.5% 0.163 48.998);
+        --color-amber-800: oklch(47.3% 0.137 46.201);
         --color-emerald-100: oklch(95% 0.052 163.051);
         --color-emerald-500: oklch(69.6% 0.17 162.48);
         --color-emerald-700: oklch(50.8% 0.118 165.612);
@@ -1798,6 +1801,9 @@
         border-left-style: var(--tw-border-style);
         border-left-width: 4px;
     }
+    .border-amber-500 {
+        border-color: var(--color-amber-500);
+    }
     .border-base-300 {
         border-color: var(--color-base-300);
     }
@@ -1825,6 +1831,9 @@
     }
     .border-rose-500 {
         border-color: var(--color-rose-500);
+    }
+    .bg-amber-100 {
+        background-color: var(--color-amber-100);
     }
     .bg-base-100 {
         background-color: var(--color-base-100);
@@ -1952,6 +1961,9 @@
     }
     .text-amber-700 {
         color: var(--color-amber-700);
+    }
+    .text-amber-800 {
+        color: var(--color-amber-800);
     }
     .text-base-content {
         color: var(--color-base-content);
