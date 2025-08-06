@@ -1,6 +1,5 @@
 <div align=center>
 <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
-<h1>BibCiTeX</h1>
 <p align="center">
     <img src="assets/BibTeX.png" width="60">  文献快捷引用工具
 </p>
