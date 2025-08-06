@@ -1,0 +1,31 @@
+NOTICE
+
+This software includes third-party code with the following attributions:
+
+================================================================================
+
+Module: src/platforms/macos
+Source: ahkohd/tauri-nspanel (https://github.com/ahkohd/tauri-nspanel)
+Version: v2.1
+License: MIT OR Apache-2.0
+Copyright: Copyright (c) 2023 - Present Victor Aremu
+
+The module `src/platforms/macos` is copied and modified from Victor Aremu's
+project tauri-nspanel (https://github.com/ahkohd/tauri-nspanel/tree/v2.1).
+
+Original License Information:
+- MIT License: https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT
+- Apache License 2.0: https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0
+
+Usage && Modifications:
+- Adapted for use with Dioxus framework instead of Tauri
+- Modified API interfaces for BibCiTeX application requirements
+- Removed Tauri-specific dependencies and runtime integration
+- Enhanced panel management for citation helper functionality
+
+================================================================================
+
+For complete license texts and additional attribution details, please see:
+- LICENSE-MIT (MIT License)
+- LICENSE-APACHE (Apache License 2.0)
+- README.md (Third-Party Code Attribution section)
