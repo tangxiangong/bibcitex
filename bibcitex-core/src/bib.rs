@@ -71,6 +71,8 @@ pub struct Reference {
     pub month: Option<String>,
     /// organization
     pub organization: Option<Vec<String>>,
+    /// institution
+    pub institution: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -197,6 +199,11 @@ impl From<&biblatex::Entry> for Reference {
         });
         let month = parse_optional_field(entry, "month")
             .and_then(|chunks| chunks.first().map(|chunk| chunk.get().to_string()));
+        let institution = entry.institution().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
         Self {
             cite_key: key,
             source,
@@ -227,7 +234,14 @@ impl From<&biblatex::Entry> for Reference {
             editor,
             month,
             organization,
+            institution,
         }
+    }
+}
+
+impl Reference {
+    pub fn key(&self) -> String {
+        self.cite_key.clone()
     }
 }
 
