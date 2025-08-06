@@ -1,13 +1,9 @@
-use crate::{
-    CURRENT_REF,
-    components::{Article, Book, Entry, InProceedings, Thesis},
-};
+use crate::{CURRENT_REF, components::ReferenceComponent};
 use bibcitex_core::{
     bib::Reference, filter_article, filter_book, filter_thesis, search_references,
     search_references_by_author, search_references_by_journal, search_references_by_title,
     search_references_by_year,
 };
-use biblatex::EntryType;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -282,25 +278,7 @@ pub fn References() -> Element {
                 if !is_input() {
                     h2 { class: "text-lg p-2", "{show_type()} ({refs().len()}/{total_num})" }
                     for reference in refs() {
-                        match reference.type_.clone() {
-                            EntryType::Article => rsx! {
-                                Article { entry: reference }
-                            },
-                            EntryType::Book => rsx! {
-                                Book { entry: reference }
-                            },
-                            EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
-                                rsx! {
-                                    Thesis { entry: reference }
-                                }
-                            }
-                            EntryType::InProceedings => rsx! {
-                                InProceedings { entry: reference }
-                            },
-                            _ => rsx! {
-                                Entry { entry: reference }
-                            },
-                        }
+                        ReferenceComponent { entry: reference }
                     }
                 } else {
                     h2 { class: "text-lg p-2",
@@ -308,25 +286,7 @@ pub fn References() -> Element {
                     }
                     if !search_result().is_empty() {
                         for reference in search_result() {
-                            match reference.type_.clone() {
-                                EntryType::Article => rsx! {
-                                    Article { entry: reference }
-                                },
-                                EntryType::Book => rsx! {
-                                    Book { entry: reference }
-                                },
-                                EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
-                                    rsx! {
-                                        Thesis { entry: reference }
-                                    }
-                                }
-                                EntryType::InProceedings => rsx! {
-                                    InProceedings { entry: reference }
-                                },
-                                _ => rsx! {
-                                    Entry { entry: reference }
-                                },
-                            }
+                            ReferenceComponent { entry: reference }
                         }
                     } else {
                         p { class: "p-2 text-lg text-red-500", "No results" }
