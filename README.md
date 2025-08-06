@@ -20,7 +20,8 @@ BibCiTeX 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15">
 - [ ] Manual
 - [ ] Misc
 - [ ] Proceedings
-- [ ] TechReport
+- [x] TechReport
+- [x] InProceedings
 - [ ] Unpublished
 
 
@@ -40,12 +41,28 @@ BibCiTeX 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15">
 - [ ] 自定义主题支持
 - [ ] 更好的响应式设计
 
+## 第三方代码版权声明 (Third-Party Code Attribution)
+### [src/platforms/macos](./src/platforms/macos)
+- **来源(Source)**: [ahkohd/tauri-nspanel](https://github.com/ahkohd/tauri-nspanel) (v2.1)
+- **作者(Author)**: Victor Aremu (ahkohd)
+- **许可协议(License)**: [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) OR [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0)
+- **用途(Usage)**: 为 Dioxus 框架适配 macOS NSPanel 功能 (Adapted macOS NSPanel functionality for Dioxus framework)
+- **版权声明(Copyright)**:
+  ```
+  Copyright (c) 2023 - Present Victor Aremu
+  ```
+- **主要修改(Key Modifications)**:
+  - 从 Tauri 框架适配为 Dioxus 框架 (Adapted from Tauri framework to Dioxus framework)
+  - 移除 Tauri 特定的运行时集成 (Removed Tauri-specific runtime integration)
+
+详细的归属信息请参阅 [NOTICE](./NOTICE) 文件 (For detailed attribution information, please refer to the [NOTICE](./NOTICE) file)。
+
 ## 许可协议
 
 本项目采用双重许可协议，您可以选择其中任意一种：
 
-* Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) 或 https://www.apache.org/licenses/LICENSE-2.0)
-* MIT License ([LICENSE-MIT](LICENSE-MIT) 或 https://opensource.org/licenses/MIT)
+* **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) 或 https://www.apache.org/licenses/LICENSE-2.0)
+* **MIT License** ([LICENSE-MIT](LICENSE-MIT) 或 https://opensource.org/licenses/MIT)
 
 ### 贡献声明
 除非您明确声明，否则根据 Apache-2.0 许可协议的定义，您有意提交的任何贡献都将按照上述双重许可协议进行许可，不附加任何额外条款或条件。
