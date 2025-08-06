@@ -149,6 +149,7 @@ pub fn Search() -> Element {
     let mut scrollable_container = use_signal(|| None::<MountedEvent>);
     let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
     let mut selected_index = use_signal(|| None::<usize>);
+    let keys = use_memo(move || result().iter().map(|item| item.key()).collect::<Vec<_>>());
 
     let search = move |e: Event<FormData>| {
         query.set(e.value());
@@ -367,7 +368,7 @@ pub fn Search() -> Element {
                             onmounted: move |event| {
                                 scrollable_container.set(Some(event));
                             },
-                            for (index , bib) in result().into_iter().enumerate() {
+                            for (index , (cite_key , bib)) in keys().into_iter().zip(result()).enumerate() {
                                 div {
                                     key: "{index}",
                                     "data-item-index": "{index}",
@@ -378,38 +379,19 @@ pub fn Search() -> Element {
                                             item_elements.write().insert(index, event);
                                         }
                                     },
-                                    onclick: move |_| {
-                                        let text = bib.cite_key.clone();
-                                        let window = use_window();
-                                        window.close();
-                                        HELPER_WINDOW.write().take();
-                                        let mut clipboard = Clipboard::new().unwrap();
-                                        clipboard.set_text(text.to_string()).unwrap();
+                                    onclick: {
+                                        move |_| {
+                                            let window = use_window();
+                                            window.close();
+                                            HELPER_WINDOW.write().take();
+                                            let mut clipboard = Clipboard::new().unwrap();
+                                            clipboard.set_text(cite_key.to_string()).unwrap();
+                                        }
                                     },
 
                                     div { class: "flex px-3 py-3 min-h-[56px]",
                                         div { class: "flex-1 min-w-0",
-                                            match bib.type_ {
-                                                EntryType::Article => rsx! {
-                                                    ArticleHelper { entry: bib.clone() }
-                                                },
-                                                EntryType::Book => rsx! {
-                                                    BookHelper { entry: bib.clone() }
-                                                },
-                                                EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
-                                                    rsx! {
-                                                        ThesisHelper { entry: bib.clone() }
-                                                    }
-                                                }
-                                                EntryType::InProceedings => {
-                                                    rsx! {
-                                                        InProceedingsHelper { entry: bib.clone() }
-                                                    }
-                                                }
-                                                _ => rsx! {
-                                                    ArticleHelper { entry: bib.clone() }
-                                                },
-                                            }
+                                            HelperComponent { entry: bib }
                                         }
                                     }
                                 }
@@ -418,6 +400,38 @@ pub fn Search() -> Element {
                     }
                 }
             }
+        }
+    }
+}
+
+#[component]
+pub fn HelperComponent(entry: Reference) -> Element {
+    rsx! {
+        match entry.type_ {
+            EntryType::Article => rsx! {
+                ArticleHelper { entry }
+            },
+            EntryType::Book => rsx! {
+                BookHelper { entry }
+            },
+            EntryType::Thesis | EntryType::MastersThesis | EntryType::PhdThesis => {
+                rsx! {
+                    ThesisHelper { entry }
+                }
+            }
+            EntryType::InProceedings => {
+                rsx! {
+                    InProceedingsHelper { entry }
+                }
+            }
+            EntryType::TechReport => {
+                rsx! {
+                    TechReportHelper { entry }
+                }
+            }
+            _ => rsx! {
+                ArticleHelper { entry }
+            },
         }
     }
 }
@@ -626,6 +640,51 @@ pub fn InProceedingsHelper(entry: Reference) -> Element {
                     span { class: "text-emerald-700 mr-2", "{date}" }
                 } else {
                     span { class: "text-emerald-700 mr-1", "date" }
+                }
+            }
+        }
+    }
+}
+#[component]
+pub fn TechReportHelper(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+
+    rsx! {
+        div { class: "bg-amber-100 border-amber-500 border-l-4",
+            div { class: "card-body",
+                div { class: "flex justify-between items-start",
+                    div { class: "flex items-start",
+                        div { class: "mr-2 text-lg text-amber-800", "TechReport" }
+                        if let Some(title) = entry.title {
+                            span { class: "text-lg text-gray-900 font-serif",
+                                ChunksComp { chunks: title, cite_key: key.clone() }
+                            }
+                        } else {
+                            span { class: "text-lg", "No title available" }
+                        }
+                    }
+                    div { class: "flex items-center flex-shrink-0",
+                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    }
+                }
+                p {
+                    if let Some(authors) = entry.author {
+                        for author in authors {
+                            span { class: "text-blue-700 font-semibold mr-2", "{author} " }
+                        }
+                    } else {
+                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                    }
+                    if let Some(institution) = &entry.institution {
+                        span { class: "text-purple-600 mr-2", "{institution}" }
+                    } else {
+                        span { class: "text-purple-600 mr-2", "Unknown" }
+                    }
+                    if let Some(year) = &entry.year {
+                        span { class: "text-emerald-700 mr-2", "{year}" }
+                    } else {
+                        span { class: "text-emerald-700 mr-1", "year" }
+                    }
                 }
             }
         }
