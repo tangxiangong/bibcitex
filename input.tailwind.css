@@ -108,7 +108,7 @@ body {
     overflow: hidden !important;
 }
 
-.join > * {
+.join>* {
     flex-shrink: 1 !important;
     min-width: 0 !important;
 }
