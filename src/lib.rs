@@ -8,6 +8,7 @@ use dioxus::{
 };
 
 pub mod components;
+pub mod platforms;
 pub mod route;
 pub mod views;
 
