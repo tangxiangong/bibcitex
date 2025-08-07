@@ -1933,6 +1933,9 @@
     .min-h-full {
         min-height: 100%;
     }
+    .w-1\/2 {
+        width: calc(1 / 2 * 100%);
+    }
     .w-24 {
         width: calc(var(--spacing) * 24);
     }
