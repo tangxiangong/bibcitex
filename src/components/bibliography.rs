@@ -44,6 +44,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     });
     let mut name = use_signal(|| "".to_string());
     let mut path = use_signal(|| None::<PathBuf>);
+    let mut description = use_signal(String::new);
     let mut add_path = use_signal(|| false);
     let mut error_message = use_signal(|| Option::<String>::None);
     let name_is_valid = use_memo(move || !name().is_empty() && !exist_names().contains(&name()));
@@ -82,8 +83,13 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
     let save = move |_| {
         let mut state = STATE.write();
+        let des = if description().is_empty() {
+            None
+        } else {
+            Some(description())
+        };
         if let Some(path) = path() {
-            match state.add_update_bibliography(&name(), path) {
+            match state.add_update_bibliography(&name(), path, des) {
                 Ok(_) => {
                     if let Err(e) = state.update_file() {
                         error_message.set(Some(e.to_string()));
@@ -98,7 +104,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
     rsx! {
         div { class: if show() { "modal modal-open" } else { "modal" },
-            div { class: "modal-box",
+            div { class: "modal-box w-1/2",
                 h2 { class: "text-lg font-bold p-4", "添加文献库" }
                 label { class: "input",
                     "名称"
@@ -116,7 +122,6 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                         img { width: 20, src: ERR_ICON }
                     }
                 }
-
                 br {}
                 label {
                     class: format!(
@@ -133,6 +138,19 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                         readonly: true,
                     }
                     button { class: "cursor-pointer", onclick: select_file, "选取文件" }
+                }
+                br {}
+                label { class: "input",
+                    "描述"
+                    input {
+                        class: "grow",
+                        r#type: "text",
+                        placeholder: "可选",
+                        value: "{description}",
+                        oninput: move |event| {
+                            description.set(event.data.value());
+                        },
+                    }
                 }
                 if let Some(error) = error_message() {
                     p { "❌{error}" }
@@ -173,6 +191,7 @@ pub fn BibliographyTable() -> Element {
                     info.path.as_os_str().to_str().unwrap().to_string(),
                     info.path.as_os_str().to_str().unwrap().to_string(),
                     info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    info.description.clone(),
                 )
             })
             .collect::<Vec<_>>()
@@ -211,12 +230,13 @@ pub fn BibliographyTable() -> Element {
                         tr {
                             th { "name" }
                             th { "path" }
-                            th { "update at" }
-                            th {}
+                            th { "description" }
+                            th { "time" }
+                            th { "action" }
                         }
                     }
                     tbody {
-                        for (name , path , path_clone , updated_at) in pairs() {
+                        for (name , path , path_clone , updated_at , description) in pairs() {
                             tr {
                                 td { "{name}" }
                                 td {
@@ -225,6 +245,13 @@ pub fn BibliographyTable() -> Element {
                                         "data-tip": "以默认应用程序打开",
                                         onclick: move |_| open_bib_file(path.clone()),
                                         "{path}"
+                                    }
+                                }
+                                td {
+                                    if let Some(description) = description {
+                                        "{description}"
+                                    } else {
+                                        ""
                                     }
                                 }
                                 td { "{updated_at}" }

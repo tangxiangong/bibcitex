@@ -14,6 +14,9 @@ pub struct BibliographyInfo {
     pub created_at: DateTime<Local>,
     /// Last modified time
     pub updated_at: DateTime<Local>,
+    /// Description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Setting for BibCiTeX
@@ -92,6 +95,7 @@ impl Setting {
         &mut self,
         name: &str,
         path: PathBuf,
+        description: Option<String>,
     ) -> Result<Option<BibliographyInfo>> {
         if !path.exists() {
             return Err(Error::BibNotFound(
@@ -105,6 +109,7 @@ impl Setting {
                     path,
                     created_at: info.created_at,
                     updated_at: Local::now(),
+                    description,
                 },
             ))
         } else {
@@ -115,6 +120,7 @@ impl Setting {
                     path,
                     created_at,
                     updated_at: created_at,
+                    description,
                 },
             ))
         }
@@ -153,7 +159,7 @@ mod tests {
         let mut setting = Setting::default();
         let path = PathBuf::from("../database.bib");
         setting
-            .add_update_bibliography("test", path.clone())
+            .add_update_bibliography("test", path.clone(), None)
             .unwrap();
         assert!(setting.bibliographies.contains_key("test"));
         assert_eq!(setting.bibliographies.get("test").unwrap().path, path);
@@ -165,7 +171,7 @@ mod tests {
         let mut setting = Setting::load();
         let path = PathBuf::from("../database.bib");
         setting
-            .add_update_bibliography("test", path.clone())
+            .add_update_bibliography("test", path.clone(), None)
             .unwrap();
         setting.update_file().unwrap();
         let reload_setting = Setting::load();
