@@ -13,14 +13,14 @@ pub mod route;
 pub mod views;
 
 // icon assets
-pub static LOGO: Asset = asset!("/assets/transparent_logo.png");
-pub static ERR_ICON: Asset = asset!("/assets/icons/error.svg");
-pub static OK_ICON: Asset = asset!("/assets/icons/ok.svg");
-pub static COPY_ICON: Asset = asset!("/assets/icons/copy.svg");
-pub static ADD_ICON: Asset = asset!("/assets/icons/add.svg");
-pub static CANCEL_ICON: Asset = asset!("/assets/icons/cancel.svg");
-pub static DELETE_ICON: Asset = asset!("/assets/icons/delete.svg");
-pub static DETAILS_ICON: Asset = asset!("/assets/icons/detail.svg");
+pub static LOGO: Asset = asset!("assets/transparent_logo.png");
+pub static ERR_ICON: Asset = asset!("assets/icons/error.svg");
+pub static OK_ICON: Asset = asset!("assets/icons/ok.svg");
+pub static COPY_ICON: Asset = asset!("assets/icons/copy.svg");
+pub static ADD_ICON: Asset = asset!("assets/icons/add.svg");
+pub static CANCEL_ICON: Asset = asset!("assets/icons/cancel.svg");
+pub static DELETE_ICON: Asset = asset!("assets/icons/delete.svg");
+pub static DETAILS_ICON: Asset = asset!("assets/icons/detail.svg");
 
 /// global state
 pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
@@ -29,7 +29,7 @@ pub static DRAWER_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 pub static DRAWER_REFERENCE: GlobalSignal<Option<Reference>> = Signal::global(|| None);
 
 // tailwindcss
-pub static TAILWINDCSS: Asset = asset!("/assets/tailwind.css");
+pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
 
 #[component]
 pub fn App() -> Element {
