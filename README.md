@@ -7,7 +7,7 @@
 
 ## 简介
 
-<img src="assets/transparent_logo.png" width="30"> 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/BibTeX.png" width="60"> 文献快捷引用工具。
+<img src="assets/transparent_logo.png" width="50"> 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/BibTeX.png" width="60"> 文献快捷引用工具。
 
 ### 文献类型
 - [x] Article
@@ -17,7 +17,7 @@
 - [ ] InBook
 - [ ] InCollection
 - [ ] Manual
-- [ ] Misc
+- [x] Misc
 - [ ] Proceedings
 - [x] TechReport
 - [x] InProceedings
