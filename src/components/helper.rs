@@ -429,6 +429,11 @@ pub fn HelperComponent(entry: Reference) -> Element {
                     TechReportHelper { entry }
                 }
             }
+            EntryType::Misc => {
+                rsx! {
+                    MiscHelper { entry }
+                }
+            }
             _ => rsx! {
                 ArticleHelper { entry }
             },
@@ -462,7 +467,7 @@ pub fn ArticleHelper(entry: Reference) -> Element {
                         span { class: "text-blue-700 font-semibold mr-2", "{author}" }
                     }
                 } else {
-                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                    span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
                 }
                 if let Some(journal) = &entry.journal {
                     span { class: "text-purple-600 mr-2", "{journal}" }
@@ -472,7 +477,7 @@ pub fn ArticleHelper(entry: Reference) -> Element {
                 if let Some(year) = &entry.year {
                     span { class: "text-emerald-700 mr-2", "{year}" }
                 } else {
-                    span { class: "text-emerald-700 mr-1", "year" }
+                    span { class: "text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -505,7 +510,7 @@ pub fn BookHelper(entry: Reference) -> Element {
                         span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                     }
                 } else {
-                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                    span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
                 }
                 if let Some(publishers) = &entry.publisher {
                     for publisher in publishers {
@@ -517,7 +522,7 @@ pub fn BookHelper(entry: Reference) -> Element {
                 if let Some(year) = &entry.year {
                     span { class: "text-emerald-700 mr-2", "{year}" }
                 } else {
-                    span { class: "text-emerald-700 mr-1", "year" }
+                    span { class: "text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -572,7 +577,7 @@ pub fn ThesisHelper(entry: Reference) -> Element {
                         }
                     }
                 } else {
-                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                    span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
                 }
                 if !school_address.is_empty() {
                     span { class: "text-purple-600 mr-2", "{school_address}" }
@@ -582,7 +587,7 @@ pub fn ThesisHelper(entry: Reference) -> Element {
                 if let Some(year) = &entry.year {
                     span { class: "text-emerald-700 mr-2", "{year}" }
                 } else {
-                    span { class: "text-emerald-700 mr-1", "year" }
+                    span { class: "text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -624,7 +629,7 @@ pub fn InProceedingsHelper(entry: Reference) -> Element {
                         span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                     }
                 } else {
-                    span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                    span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
                 }
                 if let Some(booktitle) = entry.book_title {
                     span { class: "text-purple-600 mr-2",
@@ -639,7 +644,7 @@ pub fn InProceedingsHelper(entry: Reference) -> Element {
                 if !date.is_empty() {
                     span { class: "text-emerald-700 mr-2", "{date}" }
                 } else {
-                    span { class: "text-emerald-700 mr-1", "date" }
+                    span { class: "text-emerald-700 mr-2", "date" }
                 }
             }
         }
@@ -673,7 +678,7 @@ pub fn TechReportHelper(entry: Reference) -> Element {
                             span { class: "text-blue-700 font-semibold mr-2", "{author} " }
                         }
                     } else {
-                        span { class: "text-blue-700 font-semibold mr-1", "Unknown" }
+                        span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
                     }
                     if let Some(institution) = &entry.institution {
                         span { class: "text-purple-600 mr-2", "{institution}" }
@@ -683,7 +688,112 @@ pub fn TechReportHelper(entry: Reference) -> Element {
                     if let Some(year) = &entry.year {
                         span { class: "text-emerald-700 mr-2", "{year}" }
                     } else {
-                        span { class: "text-emerald-700 mr-1", "year" }
+                        span { class: "text-emerald-700 mr-2", "year" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn ArXivHelper(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+
+    let arxiv = match (entry.eprint.clone(), entry.arxiv_primary_class.clone()) {
+        (Some(eprint), Some(primary_class)) => format!("arXiv:{eprint} [{primary_class}]"),
+        (Some(eprint), None) => format!("arXiv:{eprint}"),
+        (None, Some(primary_class)) => format!("arXiv [{primary_class}]"),
+        (None, None) => "arXiv".to_string(),
+    };
+    rsx! {
+        div { class: "bg-gray-100 border-gray-500 border-l-4",
+            div { class: "card-body",
+                div { class: "flex justify-between items-start",
+                    div { class: "flex items-start",
+                        div { class: "mr-2 text-lg text-gray-800", "Misc" }
+                        if let Some(title) = entry.title {
+                            span { class: "text-lg text-gray-900 font-serif",
+                                ChunksComp { chunks: title, cite_key: key.clone() }
+                            }
+                        } else {
+                            span { class: "text-lg", "No title available" }
+                        }
+                    }
+                    div { class: "flex items-center flex-shrink-0",
+                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    }
+                }
+                p {
+                    if let Some(authors) = entry.author {
+                        for author in authors {
+                            span { class: "text-blue-700 font-semibold mr-2", "{author} " }
+                        }
+                    } else {
+                        span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
+                    }
+                    span { class: "text-purple-600 mr-2", "{arxiv}" }
+                    if let Some(year) = &entry.year {
+                        span { class: "text-emerald-700 mr-2", "{year}" }
+                    } else {
+                        span { class: "text-emerald-700 mr-2", "year" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn MiscHelper(entry: Reference) -> Element {
+    let key = &entry.cite_key;
+    let is_arxiv = if let Some(ref prefix) = entry.archive_prefix {
+        prefix == "arXiv"
+    } else {
+        false
+    };
+
+    rsx! {
+        if is_arxiv {
+            ArXivHelper { entry }
+        } else {
+            div { class: "bg-gray-100 border-gray-500 border-l-4",
+                div { class: "card-body",
+                    div { class: "flex justify-between items-start",
+                        div { class: "flex items-start",
+                            div { class: "mr-2 text-lg text-gray-800", "Misc" }
+                            if let Some(title) = entry.title {
+                                span { class: "text-lg text-gray-900 font-serif",
+                                    ChunksComp { chunks: title, cite_key: key.clone() }
+                                }
+                            } else {
+                                span { class: "text-lg", "No title available" }
+                            }
+                        }
+                        div { class: "flex items-center flex-shrink-0",
+                            div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                        }
+                    }
+                    p {
+                        if let Some(authors) = entry.author {
+                            for author in authors {
+                                span { class: "text-blue-700 font-semibold mr-2", "{author} " }
+                            }
+                        } else {
+                            span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
+                        }
+                        if let Some(archive) = entry.archive_prefix {
+                            span { class: "text-purple-700 mr-2", "{archive}" }
+                        } else {
+                            if let Some(how_published) = &entry.how_published {
+                                span { class: "text-purple-700 mr-2", "{how_published}" }
+                            }
+                        }
+                        if let Some(year) = &entry.year {
+                            span { class: "text-emerald-700 mr-2", "{year}" }
+                        } else {
+                            span { class: "text-emerald-700 mr-2", "year" }
+                        }
                     }
                 }
             }
