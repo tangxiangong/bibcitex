@@ -73,6 +73,14 @@ pub struct Reference {
     pub organization: Option<Vec<String>>,
     /// institution
     pub institution: Option<String>,
+    /// eprint
+    pub eprint: Option<String>,
+    /// archivePrefix
+    pub archive_prefix: Option<String>,
+    /// arxiv primaryClass
+    pub arxiv_primary_class: Option<String>,
+    /// how published
+    pub how_published: Option<String>,
 }
 
 impl From<&biblatex::Entry> for Reference {
@@ -204,6 +212,19 @@ impl From<&biblatex::Entry> for Reference {
                 .first()
                 .map(|chunk| chunk.get().to_string())
         });
+        let eprint = entry.eprint().ok();
+        let archive_prefix = entry.eprint_type().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
+        let arxiv_primary_class = parse_optional_field(entry, "primaryclass")
+            .and_then(|chunks| chunks.first().map(|chunk| chunk.get().to_string()));
+        let how_published = entry.how_published().ok().and_then(|chunks| {
+            merge_chunks(chunks.to_owned())
+                .first()
+                .map(|chunk| chunk.get().to_string())
+        });
         Self {
             cite_key: key,
             source,
@@ -235,6 +256,10 @@ impl From<&biblatex::Entry> for Reference {
             month,
             organization,
             institution,
+            eprint,
+            archive_prefix,
+            arxiv_primary_class,
+            how_published,
         }
     }
 }
