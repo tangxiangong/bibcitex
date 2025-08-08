@@ -204,66 +204,67 @@ pub fn Search() -> Element {
 
     // 跟随上下方向键滚动
     use_effect(move || {
-        if let Some(index) = selected_index() {
-            if let Some(container) = scrollable_container() {
-                spawn(async move {
-                    // 等待刷新
-                    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-                    let mut scroll_successful = false;
-                    let mut element_refs = Vec::new();
-                    let target_element_ref;
-                    {
-                        let elements = item_elements.read();
-                        for i in 0..index {
-                            if let Some(element) = elements.get(&i) {
-                                element_refs.push(element.clone());
-                            }
-                        }
-                        target_element_ref = elements.get(&index).cloned();
-                    }
-
-                    let mut cumulative_height = 0.0;
-
-                    // 高度
-                    for element in element_refs {
-                        if let Ok(rect) = element.get_client_rect().await {
-                            cumulative_height += rect.size.height;
-                        } else {
-                            cumulative_height += 56.0;
+        if let Some(index) = selected_index()
+            && let Some(container) = scrollable_container()
+        {
+            spawn(async move {
+                // 等待刷新
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                let mut scroll_successful = false;
+                let mut element_refs = Vec::new();
+                let target_element_ref;
+                {
+                    let elements = item_elements.read();
+                    for i in 0..index {
+                        if let Some(element) = elements.get(&i) {
+                            element_refs.push(element.clone());
                         }
                     }
-                    let target_height = if let Some(target_element) = target_element_ref {
-                        if let Ok(rect) = target_element.get_client_rect().await {
-                            rect.size.height
-                        } else {
-                            56.0
-                        }
+                    target_element_ref = elements.get(&index).cloned();
+                }
+
+                let mut cumulative_height = 0.0;
+
+                // 高度
+                for element in element_refs {
+                    if let Ok(rect) = element.get_client_rect().await {
+                        cumulative_height += rect.size.height;
+                    } else {
+                        cumulative_height += 56.0;
+                    }
+                }
+                let target_height = if let Some(target_element) = target_element_ref {
+                    if let Ok(rect) = target_element.get_client_rect().await {
+                        rect.size.height
                     } else {
                         56.0
-                    };
-
-                    if let Ok(container_rect) = container.get_client_rect().await {
-                        let container_height = container_rect.size.height;
-                        let target_center = cumulative_height + (target_height / 2.0);
-                        let container_center = container_height / 2.0;
-                        let scroll_position = (target_center - container_center).max(0.0);
-
-                        if container
-                            .scroll(
-                                dioxus::html::geometry::PixelsVector2D::new(0.0, scroll_position),
-                                dioxus::html::ScrollBehavior::Smooth,
-                            )
-                            .await
-                            .is_ok()
-                        {
-                            scroll_successful = true;
-                        }
                     }
+                } else {
+                    56.0
+                };
 
-                    // 备选方案
-                    if !scroll_successful {
-                        let eval_instance = document::eval(&format!(
-                            r#"
+                if let Ok(container_rect) = container.get_client_rect().await {
+                    let container_height = container_rect.size.height;
+                    let target_center = cumulative_height + (target_height / 2.0);
+                    let container_center = container_height / 2.0;
+                    let scroll_position = (target_center - container_center).max(0.0);
+
+                    if container
+                        .scroll(
+                            dioxus::html::geometry::PixelsVector2D::new(0.0, scroll_position),
+                            dioxus::html::ScrollBehavior::Smooth,
+                        )
+                        .await
+                        .is_ok()
+                    {
+                        scroll_successful = true;
+                    }
+                }
+
+                // 备选方案
+                if !scroll_successful {
+                    let eval_instance = document::eval(&format!(
+                        r#"
                             setTimeout(() => {{
                                 const item = document.querySelector('[data-item-index="{index}"]');
                                 if (item) {{
@@ -275,11 +276,10 @@ pub fn Search() -> Element {
                                 }}
                             }}, 10);
                             "#
-                        ));
-                        let _ = eval_instance.await;
-                    }
-                });
-            }
+                    ));
+                    let _ = eval_instance.await;
+                }
+            });
         }
     });
 

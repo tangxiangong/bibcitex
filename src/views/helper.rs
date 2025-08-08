@@ -161,14 +161,13 @@ pub fn Helper() -> Element {
             event: WindowEvent::Focused(focused),
             ..
         } = event
+            && !focused
         {
-            if !focused {
-                // 窗口失去焦点时自动关闭
-                let window = use_window();
-                window.close();
-                // 清除窗口状态
-                HELPER_WINDOW.write().take();
-            }
+            // 窗口失去焦点时自动关闭
+            let window = use_window();
+            window.close();
+            // 清除窗口状态
+            HELPER_WINDOW.write().take();
         }
     });
 
