@@ -45,6 +45,7 @@ biblatex = { workspace = true }
 dioxus = { workspace = true }
 enigo = { workspace = true }
 itertools = { workspace = true }
+once_cell = { workspace = true }
 opener = { workspace = true }
 pastey = "0.1"
 rfd = { workspace = true }
