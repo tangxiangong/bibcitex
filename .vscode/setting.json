@@ -1,11 +1,13 @@
 {
-    "tailwindCSS.experimental.classRegex": [
-        "class:\\s*\"([^\"]*)",
-        "class:\\s*if[^{]*{[^}]*\"([^\"]*)",
-        "class:\\s*else[^{]*{[^}]*\"([^\"]*)"
-    ],
-    "tailwindCSS.includeLanguages": {
-        "*.rs": "html",
-        "rust": "html"
-    }
+  "tailwindCSS.experimental.classRegex": [
+    "class:\\s*\"([^\"]*)",
+    "class:\\s*if[^{]*\\{\\s*\"([^\"]*)\"[^}]*\\}\\s*else\\s*\\{[^}]*\\}",
+    "class:\\s*if[^{]*\\{[^}]*\\}\\s*else\\s*\\{\\s*\"([^\"]*)\"[^}]*\\}",
+    "class:\\s*if[^{]*\\{\\s*\"([^\"]*)\"",
+    "else\\s*\\{\\s*\"([^\"]*)\"[^}]*\\}"
+  ],
+  "tailwindCSS.includeLanguages": {
+    "*.rs": "html",
+    "rust": "html"
+  }
 }
