@@ -572,9 +572,7 @@ pub fn ThesisHelper(entry: Reference) -> Element {
             p { class: "text-xs",
                 if let Some(authors) = entry.author {
                     for author in authors {
-                        span { class: if entry.type_ == EntryType::MastersThesis { "text-blue-700 font-semibold mr-2" } else { "text-blue-700 font-semibold mr-2" },
-                            "{author} "
-                        }
+                        span { class: "text-blue-700 font-semibold mr-2", "{author}" }
                     }
                 } else {
                     span { class: "text-blue-700 font-semibold mr-2", "Unknown" }

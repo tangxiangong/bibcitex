@@ -228,8 +228,10 @@ pub fn Article(entry: Reference) -> Element {
         div { class: "bg-blue-100 border-blue-500 border-l-4",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
-                    div { class: "flex items-start",
-                        div { class: "mr-2 text-lg text-blue-800", "Article" }
+                    div { class: "flex items-center",
+                        div { class: "badge badge-outline mr-2 text-lg text-blue-800",
+                            "Article"
+                        }
                         if let Some(title) = entry.title {
                             span { class: "text-lg text-gray-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
@@ -264,22 +266,26 @@ pub fn Article(entry: Reference) -> Element {
                 p {
                     if let Some(authors) = entry.author {
                         for author in authors {
-                            span { class: "text-blue-700 font-semibold mr-2", "{author} " }
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
                         }
                     } else {
-                        span { class: "text-blue-700 font-semibold mr-2", "Unknown" }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "Unknown"
+                        }
                     }
                 }
                 p {
                     if let Some(journal) = &entry.journal {
-                        span { class: "text-purple-600 mr-2", "{journal}" }
+                        span { class: "badge badge-outline text-purple-600 mr-2", "{journal}" }
                     } else {
-                        span { class: "text-purple-600 mr-2", "Unknown" }
+                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
                     }
                     if let Some(year) = &entry.year {
-                        span { class: "text-emerald-700 mr-2", "{year}" }
+                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
                     } else {
-                        span { class: "text-emerald-700 mr-2", "year" }
+                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                     }
                     if let Some(doi) = &entry.doi {
                         button {
@@ -288,7 +294,7 @@ pub fn Article(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open_browser(&doi_url);
                             },
-                            div { class: "text-cyan-600 mr-2", "DOI: {doi}" }
+                            div { class: "badge badge-outline text-cyan-600 mr-2", "DOI: {doi}" }
                         }
                     } else {
                         if let Some(url) = entry.url {
@@ -298,7 +304,9 @@ pub fn Article(entry: Reference) -> Element {
                                 onclick: move |_| {
                                     let _ = opener::open_browser(&url);
                                 },
-                                div { class: "text-cyan-600 mr-2", "URL" }
+                                div { class: "badge badge-outline text-cyan-600 mr-2",
+                                    "URL"
+                                }
                             }
                         }
                     }
@@ -309,7 +317,9 @@ pub fn Article(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open(&file);
                             },
-                            div { class: "text-amber-700 mr-2", "PDF" }
+                            div { class: "badge badge-outline text-amber-700 mr-2",
+                                "PDF"
+                            }
                         }
                     }
 
@@ -324,7 +334,9 @@ pub fn Article(entry: Reference) -> Element {
                                     }
                                 }
                             }
-                            div { class: "text-red-500 cursor-pointer", "{mrclass}" }
+                            div { class: "badge badge-outline text-red-500 cursor-pointer",
+                                "{mrclass}"
+                            }
                         }
                     }
                 }
