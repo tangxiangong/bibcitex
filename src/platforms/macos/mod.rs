@@ -11,15 +11,10 @@ pub mod common;
 pub mod event;
 pub mod panel;
 
-// Re-export for macro usage
-#[doc(hidden)]
+// Re-export for direct usage (no macros)
 pub use objc2;
-#[doc(hidden)]
 pub use objc2_app_kit;
-#[doc(hidden)]
 pub use objc2_foundation;
-#[doc(hidden)]
-pub use pastey;
 
 use objc2::runtime::ProtocolObject;
 use objc2_app_kit::NSWindowDelegate;
@@ -28,18 +23,9 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-// use tauri::{
-//     Manager, Runtime, WebviewWindow,
-//     plugin::{Builder, TauriPlugin},
-// };
 
-pub use builder::{
-    CollectionBehavior,
-    // PanelBuilder,
-    PanelLevel,
-    StyleMask,
-    TrackingAreaOptions,
-};
+pub use builder::{CollectionBehavior, PanelLevel, StyleMask, TrackingAreaOptions};
+pub use panel::SpotlightPanel;
 
 // Re-export commonly used types for convenience
 pub use objc2::runtime::AnyObject;
@@ -167,11 +153,11 @@ pub trait Panel: Send + Sync {
     fn make_first_responder(&self, responder: Option<&objc2_app_kit::NSResponder>) -> bool;
 }
 
-// /// Trait for panels that can be created from a window
-// pub trait FromWindow<R: Runtime>: Panel + Sized {
-//     /// Create panel from a Tauri window
-//     fn from_window(window: WebviewWindow<R>, label: String) -> tauri::Result<Self>;
-// }
+/// Trait for panels that can be created from a window
+pub trait FromWindow: Panel + Sized {
+    /// Create panel from a raw NSWindow pointer
+    fn from_window(ns_window: *mut std::ffi::c_void, label: String) -> Result<Self, String>;
+}
 
 #[allow(dead_code)]
 #[derive(Default)]
@@ -187,58 +173,31 @@ impl Default for WebviewPanelManager {
     }
 }
 
-// pub trait ManagerExt<R: Runtime> {
-//     fn get_webview_panel(&self, label: &str) -> Result<Arc<dyn Panel>, Error>;
-// }
+pub trait ManagerExt {
+    fn get_webview_panel(&self, label: &str) -> Result<Arc<dyn Panel>, Error>;
+    fn register_panel(&self, label: String, panel: Arc<dyn Panel>);
+}
 
 #[derive(Debug)]
 pub enum Error {
     PanelNotFound,
 }
 
-// impl<R: Runtime, T: Manager<R>> ManagerExt<R> for T {
-//     fn get_webview_panel(&self, label: &str) -> Result<Arc<dyn Panel>, Error> {
-//         let manager = self.state::<self::WebviewPanelManager>();
-//         let manager = manager.0.lock().unwrap();
+impl ManagerExt for WebviewPanelManager {
+    fn get_webview_panel(&self, label: &str) -> Result<Arc<dyn Panel>, Error> {
+        let manager = self.0.lock().unwrap();
+        match manager.panels.get(label) {
+            Some(panel) => Ok(panel.clone()),
+            None => Err(Error::PanelNotFound),
+        }
+    }
 
-//         match manager.panels.get(label) {
-//             Some(panel) => Ok(panel.clone()),
-//             None => Err(Error::PanelNotFound),
-//         }
-//     }
-// }
+    fn register_panel(&self, label: String, panel: Arc<dyn Panel>) {
+        let mut manager = self.0.lock().unwrap();
+        manager.panels.insert(label, panel);
+    }
+}
 
-// pub trait WebviewWindowExt<R: Runtime> {
-//     /// Convert window to specific panel type
-//     fn to_panel<P: FromWindow<R> + 'static>(&self) -> tauri::Result<Arc<dyn Panel>>;
-// }
-
-// impl<R: Runtime> WebviewWindowExt<R> for WebviewWindow<R> {
-//     fn to_panel<P: FromWindow<R> + 'static>(&self) -> tauri::Result<Arc<dyn Panel>> {
-//         let label = self.label().to_string();
-//         let panel = P::from_window(self.clone(), label.clone())?;
-//         let arc_panel = Arc::new(panel) as Arc<dyn Panel>;
-
-//         // Register with manager
-//         let manager = self.state::<WebviewPanelManager>();
-//         manager
-//             .0
-//             .lock()
-//             .unwrap()
-//             .panels
-//             .insert(label, arc_panel.clone());
-
-//         Ok(arc_panel)
-//     }
-// }
-
-// /// Initializes the plugin.
-// pub fn init<R: Runtime>() -> TauriPlugin<R> {
-//     Builder::new("nspanel")
-//         .setup(|app, _api| {
-//             app.manage(self::WebviewPanelManager::default());
-
-//             Ok(())
-//         })
-//         .build()
-// }
+/// Global panel manager instance
+pub static PANEL_MANAGER: once_cell::sync::Lazy<WebviewPanelManager> =
+    once_cell::sync::Lazy::new(WebviewPanelManager::default);
