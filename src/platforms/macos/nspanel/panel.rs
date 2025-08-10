@@ -6,7 +6,7 @@
 // Copyright (c) 2023 - Present Victor Aremu
 // Licensed under MIT OR MIT/Apache-2.0
 
-use crate::platforms::macos::{FromWindow, Panel};
+use super::{FromWindow, Panel};
 use objc2::{
     ClassType, DeclaredClass, define_class, msg_send, rc::Retained, runtime::ProtocolObject,
 };
