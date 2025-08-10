@@ -48,14 +48,14 @@ impl std::fmt::Display for FilterType {
 
 #[component]
 pub fn References() -> Element {
-    let total_num = CURRENT_REF().unwrap().len();
+    let total_num = CURRENT_REF().unwrap_or_default().len();
     let mut query = use_signal(String::new);
     let mut is_input = use_signal(|| false);
     let mut search_result = use_signal(Vec::<Reference>::new);
     let mut filter_field = use_signal(|| FilterField::All);
     let mut filter_type = use_signal(|| FilterType::All);
     let refs = use_memo(move || {
-        let total_refs = CURRENT_REF().unwrap();
+        let total_refs = CURRENT_REF().unwrap_or_default();
         match filter_type() {
             FilterType::Book => filter_book(total_refs),
             FilterType::Article => filter_article(total_refs),
