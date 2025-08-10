@@ -27,13 +27,16 @@
 ## 开发路线图
 ### 进行中
 - [x] 文献库删除功能
+- [ ] 跨应用粘贴功能
+  - [x] macOS
+  - [x] Windows
+  - [ ] Linux
 - [ ] 完整的搜索功能优化
 - [ ] 完善文献分类和标签系统
 
 ### 计划中
-- [ ] Spotlight 风格的全局搜索助手
-- [ ] macOS 系统级无焦点窗口实现
-- [ ] 快捷键自定义设置
+- [ ] macOS 系统级无焦点窗口实现 (NSPanel)
+- [ ] 自定义设置
 
 ### UI/UX 改进
 - [ ] 完整的 UI 设计系统
@@ -41,7 +44,7 @@
 - [ ] 更好的响应式设计
 
 ## 第三方代码版权声明 (Third-Party Code Attribution)
-### [src/platforms/macos](./src/platforms/macos)
+### [src/platforms/macos/nspanel](./src/platforms/macos/nspanel)
 - **来源(Source)**: [ahkohd/tauri-nspanel](https://github.com/ahkohd/tauri-nspanel) (v2.1)
 - **作者(Author)**: Victor Aremu (ahkohd)
 - **许可协议(License)**: [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) OR [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0)
@@ -53,6 +56,31 @@
 - **主要修改(Key Modifications)**:
   - 从 Tauri 框架适配为 Dioxus 框架 (Adapted from Tauri framework to Dioxus framework)
   - 移除 Tauri 特定的运行时集成 (Removed Tauri-specific runtime integration)
+
+### [src/platforms/macos/paste.rs](./src/platforms/macos/paste.rs)
+- **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
+- **作者(Author)**: EcoPasteHub
+- **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
+- **用途(Usage)**: 实现跨应用的粘贴功能 (Cross-application paste functionality)
+- **版权声明(Copyright)**:
+  ```
+  Copyright (c) EcoPasteHub
+  ```
+- **主要修改(Key Modifications)**:
+  - 将过时的 `objc` 和 `cocoa` 替换为 `objc2` 相关的 API (Replace deprecated `objc` and `cocoa` with `objc2` related APIs)
+
+### [src/platforms/windows/paste.rs](./src/platforms/windows/paste.rs)
+- **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
+- **作者(Author)**: EcoPasteHub
+- **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
+- **用途(Usage)**: 实现跨应用的粘贴功能 (Cross-application paste functionality)
+- **版权声明(Copyright)**:
+  ```
+  Copyright (c) EcoPasteHub
+  ```
+- **主要修改(Key Modifications)**:
+  - 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
+
 
 详细的归属信息请参阅 [NOTICE](./NOTICE) 文件 (For detailed attribution information, please refer to the [NOTICE](./NOTICE) file)。
 

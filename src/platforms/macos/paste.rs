@@ -1,3 +1,11 @@
+// Copyright (c) 2025 BibCiTeX Contributors
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// This file contains code derived from EcoPaste
+// Original source: https://github.com/EcoPasteHub/EcoPaste
+// Copyright (c) EcoPasteHub
+// Licensed under Apache-2.0
+
 #![allow(dead_code)]
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use objc2::{

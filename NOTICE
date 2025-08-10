@@ -4,7 +4,7 @@ This software includes third-party code with the following attributions:
 
 ================================================================================
 
-Module: src/platforms/macos
+Module: src/platforms/macos/nspanel
 Source: ahkohd/tauri-nspanel (https://github.com/ahkohd/tauri-nspanel)
 Version: v2.1
 License: MIT OR Apache-2.0
@@ -22,6 +22,25 @@ Usage && Modifications:
 - Modified API interfaces for BibCiTeX application requirements
 - Removed Tauri-specific dependencies and runtime integration
 - Enhanced panel management for citation helper functionality
+
+================================================================================
+
+Module: src/platforms/macos/paste.rs && src/platforms/windows/paste.rs
+Source: EcoPasteHub/EcoPaste (https://github.com/EcoPasteHub/EcoPaste)
+License: Apache-2.0
+Copyright: Copyright (c) EcoPasteHub
+
+The module `src/platforms/macos/paste.rs` and `src/platforms/windows/paste.rs` are copied and modified from EcoPasteHub's
+project EcoPaste (https://github.com/EcoPasteHub/EcoPaste).
+
+Original License Information:
+- Apache License 2.0: https://github.com/EcoPasteHub/EcoPaste/blob/main/LICENSE
+
+Usage && Modifications:
+- Implemented Cross-application paste functionality
+- Replaced deprecated API interfaces with modern alternatives:
+  - `cocoa` && `objc` -> `objc2` && `objc2-foundation` for macOS
+  - `winapi` -> `windows` for Windows
 
 ================================================================================
 
