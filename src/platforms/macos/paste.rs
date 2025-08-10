@@ -9,8 +9,9 @@ use objc2_foundation::{NSDictionary, NSNotification, NSString};
 use std::process::Command;
 use std::{sync::Mutex, thread, time::Duration};
 
+use crate::platforms::MAIN_WINDOW_TITLE;
+
 static PREVIOUS_WINDOW: Mutex<Option<i32>> = Mutex::new(None);
-static MAIN_WINDOW_TITLE: &str = "BibCiTeX";
 
 extern "C" fn application_did_activate(
     _self: &AnyObject,
