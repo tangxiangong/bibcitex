@@ -171,6 +171,10 @@ pub fn Search() -> Element {
                     if let Some(index) = selected_index() {
                         let text = result()[index].cite_key.clone();
                         let mut clipboard = Clipboard::new().unwrap();
+
+                        // 保存原有剪贴板内容
+                        let original_content = clipboard.get_text().unwrap_or_default();
+
                         clipboard.set_text(text.to_string()).unwrap();
 
                         let window = use_window();
@@ -179,7 +183,13 @@ pub fn Search() -> Element {
 
                         let paste_result = focus_previous_window();
                         if paste_result.is_ok() {
-                            let _ = clipboard.set_text("");
+                            // 延迟恢复原有剪贴板内容，确保粘贴操作完成
+                            std::thread::spawn(move || {
+                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                if let Ok(mut clipboard) = Clipboard::new() {
+                                    let _ = clipboard.set_text(original_content);
+                                }
+                            });
                         }
                     }
                 }
