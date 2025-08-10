@@ -1,4 +1,5 @@
 [application]
+name = "BibCiTeX"
 
 [bundle]
 identifier = "com.tangxiangong.bibcitex.app"
@@ -10,24 +11,3 @@ icon = [
     "assets/app-icons/icon.icns",
     "assets/app-icons/icon.ico",
 ]
-
-
-[web.app]
-
-# HTML title tag content
-title = "BibCiTeX"
-
-# include `assets` in web platform
-[web.resource]
-
-# Additional CSS style files
-style = ["assets/tailwind.css"]
-
-# Additional JavaScript files
-script = []
-
-[web.resource.dev]
-
-# Javascript code file
-# serve: [dev-server] only
-script = []

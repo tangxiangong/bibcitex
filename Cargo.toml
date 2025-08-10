@@ -67,19 +67,7 @@ windows-sys = { version = "0.60.2", features = [
 [lib]
 name = "bibcitex_ui"
 
-[profile]
-
 [profile.release]
 panic = "abort"
 codegen-units = 1
 lto = true
-
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"
