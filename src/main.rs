@@ -1,6 +1,8 @@
-use bibcitex_ui::App;
+use bibcitex_ui::{App, utils::observe_app};
 
 fn main() {
+    observe_app();
+
     let index_html = r#"
         <!doctype html>
         <html data-theme="nord">

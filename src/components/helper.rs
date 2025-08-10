@@ -1,6 +1,7 @@
 use crate::{
     LOGO,
     components::ChunksComp,
+    utils::focus_previous_window,
     views::{HELPER_BIB, HELPER_WINDOW, set_helper_bib},
 };
 use arboard::Clipboard;
@@ -166,19 +167,20 @@ pub fn Search() -> Element {
         if !query().is_empty() {
             match evt.key() {
                 Key::Enter => {
+                    // TODO: 错误处理
                     if let Some(index) = selected_index() {
                         let text = result()[index].cite_key.clone();
+                        let mut clipboard = Clipboard::new().unwrap();
+                        clipboard.set_text(text.to_string()).unwrap();
+
                         let window = use_window();
                         window.close();
                         HELPER_WINDOW.write().take();
-                        let mut clipboard = Clipboard::new().unwrap();
-                        clipboard.set_text(text.to_string()).unwrap();
-                        // spawn(async move {
-                        //     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                        //     if let Err(e) = paste_to_active_app(&text) {
-                        //         eprintln!("跨应用粘贴失败: {e}");
-                        //     }
-                        // });
+
+                        let paste_result = focus_previous_window();
+                        if paste_result.is_ok() {
+                            let _ = clipboard.set_text("");
+                        }
                     }
                 }
                 Key::ArrowDown => {
