@@ -22,6 +22,7 @@ dependencies = [
  "rfd",
  "tokio",
  "windows-sys 0.60.2",
+ "x11",
 ]
 
 [[package]]
