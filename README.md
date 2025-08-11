@@ -1,13 +1,13 @@
 <div align=center>
 <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
 <p align="center">
-    <img src="assets/BibTeX.png" width="60">  文献快捷引用工具
+    <img src="assets/BibTeX.png" width="60" style="vertical-align: middle;">  文献快捷引用工具
 </p>
 </div>
 
 ## 简介
 
-<img src="assets/transparent_logo.png" width="50"> 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/BibTeX.png" width="60"> 文献快捷引用工具。
+<img src="assets/transparent_logo.png" width="50" style="vertical-align: middle;"> 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15" style="vertical-align: middle;"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/BibTeX.png" width="60" style="vertical-align: middle;"> 文献快捷引用工具。
 
 ### 文献类型
 - [x] Article
@@ -27,10 +27,10 @@
 ## 开发路线图
 ### 进行中
 - [x] 文献库删除功能
-- [ ] 跨应用粘贴功能
+- [x] 跨应用粘贴功能
   - [x] macOS
   - [x] Windows
-  - [ ] Linux
+  - [x] Linux (x11)
 - [ ] 完整的搜索功能优化
 - [ ] 完善文献分类和标签系统
 
@@ -57,7 +57,7 @@
   - 从 Tauri 框架适配为 Dioxus 框架 (Adapted from Tauri framework to Dioxus framework)
   - 移除 Tauri 特定的运行时集成 (Removed Tauri-specific runtime integration)
 
-### [src/platforms/macos/paste.rs](./src/platforms/macos/paste.rs)
+### [paste.rs]([macOS](./src/platforms/macos/paste.rs), [Windows](./src/platforms/windows/paste.rs), [Linux (x11)](./src/platforms/linux/paste.rs))
 - **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
 - **作者(Author)**: EcoPasteHub
 - **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
@@ -66,20 +66,10 @@
   ```
   Copyright (c) EcoPasteHub
   ```
-- **主要修改(Key Modifications)**:
-  - 将过时的 `objc` 和 `cocoa` 替换为 `objc2` 相关的 API (Replace deprecated `objc` and `cocoa` with `objc2` related APIs)
-
-### [src/platforms/windows/paste.rs](./src/platforms/windows/paste.rs)
-- **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
-- **作者(Author)**: EcoPasteHub
-- **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
-- **用途(Usage)**: 实现跨应用的粘贴功能 (Cross-application paste functionality)
-- **版权声明(Copyright)**:
-  ```
-  Copyright (c) EcoPasteHub
-  ```
-- **主要修改(Key Modifications)**:
-  - 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
+- **主要修改(Modifications)**:
+  -  macOS: 将过时的 `objc` 和 `cocoa` 替换为 `objc2` 相关的 API (Replace deprecated `objc` and `cocoa` with `objc2` related APIs)
+  - Windows: 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
+  - Linux (x11): 将 `rdev` 替换为 `enigo`  (Replace `rdev` with `enigo`)
 
 
 详细的归属信息请参阅 [NOTICE](./NOTICE) 文件 (For detailed attribution information, please refer to the [NOTICE](./NOTICE) file)。

@@ -25,7 +25,7 @@ Usage && Modifications:
 
 ================================================================================
 
-Module: src/platforms/macos/paste.rs && src/platforms/windows/paste.rs
+Module: src/platforms/macos/paste.rs && src/platforms/windows/paste.rs && src/platforms/linux/paste.rs
 Source: EcoPasteHub/EcoPaste (https://github.com/EcoPasteHub/EcoPaste)
 License: Apache-2.0
 Copyright: Copyright (c) EcoPasteHub
@@ -41,6 +41,7 @@ Usage && Modifications:
 - Replaced deprecated API interfaces with modern alternatives:
   - `cocoa` && `objc` -> `objc2` && `objc2-foundation` for macOS
   - `winapi` -> `windows` for Windows
+  - `rdev` -> `enigo` for Linux (x11)
 
 ================================================================================
 
