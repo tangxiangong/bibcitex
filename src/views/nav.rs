@@ -49,6 +49,7 @@ pub fn NavBar() -> Element {
                     button { class: "btn btn-outline", onclick: helper,
                         "快捷助手"
                         kbd { class: "kbd", "{cmd_ctrl}" }
+                        kbd { class: "kbd", "⇧" }
                         kbd { class: "kbd", "K" }
                     }
                 }

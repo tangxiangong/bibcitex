@@ -36,7 +36,7 @@ pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
 pub fn App() -> Element {
     // TODO: Error handling
     let _ = use_global_shortcut(
-        (ModifiersState::SUPER, KeyCode::K),
+        (ModifiersState::SUPER | ModifiersState::SHIFT, KeyCode::K),
         move |hotkey_state: HotKeyState| {
             if hotkey_state == HotKeyState::Pressed {
                 spawn(async move {
