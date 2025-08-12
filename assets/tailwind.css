@@ -2298,14 +2298,14 @@
   .bg-pink-100 {
     background-color: var(--color-pink-100);
   }
-  .bg-primary {
-    background-color: var(--color-primary);
-  }
   .bg-purple-100 {
     background-color: var(--color-purple-100);
   }
   .bg-rose-100 {
     background-color: var(--color-rose-100);
+  }
+  .bg-success {
+    background-color: var(--color-success);
   }
   .bg-transparent {
     background-color: transparent;
@@ -2718,10 +2718,59 @@
       }
     }
   }
-  .hover\:bg-base-200 {
+  .hover\:bg-amber-100 {
     &:hover {
       @media (hover: hover) {
-        background-color: var(--color-base-200);
+        background-color: var(--color-amber-100);
+      }
+    }
+  }
+  .hover\:bg-blue-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-blue-100);
+      }
+    }
+  }
+  .hover\:bg-emerald-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-emerald-100);
+      }
+    }
+  }
+  .hover\:bg-gray-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-gray-100);
+      }
+    }
+  }
+  .hover\:bg-pink-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-pink-100);
+      }
+    }
+  }
+  .hover\:bg-purple-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-purple-100);
+      }
+    }
+  }
+  .hover\:bg-rose-100 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-rose-100);
+      }
+    }
+  }
+  .hover\:bg-success {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-success);
       }
     }
   }
