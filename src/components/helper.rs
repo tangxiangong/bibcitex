@@ -404,15 +404,13 @@ pub fn Search() -> Element {
                                         };
                                         if selected_index() == Some(index) {
                                             format!(
-                                                "block {} rounded-lg text-gray-900 cursor-pointer transition-colors duration-100
-                                                                                                                                                                                                                                                                                                                                                                                border border-2 {}",
+                                                "block {} rounded-lg text-gray-900 cursor-pointer transition-colors duration-100 border border-2 {}",
                                                 bg_color,
                                                 border_color,
                                             )
                                         } else {
                                             format!(
-                                                "block hover:{} cursor-pointer hover:rounded-lg transition-colors duration-100
-                                                                                                                                                                                                                                                                                                                                                                                hover:border hover:border-2 {}",
+                                                "block hover:{} cursor-pointer hover:rounded-lg transition-colors duration-100 hover:border hover:border-2 {}",
                                                 bg_color,
                                                 border_color,
                                             )
