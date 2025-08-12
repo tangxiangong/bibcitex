@@ -2,26 +2,9 @@ use crate::{
     COPY_ICON, DETAILS_ICON, DRAWER_OPEN, DRAWER_REFERENCE, ERR_ICON, OK_ICON,
     components::InlineMath,
 };
-use bibcitex_core::{MSC_MAP, bib::Reference, parse_code};
+use bibcitex_core::bib::Reference;
 use biblatex::{Chunk, EntryType};
 use dioxus::prelude::*;
-
-#[component]
-fn MRClass(text: Vec<String>) -> Element {
-    rsx! {
-        div { class: "w-fit",
-            if text.is_empty() {
-                p { "The MR Class code is not available" }
-            } else {
-                ul {
-                    for text in text {
-                        li { class: "text-left", "{text}" }
-                    }
-                }
-            }
-        }
-    }
-}
 
 #[component]
 pub fn ChunksComp(chunks: Vec<Chunk>, cite_key: String) -> Element {
@@ -126,24 +109,6 @@ pub fn Unimplemented(entry: Reference) -> Element {
             });
         }
     };
-
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
@@ -254,17 +219,6 @@ pub fn Unimplemented(entry: Reference) -> Element {
                             }
                         }
                     }
-
-                    if let Some(mrclass) = entry.mrclass {
-                        div { class: "tooltip",
-                            div { class: "tooltip-content",
-                                MRClass { text: msc_text }
-                            }
-                            div { class: "badge badge-outline text-red-500 cursor-pointer",
-                                "{mrclass}"
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -289,23 +243,6 @@ fn UnimplementedDrawer(entry: Reference) -> Element {
     } else {
         "".to_string()
     };
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     rsx! {
         div {
             div { class: "collapse collapse-arrow",
@@ -399,31 +336,6 @@ fn UnimplementedDrawer(entry: Reference) -> Element {
                                 td { class: "text-right", "Year" }
                                 if let Some(year) = entry.year {
                                     td { "{year}" }
-                                } else {
-                                    td { "" }
-                                }
-                            }
-                            tr {
-                                td { class: "text-right", "MR Class" }
-                                if let Some(mrclass) = entry.mrclass {
-                                    tr {
-                                        td {
-                                            div { class: "tooltip",
-                                                div { class: "tooltip-content",
-                                                    if msc_text.is_empty() {
-                                                        p { "The MR Class code is not available" }
-                                                    } else {
-                                                        for text in msc_text {
-                                                            p { class: "text-left",
-                                                                "{text}"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                div { class: "break-all", "{mrclass}" }
-                                            }
-                                        }
-                                    }
                                 } else {
                                     td { "" }
                                 }
@@ -543,24 +455,6 @@ pub fn Article(entry: Reference) -> Element {
             });
         }
     };
-
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
@@ -671,17 +565,6 @@ pub fn Article(entry: Reference) -> Element {
                             }
                         }
                     }
-
-                    if let Some(mrclass) = entry.mrclass {
-                        div { class: "tooltip",
-                            div { class: "tooltip-content",
-                                MRClass { text: msc_text }
-                            }
-                            div { class: "badge badge-outline text-red-500 cursor-pointer",
-                                "{mrclass}"
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -706,23 +589,6 @@ fn ArticleDrawer(entry: Reference) -> Element {
     } else {
         "".to_string()
     };
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     rsx! {
         div {
             div { class: "collapse collapse-arrow",
@@ -816,31 +682,6 @@ fn ArticleDrawer(entry: Reference) -> Element {
                                 td { class: "text-right", "Year" }
                                 if let Some(year) = entry.year {
                                     td { "{year}" }
-                                } else {
-                                    td { "" }
-                                }
-                            }
-                            tr {
-                                td { class: "text-right", "MR Class" }
-                                if let Some(mrclass) = entry.mrclass {
-                                    tr {
-                                        td {
-                                            div { class: "tooltip",
-                                                div { class: "tooltip-content",
-                                                    if msc_text.is_empty() {
-                                                        p { "The MR Class code is not available" }
-                                                    } else {
-                                                        for text in msc_text {
-                                                            p { class: "text-left",
-                                                                "{text}"
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                div { class: "break-all", "{mrclass}" }
-                                            }
-                                        }
-                                    }
                                 } else {
                                     td { "" }
                                 }
@@ -960,24 +801,6 @@ pub fn Book(entry: Reference) -> Element {
             });
         }
     };
-
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     let doi_url = if let Some(doi) = entry.doi.clone() {
         format!("https://doi.org/{doi}")
     } else {
@@ -1094,17 +917,6 @@ pub fn Book(entry: Reference) -> Element {
                             }
                         }
                     }
-
-                    if let Some(mrclass) = entry.mrclass {
-                        div { class: "tooltip",
-                            div { class: "tooltip-content",
-                                MRClass { text: msc_text }
-                            }
-                            div { class: "badge badge-outline text-red-500 cursor-pointer",
-                                "{mrclass}"
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -1120,23 +932,6 @@ fn BookDrawer(entry: Reference) -> Element {
     } else {
         "".to_string()
     };
-    let msc_text = if let Some(ref raw) = entry.mrclass {
-        if MSC_MAP.is_empty() {
-            Vec::new()
-        } else {
-            let codes = parse_code(raw);
-            let mut texts = Vec::with_capacity(codes.len() + 1);
-            for code in codes {
-                if let Some(text) = MSC_MAP.get(&code) {
-                    texts.push(text.clone());
-                }
-            }
-            texts
-        }
-    } else {
-        Vec::new()
-    };
-
     rsx! {
         div {
             div { class: "collapse collapse-arrow",
@@ -1244,27 +1039,6 @@ fn BookDrawer(entry: Reference) -> Element {
                                 td { class: "text-right", "ISBN" }
                                 if let Some(isbn) = entry.isbn {
                                     td { "{isbn}" }
-                                } else {
-                                    td { "" }
-                                }
-                            }
-                            tr {
-                                td { class: "text-right", "MR Class" }
-                                if let Some(mrclass) = entry.mrclass {
-                                    td {
-                                        div { class: "tooltip",
-                                            div { class: "tooltip-content",
-                                                if msc_text.is_empty() {
-                                                    p { "The MR Class code is not available" }
-                                                } else {
-                                                    for text in msc_text {
-                                                        p { class: "text-left", "{text}" }
-                                                    }
-                                                }
-                                            }
-                                            div { class: "break-all", "{mrclass}" }
-                                        }
-                                    }
                                 } else {
                                     td { "" }
                                 }
