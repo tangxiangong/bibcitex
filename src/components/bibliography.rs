@@ -9,25 +9,77 @@ use bibcitex_core::{
 use dioxus::prelude::*;
 use itertools::Itertools;
 use rfd::FileDialog;
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 #[component]
 pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
     let open_modal = move |_| {
         show_modal.set(true);
     };
+    let mut error_message = use_context_provider(|| Signal::new(None::<String>));
+    let mut is_fading_out = use_signal(|| false);
+    let show_error = use_memo(move || error_message().is_some() || is_fading_out());
+    let mut progress = use_signal(|| 100);
+    use_effect(move || {
+        if error_message().is_some() && !is_fading_out() {
+            progress.set(100);
+            spawn(async move {
+                loop {
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                    let current = progress();
+                    if current == 0 {
+                        // 开始渐出动画
+                        is_fading_out.set(true);
+                        // 等待渐出动画完成（300ms）
+                        tokio::time::sleep(Duration::from_millis(300)).await;
+                        // 清除状态
+                        progress.set(100);
+                        error_message.set(None);
+                        is_fading_out.set(false);
+                        break;
+                    } else {
+                        progress.set(current - 1);
+                    }
+                }
+            });
+        }
+    });
     rsx! {
-        div {
-            h2 { class: "p-4 text-lg",
+        div { class: "relative",
+            h2 { class: "p-4 text-lg flex items-center",
                 "Bibliographies"
                 button {
-                    class: "tooltip tooltip-right ml-2 cursor-pointer",
+                    class: "tooltip tooltip-right ml-2 cursor-pointer flex items-center",
                     "data-tip": "Add bibliography",
                     onclick: open_modal,
-                    img { width: 14, src: ADD_ICON }
+                    img { width: 16, src: ADD_ICON }
                 }
             }
             BibliographyTable {}
+            if show_error() {
+                div { class: if is_fading_out() { "absolute top-2 right-2 w-1/3 z-10 bg-base-100 animate-fade-out indicator" } else { "absolute top-2 right-2 w-1/3 z-10 bg-base-100 animate-fade-in indicator" },
+                    div { class: "indicator-item",
+                        button {
+                            class: "cursor-pointer rounded-full",
+                            onclick: move |_| {
+                                is_fading_out.set(true);
+                            },
+                            img { width: 10, src: ERR_ICON }
+                        }
+                    }
+                    div {
+                        role: "alert",
+                        class: "alert alert-error alert-outline flex justify-between items-center transition-all duration-300 ease-in-out",
+                        p { class: "flex break-all", "{error_message().unwrap_or_default()}" }
+                        div {
+                            class: "radial-progress flex flex-shrink-0",
+                            style: "--value:{progress()}; --size:1.5rem; --thickness:2px;",
+                            aria_valuenow: "{progress()}",
+                            role: "progressbar",
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -153,9 +205,8 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                     }
                 }
                 if let Some(error) = error_message() {
-                    p { "❌{error}" }
+                    div { role: "alert", class: "alert alert-error", "{error}" }
                 }
-
                 div { class: "modal-action p-3",
                     button { class: "btn btn-soft btn-error", onclick: close_modal,
                         img { width: 20, src: CANCEL_ICON }
@@ -177,7 +228,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
 
 #[component]
 pub fn BibliographyTable() -> Element {
-    let mut error_message = use_signal(|| None::<String>);
+    let mut error_message = use_context::<Signal<Option<String>>>();
     let navigator = use_navigator();
     let pairs = use_memo(|| {
         let state = STATE.read();
@@ -192,6 +243,7 @@ pub fn BibliographyTable() -> Element {
                     info.path.as_os_str().to_str().unwrap().to_string(),
                     info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
                     info.description.clone(),
+                    info.path.exists(),
                 )
             })
             .collect::<Vec<_>>()
@@ -207,19 +259,25 @@ pub fn BibliographyTable() -> Element {
                 navigator.push(Route::References {});
             }
             Err(e) => {
-                error_message.set(Some(format!("❌ 解析文件失败: {e}")));
+                error_message.set(Some(format!("解析文件失败: {e}")));
             }
         }
     };
 
-    let delete_bib = |bib_name: String| {
+    let mut delete_bib = move |bib_name: String| {
         let mut state = STATE.write();
         state.remove_bibliography(&bib_name);
-        let _ = state.update_file();
+        let result = state.update_file();
+        if let Err(e) = result {
+            error_message.set(Some(e.to_string()));
+        }
     };
 
-    let open_bib_file = |path: String| {
-        let _ = opener::open(&path);
+    let mut open_bib_file = move |path: String| {
+        let result = opener::open(&path);
+        if let Err(e) = result {
+            error_message.set(Some(e.to_string()));
+        }
     };
 
     rsx! {
@@ -228,34 +286,51 @@ pub fn BibliographyTable() -> Element {
                 table { class: "table",
                     thead {
                         tr {
-                            th { "name" }
-                            th { "path" }
-                            th { "description" }
-                            th { "time" }
-                            th { "action" }
+                            th { class: "text-center w-1/6", "name" }
+                            th { class: "text-center w-1/6", "path" }
+                            th { class: "text-center w-1/6", "description" }
+                            th { class: "text-center w-1/6", "time" }
+                            th { class: "text-center w-1/6", "action" }
                         }
                     }
                     tbody {
-                        for (name , path , path_clone , updated_at , description) in pairs() {
+                        for (name , path , path_clone , updated_at , description , is_exist) in pairs() {
                             tr {
-                                td { "{name}" }
-                                td {
+                                td { class: "text-center break-all",
+                                    if is_exist {
+                                        div { class: "inline-grid *:[grid-area:1/1]",
+                                            div { class: "status status-success animate-ping" }
+                                            div { class: "status status-success" }
+                                        }
+                                    } else {
+                                        div {
+                                            class: "tooltip tooltip-error tooltip-right cursor-pointer",
+                                            "data-tip": "文件不存在",
+                                            div { class: "inline-grid *:[grid-area:1/1]",
+                                                div { class: "status status-error animate-ping" }
+                                                div { class: "status status-error" }
+                                            }
+                                        }
+                                    }
+                                    span { class: "ml-1", "{name}" }
+                                }
+                                td { class: "text-center break-all",
                                     a {
                                         class: "link tooltip",
-                                        "data-tip": "以默认应用程序打开",
+                                        "data-tip": "以默认应用程序打开 {path}",
                                         onclick: move |_| open_bib_file(path.clone()),
-                                        "{path}"
+                                        "{abbr_path(&path, 40)}"
                                     }
                                 }
-                                td {
+                                td { class: "text-center break-all",
                                     if let Some(description) = description {
                                         "{description}"
                                     } else {
                                         ""
                                     }
                                 }
-                                td { "{updated_at}" }
-                                td {
+                                td { class: "text-center break-all", "{updated_at}" }
+                                td { class: "text-center break-all",
                                     div { class: "flex w-full",
                                         div { class: "grid grow place-items-center",
                                             button {
@@ -264,7 +339,7 @@ pub fn BibliographyTable() -> Element {
                                                 onclick: move |_| open_bib(path_clone.clone()),
                                                 img {
                                                     alt: "details",
-                                                    width: 30,
+                                                    width: 20,
                                                     src: DETAILS_ICON,
                                                 }
                                             }
@@ -277,7 +352,7 @@ pub fn BibliographyTable() -> Element {
                                                 onclick: move |_| delete_bib(name.clone()),
                                                 img {
                                                     alt: "delete",
-                                                    width: 30,
+                                                    width: 20,
                                                     src: DELETE_ICON,
                                                 }
                                             }
@@ -288,10 +363,6 @@ pub fn BibliographyTable() -> Element {
                         }
                     }
                 }
-            }
-
-            if let Some(error) = error_message() {
-                p { "{error}" }
             }
         }
     }
