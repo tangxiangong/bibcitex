@@ -60,6 +60,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     };
 
     let mut container_mounted = use_signal(|| None::<MountedEvent>);
+    let mut main_div_mounted = use_signal(|| None::<MountedEvent>);
 
     // 动态计算内容高度并更新窗口大小
     use_effect(move || {
@@ -79,11 +80,26 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                     content_height.set(200.0);
                 }
             });
+
+            // 自动获得焦点
+            use_effect(move || {
+                if let Some(mounted) = main_div_mounted() {
+                    spawn(async move {
+                        let _ = mounted.set_focus(true).await;
+                    });
+                }
+            });
         }
     });
 
     rsx! {
-        div { class: "w-full h-auto bg-transparent", onkeydown: handle_keydown,
+        div {
+            class: "w-full h-auto bg-transparent",
+            tabindex: "0",
+            onkeydown: handle_keydown,
+            onmounted: move |event| {
+                main_div_mounted.set(Some(event));
+            },
             div {
                 class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden",
                 "data-select-container": "true",
@@ -107,7 +123,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                     div { class: "max-h-[448px] overflow-y-auto",
                         for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
                             div {
-                                class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-primary text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-success text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-success cursor-pointer transition-colors duration-100" },
                                 onclick: move |_| {
                                     selected_bib.set(Some((name.clone(), path.clone(), updated_at.clone())));
                                     if let Ok(parsed_bib) = parse(&path) {
@@ -390,17 +406,25 @@ pub fn Search() -> Element {
                                     key: "{index}",
                                     "data-item-index": "{index}",
                                     class: {
-                                        let (bg_color, border_color) = match kind {
-                                            EntryType::Article => ("bg-blue-100", "border-blue-500"),
-                                            EntryType::Book => ("bg-emerald-100", "border-emerald-500"),
-                                            EntryType::MastersThesis => ("bg-pink-100", "border-pink-500"),
-                                            EntryType::Thesis | EntryType::PhdThesis => {
-                                                ("bg-rose-100", "border-rose-500")
+                                        let (bg_color, hover_bg_color, border_color) = match kind {
+                                            EntryType::Article => ("bg-blue-100", "hover:bg-blue-100", "border-blue-500"),
+                                            EntryType::Book => {
+                                                ("bg-emerald-100", "hover:bg-emerald-100", "border-emerald-500")
                                             }
-                                            EntryType::InProceedings => ("bg-purple-100", "border-purple-500"),
-                                            EntryType::TechReport => ("bg-amber-100", "border-amber-500"),
-                                            EntryType::Misc => ("bg-gray-100", "border-gray-500"),
-                                            _ => ("bg-blue-100", "border-blue-500"),
+                                            EntryType::MastersThesis => {
+                                                ("bg-pink-100", "hover:bg-pink-100", "border-pink-500")
+                                            }
+                                            EntryType::Thesis | EntryType::PhdThesis => {
+                                                ("bg-rose-100", "hover:bg-rose-100", "border-rose-500")
+                                            }
+                                            EntryType::InProceedings => {
+                                                ("bg-purple-100", "hover:bg-purple-100", "border-purple-500")
+                                            }
+                                            EntryType::TechReport => {
+                                                ("bg-amber-100", "hover:bg-amber-100", "border-amber-500")
+                                            }
+                                            EntryType::Misc => ("bg-gray-100", "hover:bg-gray-100", "border-gray-500"),
+                                            _ => ("bg-blue-100", "hover:bg-blue-100", "border-blue-500"),
                                         };
                                         if selected_index() == Some(index) {
                                             format!(
@@ -410,8 +434,8 @@ pub fn Search() -> Element {
                                             )
                                         } else {
                                             format!(
-                                                "block hover:{} cursor-pointer hover:rounded-lg transition-colors duration-100 hover:border hover:border-2 {}",
-                                                bg_color,
+                                                "block {} cursor-pointer hover:rounded-lg transition-colors duration-100 hover:border hover:border-2 {}",
+                                                hover_bg_color,
                                                 border_color,
                                             )
                                         }
