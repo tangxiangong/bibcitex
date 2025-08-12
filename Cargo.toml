@@ -64,6 +64,9 @@ windows-sys = { version = "0.60.2", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 
+[features]
+windows-bundle = []
+
 [lib]
 name = "bibcitex_ui"
 [target."cfg(target_os = \"linux\")".dependencies]

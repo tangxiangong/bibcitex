@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "windows-bundle", windows_subsystem = "windows")]
+
 use bibcitex_ui::{App, utils::observe_app};
 use dioxus::desktop::WindowBuilder;
 
