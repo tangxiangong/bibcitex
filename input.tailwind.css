@@ -1,42 +1,42 @@
 @import "tailwindcss" source(none);
 
 @plugin "daisyui" {
-    theme: nord --default;
+  theme: nord --default;
 }
 
 @plugin "daisyui/theme" {
-    name: "nord";
-    default: true;
-    prefersdark: false;
-    color-scheme: "light";
-    --color-base-100: oklch(95.127% 0.007 260.731);
-    --color-base-200: oklch(93.299% 0.01 261.788);
-    --color-base-300: oklch(89.925% 0.016 262.749);
-    --color-base-content: oklch(32.437% 0.022 264.182);
-    --color-primary: oklch(59.435% 0.077 254.027);
-    --color-primary-content: oklch(11.887% 0.015 254.027);
-    --color-secondary: oklch(69.651% 0.059 248.687);
-    --color-secondary-content: oklch(13.93% 0.011 248.687);
-    --color-accent: oklch(77.464% 0.062 217.469);
-    --color-accent-content: oklch(15.492% 0.012 217.469);
-    --color-neutral: oklch(45.229% 0.035 264.131);
-    --color-neutral-content: oklch(89.925% 0.016 262.749);
-    --color-info: oklch(69.207% 0.062 332.664);
-    --color-info-content: oklch(13.841% 0.012 332.664);
-    --color-success: oklch(76.827% 0.074 131.063);
-    --color-success-content: oklch(15.365% 0.014 131.063);
-    --color-warning: oklch(85.486% 0.089 84.093);
-    --color-warning-content: oklch(17.097% 0.017 84.093);
-    --color-error: oklch(60.61% 0.12 15.341);
-    --color-error-content: oklch(12.122% 0.024 15.341);
-    --radius-selector: 1rem;
-    --radius-field: 0.25rem;
-    --radius-box: 0.5rem;
-    --size-selector: 0.25rem;
-    --size-field: 0.25rem;
-    --border: 1px;
-    --depth: 0;
-    --noise: 0;
+  name: "nord";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(95.127% 0.007 260.731);
+  --color-base-200: oklch(93.299% 0.01 261.788);
+  --color-base-300: oklch(89.925% 0.016 262.749);
+  --color-base-content: oklch(32.437% 0.022 264.182);
+  --color-primary: oklch(59.435% 0.077 254.027);
+  --color-primary-content: oklch(11.887% 0.015 254.027);
+  --color-secondary: oklch(69.651% 0.059 248.687);
+  --color-secondary-content: oklch(13.93% 0.011 248.687);
+  --color-accent: oklch(77.464% 0.062 217.469);
+  --color-accent-content: oklch(15.492% 0.012 217.469);
+  --color-neutral: oklch(45.229% 0.035 264.131);
+  --color-neutral-content: oklch(89.925% 0.016 262.749);
+  --color-info: oklch(69.207% 0.062 332.664);
+  --color-info-content: oklch(13.841% 0.012 332.664);
+  --color-success: oklch(76.827% 0.074 131.063);
+  --color-success-content: oklch(15.365% 0.014 131.063);
+  --color-warning: oklch(85.486% 0.089 84.093);
+  --color-warning-content: oklch(17.097% 0.017 84.093);
+  --color-error: oklch(60.61% 0.12 15.341);
+  --color-error-content: oklch(12.122% 0.024 15.341);
+  --radius-selector: 1rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 @source "./src/**/*.rs";
@@ -44,83 +44,114 @@
 
 /* Custom Spotlight-style ultra blur effect */
 .backdrop-blur-spotlight {
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+}
+
+/* Custom fade-in animation for error messages */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.3s ease-in forwards;
 }
 
 /* Prevent scrolling on input areas */
 .no-scroll {
-    overflow: hidden !important;
-    overscroll-behavior: none !important;
-    -webkit-overflow-scrolling: auto !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  -webkit-overflow-scrolling: auto !important;
 }
 
 .no-scroll::-webkit-scrollbar {
-    display: none !important;
+  display: none !important;
 }
 
 /* Fix horizontal scrolling and right-side whitespace */
 html,
 body {
-    overflow-x: hidden !important;
-    width: 100%;
-    max-width: 100vw;
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
 }
 
 #main {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
 }
 
 /* Prevent horizontal overflow for all elements */
 * {
-    max-width: 100% !important;
-    box-sizing: border-box !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Specific fixes for drawer and content areas */
 .drawer-content {
-    overflow-x: hidden !important;
-    width: 100% !important;
-    max-width: 100% !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .drawer {
-    overflow-x: hidden !important;
+  overflow-x: hidden !important;
 }
 
 /* Prevent text overflow in reference components */
 .truncate {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 /* Fix flexbox overflow issues */
 .flex-1 {
-    min-width: 0 !important;
+  min-width: 0 !important;
 }
 
 /* Ensure join components don't overflow */
 .join {
-    max-width: 100% !important;
-    overflow: hidden !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .join > * {
-    flex-shrink: 1 !important;
-    min-width: 0 !important;
+  flex-shrink: 1 !important;
+  min-width: 0 !important;
 }
 
 /* Fix specific layout containers */
 .drawer-content {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .navbar {
-    width: 100%;
-    max-width: 100vw;
+  width: 100%;
+  max-width: 100vw;
 }
