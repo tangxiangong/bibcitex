@@ -286,11 +286,11 @@ pub fn BibliographyTable() -> Element {
                 table { class: "table",
                     thead {
                         tr {
-                            th { class: "text-center w-1/6", "name" }
-                            th { class: "text-center w-1/6", "path" }
-                            th { class: "text-center w-1/6", "description" }
-                            th { class: "text-center w-1/6", "time" }
-                            th { class: "text-center w-1/6", "action" }
+                            th { class: "text-center", "name" }
+                            th { class: "text-center", "path" }
+                            th { class: "text-center", "description" }
+                            th { class: "text-center", "time" }
+                            th { class: "text-center", "action" }
                         }
                     }
                     tbody {
@@ -344,7 +344,6 @@ pub fn BibliographyTable() -> Element {
                                                 }
                                             }
                                         }
-                                        div { class: "divider divider-horizontal" }
                                         div { class: "grid grow place-items-center",
                                             button {
                                                 class: "tooltip cursor-pointer",
