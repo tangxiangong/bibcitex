@@ -150,7 +150,12 @@ pub fn Search() -> Element {
     let mut scrollable_container = use_signal(|| None::<MountedEvent>);
     let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
     let mut selected_index = use_signal(|| None::<usize>);
-    let keys = use_memo(move || result().iter().map(|item| item.key()).collect::<Vec<_>>());
+    let keys = use_memo(move || {
+        result()
+            .iter()
+            .map(|item| (item.key(), item.type_.clone()))
+            .collect::<Vec<_>>()
+    });
 
     let search = move |e: Event<FormData>| {
         query.set(e.value());
@@ -380,11 +385,39 @@ pub fn Search() -> Element {
                             onmounted: move |event| {
                                 scrollable_container.set(Some(event));
                             },
-                            for (index , (cite_key , bib)) in keys().into_iter().zip(result()).enumerate() {
+                            for (index , ((cite_key , kind) , bib)) in keys().into_iter().zip(result()).enumerate() {
                                 div {
                                     key: "{index}",
                                     "data-item-index": "{index}",
-                                    class: if selected_index() == Some(index) { "block bg-success rounded-lg text-primary-content cursor-pointer transition-colors duration-100" } else { "block hover:bg-base-200 cursor-pointer transition-colors duration-100" },
+                                    class: {
+                                        let (bg_color, border_color) = match kind {
+                                            EntryType::Article => ("bg-blue-100", "border-blue-500"),
+                                            EntryType::Book => ("bg-emerald-100", "border-emerald-500"),
+                                            EntryType::MastersThesis => ("bg-pink-100", "border-pink-500"),
+                                            EntryType::Thesis | EntryType::PhdThesis => {
+                                                ("bg-rose-100", "border-rose-500")
+                                            }
+                                            EntryType::InProceedings => ("bg-purple-100", "border-purple-500"),
+                                            EntryType::TechReport => ("bg-amber-100", "border-amber-500"),
+                                            EntryType::Misc => ("bg-gray-100", "border-gray-500"),
+                                            _ => ("bg-blue-100", "border-blue-500"),
+                                        };
+                                        if selected_index() == Some(index) {
+                                            format!(
+                                                "block {} rounded-lg text-gray-900 cursor-pointer transition-colors duration-100
+                                                                                                                                                                                                                                                                                                                                                                                border border-2 {}",
+                                                bg_color,
+                                                border_color,
+                                            )
+                                        } else {
+                                            format!(
+                                                "block hover:{} cursor-pointer hover:rounded-lg transition-colors duration-100
+                                                                                                                                                                                                                                                                                                                                                                                hover:border hover:border-2 {}",
+                                                bg_color,
+                                                border_color,
+                                            )
+                                        }
+                                    },
                                     onmounted: {
                                         let mut item_elements = item_elements;
                                         move |event| {
@@ -457,47 +490,56 @@ pub fn HelperComponent(entry: Reference) -> Element {
 pub fn ArticleHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
     rsx! {
-        div { class: "card bg-blue-100 border-blue-500",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-blue-800", "Article" }
-                        if let Some(title) = entry.title {
-                            span { class: "text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: "badge badge-outline mr-2 text-blue-800", "Article" }
+                    if let Some(title) = entry.title {
+                        span { class: "text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
-                    }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author}"
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                 "{author}"
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(journal) = &entry.journal {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "{journal}" }
-                    } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "journal" }
-                    }
-                    if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
-                    }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(journal) = &entry.journal {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "{journal}" }
+                } else {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "journal" }
+                }
+                if let Some(year) = &entry.year {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -508,51 +550,58 @@ pub fn ArticleHelper(entry: Reference) -> Element {
 pub fn BookHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
     rsx! {
-        div { class: "card bg-emerald-100 border-emerald-500",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-emerald-800", "Book" }
-                        if let Some(title) = entry.title {
-                            span { class: " text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: "badge badge-outline mr-2 text-emerald-800", "Book" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
-                    }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                 "{author} "
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(publishers) = &entry.publisher {
-                        for publisher in publishers {
-                            span { class: "badge badge-outline text-purple-600 mr-2",
-                                "{publisher}"
-                            }
-                        }
-                    } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(publishers) = &entry.publisher {
+                    for publisher in publishers {
+                        span { class: "badge badge-outline text-purple-600 mr-2", "{publisher}" }
                     }
-                    if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
-                    }
+                } else {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                }
+                if let Some(year) = &entry.year {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -581,49 +630,58 @@ pub fn ThesisHelper(entry: Reference) -> Element {
         _ => "Unknown",
     };
     rsx! {
-        div { class: if entry.type_ == EntryType::MastersThesis { "bg-pink-100 border-pink-500 card" } else { "bg-rose-100 border-rose-500 card" },
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: if entry.type_ == EntryType::MastersThesis { " badge badge-outline mr-2 text-pink-800" } else { "badge badge-outline mr-2 text-rose-800" },
-                            "{type_}"
-                        }
-                        if let Some(title) = entry.title {
-                            span { class: " text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
-                        }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: if entry.type_ == EntryType::MastersThesis { " badge badge-outline mr-2 text-pink-800" } else { "badge badge-outline mr-2 text-rose-800" },
+                        "{type_}"
                     }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
+                        }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                                "{author}"
+                                "{author} "
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    if !school_address.is_empty() {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "{school_address}" }
-                    } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
-                    }
-                    if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
-                    }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if !school_address.is_empty() {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "{school_address}" }
+                } else {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                }
+                if let Some(year) = &entry.year {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -643,52 +701,61 @@ pub fn InProceedingsHelper(entry: Reference) -> Element {
         "".to_string()
     };
     rsx! {
-        div { class: "bg-purple-100 border-purple-500 card",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-purple-800", "InProceedings" }
-                        if let Some(title) = entry.title {
-                            span { class: " text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: "badge badge-outline mr-2 text-purple-800", "InProceedings" }
+                    if let Some(title) = entry.title {
+                        span { class: " text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
-                    }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                 "{author} "
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(booktitle) = entry.book_title {
-                        span { class: "badge badge-outline text-purple-600 mr-2",
-                            ChunksComp {
-                                chunks: booktitle,
-                                cite_key: format!("booktitle-helper-{key}"),
-                            }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(booktitle) = entry.book_title {
+                    span { class: "badge badge-outline text-purple-600 mr-2",
+                        ChunksComp {
+                            chunks: booktitle,
+                            cite_key: format!("booktitle-helper-{key}"),
                         }
-                    } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
                     }
-                    if !date.is_empty() {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{date}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "date" }
-                    }
+                } else {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                }
+                if !date.is_empty() {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{date}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "date" }
                 }
             }
         }
@@ -700,47 +767,56 @@ pub fn TechReportHelper(entry: Reference) -> Element {
     let key = &entry.cite_key;
 
     rsx! {
-        div { class: "bg-amber-100 border-amber-500 card",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-amber-800", "TechReport" }
-                        if let Some(title) = entry.title {
-                            span { class: "text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: "badge badge-outline mr-2 text-amber-800", "TechReport" }
+                    if let Some(title) = entry.title {
+                        span { class: "text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
-                    }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                 "{author} "
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(institution) = &entry.institution {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "{institution}" }
-                    } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
-                    }
-                    if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
-                    }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(institution) = &entry.institution {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "{institution}" }
+                } else {
+                    span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                }
+                if let Some(year) = &entry.year {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -758,43 +834,52 @@ pub fn ArXivHelper(entry: Reference) -> Element {
         (None, None) => "arXiv".to_string(),
     };
     rsx! {
-        div { class: "bg-gray-100 border-gray-500 card",
-            div { class: "card-body",
-                div { class: "flex justify-between items-start",
-                    div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
-                        if let Some(title) = entry.title {
-                            span { class: "text-gray-900 font-serif",
-                                ChunksComp { chunks: title, cite_key: key.clone() }
-                            }
-                        } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+        div { class: "w-full",
+            div { class: "flex justify-between items-center",
+                div { class: "flex items-center",
+                    div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
+                    if let Some(title) = entry.title {
+                        span { class: "text-gray-900 font-serif",
+                            ChunksComp { chunks: title, cite_key: key.clone() }
                         }
-                    }
-                    div { class: "flex items-center flex-shrink-0",
-                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    } else {
+                        span { class: "text-gray-900 font-serif", "No title available" }
                     }
                 }
-                p { class: "text-xs",
-                    if let Some(authors) = entry.author {
+                div { class: "flex items-center flex-shrink-0",
+                    div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                }
+            }
+            p { class: "text-xs mt-2 break-all",
+                if let Some(authors) = entry.author {
+                    if authors.len() > 3 {
+                        for author in authors.iter().take(3) {
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "{author} "
+                            }
+                        }
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "et al."
+                        }
+                    } else {
                         for author in authors {
                             span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                 "{author} "
                             }
                         }
-                    } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                            "Unknown"
-                        }
+                    }
+                } else {
+                    span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        "Unknown"
                     }
                 }
-                p { class: "text-xs",
-                    span { class: "badge badge-outline text-purple-600 mr-2", "{arxiv}" }
-                    if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
-                    } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
-                    }
+            }
+            p { class: "text-xs mt-2 break-all",
+                span { class: "badge badge-outline text-purple-600 mr-2", "{arxiv}" }
+                if let Some(year) = &entry.year {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                } else {
+                    span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                 }
             }
         }
@@ -814,57 +899,60 @@ pub fn MiscHelper(entry: Reference) -> Element {
         if is_arxiv {
             ArXivHelper { entry }
         } else {
-            div { class: "bg-gray-100 border-gray-500 card",
-                div { class: "card-body",
-                    div { class: "flex justify-between items-start",
-                        div { class: "flex items-center",
-                            div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
-                            if let Some(title) = entry.title {
-                                span { class: "text-gray-900 font-serif",
-                                    ChunksComp { chunks: title, cite_key: key.clone() }
-                                }
-                            } else {
-                                span { class: "text-gray-900 font-serif", "No title available" }
+            div { class: "w-full",
+                div { class: "flex justify-between items-center",
+                    div { class: "flex items-center",
+                        div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
+                        if let Some(title) = entry.title {
+                            span { class: "text-gray-900 font-serif",
+                                ChunksComp { chunks: title, cite_key: key.clone() }
                             }
-                        }
-                        div { class: "flex items-center flex-shrink-0",
-                            div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                        } else {
+                            span { class: "text-gray-900 font-serif", "No title available" }
                         }
                     }
-                    p { class: "text-xs",
-                        if let Some(authors) = entry.author {
+                    div { class: "flex items-center flex-shrink-0",
+                        div { class: "text-gray-600 text-xs font-mono ml-2", "{key}" }
+                    }
+                }
+                p { class: "text-xs mt-2 break-all",
+                    if let Some(authors) = entry.author {
+                        if authors.len() > 3 {
+                            for author in authors.iter().take(3) {
+                                span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                    "{author} "
+                                }
+                            }
+                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                                "et al."
+                            }
+                        } else {
                             for author in authors {
                                 span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
                                     "{author} "
                                 }
                             }
-                        } else {
-                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
-                                "Unknown"
+                        }
+                    } else {
+                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            "Unknown"
+                        }
+                    }
+                }
+                p { class: "text-xs mt-2 break-all",
+                    if let Some(archive) = entry.archive_prefix {
+                        span { class: "badge badge-outline text-purple-700 mr-2", "{archive}" }
+                    } else {
+                        if let Some(how_published) = &entry.how_published {
+                            span { class: "badge badge-outline text-purple-700 mr-2",
+                                "{how_published}"
                             }
                         }
                     }
-                    p { class: "text-xs",
-                        if let Some(archive) = entry.archive_prefix {
-                            span { class: "badge badge-outline text-purple-700 mr-2",
-                                "{archive}"
-                            }
-                        } else {
-                            if let Some(how_published) = &entry.how_published {
-                                span { class: "badge badge-outline text-purple-700 mr-2",
-                                    "{how_published}"
-                                }
-                            }
-                        }
-                        if let Some(year) = &entry.year {
-                            span { class: "badge badge-outline text-emerald-700 mr-2",
-                                "{year}"
-                            }
-                        } else {
-                            span { class: "badge badge-outline text-emerald-700 mr-2",
-                                "year"
-                            }
-                        }
+                    if let Some(year) = &entry.year {
+                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                    } else {
+                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
                     }
                 }
             }
