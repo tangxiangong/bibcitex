@@ -30,15 +30,6 @@
 
 ## 界面功能预览
 <div align="center">
-<figure>
-<a href="assets/readme/cross_paste.gif">
-<img src="assets/readme/cross_paste.gif" height="200">
-</a>
-<figcaption>跨应用粘贴</figcaption>
-</figure>
-</div>
-
-<div align="center">
 
 | 添加 `.bib` 文件 | 文献列表 | 搜索 |
 | :---: | :---: | :---: |
@@ -49,6 +40,17 @@
 | [<img src="assets/readme/drawer.gif" width="100">](./assets/readme/drawer.gif) | [<img src="assets/readme/url.gif" width="100">](./assets/readme/url.gif) | [<img src="assets/readme/copy.gif" width="100">](./assets/readme/copy.gif) |
 
 </div>
+
+<div align="center">
+<figure>
+<a href="assets/readme/cross_paste.gif">
+<img src="assets/readme/cross_paste.gif">
+</a>
+<figcaption>跨应用粘贴</figcaption>
+</figure>
+</div>
+
+
 
 ## 开发路线图
 ### 进行中
