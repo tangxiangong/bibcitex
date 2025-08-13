@@ -1,13 +1,13 @@
 use dioxus::prelude::*;
-use katex::{OptsBuilder, OutputType, render_with_opts};
+use katex_gdef_v8::{KatexOutput, Options, render_with_opts};
 
 #[component]
 pub fn InlineMath(content: String) -> Element {
-    let opts = OptsBuilder::default()
-        .output_type(OutputType::Mathml)
-        .build()
-        .unwrap();
-    let html = render_with_opts(&content, &opts);
+    let opts = Options {
+        output: KatexOutput::Mathml,
+        ..Default::default()
+    };
+    let html = render_with_opts(&content, &opts, &mut Default::default());
     let is_success = html.is_ok();
     let data = if let Ok(html) = html { html } else { content };
     rsx! {
@@ -23,13 +23,14 @@ pub fn InlineMath(content: String) -> Element {
 
 #[cfg(test)]
 mod tests {
+    use katex_gdef_v8::{KatexOutput, Options, render_with_opts};
     #[test]
     fn test_katex() {
-        let opts = katex::OptsBuilder::default()
-            .output_type(katex::OutputType::Mathml)
-            .build()
-            .unwrap();
-        let html = katex::render_with_opts(r#"\LaTeX"#, &opts);
+        let opts = Options {
+            output: KatexOutput::Mathml,
+            ..Default::default()
+        };
+        let html = render_with_opts(r#"E = mc^2"#, &opts, &mut Default::default());
         assert!(html.is_ok());
         println!("{}", html.unwrap());
     }
