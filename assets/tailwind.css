@@ -2085,12 +2085,6 @@
   .h-screen {
     height: 100vh;
   }
-  .max-h-\[448px\] {
-    max-height: 448px;
-  }
-  .max-h-\[460px\] {
-    max-height: 460px;
-  }
   .min-h-\[56px\] {
     min-height: 56px;
   }

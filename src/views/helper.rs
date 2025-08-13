@@ -6,11 +6,7 @@ use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
-        Config, DesktopService, WindowBuilder,
-        tao::{
-            dpi::LogicalSize,
-            event::{Event, WindowEvent},
-        },
+        Config, DesktopService, LogicalSize, WindowBuilder, WindowEvent, tao::event::Event,
         use_window, use_wry_event_handler,
     },
     prelude::*,
@@ -21,6 +17,10 @@ use std::{
     rc::{Rc, Weak},
     sync::{Arc, LazyLock, Mutex},
 };
+
+pub static WIDTH: usize = 700;
+pub static MIN_HEIGHT: usize = 80;
+pub static MAX_HEIGHT: usize = 600;
 
 // 全局状态跟踪Helper窗口是否打开
 pub static HELPER_WINDOW: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
@@ -90,17 +90,12 @@ pub async fn open_spotlight_window() {
 
     let window = use_window();
 
-    // Spotlight风格的窗口尺寸
-    let window_width = 600.0;
-    let min_window_height = 80.0; // 最小高度：输入框高度
-    let max_window_height = 500.0; // 最大高度
-
     // 创建Spotlight风格的窗口配置（不指定位置，让系统居中）
     let window_builder = WindowBuilder::new()
         .with_title("BibCiteX Spotlight")
-        .with_inner_size(LogicalSize::new(window_width, min_window_height))
-        .with_min_inner_size(LogicalSize::new(window_width, min_window_height))
-        .with_max_inner_size(LogicalSize::new(window_width, max_window_height))
+        .with_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+        .with_min_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+        .with_max_inner_size(LogicalSize::new(WIDTH as f64, MAX_HEIGHT as f64))
         .with_focused(true)
         .with_decorations(false) // 移除窗口装饰
         .with_transparent(true) // 支持透明背景
@@ -130,7 +125,7 @@ pub async fn open_spotlight_window() {
 /// The actual Helper window content
 #[component]
 pub fn Helper() -> Element {
-    let content_height = use_context_provider(|| Signal::new(80.0f64)); // 提供内容高度信号
+    let content_height = use_context_provider(|| Signal::new(MIN_HEIGHT)); // 提供内容高度信号
 
     // 在组件初始化时从持久化状态恢复 HELPER_BIB
     use_effect(move || {
@@ -146,13 +141,10 @@ pub fn Helper() -> Element {
     let window = use_window();
     use_effect(move || {
         let current_height = content_height();
-        let min_height = 80.0;
-        let max_height = 500.0;
-
         // 确保高度在合理范围内
-        let adjusted_height = current_height.max(min_height).min(max_height);
+        let adjusted_height = current_height.max(MIN_HEIGHT).min(MAX_HEIGHT);
 
-        window.set_inner_size(LogicalSize::new(600.0, adjusted_height));
+        window.set_inner_size(LogicalSize::new(WIDTH as f64, adjusted_height as f64));
     });
 
     // 使用 use_wry_event_handler 直接监听 tao 窗口事件

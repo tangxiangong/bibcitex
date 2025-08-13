@@ -2,7 +2,7 @@ use crate::{
     LOGO,
     components::ChunksComp,
     utils::focus_previous_window,
-    views::{HELPER_BIB, HELPER_WINDOW, set_helper_bib},
+    views::{HELPER_BIB, HELPER_WINDOW, MAX_HEIGHT, MIN_HEIGHT, set_helper_bib},
 };
 use arboard::Clipboard;
 use bibcitex_core::{
@@ -18,7 +18,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
     let error_message = use_context_provider(|| Signal::new(None::<String>));
     let mut selected_bib = use_context_provider(|| Signal::new(None::<(String, String, String)>));
     let mut selected_index = use_signal(|| None::<usize>);
-    let mut content_height = use_context::<Signal<f64>>();
+    let mut content_height = use_context::<Signal<usize>>();
 
     let handle_keydown = move |evt: Event<KeyboardData>| {
         let bib_list = bibs();
@@ -72,12 +72,13 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
 
                 if let Ok(rect) = mounted.get_client_rect().await {
                     let measured_height = rect.height();
-                    let max_height = 460.0;
-                    let min_height = 160.0;
-                    let final_height = measured_height.max(min_height).min(max_height);
-                    content_height.set(final_height + 20.0);
+                    let final_height = measured_height
+                        .max(MIN_HEIGHT as f64)
+                        .min(MAX_HEIGHT as f64)
+                        .round() as usize;
+                    content_height.set(final_height + 20);
                 } else {
-                    content_height.set(200.0);
+                    content_height.set(200);
                 }
             });
 
@@ -120,7 +121,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                         "没有可用的文献库"
                     }
                 } else {
-                    div { class: "max-h-[448px] overflow-y-auto",
+                    div { class: format!("max-h-[{}px] overflow-y-auto", MAX_HEIGHT - MIN_HEIGHT - 20),
                         for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
                             div {
                                 class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-success text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-success cursor-pointer transition-colors duration-100" },
@@ -147,10 +148,9 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                         }
                     }
                 }
-            }
-
-            if let Some(error) = error_message() {
-                div { class: "px-5 py-2 text-error text-sm", "{error}" }
+                if let Some(error) = error_message() {
+                    div { class: "px-5 py-2 text-error text-sm", "{error}" }
+                }
             }
         }
     }
@@ -161,7 +161,7 @@ pub fn Search() -> Element {
     let mut query = use_signal(String::new);
     let mut result = use_signal(Vec::<Reference>::new);
     let current_bib = HELPER_BIB().unwrap();
-    let mut content_height = use_context::<Signal<f64>>();
+    let mut content_height = use_context::<Signal<usize>>();
     let mut container_mounted = use_signal(|| None::<MountedEvent>);
     let mut scrollable_container = use_signal(|| None::<MountedEvent>);
     let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
@@ -312,12 +312,13 @@ pub fn Search() -> Element {
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 if let Ok(rect) = mounted.get_client_rect().await {
                     let measured_height = rect.height();
-                    let max_height = 460.0;
-                    let min_height = 80.0;
-                    let final_height = measured_height.max(min_height).min(max_height);
-                    content_height.set(final_height + 20.0);
+                    let final_height = measured_height
+                        .max(MIN_HEIGHT as f64)
+                        .min(MAX_HEIGHT as f64)
+                        .round() as usize;
+                    content_height.set(final_height + 20);
                 } else {
-                    content_height.set(140.0);
+                    content_height.set(140);
                 }
             });
         }
@@ -343,7 +344,10 @@ pub fn Search() -> Element {
     rsx! {
         div { class: "w-full h-auto bg-transparent",
             div {
-                class: "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[460px]",
+                class: format!(
+                    "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[{}px]",
+                    MAX_HEIGHT,
+                ),
                 "data-content-container": "true",
                 onmounted: move |event| {
                     container_mounted.set(Some(event));
@@ -383,7 +387,7 @@ pub fn Search() -> Element {
                     } else {
                         div {
                             class: "flex-1 overflow-y-auto",
-                            style: "scroll-behavior: smooth; max-height: 400px;",
+                            style: format!("scroll-behavior: smooth; max-height: {}px;", MAX_HEIGHT - MIN_HEIGHT),
                             onmounted: move |event| {
                                 scrollable_container.set(Some(event));
                             },
