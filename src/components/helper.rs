@@ -76,7 +76,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                         .max(MIN_HEIGHT as f64)
                         .min(MAX_HEIGHT as f64)
                         .round() as usize;
-                    content_height.set(final_height + 20);
+                    content_height.set(final_height);
                 } else {
                     content_height.set(200);
                 }
@@ -121,7 +121,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                         "没有可用的文献库"
                     }
                 } else {
-                    div { class: format!("max-h-[{}px] overflow-y-auto", MAX_HEIGHT - MIN_HEIGHT - 20),
+                    div { class: format!("max-h-[{}px] overflow-y-auto", MAX_HEIGHT - MIN_HEIGHT),
                         for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
                             div {
                                 class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-success text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-success cursor-pointer transition-colors duration-100" },
@@ -316,7 +316,7 @@ pub fn Search() -> Element {
                         .max(MIN_HEIGHT as f64)
                         .min(MAX_HEIGHT as f64)
                         .round() as usize;
-                    content_height.set(final_height + 20);
+                    content_height.set(final_height);
                 } else {
                     content_height.set(140);
                 }

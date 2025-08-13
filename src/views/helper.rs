@@ -19,7 +19,7 @@ use std::{
 };
 
 pub static WIDTH: usize = 700;
-pub static MIN_HEIGHT: usize = 80;
+pub static MIN_HEIGHT: usize = 60;
 pub static MAX_HEIGHT: usize = 600;
 
 // 全局状态跟踪Helper窗口是否打开
@@ -142,7 +142,7 @@ pub fn Helper() -> Element {
     use_effect(move || {
         let current_height = content_height();
         // 确保高度在合理范围内
-        let adjusted_height = current_height.max(MIN_HEIGHT).min(MAX_HEIGHT);
+        let adjusted_height = current_height.max(MIN_HEIGHT).min(MAX_HEIGHT) + 4;
 
         window.set_inner_size(LogicalSize::new(WIDTH as f64, adjusted_height as f64));
     });
