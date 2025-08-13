@@ -1,13 +1,18 @@
 <div align=center>
 <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
 <p align="center">
-    <img src="assets/BibTeX.png" width="60" style="vertical-align: middle;">  文献快捷引用工具
+    <img src="assets/readme/BibTeX.png" width="45">  文献快捷引用工具
 </p>
 </div>
 
 ## 简介
 
-<img src="assets/transparent_logo.png" width="50" style="vertical-align: middle;"> 是一个使用 🦀 Rust 和 [<img src="assets/dioxus.svg" width="15" style="vertical-align: middle;"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/BibTeX.png" width="60" style="vertical-align: middle;"> 文献快捷引用工具。
+<img src="assets/transparent_logo.png" width="20"> 是一个使用 🦀 Rust 和 [<img src="assets/readme/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具。
+
+### 平台
+- [x] macOS (arm64/x86_64)
+- [x] Windows (arm64/x86_64)
+- [x] Linux (x11) (arm64/x86_64)
 
 ### 文献类型
 - [x] Article
@@ -23,6 +28,27 @@
 - [x] InProceedings
 - [ ] Unpublished
 
+## 界面功能预览
+<div align="center">
+<figure>
+<a href="assets/readme/cross_paste.gif">
+<img src="assets/readme/cross_paste.gif" height="200">
+</a>
+<figcaption>跨应用粘贴</figcaption>
+</figure>
+</div>
+
+<div align="center">
+
+| 添加 `.bib` 文件 | 文献列表 | 搜索 |
+| :---: | :---: | :---: |
+| [<img src="assets/readme/add_bib.gif" width="100">](./assets/readme/add_bib.gif) | [<img src="assets/readme/show_details.gif" width="100">](./assets/readme/show_details.gif) | [<img src="assets/readme/search.gif" width="100">](./assets/readme/search.gif) |
+
+| 侧边详情 | 外部链接 | 复制引用 |
+| :---: | :---: | :---: |
+| [<img src="assets/readme/drawer.gif" width="100">](./assets/readme/drawer.gif) | [<img src="assets/readme/url.gif" width="100">](./assets/readme/url.gif) | [<img src="assets/readme/copy.gif" width="100">](./assets/readme/copy.gif) |
+
+</div>
 
 ## 开发路线图
 ### 进行中
