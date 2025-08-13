@@ -480,7 +480,7 @@ pub fn Article(entry: Reference) -> Element {
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
-                            span { class: "text-lg", "No title available" }
+                            span { class: "text-lg text-gray-900 font-serif", "No title available" }
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
@@ -822,13 +822,11 @@ pub fn Book(entry: Reference) -> Element {
                             "Book"
                         }
                         if let Some(title) = entry.title {
-                            span { class: "badge badge-outline text-lg text-gray-900 font-serif",
+                            span { class: "text-lg text-gray-900 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
-                            span { class: "badge badge-outline text-lg text-gray-900 font-serif",
-                                "No title available"
-                            }
+                            span { class: "text-lg text-gray-900 font-serif", "No title available" }
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
