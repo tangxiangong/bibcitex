@@ -122,6 +122,17 @@ pub fn References() -> Element {
             _ => FilterType::All,
         };
         filter_type.set(new_type);
+        // Re-run search if there's a query
+        if !query().is_empty() {
+            let result = match filter_field() {
+                FilterField::Author => search_references_by_author(&refs(), &query()),
+                FilterField::Title => search_references_by_title(&refs(), &query()),
+                FilterField::Journal => search_references_by_journal(&refs(), &query()),
+                FilterField::Year => search_references_by_year(&refs(), &query()),
+                FilterField::All => search_references(&refs(), &query()),
+            };
+            search_result.set(result);
+        }
     };
 
     rsx! {
