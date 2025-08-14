@@ -111,8 +111,7 @@ pub fn Helper() -> Element {
     use_effect(move || {
         let current_height = content_height();
         // 确保高度在合理范围内
-        let adjusted_height = current_height.max(MIN_HEIGHT).min(MAX_HEIGHT) + 4;
-
+        let adjusted_height = current_height.max(MIN_HEIGHT).min(MAX_HEIGHT);
         window.set_inner_size(LogicalSize::new(WIDTH as f64, adjusted_height as f64));
     });
 
