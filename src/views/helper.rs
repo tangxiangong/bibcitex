@@ -1,7 +1,4 @@
-use crate::{
-    STATE, TAILWINDCSS,
-    components::{Search, Select},
-};
+use crate::{TAILWINDCSS, components::Search};
 use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
@@ -10,7 +7,6 @@ use dioxus::{
     },
     prelude::*,
 };
-use itertools::Itertools;
 use std::{
     rc::{Rc, Weak},
     sync::{Arc, LazyLock, Mutex},
@@ -24,19 +20,20 @@ pub static MAX_HEIGHT: usize = 600;
 pub static HELPER_WINDOW: GlobalSignal<Option<Weak<DesktopService>>> = Signal::global(|| None);
 
 // 使用 Arc<Mutex<>> 来确保状态在不同 VirtualDom 实例间共享
-static HELPER_BIB_STATE: LazyLock<Arc<Mutex<Option<Vec<Reference>>>>> =
+#[allow(clippy::type_complexity)]
+static HELPER_BIB_STATE: LazyLock<Arc<Mutex<Option<(String, Vec<Reference>)>>>> =
     LazyLock::new(|| Arc::new(Mutex::new(None)));
 
-pub static HELPER_BIB: GlobalSignal<Option<Vec<Reference>>> =
+pub static HELPER_BIB: GlobalSignal<Option<(String, Vec<Reference>)>> =
     Signal::global(|| HELPER_BIB_STATE.lock().unwrap().clone());
 
 // 辅助函数来设置和获取 HELPER_BIB 状态
-pub fn set_helper_bib(refs: Option<Vec<Reference>>) {
+pub fn set_helper_bib(refs: Option<(String, Vec<Reference>)>) {
     *HELPER_BIB_STATE.lock().unwrap() = refs.clone();
     *HELPER_BIB.write() = refs;
 }
 
-pub fn get_helper_bib() -> Option<Vec<Reference>> {
+pub fn get_helper_bib() -> Option<(String, Vec<Reference>)> {
     HELPER_BIB_STATE.lock().unwrap().clone()
 }
 
@@ -108,8 +105,6 @@ pub fn Helper() -> Element {
         }
     });
 
-    let has_bib = use_memo(|| HELPER_BIB().is_some());
-
     // 动态调整窗口大小
     let window = use_window();
     use_effect(move || {
@@ -136,22 +131,6 @@ pub fn Helper() -> Element {
         }
     });
 
-    let bibs = use_memo(|| {
-        let state = STATE.read();
-        state
-            .bibliographies
-            .iter()
-            .sorted_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at))
-            .map(|(name, info)| {
-                (
-                    name.clone(),
-                    info.path.as_os_str().to_str().unwrap().to_string(),
-                    info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-                )
-            })
-            .collect::<Vec<_>>()
-    });
-
     rsx! {
         document::Stylesheet { href: TAILWINDCSS }
 
@@ -164,11 +143,7 @@ pub fn Helper() -> Element {
                     HELPER_WINDOW.write().take();
                 }
             },
-            if !has_bib() {
-                Select { bibs }
-            } else {
-                Search {}
-            }
+            Search {}
         }
     }
 }
