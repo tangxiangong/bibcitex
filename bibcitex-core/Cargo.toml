@@ -10,7 +10,6 @@ license.workspace = true
 biblatex = { workspace = true }
 chrono = { workspace = true }
 config = { workspace = true }
-csv = { workspace = true }
 dioxus = { workspace = true }
 dioxus-core = { workspace = true }
 dirs = { workspace = true }
