@@ -5,6 +5,7 @@ use dioxus::{
         Config, DesktopService, LogicalSize, WindowBuilder, WindowEvent, tao::event::Event,
         use_window, use_wry_event_handler,
     },
+    html::input_data::MouseButton,
     prelude::*,
 };
 use std::{
@@ -70,7 +71,7 @@ pub async fn open_spotlight_window() {
         .with_decorations(false) // 移除窗口装饰
         .with_transparent(true) // 支持透明背景
         .with_always_on_top(true) // 保持在最上层
-        .with_resizable(true); // 允许调整大小以显示搜索结果
+        .with_resizable(false); // 禁用窗口大小调整，但仍可拖拽移动
 
     let helper_html = r#"<!doctype html>
 <html style="background: transparent;">
@@ -141,6 +142,12 @@ pub fn Helper() -> Element {
                     let window = use_window();
                     window.close();
                     HELPER_WINDOW.write().take();
+                }
+            },
+            onmousedown: move |evt| {
+                if evt.trigger_button() == Some(MouseButton::Primary) {
+                    let window = use_window();
+                    let _ = window.drag_window();
                 }
             },
             Search {}
