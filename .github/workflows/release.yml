@@ -1,0 +1,167 @@
+name: "publish"
+
+on:
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish-dioxus:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+            args: '--target aarch64-apple-darwin'
+            target: aarch64-apple-darwin
+            artifact_name: BibCiTeX-${{ github.event.release.tag_name }}-macos-arm64
+          - platform: 'macos-latest' # for Intel based macs.
+            args: '--target x86_64-apple-darwin'
+            target: x86_64-apple-darwin
+            artifact_name: BibCiTeX-${{ github.event.release.tag_name }}-macos-x86_64
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc --features windows-bundle'
+            target: x86_64-pc-windows-msvc
+            artifact_name: BibCiTeX-${{ github.event.release.tag_name }}-windows-x86_64
+          - platform: 'windows-latest'
+            args: '--target aarch64-pc-windows-msvc --features windows-bundle'
+            target: aarch64-pc-windows-msvc
+            artifact_name: BibCiTeX-${{ github.event.release.tag_name }}-windows-arm64
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows builds.
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
+
+      - name: Setup Clang and Python (Windows only)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Install Clang via LLVM
+          choco install llvm -y
+          # Refresh environment variables
+          refreshenv
+          # Verify installations
+          python --version
+          clang --version
+        shell: powershell
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: install dioxus-cli
+        run: |
+          cargo install dioxus-cli@0.7.0-rc.0 --locked
+        env:
+          CARGO_NET_RETRY: 10
+
+      - name: Build and bundle application
+        run: |
+          dx bundle ${{ matrix.args }} --release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare and upload release assets (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # Create artifacts directory
+          mkdir -p artifacts
+
+          # Find and copy the DMG file
+          dmgFile=$(find target/dx/bibcitex/bundle -name "*.dmg" | head -1)
+          if [ -n "$dmgFile" ]; then
+            cp "$dmgFile" "artifacts/${{ matrix.artifact_name }}.dmg"
+            echo "Copied DMG: $dmgFile -> ${{ matrix.artifact_name }}.dmg"
+            # Upload DMG to release
+            gh release upload ${{ github.event.release.tag_name }} "artifacts/${{ matrix.artifact_name }}.dmg" --clobber
+          else
+            echo "No DMG file found in target/dx/bibcitex/bundle"
+          fi
+
+          # Find and copy the APP bundle
+          appFile=$(find target/dx/bibcitex/bundle -name "*.app" | head -1)
+          if [ -n "$appFile" ]; then
+            # Create a zip archive of the .app bundle
+            cd "$(dirname "$appFile")"
+            zip -r "${{ matrix.artifact_name }}.app.zip" "$(basename "$appFile")"
+            cd - > /dev/null
+            cp "$(dirname "$appFile")/${{ matrix.artifact_name }}.app.zip" "artifacts/${{ matrix.artifact_name }}.app.zip"
+            echo "Copied APP: $appFile -> ${{ matrix.artifact_name }}.app.zip"
+            # Upload APP to release
+            gh release upload ${{ github.event.release.tag_name }} "artifacts/${{ matrix.artifact_name }}.app.zip" --clobber
+          else
+            echo "No APP file found in target/dx/bibcitex/bundle"
+          fi
+
+          # List all files for debugging if needed
+          if [ -z "$dmgFile" ] && [ -z "$appFile" ]; then
+            find target/dx -name "*.dmg" -type f || echo "No DMG files found anywhere in target/dx"
+            find target/dx -name "*.app" -type d || echo "No APP bundles found anywhere in target/dx"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare and upload release assets (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Create artifacts directory
+          New-Item -ItemType Directory -Force -Path artifacts
+
+          # Find and copy the MSI installer
+          $msiFile = Get-ChildItem -Path "target\dx\bibcitex\bundle" -Filter "*.msi" -Recurse | Select-Object -First 1
+          if ($msiFile) {
+            Copy-Item $msiFile.FullName "artifacts\${{ matrix.artifact_name }}.msi"
+            Write-Host "Copied MSI: $($msiFile.Name) -> ${{ matrix.artifact_name }}.msi"
+            # Upload MSI to release
+            gh release upload ${{ github.event.release.tag_name }} "artifacts\${{ matrix.artifact_name }}.msi" --clobber
+          } else {
+            Write-Error "No MSI file found in target/dx/bibcitex/bundle"
+          }
+
+          # Find and copy the EXE installer
+          $exeFile = Get-ChildItem -Path "target\dx\bibcitex\bundle" -Filter "*setup.exe" -Recurse | Select-Object -First 1
+          if ($exeFile) {
+            Copy-Item $exeFile.FullName "artifacts\${{ matrix.artifact_name }}.exe"
+            Write-Host "Copied EXE: $($exeFile.Name) -> ${{ matrix.artifact_name }}.exe"
+            # Upload EXE to release
+            gh release upload ${{ github.event.release.tag_name }} "artifacts\${{ matrix.artifact_name }}.exe" --clobber
+          } else {
+            Write-Error "No EXE setup file found in target/dx/bibcitex/bundle"
+          }
+
+          # List all files for debugging if needed
+          if (-not $msiFile -and -not $exeFile) {
+            Get-ChildItem -Path "target\dx" -Filter "*.msi" -Recurse | ForEach-Object { Write-Host "Found MSI: $($_.FullName)" }
+            Get-ChildItem -Path "target\dx" -Filter "*.exe" -Recurse | ForEach-Object { Write-Host "Found EXE: $($_.FullName)" }
+            exit 1
+          }
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifacts/
+          retention-days: 7
