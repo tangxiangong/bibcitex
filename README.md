@@ -12,7 +12,7 @@
 ### 平台
 - [x] macOS (arm64/x86_64)
 - [x] Windows (arm64/x86_64)
-- [x] Linux (x11) (arm64/x86_64)
+- [ ] Linux
 
 ### 文献类型
 - [x] Article
