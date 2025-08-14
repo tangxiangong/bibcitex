@@ -2,7 +2,7 @@
 members = [".", "bibcitex-core"]
 
 [workspace.package]
-version = "0.1.0-alpha.0"
+version = "0.1.0"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 description = "A BibTeX citation tool"
