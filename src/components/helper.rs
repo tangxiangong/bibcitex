@@ -124,7 +124,7 @@ pub fn Select(bibs: Memo<Vec<(String, String, String)>>) -> Element {
                     div { class: format!("max-h-[{}px] overflow-y-auto", MAX_HEIGHT - MIN_HEIGHT),
                         for (index , (name , path , updated_at)) in bibs().into_iter().enumerate() {
                             div {
-                                class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-success text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-success cursor-pointer transition-colors duration-100" },
+                                class: if selected_index() == Some(index) { "flex items-center px-5 h-14 bg-neutral text-primary-content cursor-pointer transition-colors duration-100" } else { "flex items-center px-5 h-14 hover:bg-neutral cursor-pointer transition-colors duration-100" },
                                 onclick: move |_| {
                                     selected_bib.set(Some((name.clone(), path.clone(), updated_at.clone())));
                                     if let Ok(parsed_bib) = parse(&path) {
@@ -507,11 +507,11 @@ pub fn ArticleHelper(entry: Reference) -> Element {
                 div { class: "flex items-center",
                     div { class: "badge badge-outline mr-2 text-blue-800", "Article" }
                     if let Some(title) = entry.title {
-                        span { class: "text-gray-900 font-serif",
+                        span { class: "text-blue-800 font-serif",
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: "text-blue-800 font-serif", "No title available" }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -567,11 +567,11 @@ pub fn BookHelper(entry: Reference) -> Element {
                 div { class: "flex items-center",
                     div { class: "badge badge-outline mr-2 text-emerald-800", "Book" }
                     if let Some(title) = entry.title {
-                        span { class: " text-gray-900 font-serif",
+                        span { class: " text-emerald-800 font-serif",
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: "text-emerald-800 font-serif", "No title available" }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -649,11 +649,13 @@ pub fn ThesisHelper(entry: Reference) -> Element {
                         "{type_}"
                     }
                     if let Some(title) = entry.title {
-                        span { class: " text-gray-900 font-serif",
+                        span { class: if entry.type_ == EntryType::MastersThesis { "font-serif text-pink-800" } else { "text-rose-800 font-serif" },
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: if entry.type_ == EntryType::MastersThesis { "font-serif text-pink-800" } else { "text-rose-800 font-serif" },
+                            "No title available"
+                        }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -718,11 +720,11 @@ pub fn InProceedingsHelper(entry: Reference) -> Element {
                 div { class: "flex items-center",
                     div { class: "badge badge-outline mr-2 text-purple-800", "InProceedings" }
                     if let Some(title) = entry.title {
-                        span { class: " text-gray-900 font-serif",
+                        span { class: " text-purple-800 font-serif",
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: "text-purple-800 font-serif", "No title available" }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -784,11 +786,11 @@ pub fn TechReportHelper(entry: Reference) -> Element {
                 div { class: "flex items-center",
                     div { class: "badge badge-outline mr-2 text-amber-800", "TechReport" }
                     if let Some(title) = entry.title {
-                        span { class: "text-gray-900 font-serif",
+                        span { class: "text-amber-800 font-serif",
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: "text-amber-800 font-serif", "No title available" }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -851,11 +853,11 @@ pub fn ArXivHelper(entry: Reference) -> Element {
                 div { class: "flex items-center",
                     div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
                     if let Some(title) = entry.title {
-                        span { class: "text-gray-900 font-serif",
+                        span { class: "text-gray-800 font-serif",
                             ChunksComp { chunks: title, cite_key: key.clone() }
                         }
                     } else {
-                        span { class: "text-gray-900 font-serif", "No title available" }
+                        span { class: "text-gray-800 font-serif", "No title available" }
                     }
                 }
                 div { class: "flex items-center flex-shrink-0",
@@ -916,11 +918,11 @@ pub fn MiscHelper(entry: Reference) -> Element {
                     div { class: "flex items-center",
                         div { class: "badge badge-outline mr-2 text-gray-800", "Misc" }
                         if let Some(title) = entry.title {
-                            span { class: "text-gray-900 font-serif",
+                            span { class: "text-gray-800 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
-                            span { class: "text-gray-900 font-serif", "No title available" }
+                            span { class: "text-gray-800 font-serif", "No title available" }
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
