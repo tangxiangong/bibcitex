@@ -37,6 +37,15 @@ fn check_key(reference: &Reference, query: &str) -> bool {
 }
 
 fn check_title(reference: &Reference, query: &str) -> bool {
+    if query.contains('-') {
+        let mut queries = query.split('-');
+        queries.all(|q| _check_title(reference, q))
+    } else {
+        _check_title(reference, query)
+    }
+}
+
+fn _check_title(reference: &Reference, query: &str) -> bool {
     if let Some(title) = &reference.title {
         for chunk in title {
             if chunk.get().to_lowercase().contains(query) {
