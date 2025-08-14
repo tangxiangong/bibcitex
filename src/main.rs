@@ -8,7 +8,7 @@ fn main() {
 
     let index_html = r#"
         <!doctype html>
-        <html data-theme="nord">
+        <html>
             <head>
                 <title>BibCiTeX</title>
                 <meta

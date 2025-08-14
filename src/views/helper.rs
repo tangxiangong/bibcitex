@@ -2,7 +2,6 @@ use crate::{
     STATE, TAILWINDCSS,
     components::{Search, Select},
 };
-use arboard::Clipboard;
 use bibcitex_core::bib::Reference;
 use dioxus::{
     desktop::{
@@ -11,7 +10,6 @@ use dioxus::{
     },
     prelude::*,
 };
-use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use itertools::Itertools;
 use std::{
     rc::{Rc, Weak},
@@ -40,31 +38,6 @@ pub fn set_helper_bib(refs: Option<Vec<Reference>>) {
 
 pub fn get_helper_bib() -> Option<Vec<Reference>> {
     HELPER_BIB_STATE.lock().unwrap().clone()
-}
-
-#[allow(dead_code)]
-pub(crate) fn paste_to_active_app(text: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut clipboard = Clipboard::new()?;
-    clipboard.set_text(text.to_string())?;
-    std::thread::sleep(std::time::Duration::from_millis(50));
-
-    let mut enigo = Enigo::new(&enigo::Settings::default())?;
-
-    #[cfg(target_os = "macos")]
-    {
-        enigo.key(EnigoKey::Meta, Direction::Press)?;
-        enigo.key(EnigoKey::Unicode('v'), Direction::Click)?;
-        enigo.key(EnigoKey::Meta, Direction::Release)?;
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        enigo.key(EnigoKey::Control, Direction::Press)?;
-        enigo.key(EnigoKey::Unicode('v'), Direction::Click)?;
-        enigo.key(EnigoKey::Control, Direction::Release)?;
-    }
-
-    Ok(())
 }
 
 pub async fn open_spotlight_window() {
@@ -103,7 +76,7 @@ pub async fn open_spotlight_window() {
         .with_resizable(true); // 允许调整大小以显示搜索结果
 
     let helper_html = r#"<!doctype html>
-<html data-theme="nord" style="background: transparent;">
+<html style="background: transparent;">
     <head>
         <title>BibCiteX Helper</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
