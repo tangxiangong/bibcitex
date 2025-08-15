@@ -82,9 +82,9 @@ fn BibliographySelector(
     >,
     bib_selected_index: Signal<Option<usize>>,
     on_bib_click: EventHandler<(String, String)>,
+    error_message: Signal<Option<String>>,
 ) -> Element {
     let bib_item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
-
     // 当选中索引变化时，滚动到对应项
     use_effect(move || {
         if let Some(index) = bib_selected_index() {
@@ -108,46 +108,59 @@ fn BibliographySelector(
         }
     } else {
         rsx! {
-            div {
-                class: "flex-1 overflow-y-auto",
-                style: format!("scroll-behavior: smooth; max-height: {}px;", MAX_HEIGHT - MIN_HEIGHT),
-                for (i , bib_info) in bibs().iter().enumerate() {
-                    div {
-                        key: "{i}",
-                        "data-item-index": "{i}",
-                        class: if Some(i) == bib_selected_index() { "flex-shrink-0 px-5 py-3 bg-base-200 cursor-pointer" } else { "flex-shrink-0 px-5 py-3 hover:bg-base-200 cursor-pointer" },
-                        onmounted: {
-                            let mut bib_item_elements = bib_item_elements;
-                            move |event| {
-                                bib_item_elements.write().insert(i, event);
-                            }
-                        },
-                        onclick: {
-                            let bib_path = bib_info.1.clone();
-                            let bib_name = bib_info.0.clone();
-                            move |_| on_bib_click.call((bib_name.clone(), bib_path.clone()))
-                        },
-                        div { class: "text-base font-medium text-base-content mb-1",
-                            if bib_info.4 {
-                                div { class: "inline-grid *:[grid-area:1/1]",
-                                    div { class: "status status-success animate-ping" }
-                                    div { class: "status status-success" }
+            div { class: "flex flex-col h-full",
+                div {
+                    class: "flex-1 overflow-y-auto",
+                    style: {
+                        let base_height = MAX_HEIGHT - MIN_HEIGHT;
+                        let error_height = if error_message().is_some() { 60 } else { 0 };
+                        format!("scroll-behavior: smooth; max-height: {}px;", base_height - error_height)
+                    },
+                    for (i , bib_info) in bibs().iter().enumerate() {
+                        div {
+                            key: "{i}",
+                            "data-item-index": "{i}",
+                            class: if Some(i) == bib_selected_index() { "flex-shrink-0 px-5 py-3 bg-base-200 cursor-pointer rounded-lg" } else { "flex-shrink-0 px-5 py-3 hover:bg-base-200 hover:rounded-lg cursor-pointer" },
+                            onmounted: {
+                                let mut bib_item_elements = bib_item_elements;
+                                move |event| {
+                                    bib_item_elements.write().insert(i, event);
                                 }
-                            } else {
-                                div { class: "inline-grid *:[grid-area:1/1]",
-                                    div { class: "status status-error animate-ping" }
-                                    div { class: "status status-error" }
+                            },
+                            onclick: {
+                                let bib_path = bib_info.1.clone();
+                                let bib_name = bib_info.0.clone();
+                                move |_| on_bib_click.call((bib_name.clone(), bib_path.clone()))
+                            },
+                            div { class: "text-base font-medium text-base-content mb-1",
+                                if bib_info.4 {
+                                    div { class: "inline-grid *:[grid-area:1/1]",
+                                        div { class: "status status-success animate-ping" }
+                                        div { class: "status status-success" }
+                                    }
+                                } else {
+                                    div { class: "inline-grid *:[grid-area:1/1]",
+                                        div { class: "status status-error animate-ping" }
+                                        div { class: "status status-error" }
+                                    }
+                                }
+                                span { class: "ml-1", "{bib_info.0}" }
+                                if let Some(ref desc) = bib_info.3 {
+                                    span { class: "text-sm ml-2 text-base-content/70",
+                                        "{desc}"
+                                    }
                                 }
                             }
-                            span { class: "ml-1", "{bib_info.0}" }
-                            if let Some(ref desc) = bib_info.3 {
-                                span { class: "text-sm ml-2 text-base-content/70", "{desc}" }
+                            div { class: "text-sm text-base-content/70 flex justify-between",
+                                span { "{bib_info.1}" }
+                                span { "{bib_info.2}" }
                             }
                         }
-                        div { class: "text-sm text-base-content/70 flex justify-between",
-                            span { "{bib_info.1}" }
-                            span { "{bib_info.2}" }
-                        }
+                    }
+                }
+                if let Some(ref error_msg) = error_message() {
+                    div { class: "flex-shrink-0 px-5 py-3 text-red-600 text-sm bg-red-50 border-t border-red-200 font-medium rounded-b-xl",
+                        "{error_msg}"
                     }
                 }
             }
@@ -248,6 +261,7 @@ pub fn Search() -> Element {
     let mut container_mounted = use_signal(|| None::<MountedEvent>);
     let mut scrollable_container = use_signal(|| None::<MountedEvent>);
     let input_ref = use_signal(|| None::<MountedEvent>);
+    let mut error_message = use_signal(|| None::<String>);
 
     let item_elements = use_signal(std::collections::HashMap::<usize, MountedEvent>::new);
     let mut selected_index = use_signal(|| None::<usize>);
@@ -277,6 +291,7 @@ pub fn Search() -> Element {
         let has_bib = HELPER_BIB().is_some();
         is_selecting_bib.set(!has_bib);
     });
+
     let keys = use_memo(move || {
         result()
             .iter()
@@ -305,6 +320,7 @@ pub fn Search() -> Element {
             result.set(Vec::new());
             selected_index.set(None);
             bib_selected_index.set(Some(0)); // 默认选中第一项
+            error_message.set(None);
 
             // 立即尝试设置焦点
             spawn(async move {
@@ -317,18 +333,24 @@ pub fn Search() -> Element {
     };
 
     let handle_bib_click = move |(bib_name, bib_path): (String, String)| {
-        if let Ok(parse_bib) = parse(&bib_path) {
-            let refs = read_bibliography(parse_bib);
-            set_helper_bib(Some((bib_name, refs)));
-            is_selecting_bib.set(false);
+        match parse(&bib_path) {
+            Ok(parse_bib) => {
+                let refs = read_bibliography(parse_bib);
+                set_helper_bib(Some((bib_name, refs)));
+                is_selecting_bib.set(false);
+                error_message.set(None);
 
-            // 设置焦点到输入框
-            spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                if let Some(input) = input_ref() {
-                    let _ = input.set_focus(true).await;
-                }
-            });
+                // 设置焦点到输入框
+                spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                    if let Some(input) = input_ref() {
+                        let _ = input.set_focus(true).await;
+                    }
+                });
+            }
+            Err(e) => {
+                error_message.set(Some(e.to_string()));
+            }
         }
     };
 
@@ -371,10 +393,16 @@ pub fn Search() -> Element {
                         if let Some(index) = bib_selected_index() {
                             let (name, path, _, _, _) = &bib_list[index];
                             // 解析bib
-                            if let Ok(parsed_bib) = parse(path) {
-                                let refs = read_bibliography(parsed_bib);
-                                set_helper_bib(Some((name.clone(), refs)));
-                                is_selecting_bib.set(false);
+                            match parse(path) {
+                                Ok(parsed_bib) => {
+                                    let refs = read_bibliography(parsed_bib);
+                                    set_helper_bib(Some((name.clone(), refs)));
+                                    is_selecting_bib.set(false);
+                                    error_message.set(None);
+                                }
+                                Err(e) => {
+                                    error_message.set(Some(e.to_string()));
+                                }
                             }
                         }
                     }
@@ -523,6 +551,7 @@ pub fn Search() -> Element {
         let _ = query();
         let _ = result();
         let _ = is_selecting_bib(); // 监听模式切换
+        let _ = error_message();
 
         if let Some(mounted) = container_mounted() {
             spawn(async move {
@@ -559,43 +588,33 @@ pub fn Search() -> Element {
     });
 
     rsx! {
-        div { class: "w-full h-auto bg-transparent",
-            div {
-                class: format!(
-                    "bg-base-100 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[{}px]",
-                    MAX_HEIGHT,
-                ),
-                "data-content-container": "true",
-                onmounted: move |event| {
-                    container_mounted.set(Some(event));
-                },
-                div {
-                    class: "flex-shrink-0 overflow-hidden no-scroll",
-                    style: "overscroll-behavior: none;",
-                    onwheel: move |evt| {
-                        evt.prevent_default();
-                        evt.stop_propagation();
-                    },
-                    onscroll: move |evt| {
-                        evt.prevent_default();
-                        evt.stop_propagation();
-                    },
-                    SearchInput {
-                        query,
-                        is_selecting_bib,
-                        current_bib,
-                        bibs,
-                        input_ref,
-                        on_input: handle_input,
-                        on_keydown: handle_keydown,
-                        on_bib_select_click: handle_bib_select_click,
-                    }
+        div {
+            class: format!("bg-base-100 rounded-xl shadow-2xl flex flex-col h-[{}px]", MAX_HEIGHT),
+            "data-content-container": "true",
+            onmounted: move |event| {
+                container_mounted.set(Some(event));
+            },
+            // 固定在顶部的搜索输入框
+            div { class: "flex-shrink-0",
+                SearchInput {
+                    query,
+                    is_selecting_bib,
+                    current_bib,
+                    bibs,
+                    input_ref,
+                    on_input: handle_input,
+                    on_keydown: handle_keydown,
+                    on_bib_select_click: handle_bib_select_click,
                 }
+            }
+            // 可滚动的内容区域
+            div { class: "flex-1 overflow-hidden",
                 if is_selecting_bib() {
                     BibliographySelector {
                         bibs,
                         bib_selected_index,
                         on_bib_click: handle_bib_click,
+                        error_message,
                     }
                 } else if !query().is_empty() {
                     SearchResults {
