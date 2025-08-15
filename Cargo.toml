@@ -57,12 +57,17 @@ objc2 = "0.6.2"
 objc2-app-kit = "0.3.1"
 objc2-foundation = "0.3.1"
 [target."cfg(target_os = \"windows\")".dependencies]
+image = "0.25"
 windows-sys = { version = "0.60.2", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
 ] }
 [target."cfg(target_os = \"linux\")".dependencies]
+image = "0.25"
 x11 = "2"
+
+[target."cfg(target_os = \"windows\")".build-dependencies]
+winresource = "0.1"
 
 [features]
 windows-bundle = []
@@ -75,3 +80,4 @@ panic = "abort"
 codegen-units = 1
 lto = true
 opt-level = "z"
+strip = true

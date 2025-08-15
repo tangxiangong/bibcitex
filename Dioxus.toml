@@ -5,24 +5,22 @@ name = "BibCiTeX"
 identifier = "com.tangxiangong.bibcitex.app"
 publisher = "tangxiangong"
 icon = [
+    "icons/icon.icns",
     "icons/32x32.png",
     "icons/128x128.png",
     "icons/128x128@2x.png",
-    "icons/icon.icns",
-    "icons/icon.ico",
 ]
 copyright = "Copyright (c) 2025 tangxiangong"
 category = "Productivity"
 short_description = "A BibTeX citation tool"
 long_description = "A cross-platform BibTeX citation tool developed with Rust and Dioxus framework. Supports multiple platforms (macOS, Windows) and various citation types including Article, Book, Thesis, and more."
-resources = [
-    "assets/logo.png",
-    "assets/transparent_logo.png",
-    "assets/tailwind.css",
-]
+resources = ["header.png"]
 
 [bundle.macos]
 license = "LICENSE-MIT"
 
 [bundle.windows]
 license = "LICENSE-MIT"
+icon = ["icons/icon.ico"]
+[bundle.windows.webview_install_mode.DownloadBootstrapper]
+silent = true
