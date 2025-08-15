@@ -45,6 +45,7 @@ arboard = { workspace = true }
 bibcitex-core = { workspace = true }
 biblatex = { workspace = true }
 dioxus = { workspace = true }
+dirs = { workspace = true }
 enigo = { workspace = true }
 itertools = { workspace = true }
 katex-gdef-v8 = { workspace = true }

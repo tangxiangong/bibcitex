@@ -1,9 +1,9 @@
 #![cfg_attr(feature = "windows-bundle", windows_subsystem = "windows")]
 
 use bibcitex_ui::{App, utils::observe_app};
-use dioxus::desktop::WindowBuilder;
 #[cfg(not(target_os = "macos"))]
 use dioxus::desktop::tao::window::Icon;
+use dioxus::desktop::{Config, WindowBuilder};
 
 #[cfg(not(target_os = "macos"))]
 fn load_window_icon() -> Option<Icon> {
@@ -50,9 +50,10 @@ fn main() {
         }
     };
 
-    let config = dioxus::desktop::Config::new()
+    let config = Config::new()
         .with_custom_index(index_html)
-        .with_window(window_builder);
+        .with_window(window_builder)
+        .with_data_directory(dirs::config_dir().unwrap().join("BibCiTeX"));
     dioxus::LaunchBuilder::desktop()
         .with_cfg(config)
         .launch(App);
