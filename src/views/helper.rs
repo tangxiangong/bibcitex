@@ -61,17 +61,35 @@ pub async fn open_spotlight_window() {
 
     let window = use_window();
 
-    // 创建Spotlight风格的窗口配置（不指定位置，让系统居中）
-    let window_builder = WindowBuilder::new()
-        .with_title("BibCiteX Spotlight")
-        .with_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
-        .with_min_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
-        .with_max_inner_size(LogicalSize::new(WIDTH as f64, MAX_HEIGHT as f64))
-        .with_focused(true)
-        .with_decorations(false) // 移除窗口装饰
-        .with_transparent(true) // 支持透明背景
-        .with_always_on_top(true) // 保持在最上层
-        .with_resizable(false); // 禁用窗口大小调整，但仍可拖拽移动
+    let window_builder = {
+        #[cfg(target_os = "windows")]
+        {
+            // Windows 平台特殊处理：初始时不可见，避免闪烁
+            WindowBuilder::new()
+                .with_title("BibCiteX Spotlight")
+                .with_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+                .with_min_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+                .with_max_inner_size(LogicalSize::new(WIDTH as f64, MAX_HEIGHT as f64))
+                .with_visible(false) // 初始时不可见
+                .with_decorations(false) // 移除窗口装饰
+                .with_transparent(true) // 支持透明背景
+                .with_always_on_top(true) // 保持在最上层
+                .with_resizable(false) // 禁用窗口大小调整，但仍可拖拽移动
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            WindowBuilder::new()
+                .with_title("BibCiteX Spotlight")
+                .with_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+                .with_min_inner_size(LogicalSize::new(WIDTH as f64, MIN_HEIGHT as f64))
+                .with_max_inner_size(LogicalSize::new(WIDTH as f64, MAX_HEIGHT as f64))
+                .with_focused(true)
+                .with_decorations(false) // 移除窗口装饰
+                .with_transparent(true) // 支持透明背景
+                .with_always_on_top(true) // 保持在最上层
+                .with_resizable(false) // 禁用窗口大小调整，但仍可拖拽移动
+        }
+    };
 
     let helper_html = r#"<!doctype html>
 <html style="background: transparent;">
@@ -91,18 +109,39 @@ pub async fn open_spotlight_window() {
     // 创建新窗口并保存窗口句柄
     let helper_window = window.new_window(VirtualDom::new(Helper), config).await;
     *HELPER_WINDOW.write() = Some(Rc::downgrade(&helper_window));
+
+    // 非 Windows 平台立即设置焦点
+    #[cfg(not(target_os = "windows"))]
+    {
+        helper_window.set_focus();
+    }
 }
 
 /// The actual Helper window content
 #[component]
 pub fn Helper() -> Element {
     let content_height = use_context_provider(|| Signal::new(MIN_HEIGHT)); // 提供内容高度信号
+    #[cfg(target_os = "windows")]
+    let mut window_ready = use_signal(|| false);
 
     // 在组件初始化时从持久化状态恢复 HELPER_BIB
     use_effect(move || {
         let stored_bib = get_helper_bib();
         if stored_bib.is_some() && HELPER_BIB().is_none() {
             *HELPER_BIB.write() = stored_bib;
+        }
+    });
+
+    #[cfg(target_os = "windows")]
+    use_effect(move || {
+        if !window_ready() {
+            let window = use_window();
+            spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                window.set_visible(true);
+                window.set_focus();
+                window_ready.set(true);
+            });
         }
     });
 
@@ -136,6 +175,17 @@ pub fn Helper() -> Element {
 
         div {
             class: "w-full h-auto bg-transparent",
+            style: {
+                #[cfg(target_os = "windows")]
+                {
+                    if !window_ready() {
+                        "opacity: 0; transition: opacity 0.15s ease-in-out;"
+                    } else {
+                        "opacity: 1; transition: opacity 0.15s ease-in-out;"
+                    }
+                }
+                #[cfg(not(target_os = "windows"))] { "" }
+            },
             onkeydown: move |evt| {
                 if evt.key() == Key::Escape {
                     let window = use_window();
