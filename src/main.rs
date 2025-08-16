@@ -6,10 +6,11 @@ use dioxus::desktop::tao::window::Icon;
 use dioxus::desktop::{Config, WindowBuilder};
 
 #[cfg(not(target_os = "macos"))]
+static WINDOW_ICON: &[u8] = include_bytes!("../icons/windowicon.png");
+
+#[cfg(not(target_os = "macos"))]
 fn load_window_icon() -> Option<Icon> {
-    if let Ok(icon_bytes) = std::fs::read("header.png")
-        && let Ok(image) = image::load_from_memory(&icon_bytes)
-    {
+    if let Ok(image) = image::load_from_memory(WINDOW_ICON) {
         let rgba = image.to_rgba8();
         let (width, height) = rgba.dimensions();
         Icon::from_rgba(rgba.into_raw(), width, height).ok()

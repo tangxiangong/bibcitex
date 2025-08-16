@@ -19,6 +19,7 @@ dioxus-core = "0.7.0-rc.0"
 dirs = "6.0.0"
 enigo = "0.5"
 fs-err = "3.1"
+image = "0.25"
 itertools = "0.14"
 katex-gdef-v8 = { version = "0.1", default-features = false, features = [
     "qjs",
@@ -47,6 +48,7 @@ biblatex = { workspace = true }
 dioxus = { workspace = true }
 dirs = { workspace = true }
 enigo = { workspace = true }
+image = { workspace = true }
 itertools = { workspace = true }
 katex-gdef-v8 = { workspace = true }
 once_cell = { workspace = true }
@@ -58,13 +60,11 @@ objc2 = "0.6.2"
 objc2-app-kit = "0.3.1"
 objc2-foundation = "0.3.1"
 [target."cfg(target_os = \"windows\")".dependencies]
-image = "0.25"
 windows-sys = { version = "0.60.2", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
 ] }
 [target."cfg(target_os = \"linux\")".dependencies]
-image = "0.25"
 x11 = "2"
 
 [target."cfg(target_os = \"windows\")".build-dependencies]
@@ -81,4 +81,3 @@ panic = "abort"
 codegen-units = 1
 lto = true
 opt-level = "z"
-strip = true

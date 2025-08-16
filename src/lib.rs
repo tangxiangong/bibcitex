@@ -3,7 +3,12 @@
 use crate::views::open_spotlight_window;
 use bibcitex_core::{Setting, bib::Reference};
 use dioxus::{
-    desktop::{HotKeyState, tao::keyboard::ModifiersState, use_global_shortcut},
+    desktop::{
+        HotKeyState,
+        tao::keyboard::ModifiersState,
+        trayicon::{DioxusTrayIcon, default_tray_icon, init_tray_icon},
+        use_global_shortcut,
+    },
     prelude::*,
 };
 
@@ -23,6 +28,8 @@ pub static CANCEL_ICON: Asset = asset!("assets/icons/cancel.svg");
 pub static DELETE_ICON: Asset = asset!("assets/icons/delete.svg");
 pub static DETAILS_ICON: Asset = asset!("assets/icons/detail.svg");
 
+static TRAY_ICON: &[u8] = include_bytes!("../icons/trayicon.png");
+
 /// global state
 pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
 pub static CURRENT_REF: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
@@ -34,6 +41,17 @@ pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
 
 #[component]
 pub fn App() -> Element {
+    use_hook(|| {
+        // window().set_close_behavior(WindowCloseBehaviour::WindowHides);
+        let tray_icon = if let Ok(image) = image::load_from_memory(TRAY_ICON) {
+            let rgba = image.to_rgba8();
+            let (width, height) = rgba.dimensions();
+            DioxusTrayIcon::from_rgba(rgba.into_raw(), width, height).ok()
+        } else {
+            None
+        };
+        init_tray_icon(default_tray_icon(), tray_icon)
+    });
     // TODO: Error handling
     let _ = use_global_shortcut(
         (ModifiersState::SUPER | ModifiersState::SHIFT, KeyCode::K),

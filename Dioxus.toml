@@ -14,7 +14,6 @@ copyright = "Copyright (c) 2025 tangxiangong"
 category = "Productivity"
 short_description = "A BibTeX citation tool"
 long_description = "A cross-platform BibTeX citation tool developed with Rust and Dioxus framework. Supports multiple platforms (macOS, Windows) and various citation types including Article, Book, Thesis, and more."
-resources = ["header.png"]
 
 [bundle.macos]
 license = "LICENSE-MIT"
