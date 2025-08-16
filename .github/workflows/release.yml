@@ -68,7 +68,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: install dioxus-cli
+      - name: install dioxus-cli (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
           if ! command -v dx > /dev/null 2>&1; then
             echo "dioxus-cli not found, installing..."
@@ -82,6 +84,25 @@ jobs:
           else
             echo "dioxus-cli already installed"
           fi
+
+      - name: install dioxus-cli (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dxExists = Get-Command dx -ErrorAction SilentlyContinue
+          if (-not $dxExists) {
+            Write-Host "dioxus-cli not found, installing..."
+            $binstallExists = Get-Command cargo-binstall -ErrorAction SilentlyContinue
+            if (-not $binstallExists) {
+              Write-Host "cargo-binstall not found, installing..."
+              cargo install cargo-binstall
+            } else {
+              Write-Host "cargo-binstall already installed"
+            }
+            cargo binstall dioxus-cli@0.7.0-rc.0 --no-confirm
+          } else {
+            Write-Host "dioxus-cli already installed"
+          }
         env:
           CARGO_NET_RETRY: 10
 
