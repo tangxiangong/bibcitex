@@ -68,15 +68,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: install cargo-binstall
-        run: |
-          cargo install cargo-binstall
-        env:
-          CARGO_NET_RETRY: 10
-
       - name: install dioxus-cli
         run: |
-          cargo binstall dioxus-cli@0.7.0-rc.0
+          if ! command -v dx > /dev/null 2>&1; then
+            echo "dioxus-cli not found, installing..."
+            if ! command -v cargo-binstall > /dev/null 2>&1; then
+              echo "cargo-binstall not found, installing..."
+              cargo install cargo-binstall
+            else
+              echo "cargo-binstall already installed"
+            fi
+            cargo binstall dioxus-cli@0.7.0-rc.0 --no-confirm
+          else
+            echo "dioxus-cli already installed"
+          fi
         env:
           CARGO_NET_RETRY: 10
 
