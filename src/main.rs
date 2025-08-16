@@ -2,7 +2,7 @@
 
 use bibcitex_ui::{App, utils::observe_app};
 #[cfg(not(target_os = "macos"))]
-use dioxus::desktop::tao::window::Icon;
+use dioxus::desktop::tao::window::Icon as TaoIcon;
 #[cfg(target_os = "macos")]
 use dioxus::desktop::tao::{
     event::{Event, WindowEvent},
@@ -10,18 +10,20 @@ use dioxus::desktop::tao::{
 };
 use dioxus::{
     LaunchBuilder,
-    desktop::{Config, WindowBuilder},
+    desktop::{Config, WindowBuilder, muda::*},
 };
+
+static ABOUT_ICON: &[u8] = include_bytes!("../assets/transparent_logo.png");
 
 #[cfg(not(target_os = "macos"))]
 static WINDOW_ICON: &[u8] = include_bytes!("../icons/windowicon.png");
 
 #[cfg(not(target_os = "macos"))]
-fn load_window_icon() -> Option<Icon> {
+fn load_window_icon() -> Option<TaoIcon> {
     if let Ok(image) = image::load_from_memory(WINDOW_ICON) {
         let rgba = image.to_rgba8();
         let (width, height) = rgba.dimensions();
-        Icon::from_rgba(rgba.into_raw(), width, height).ok()
+        TaoIcon::from_rgba(rgba.into_raw(), width, height).ok()
     } else {
         None
     }
@@ -30,6 +32,7 @@ fn load_window_icon() -> Option<Icon> {
 fn main() {
     observe_app();
 
+    // Custom HTML
     let index_html = r#"
         <!doctype html>
         <html>
@@ -46,6 +49,39 @@ fn main() {
             </body>
         </html>
 "#.to_string();
+
+    // Custom MENU
+    let menu = Menu::new();
+    let home_menu = Submenu::new("Home", true);
+
+    let about_icon = if let Ok(image) = image::load_from_memory(ABOUT_ICON) {
+        let rgba = image.to_rgba8();
+        let (width, height) = rgba.dimensions();
+        Icon::from_rgba(rgba.into_raw(), width, height).ok()
+    } else {
+        None
+    };
+
+    let mut about_metadata = from_cargo_metadata!();
+    about_metadata.icon = about_icon;
+    about_metadata.name = Some("BibCiTeX - BibTeX 快捷引用工具".to_string());
+    about_metadata.copyright = Some("Copyright 2025 tangxiangong".to_string());
+
+    home_menu
+        .append_items(&[
+            &PredefinedMenuItem::about(Some("About BibCiTeX"), Some(about_metadata)),
+            &PredefinedMenuItem::separator(),
+            &PredefinedMenuItem::fullscreen(None),
+            &PredefinedMenuItem::hide(Some("Hide BibCiTeX")),
+            &PredefinedMenuItem::hide_others(None),
+            &PredefinedMenuItem::minimize(None),
+            &PredefinedMenuItem::maximize(None),
+            &PredefinedMenuItem::close_window(None),
+            &PredefinedMenuItem::separator(),
+            &PredefinedMenuItem::quit(Some("Quit BibCiTeX")),
+        ])
+        .unwrap();
+    menu.append_items(&[&home_menu]).unwrap();
 
     let window_builder = {
         #[cfg(not(target_os = "macos"))]
@@ -88,6 +124,7 @@ fn main() {
                     }
                 }
             },
-        );
+        )
+        .with_menu(menu);
     LaunchBuilder::desktop().with_cfg(config).launch(App);
 }
