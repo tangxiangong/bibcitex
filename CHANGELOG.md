@@ -2,7 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.0] - 2025-08-14
+## [0.2.0] - 2025-08-16
+
+### 🚀 Features
+
+- Change window close behavior to hide instead of close
+- Add custom menu, about dialog and tray helper menu
+- Add dark mode support with color variants and hover states
+- *(macos)* Add custom event handler for window activation policy
+
+### 🐛 Bug Fixes
+
+- *(windows)* Prevent window flickering on startup by delaying visibility
+
+### 📚 Documentation
+
+- Add installation instructions for macOS users
+
+## [0.1.0] - 2025-08-16
 
 ### 🚀 Features
 
