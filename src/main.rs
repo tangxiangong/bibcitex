@@ -3,7 +3,15 @@
 use bibcitex_ui::{App, utils::observe_app};
 #[cfg(not(target_os = "macos"))]
 use dioxus::desktop::tao::window::Icon;
-use dioxus::desktop::{Config, WindowBuilder};
+#[cfg(target_os = "macos")]
+use dioxus::desktop::tao::{
+    event::{Event, WindowEvent},
+    platform::macos::{ActivationPolicy, EventLoopWindowTargetExtMacOS},
+};
+use dioxus::{
+    LaunchBuilder,
+    desktop::{Config, WindowBuilder},
+};
 
 #[cfg(not(target_os = "macos"))]
 static WINDOW_ICON: &[u8] = include_bytes!("../icons/windowicon.png");
@@ -38,6 +46,7 @@ fn main() {
             </body>
         </html>
 "#.to_string();
+
     let window_builder = {
         #[cfg(not(target_os = "macos"))]
         {
@@ -54,8 +63,31 @@ fn main() {
     let config = Config::new()
         .with_custom_index(index_html)
         .with_window(window_builder)
-        .with_data_directory(dirs::config_dir().unwrap().join("BibCiTeX"));
-    dioxus::LaunchBuilder::desktop()
-        .with_cfg(config)
-        .launch(App);
+        .with_data_directory(dirs::config_dir().unwrap().join("BibCiTeX"))
+        .with_custom_event_handler(
+            #[allow(unused_variables)]
+            |event, event_loop_window_target| {
+                #[cfg(target_os = "macos")]
+                {
+                    match event {
+                        Event::WindowEvent {
+                            event: WindowEvent::CloseRequested,
+                            ..
+                        } => {
+                            event_loop_window_target
+                                .set_activation_policy_at_runtime(ActivationPolicy::Accessory);
+                        }
+                        Event::WindowEvent {
+                            event: WindowEvent::Focused(true),
+                            ..
+                        } => {
+                            event_loop_window_target
+                                .set_activation_policy_at_runtime(ActivationPolicy::Regular);
+                        }
+                        _ => {}
+                    }
+                }
+            },
+        );
+    LaunchBuilder::desktop().with_cfg(config).launch(App);
 }
