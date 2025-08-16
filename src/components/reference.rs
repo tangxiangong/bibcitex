@@ -122,15 +122,15 @@ pub fn Unimplemented(entry: Reference) -> Element {
         }
     };
     rsx! {
-        div { class: "card card-border bg-blue-100 border-blue-500 m-2 border-2",
+        div { class: "card card-border bg-blue-100 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400 m-2 border-2",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-lg text-blue-800",
+                        div { class: "badge badge-outline mr-2 text-lg text-blue-800 dark:text-blue-200",
                             "{entry.type_} Unimplemented"
                         }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-gray-900 font-serif",
+                            span { class: "text-lg text-gray-900 dark:text-gray-100 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
@@ -163,26 +163,34 @@ pub fn Unimplemented(entry: Reference) -> Element {
                 p {
                     if let Some(authors) = entry.author {
                         for author in authors {
-                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                                 "{author} "
                             }
                         }
                     } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                             "Unknown"
                         }
                     }
                 }
                 p {
                     if let Some(journal) = &entry.journal {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "{journal}" }
+                        span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
+                            "{journal}"
+                        }
                     } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                        span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
+                            "Unknown"
+                        }
                     }
                     if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "{year}"
+                        }
                     } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "year"
+                        }
                     }
                     if let Some(doi) = &entry.doi {
                         button {
@@ -191,7 +199,9 @@ pub fn Unimplemented(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open_browser(&doi_url);
                             },
-                            div { class: "badge badge-outline text-cyan-600 mr-2", "DOI: {doi}" }
+                            div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
+                                "DOI: {doi}"
+                            }
                         }
                     } else {
                         if let Some(url) = entry.url {
@@ -201,7 +211,7 @@ pub fn Unimplemented(entry: Reference) -> Element {
                                 onclick: move |_| {
                                     let _ = opener::open_browser(&url);
                                 },
-                                div { class: "badge badge-outline text-cyan-600 mr-2",
+                                div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
                                     "URL"
                                 }
                             }
@@ -214,7 +224,7 @@ pub fn Unimplemented(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open(&file);
                             },
-                            div { class: "badge badge-outline text-amber-700 mr-2",
+                            div { class: "badge badge-outline text-amber-700 dark:text-amber-300 mr-2",
                                 "PDF"
                             }
                         }
@@ -468,19 +478,21 @@ pub fn Article(entry: Reference) -> Element {
         }
     };
     rsx! {
-        div { class: "card card-border bg-blue-100 border-blue-500 m-2 border-2",
+        div { class: "card card-border bg-blue-100 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400 m-2 border-2",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-lg text-blue-800",
+                        div { class: "badge badge-outline mr-2 text-lg text-blue-800 dark:text-blue-200",
                             "Article"
                         }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-gray-900 font-serif",
+                            span { class: "text-lg text-gray-900 dark:text-gray-100 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
-                            span { class: "text-lg text-gray-900 font-serif", "No title available" }
+                            span { class: "text-lg text-gray-900 dark:text-gray-100 font-serif",
+                                "No title available"
+                            }
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
@@ -509,26 +521,34 @@ pub fn Article(entry: Reference) -> Element {
                 p {
                     if let Some(authors) = entry.author {
                         for author in authors {
-                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                                 "{author} "
                             }
                         }
                     } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                             "Unknown"
                         }
                     }
                 }
                 p {
                     if let Some(journal) = &entry.journal {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "{journal}" }
+                        span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
+                            "{journal}"
+                        }
                     } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                        span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
+                            "Unknown"
+                        }
                     }
                     if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "{year}"
+                        }
                     } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "year"
+                        }
                     }
                     if let Some(doi) = &entry.doi {
                         button {
@@ -537,7 +557,9 @@ pub fn Article(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open_browser(&doi_url);
                             },
-                            div { class: "badge badge-outline text-cyan-600 mr-2", "DOI: {doi}" }
+                            div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
+                                "DOI: {doi}"
+                            }
                         }
                     } else {
                         if let Some(url) = entry.url {
@@ -547,7 +569,7 @@ pub fn Article(entry: Reference) -> Element {
                                 onclick: move |_| {
                                     let _ = opener::open_browser(&url);
                                 },
-                                div { class: "badge badge-outline text-cyan-600 mr-2",
+                                div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
                                     "URL"
                                 }
                             }
@@ -560,7 +582,7 @@ pub fn Article(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open(&file);
                             },
-                            div { class: "badge badge-outline text-amber-700 mr-2",
+                            div { class: "badge badge-outline text-amber-700 dark:text-amber-300 mr-2",
                                 "PDF"
                             }
                         }
@@ -814,19 +836,21 @@ pub fn Book(entry: Reference) -> Element {
         }
     };
     rsx! {
-        div { class: "card card-border bg-emerald-100 border-emerald-500 m-2 border-2",
+        div { class: "card card-border bg-emerald-100 dark:bg-emerald-900/30 border-emerald-500 dark:border-emerald-400 m-2 border-2",
             div { class: "card-body",
                 div { class: "flex justify-between items-start",
                     div { class: "flex items-center",
-                        div { class: "badge badge-outline mr-2 text-lg text-emerald-800",
+                        div { class: "badge badge-outline mr-2 text-lg text-emerald-800 dark:text-emerald-200",
                             "Book"
                         }
                         if let Some(title) = entry.title {
-                            span { class: "text-lg text-gray-900 font-serif",
+                            span { class: "text-lg text-gray-900 dark:text-gray-100 font-serif",
                                 ChunksComp { chunks: title, cite_key: key.clone() }
                             }
                         } else {
-                            span { class: "text-lg text-gray-900 font-serif", "No title available" }
+                            span { class: "text-lg text-gray-900 dark:text-gray-100 font-serif",
+                                "No title available"
+                            }
                         }
                     }
                     div { class: "flex items-center flex-shrink-0",
@@ -855,12 +879,12 @@ pub fn Book(entry: Reference) -> Element {
                 p {
                     if let Some(authors) = entry.author {
                         for author in authors {
-                            span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                            span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                                 "{author} "
                             }
                         }
                     } else {
-                        span { class: "badge badge-outline text-blue-700 font-semibold mr-2",
+                        span { class: "badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2",
                             "Unknown"
                         }
                     }
@@ -868,17 +892,23 @@ pub fn Book(entry: Reference) -> Element {
                 p {
                     if let Some(publishers) = &entry.publisher {
                         for publisher in publishers {
-                            span { class: "badge badge-outline text-purple-600 mr-2",
+                            span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
                                 "{publisher}"
                             }
                         }
                     } else {
-                        span { class: "badge badge-outline text-purple-600 mr-2", "Unknown" }
+                        span { class: "badge badge-outline text-purple-600 dark:text-purple-300 mr-2",
+                            "Unknown"
+                        }
                     }
                     if let Some(year) = &entry.year {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "{year}" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "{year}"
+                        }
                     } else {
-                        span { class: "badge badge-outline text-emerald-700 mr-2", "year" }
+                        span { class: "badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2",
+                            "year"
+                        }
                     }
                     if let Some(doi) = &entry.doi {
                         button {
@@ -887,7 +917,9 @@ pub fn Book(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open_browser(&doi_url);
                             },
-                            div { class: "badge badge-outline text-cyan-600 mr-2", "DOI: {doi}" }
+                            div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
+                                "DOI: {doi}"
+                            }
                         }
                     } else {
                         if let Some(url) = entry.url {
@@ -897,7 +929,7 @@ pub fn Book(entry: Reference) -> Element {
                                 onclick: move |_| {
                                     let _ = opener::open_browser(&url);
                                 },
-                                div { class: "badge badge-outline text-cyan-600 mr-2",
+                                div { class: "badge badge-outline text-cyan-600 dark:text-cyan-300 mr-2",
                                     "URL"
                                 }
                             }
@@ -910,7 +942,7 @@ pub fn Book(entry: Reference) -> Element {
                             onclick: move |_| {
                                 let _ = opener::open(&file);
                             },
-                            div { class: "badge badge-outline text-amber-700 mr-2",
+                            div { class: "badge badge-outline text-amber-700 dark:text-amber-300 mr-2",
                                 "PDF"
                             }
                         }
