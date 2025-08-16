@@ -6,8 +6,8 @@ use dioxus::{
     desktop::{
         HotKeyState, WindowCloseBehaviour,
         tao::keyboard::ModifiersState,
-        trayicon::{DioxusTrayIcon, default_tray_icon, init_tray_icon},
-        use_global_shortcut, window,
+        trayicon::{DioxusTrayIcon, DioxusTrayMenu, init_tray_icon, menu},
+        use_global_shortcut, use_muda_event_handler, use_tray_menu_event_handler, window,
     },
     prelude::*,
 };
@@ -26,7 +26,7 @@ pub static COPY_ICON: Asset = asset!("assets/icons/copy.svg");
 pub static ADD_ICON: Asset = asset!("assets/icons/add.svg");
 pub static CANCEL_ICON: Asset = asset!("assets/icons/cancel.svg");
 pub static DELETE_ICON: Asset = asset!("assets/icons/delete.svg");
-pub static DETAILS_ICON: Asset = asset!("assets/icons/detail.svg");
+pub static DETAILS_ICON: Asset = asset!("assets/icons/details.svg");
 
 static TRAY_ICON: &[u8] = include_bytes!("../icons/trayicon.png");
 
@@ -50,8 +50,29 @@ pub fn App() -> Element {
         } else {
             None
         };
-        init_tray_icon(default_tray_icon(), tray_icon)
+        let tray_menu = DioxusTrayMenu::new();
+        let helper_item = menu::IconMenuItemBuilder::new()
+            .id("helper".into())
+            .text("快捷助手(暂不可用)")
+            .build();
+        tray_menu
+            .append_items(&[&helper_item, &menu::PredefinedMenuItem::quit(None)])
+            .unwrap();
+        // FIXME: BUG: set_show_menu_on_left_click(true) always raises main window
+        // https://github.com/DioxusLabs/dioxus/issues/4430
+        init_tray_icon(tray_menu, tray_icon);
     });
+
+    // FIXME: BUG: tray menu event handler is not working
+    // https://github.com/DioxusLabs/dioxus/issues/4495
+    use_tray_menu_event_handler(move |menu_event| {
+        if menu_event.id() == "helper" {
+            spawn(async move {
+                open_spotlight_window().await;
+            });
+        }
+    });
+
     // TODO: Error handling
     let _ = use_global_shortcut(
         (ModifiersState::SUPER | ModifiersState::SHIFT, KeyCode::K),
@@ -63,6 +84,14 @@ pub fn App() -> Element {
             }
         },
     );
+
+    use_muda_event_handler(|muda_event| {
+        if muda_event.id() == "helper" {
+            spawn(async move {
+                open_spotlight_window().await;
+            });
+        }
+    });
 
     rsx! {
         document::Stylesheet { href: TAILWINDCSS }
