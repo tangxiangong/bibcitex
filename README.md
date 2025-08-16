@@ -14,6 +14,12 @@
 - [x] Windows (arm64/x86_64)
 - [ ] Linux
 
+### 安装
+对于 macOS 用户，若提示 `BibCiTeX` 已损坏，需要打开终端，执行以下命令：
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
+```
+
 ### 文献类型
 - [x] Article
 - [x] Book
