@@ -4,10 +4,10 @@ use crate::views::open_spotlight_window;
 use bibcitex_core::{Setting, bib::Reference};
 use dioxus::{
     desktop::{
-        HotKeyState,
+        HotKeyState, WindowCloseBehaviour,
         tao::keyboard::ModifiersState,
         trayicon::{DioxusTrayIcon, default_tray_icon, init_tray_icon},
-        use_global_shortcut,
+        use_global_shortcut, window,
     },
     prelude::*,
 };
@@ -42,7 +42,7 @@ pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
 #[component]
 pub fn App() -> Element {
     use_hook(|| {
-        // window().set_close_behavior(WindowCloseBehaviour::WindowHides);
+        window().set_close_behavior(WindowCloseBehaviour::WindowHides);
         let tray_icon = if let Ok(image) = image::load_from_memory(TRAY_ICON) {
             let rgba = image.to_rgba8();
             let (width, height) = rgba.dimensions();
