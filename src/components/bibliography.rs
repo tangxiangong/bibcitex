@@ -1,6 +1,5 @@
 use crate::{
-    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, DETAILS_ICON, ERR_ICON, OK_ICON, STATE,
-    route::Route,
+    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, ERR_ICON, OK_ICON, STATE, route::Route,
 };
 use bibcitex_core::{
     bib::parse,
@@ -334,14 +333,9 @@ pub fn BibliographyTable() -> Element {
                                     div { class: "flex w-full",
                                         div { class: "grid grow place-items-center",
                                             button {
-                                                class: "tooltip cursor-pointer",
-                                                "data-tip": "details",
+                                                class: "cursor-pointer btn btn-sm btn-ghost",
                                                 onclick: move |_| open_bib(path_clone.clone()),
-                                                img {
-                                                    alt: "details",
-                                                    width: 20,
-                                                    src: DETAILS_ICON,
-                                                }
+                                                "View"
                                             }
                                         }
                                         div { class: "grid grow place-items-center",
