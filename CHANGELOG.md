@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-08-17
+
+### 🚀 Features
+
+- *(components)* Add support for Booklet, InBook and InCollection entry types
+
 ## [0.2.0] - 2025-08-16
 
 ### 🚀 Features
