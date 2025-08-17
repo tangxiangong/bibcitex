@@ -24,9 +24,9 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 - [x] Article
 - [x] Book
 - [x] Thesis(PhDThesis && MastersThesis)
-- [ ] Booklet
-- [ ] InBook
-- [ ] InCollection
+- [x] Booklet
+- [x] InBook
+- [x] InCollection
 - [ ] Manual
 - [x] Misc
 - [ ] Proceedings
