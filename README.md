@@ -78,7 +78,7 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 - [ ] 更好的响应式设计
 
 ## 第三方代码版权声明 (Third-Party Code Attribution)
-### [src/platforms/macos/nspanel](./src/platforms/macos/nspanel)
+### [crates/nspanel](./crates/nspanel) (WIP)
 - **来源(Source)**: [ahkohd/tauri-nspanel](https://github.com/ahkohd/tauri-nspanel) (v2.1)
 - **作者(Author)**: Victor Aremu (ahkohd)
 - **许可协议(License)**: [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) OR [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0)
@@ -91,7 +91,7 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
   - 从 Tauri 框架适配为 Dioxus 框架 (Adapted from Tauri framework to Dioxus framework)
   - 移除 Tauri 特定的运行时集成 (Removed Tauri-specific runtime integration)
 
-### [paste.rs]([macOS](./src/platforms/macos/paste.rs), [Windows](./src/platforms/windows/paste.rs), [Linux (x11)](./src/platforms/linux/paste.rs))
+### [crates/xpaste](./crates/xpaste)
 - **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
 - **作者(Author)**: EcoPasteHub
 - **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)

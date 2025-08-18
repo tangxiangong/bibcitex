@@ -13,9 +13,7 @@ use dioxus::{
 };
 
 pub mod components;
-pub mod platforms;
 pub mod route;
-pub mod utils;
 pub mod views;
 
 // icon assets

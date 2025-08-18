@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "bibcitex-core"]
+members = [".", "crates/*"]
 
 [workspace.package]
 version = "0.3.0"
@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 arboard = "3.6"
-bibcitex-core = { path = "bibcitex-core" }
+bibcitex-core = { path = "crates/bibcitex-core" }
 biblatex = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
@@ -32,6 +32,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+xpaste = { path = "crates/xpaste" }
 
 [package]
 name = "BibCiTeX"
@@ -55,17 +56,7 @@ once_cell = { workspace = true }
 opener = { workspace = true }
 rfd = { workspace = true }
 tokio = { workspace = true }
-[target."cfg(target_os = \"macos\")".dependencies]
-objc2 = "0.6.2"
-objc2-app-kit = "0.3.1"
-objc2-foundation = "0.3.1"
-[target."cfg(target_os = \"windows\")".dependencies]
-windows-sys = { version = "0.60.2", features = [
-    "Win32_Foundation",
-    "Win32_UI_WindowsAndMessaging",
-] }
-[target."cfg(target_os = \"linux\")".dependencies]
-x11 = "2"
+xpaste = { workspace = true }
 
 [target."cfg(target_os = \"windows\")".build-dependencies]
 winresource = "0.1"

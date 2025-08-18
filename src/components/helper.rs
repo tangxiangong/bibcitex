@@ -1,7 +1,6 @@
 use crate::{
     LOGO,
     components::ChunksComp,
-    utils::focus_previous_window,
     views::{HELPER_BIB, HELPER_WINDOW, MAX_HEIGHT, MIN_HEIGHT, set_helper_bib},
 };
 use arboard::Clipboard;
@@ -13,6 +12,7 @@ use bibcitex_core::{
 use biblatex::EntryType;
 use dioxus::{desktop::use_window, prelude::*};
 use itertools::Itertools;
+use xpaste::focus_previous_window;
 
 // 搜索输入框组件
 #[component]

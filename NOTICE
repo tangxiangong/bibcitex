@@ -4,13 +4,13 @@ This software includes third-party code with the following attributions:
 
 ================================================================================
 
-Module: src/platforms/macos/nspanel
+crate: crates/nspanel
 Source: ahkohd/tauri-nspanel (https://github.com/ahkohd/tauri-nspanel)
 Version: v2.1
 License: MIT OR Apache-2.0
 Copyright: Copyright (c) 2023 - Present Victor Aremu
 
-The module `src/platforms/macos` is copied and modified from Victor Aremu's
+The crate `crates/nspanel` is copied and modified from Victor Aremu's
 project tauri-nspanel (https://github.com/ahkohd/tauri-nspanel/tree/v2.1).
 
 Original License Information:
@@ -25,12 +25,12 @@ Usage && Modifications:
 
 ================================================================================
 
-Module: src/platforms/macos/paste.rs && src/platforms/windows/paste.rs && src/platforms/linux/paste.rs
+crate: xpaste
 Source: EcoPasteHub/EcoPaste (https://github.com/EcoPasteHub/EcoPaste)
 License: Apache-2.0
 Copyright: Copyright (c) EcoPasteHub
 
-The module `src/platforms/macos/paste.rs` and `src/platforms/windows/paste.rs` are copied and modified from EcoPasteHub's
+The crate `xpaste` is copied and modified from EcoPasteHub's
 project EcoPaste (https://github.com/EcoPasteHub/EcoPaste).
 
 Original License Information:

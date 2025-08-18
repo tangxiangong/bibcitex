@@ -1,10 +1,13 @@
-// Copyright (c) 2025 BibCiTeX Contributors
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// This file contains code derived from tauri-nspanel by Victor Aremu (ahkohd)
-// Original source: https://github.com/ahkohd/tauri-nspanel
-// Copyright (c) 2023 - Present Victor Aremu
-// Licensed under MIT OR MIT/Apache-2.0
+//! Copyright (c) 2023 - Present Victor Aremu
+//!
+//! License: MIT or MIT/Apache-2.0
+//!
+//! Modified by tangxiangong (2025) for [bibcitex](https://github.com/tangxiangong/bibcitex).
+//!
+//! # Note
+//!
+//! This module is forked from the ahkohd's project [tauri-nspanel](https://github.com/ahkohd/tauri-nspanel/tree/v2.1), which is licensed under [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) or [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0).
+//!
 
 pub mod builder;
 pub mod common;

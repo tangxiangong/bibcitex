@@ -6,57 +6,15 @@
 // Copyright (c) EcoPasteHub
 // Licensed under Apache-2.0
 
-#![allow(dead_code)]
+use crate::MAIN_WINDOW_TITLE;
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
-use objc2::{
-    rc::Retained,
-    runtime::{AnyObject, Sel},
-};
 use objc2_app_kit::{NSRunningApplication, NSWorkspace};
-use objc2_foundation::{NSDictionary, NSNotification, NSString};
-use std::process::Command;
-use std::{sync::Mutex, thread, time::Duration};
-
-use crate::platforms::MAIN_WINDOW_TITLE;
+use std::{
+    process::Command,
+    {sync::Mutex, thread, time::Duration},
+};
 
 static PREVIOUS_WINDOW: Mutex<Option<i32>> = Mutex::new(None);
-
-extern "C" fn application_did_activate(
-    _self: &AnyObject,
-    _cmd: Sel,
-    notification: &NSNotification,
-) {
-    unsafe {
-        let user_info: Option<Retained<NSDictionary>> = notification.userInfo();
-
-        if user_info.is_none() {
-            return;
-        }
-
-        let app_dict = user_info.as_ref().unwrap();
-        let app_key = NSString::from_str("NSWorkspaceApplicationKey");
-        let app: Option<Retained<NSRunningApplication>> = app_dict
-            .objectForKey(&app_key)
-            .and_then(|obj| obj.downcast().ok());
-
-        if let Some(app) = app {
-            let localized_name = app.localizedName();
-            let name = localized_name
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| "Unknown".to_string());
-
-            if name == MAIN_WINDOW_TITLE {
-                return;
-            }
-
-            let process_id = app.processIdentifier();
-
-            let mut previous_window = PREVIOUS_WINDOW.lock().unwrap();
-            let _ = previous_window.insert(process_id);
-        }
-    }
-}
-
 static LAST_ACTIVE_APP: Mutex<Option<i32>> = Mutex::new(None);
 static CURRENT_APP_PID: Mutex<Option<i32>> = Mutex::new(None);
 static CURRENT_APP_BUNDLE_ID: Mutex<Option<String>> = Mutex::new(None);

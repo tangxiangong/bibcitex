@@ -1,6 +1,6 @@
 #![cfg_attr(feature = "windows-bundle", windows_subsystem = "windows")]
 
-use bibcitex_ui::{App, utils::observe_app};
+use bibcitex_ui::App;
 #[cfg(not(target_os = "macos"))]
 use dioxus::desktop::tao::window::Icon as TaoIcon;
 #[cfg(target_os = "macos")]
@@ -12,6 +12,7 @@ use dioxus::{
     LaunchBuilder,
     desktop::{Config, WindowBuilder, muda::*},
 };
+use xpaste::observe_app;
 
 static ABOUT_ICON: &[u8] = include_bytes!("../assets/transparent_logo.png");
 
