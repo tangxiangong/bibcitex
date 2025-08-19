@@ -49,6 +49,18 @@ pub enum Error {
     DebInstallFailed,
     #[error("invalid updater binary format")]
     InvalidUpdaterFormat,
+    /// Windows installer execution failed due to insufficient privileges
+    #[error("Installation failed: insufficient privileges. Please run as administrator.")]
+    InsufficientPrivileges,
+    /// Windows installer execution failed due to file being in use
+    #[error("Installation failed: file in use. Please close the application and try again.")]
+    FileInUse,
+    /// Windows installer execution failed
+    #[error("Installation failed: installer execution error. Error code: {0}")]
+    InstallerExecutionFailed(i32),
+    /// User cancelled the UAC prompt
+    #[error("Installation cancelled: User declined administrator privileges.")]
+    UserCancelledElevation,
     #[error(transparent)]
     Http(#[from] http::Error),
     #[error(transparent)]

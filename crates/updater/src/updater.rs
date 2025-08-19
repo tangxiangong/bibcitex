@@ -935,6 +935,8 @@ impl Update {
                     .map(OsStr::new)
                     .chain(once(OsStr::new("/UPDATE")))
                     .chain(once(OsStr::new("/RESTART")))
+                    .chain(once(OsStr::new("/CLOSEAPPLICATIONS"))) // 强制关闭应用
+                    .chain(once(OsStr::new("/RESTARTAPPLICATIONS"))) // 重启后恢复
                     .chain(once(OsStr::new("/ARGS")))
                     .chain(nsis_args.iter().map(OsStr::new))
                     .chain(self.installer_args())
@@ -951,7 +953,7 @@ impl Update {
                 [OsStr::new("/i"), path.as_os_str()]
                     .into_iter()
                     .chain(install_mode.msiexec_args().iter().map(OsStr::new))
-                    .chain(once(OsStr::new("/promptrestart")))
+                    .chain(once(OsStr::new("/forcerestart"))) // 强制重启
                     .chain(self.installer_args())
                     .chain(once(OsStr::new("AUTOLAUNCHAPP=True")))
                     .chain(once(msi_args.as_os_str()))
@@ -968,13 +970,26 @@ impl Update {
         };
         let file = encode_wide(file);
 
-        let parameters = installer_args.join(OsStr::new(" "));
+        // 正确处理包含空格的参数，避免参数解析错误
+        let parameters = installer_args
+            .iter()
+            .map(|arg| {
+                let arg_str = arg.to_string_lossy();
+                if arg_str.contains(' ') && !arg_str.starts_with('"') {
+                    format!("\"{}\"", arg_str)
+                } else {
+                    arg_str.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
         let parameters = encode_wide(parameters);
 
-        unsafe {
+        // 使用 runas 动词请求管理员权限
+        let result = unsafe {
             ShellExecuteW(
                 std::ptr::null_mut(),
-                w!("open"),
+                w!("runas"), // 请求管理员权限
                 file.as_ptr(),
                 parameters.as_ptr(),
                 std::ptr::null(),
@@ -982,6 +997,22 @@ impl Update {
             )
         };
 
+        // 检查启动结果并返回具体错误
+        if result as i32 <= 32 {
+            return match result as i32 {
+                5 => Err(Error::InsufficientPrivileges), // ERROR_ACCESS_DENIED
+                1223 => Err(Error::UserCancelledElevation), // ERROR_CANCELLED (用户取消UAC)
+                32 => Err(Error::FileInUse), // ERROR_SHARING_VIOLATION
+                2 => Err(Error::Io(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Installer file not found"
+                ))),
+                _ => Err(Error::InstallerExecutionFailed(result as i32)),
+            };
+        }
+
+        // 延迟退出，给安装程序更多时间启动
+        std::thread::sleep(std::time::Duration::from_millis(2000));
         std::process::exit(0);
     }
 
