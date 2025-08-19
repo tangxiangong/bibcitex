@@ -1,6 +1,9 @@
 /// All errors that can occur while running the updater.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// GitHub errors.
+    #[error(transparent)]
+    GitHub(#[from] octocrab::Error),
     /// Endpoints are not sent.
     #[error("Updater does not have any endpoints set.")]
     EmptyEndpoints,
@@ -24,6 +27,9 @@ pub enum Error {
     /// Operating system is not supported.
     #[error("Unsupported OS, expected one of `linux`, `darwin` or `windows`.")]
     UnsupportedOs,
+    /// Asset not found
+    #[error("Asset not found.")]
+    AssetNotFound,
     /// Failed to determine updater package extract path
     #[error("Failed to determine updater package extract path.")]
     FailedToDetermineExtractPath,
@@ -67,9 +73,7 @@ pub enum Error {
     InvalidHeaderValue(#[from] http::header::InvalidHeaderValue),
     #[error(transparent)]
     InvalidHeaderName(#[from] http::header::InvalidHeaderName),
-
     /// The configured updater endpoint must use a secure protocol like `https`
-
     #[error(transparent)]
     URLParseError(#[from] url::ParseError),
     /// Zip extraction errors.

@@ -19,7 +19,7 @@ serde_json = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }
-zip = { version = "4", default-features = false, features = ["deflate", "bzip2", "time"]}
+zip = { version = "4", default-features = false, features = ["deflate", "bzip2", "time"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
@@ -30,7 +30,6 @@ windows-sys = { version = "0.60.2", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
 ] }
-
 
 [target."cfg(target_os = \"linux\")".dependencies]
 dirs = { workspace = true }

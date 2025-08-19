@@ -1,7 +1,7 @@
 use crate::{CANCEL_ICON, OK_ICON, UPDATE_MODAL_OPEN};
 use dioxus::prelude::*;
 use semver::Version;
-use updater::{Update, UpdaterBuilder};
+use updater::{Updater, UpdaterBuilder};
 
 // Update status enum
 #[allow(clippy::large_enum_variant)]
@@ -9,16 +9,16 @@ use updater::{Update, UpdaterBuilder};
 pub enum UpdateStatus {
     Checking,
     Available {
-        update: Update,
-        size: Option<u64>,
+        updater: Updater,
+        size: u64,
     },
     Downloading {
         downloaded: u64,
-        total: Option<u64>,
+        total: u64,
         progress: f32,
     },
     Downloaded {
-        update: Update,
+        updater: Updater,
         update_data: Vec<u8>,
     },
     Installing,
@@ -26,43 +26,41 @@ pub enum UpdateStatus {
     Error(String),
 }
 
-async fn check_for_updates() -> Result<Option<(Update, Option<u64>)>, String> {
+async fn check_for_updates() -> Result<Option<(Updater, u64)>, String> {
     let current_version = semver::Version::parse(env!("CARGO_PKG_VERSION"))
         .map_err(|e| format!("解析当前版本失败: {}", e))?;
 
     println!("[更新检查] 开始检查更新，当前版本: {}", current_version);
 
-    let updater = UpdaterBuilder::new("BibCiteX".to_string(), current_version)
-        .github_repo("tangxiangong".to_string(), "bibcitex".to_string())
+    let updater = UpdaterBuilder::new("BibCiteX", current_version, "tangxiangong", "bibcitex")
         .build()
         .map_err(|e| format!("创建更新器失败: {}", e))?;
 
     println!("[更新检查] 正在向 GitHub API 发送请求...");
 
     match updater.check().await {
-        Ok(Some((update, size))) => {
+        Ok(Some(updater)) => {
+            let latest_version = updater.latest_version().unwrap();
+            let size = updater.asset_size().unwrap();
             println!(
                 "[更新检查] GitHub API 请求成功，发现远程版本: {}",
-                update.version
+                latest_version
             );
 
             let current_version = Version::parse(env!("CARGO_PKG_VERSION"))
                 .map_err(|e| format!("解析当前版本失败: {}", e))?;
-            let update_version =
-                Version::parse(&update.version).map_err(|e| format!("解析更新版本失败: {}", e))?;
-
-            if update_version > current_version {
+            if latest_version > current_version {
                 println!(
                     "[更新检查] ✅ 发现新版本: {} > {}，大小: {:?}",
-                    update_version,
+                    latest_version,
                     current_version,
-                    size.map(format_bytes).unwrap_or("未知".to_string())
+                    format_bytes(size)
                 );
-                Ok(Some((update, size)))
+                Ok(Some((updater, size)))
             } else {
                 println!(
                     "[更新检查] ℹ️ 已是最新版本: {} <= {}",
-                    update_version, current_version
+                    latest_version, current_version
                 );
                 Ok(None)
             }
@@ -103,14 +101,14 @@ pub fn UpdateWindow() -> Element {
     let mut update_resource = use_resource(|| async { check_for_updates().await });
     let mut is_retrying = use_signal(|| false);
 
-    let mut download_state = use_signal(|| None::<(u64, Option<u64>, f32)>);
-    let mut download_data = use_signal(|| None::<(Update, Vec<u8>)>);
+    let mut download_state = use_signal(|| None::<(u64, u64, f32)>);
+    let mut download_data = use_signal(|| None::<(Updater, Vec<u8>)>);
     let mut error_message = use_signal(|| None::<String>);
     let mut total_downloaded = use_signal(|| 0u64);
     let mut installing_state = use_signal(|| false);
 
     let current_status = match update_resource.read().as_ref() {
-        Some(Ok(Some((update, size)))) => {
+        Some(Ok(Some((updater, size)))) => {
             // Reset retrying state when we get a successful result
             if *is_retrying.read() {
                 is_retrying.set(false);
@@ -119,7 +117,7 @@ pub fn UpdateWindow() -> Element {
                 UpdateStatus::Installing
             } else if let Some((downloaded_update, data)) = download_data.read().as_ref() {
                 UpdateStatus::Downloaded {
-                    update: downloaded_update.clone(),
+                    updater: downloaded_update.clone(),
                     update_data: data.clone(),
                 }
             } else if let Some((downloaded, total, progress)) = download_state.read().as_ref() {
@@ -130,7 +128,7 @@ pub fn UpdateWindow() -> Element {
                 }
             } else {
                 UpdateStatus::Available {
-                    update: update.clone(),
+                    updater: updater.clone(),
                     size: *size,
                 }
             }
@@ -185,7 +183,7 @@ pub fn UpdateWindow() -> Element {
                         }
                     }
                 },
-                UpdateStatus::Available { update, size } => rsx! {
+                UpdateStatus::Available { updater, size } => rsx! {
                     div { class: "text-center space-y-6",
                         div { class: "flex justify-center mb-6",
                             div { class: "w-20 h-20 bg-gray-800 rounded-2xl flex items-center justify-center",
@@ -201,10 +199,8 @@ pub fn UpdateWindow() -> Element {
                             h3 { class: "text-lg font-semibold text-gray-800 leading-tight", "发现新版本" }
                             div { class: "text-sm text-gray-600 space-y-1",
                                 p { "• 当前版本: {env!(\"CARGO_PKG_VERSION\")}" }
-                                p { "• 最新版本: {update.version}" }
-                                if let Some(size_val) = size {
-                                    p { "• 下载大小: {format_bytes(size_val)}" }
-                                }
+                                p { "• 最新版本: {updater.latest_version().unwrap()}" }
+                                p { "• 下载大小: {format_bytes(size)}" }
                                 p { "• 请求成功，找到更新版本" }
                             }
                         }
@@ -217,38 +213,21 @@ pub fn UpdateWindow() -> Element {
                         button {
                             class: "btn btn-soft btn-success",
                             onclick: move |_| {
-                                let update_clone = update.clone();
+                                let updater_clone = updater.clone();
                                 // 重置下载状态
                                 total_downloaded.set(0);
                                 spawn(async move {
-                                    match update_clone
+                                    match updater_clone
                                         .download(
                                             |chunk_size, total_size| {
                                                 let current_downloaded = total_downloaded();
                                                 let new_downloaded = current_downloaded + chunk_size as u64;
                                                 total_downloaded.set(new_downloaded);
 
-                    // 如果没有总大小信息，显示不确定的进度
-                    // 不确定进度的动画条
 
-                    // 设置安装状态
 
-                    // 执行安装
-                    // 安装成功后退出应用
-
-                    // Reset retrying state after a delay to show loading animation
-
-        
-        
-        
-        
-        
-
-                                                let progress = if let Some(total) = total_size {
-                                                    (new_downloaded as f64 / total as f64) as f32
-                                                } else {
-                                                    0.0
-                                                };
+                                                let progress = (new_downloaded as f64 / total_size as f64)
+                                                    as f32;
                                                 download_state.set(Some((new_downloaded, total_size, progress)));
                                             },
                                             || {},
@@ -256,7 +235,7 @@ pub fn UpdateWindow() -> Element {
                                         .await
                                     {
                                         Ok(data) => {
-                                            download_data.set(Some((update_clone.clone(), data)));
+                                            download_data.set(Some((updater_clone.clone(), data)));
                                             download_state.set(None);
                                         }
                                         Err(e) => {
@@ -289,31 +268,20 @@ pub fn UpdateWindow() -> Element {
                             }
                             div { class: "space-y-1 mb-6",
                                 h3 { class: "text-lg font-semibold text-gray-800 leading-tight", "正在下载更新..." }
-                                if let Some(total_size) = total {
-                                    p { class: "text-sm text-gray-600",
-                                        "{(progress * 100.0) as u32}% 完成 ({format_bytes(downloaded)} / {format_bytes(total_size)})"
-                                    }
-                                } else {
-                                    p { class: "text-sm text-gray-600", "已下载 {format_bytes(downloaded)}" }
+                                p { class: "text-sm text-gray-600",
+                                    "{(progress * 100.0) as u32}% 完成 ({format_bytes(downloaded)} / {format_bytes(total)})"
                                 }
                             }
                             div { class: "w-full bg-gray-200 rounded-full h-2 mb-8",
-                                if total.is_some() {
-                                    div {
-                                        class: "bg-blue-500 h-full rounded-full transition-all duration-300",
-                                        style: "width: {progress * 100.0}%",
-                                    }
-                                } else {
-                                    div {
-                                        class: "bg-blue-500 h-full rounded-full animate-pulse",
-                                        style: "width: 30%; animation: indeterminate 2s ease-in-out infinite alternate;",
-                                    }
+                                div {
+                                    class: "bg-blue-500 h-full rounded-full transition-all duration-300",
+                                    style: "width: {progress * 100.0}%",
                                 }
                             }
                         }
                     }
                 }
-                UpdateStatus::Downloaded { update, update_data } => {
+                UpdateStatus::Downloaded { updater, update_data } => {
                     let data_for_restart = update_data.clone();
                     rsx! {
                         div { class: "text-center space-y-6",
@@ -343,12 +311,12 @@ pub fn UpdateWindow() -> Element {
                                 class: "btn btn-soft btn-success",
                                 onclick: move |_| {
                                     let data = data_for_restart.clone();
-                                    let update_clone = update.clone();
+                                    let update_clone = updater.clone();
                                     spawn(async move {
                                         eprintln!("Installing update with {} bytes", data.len());
-            
+
                                         installing_state.set(true);
-            
+
                                         match update_clone.install(&data) {
                                             Ok(_) => {
                                                 eprintln!("Update installed successfully, exiting application...");
@@ -464,7 +432,7 @@ pub fn UpdateWindow() -> Element {
                                 is_retrying.set(true);
                                 error_message.set(None);
                                 update_resource.restart();
-        
+
                                 spawn(async move {
                                     tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
                                     is_retrying.set(false);

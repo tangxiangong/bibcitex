@@ -1,0 +1,110 @@
+use std::path::{Path, PathBuf};
+
+use crate::{Error, Result};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OS {
+    Macos,
+    Windows,
+    Linux,
+}
+
+impl std::fmt::Display for OS {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OS::Macos => write!(f, "macos"),
+            OS::Windows => write!(f, "windows"),
+            OS::Linux => write!(f, "linux"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Arch {
+    X86_64,
+    Arm64,
+}
+
+impl std::fmt::Display for Arch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Arch::X86_64 => write!(f, "x86_64"),
+            Arch::Arm64 => write!(f, "arm64"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemInfo {
+    pub os: OS,
+    pub arch: Arch,
+}
+
+impl SystemInfo {
+    /// Get local system info
+    pub fn current() -> Result<Self> {
+        let os = if cfg!(target_os = "linux") {
+            OS::Linux
+        } else if cfg!(target_os = "macos") {
+            OS::Macos
+        } else if cfg!(target_os = "windows") {
+            OS::Windows
+        } else {
+            return Err(Error::UnsupportedOs);
+        };
+        let arch = if cfg!(target_arch = "x86_64") {
+            Arch::X86_64
+        } else if cfg!(target_arch = "aarch64") {
+            Arch::Arm64
+        } else {
+            return Err(Error::UnsupportedArch);
+        };
+        Ok(Self { os, arch })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BundleType {
+    AppImage,
+    Deb,
+    Rpm,
+    Zip,
+    TarGz,
+    MacOSDMG,
+    MacOSApp,
+    MacOSAppZip,
+    WindowsMSI,
+    WindowsSetUp,
+}
+
+pub fn extract_path_from_executable(executable_path: &Path) -> Result<PathBuf> {
+    // Return the path of the current executable by default
+    // Example C:\Program Files\My App\
+    let extract_path = executable_path
+        .parent()
+        .map(PathBuf::from)
+        .ok_or(Error::FailedToDetermineExtractPath)?;
+
+    // MacOS example binary is in /Applications/TestApp.app/Contents/MacOS/myApp
+    // We need to get /Applications/<app>.app
+    // TODO(lemarier): Need a better way here
+    // Maybe we could search for <*.app> to get the right path
+    #[cfg(target_os = "macos")]
+    if extract_path
+        .display()
+        .to_string()
+        .contains("Contents/MacOS")
+    {
+        use std::path::PathBuf;
+
+        return extract_path
+            .parent()
+            .map(PathBuf::from)
+            .ok_or(Error::FailedToDetermineExtractPath)?
+            .parent()
+            .map(PathBuf::from)
+            .ok_or(Error::FailedToDetermineExtractPath);
+    }
+
+    Ok(extract_path)
+}
