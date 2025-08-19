@@ -3670,16 +3670,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nspanel"
-version = "0.2.9"
-dependencies = [
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "once_cell",
-]
-
-[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

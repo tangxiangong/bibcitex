@@ -6,7 +6,7 @@
 // Copyright (c) EcoPasteHub
 // Licensed under Apache-2.0
 
-use crate::platforms::MAIN_WINDOW_TITLE;
+use crate::MAIN_WINDOW_TITLE;
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use std::{ffi::OsString, os::windows::ffi::OsStringExt, ptr, sync::Mutex, thread, time::Duration};
 use windows_sys::Win32::{

@@ -19,17 +19,18 @@ serde_json = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }
+zip = { version = "4", default-features = false, features = ["deflate", "bzip2", "time"]}
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
 
 [target."cfg(target_os = \"windows\")".dependencies]
-windows-sys = { version = "0.60.0", features = [
+windows-sys = { version = "0.60.2", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
 ] }
-zip = { version = "4", default-features = false, features = ["deflate", "bzip2", "time"], optional = true }
+
 
 [target."cfg(target_os = \"linux\")".dependencies]
 dirs = { workspace = true }
@@ -40,4 +41,3 @@ tar = { version = "0.4" }
 flate2 = "1"
 osakit = { version = "0.3", features = ["full"] }
 tar = "0.4"
-zip = { version = "4", default-features = false, features = ["deflate", "bzip2", "time"] }

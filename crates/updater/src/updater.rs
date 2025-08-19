@@ -959,11 +959,6 @@ impl Update {
             }
         };
 
-        if let Some(on_before_exit) = self.on_before_exit.as_ref() {
-            log::debug!("running on_before_exit hook");
-            on_before_exit();
-        }
-
         let file = match &updater_type {
             WindowsUpdaterType::Nsis { path, .. } => path.as_os_str().to_os_string(),
             WindowsUpdaterType::Msi { .. } => std::env::var("SYSTEMROOT").as_ref().map_or_else(
@@ -1005,7 +1000,7 @@ impl Update {
     }
 
     fn extract(&self, bytes: &[u8]) -> Result<WindowsUpdaterType> {
-        #[cfg(feature = "zip")]
+        
         if infer::archive::is_zip(bytes) {
             return self.extract_zip(bytes);
         }
@@ -1017,10 +1012,9 @@ impl Update {
         Ok(tempfile::Builder::new()
             .prefix(&format!("{}-{}-updater-", self.app_name, self.version))
             .tempdir()?
-            .into_path())
+            .keep())
     }
 
-    #[cfg(feature = "zip")]
     fn extract_zip(&self, bytes: &[u8]) -> Result<WindowsUpdaterType> {
         let temp_dir = self.make_temp_dir()?;
 

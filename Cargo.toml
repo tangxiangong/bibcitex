@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/*"]
+members = [".", "crates/bibcitex-core", "crates/updater", "crates/xpaste"]
 
 [workspace.package]
 version = "0.2.9"
