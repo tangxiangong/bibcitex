@@ -6,7 +6,7 @@
 //!
 //! # Note
 //!
-//! This module is forked from the ahkohd's project [tauri-nspanel](https://github.com/ahkohd/tauri-nspanel/tree/v2.1), which is licensed under [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) or [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0).
+//! This crate is forked from the ahkohd's project [tauri-nspanel](https://github.com/ahkohd/tauri-nspanel/tree/v2.1), which is licensed under [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) or [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0).
 //!
 
 pub mod builder;

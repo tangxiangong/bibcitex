@@ -3,19 +3,21 @@
 <p align="center">
     <img src="assets/readme/BibTeX.png" width="45">  文献快捷引用工具
 </p>
+<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-arm64.dmg"> macOS(M-series silicon) </a>
+<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-x86_64.dmg"> macOS(intel) </a>
+<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-arm64.exe"> Windows(arm64) </a>
+<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-x86_64.exe"> Windows(x86_64) </a>
 </div>
 
 ## 简介
 
-<img src="assets/transparent_logo.png" width="20"> 是一个使用 🦀 Rust 和 [<img src="assets/readme/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的跨平台 <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具。
+<img src="assets/transparent_logo.png" width="20"> 是一个使用 🦀 Rust 和 [<img src="assets/readme/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的 Windows/macOS <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具。
 
-### 平台
-- [x] macOS (arm64/x86_64)
-- [x] Windows (arm64/x86_64)
-- [ ] Linux
+### 下载安装
+从 [Release 页面](https://github.com/tangxiangong/bibcitex/releases) 下载对应平台架构的最新版本安装包。
 
-### 安装
-对于 macOS 用户，若提示 `BibCiTeX` 已损坏，需要打开终端，执行以下命令：
+#### macOS
+若提示 `BibCiTeX` 已损坏，需要打开终端，执行以下命令：
 ```bash
 sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 ```
@@ -88,8 +90,8 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
   Copyright (c) 2023 - Present Victor Aremu
   ```
 - **主要修改(Key Modifications)**:
-  - 从 Tauri 框架适配为 Dioxus 框架 (Adapted from Tauri framework to Dioxus framework)
-  - 移除 Tauri 特定的运行时集成 (Removed Tauri-specific runtime integration)
+  - 从 Tauri 框架适配为 Dioxus 框架 (Adapt from Tauri framework to Dioxus framework)
+  - 移除 Tauri 特定的运行时集成 (Remove Tauri-specific runtime integration)
 
 ### [crates/xpaste](./crates/xpaste)
 - **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
@@ -103,7 +105,22 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 - **主要修改(Modifications)**:
   -  macOS: 将过时的 `objc` 和 `cocoa` 替换为 `objc2` 相关的 API (Replace deprecated `objc` and `cocoa` with `objc2` related APIs)
   - Windows: 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
-  - Linux (x11): 将 `rdev` 替换为 `enigo`  (Replace `rdev` with `enigo`)
+  - Linux: 移除对 Linux 平台的支持 (Remove Linux support)
+
+### [crates/updater](./crates/updater) (WIP)
+- **来源(Source)**: [tauri-apps/tauri-plugion-updater](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater)
+- **作者(Author)**: The Tauri Programme
+- **许可协议(License)**: [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT) OR [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT)/[Apache 2.0](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_APACHE-2.0)
+- **用途(Usage)**: 实现检查更新功能 (Implement updater for Dioxus apps)
+- **版权声明(Copyright)**:
+  ```
+  Copyright (c) 2015 - Present - The Tauri Programme within The Commons Conservancy.
+  ```
+- **主要修改(Key Modifications)**:
+  - 从 Tauri 插件适配为通用 Rust 库 (Adapt for universal Rust crate)
+  - 移除 Tauri 特定的运行时集成 (Remove Tauri-specific runtime integration)
+  - 使用 `octocrab` 库进行 GitHub API 交互 (Use `octocrab` library for GitHub API interaction)
+  - 移除 Linux 支持和其对应的依赖 (Remove Linux support and its corresponding deps)
 
 
 详细的归属信息请参阅 [NOTICE](./NOTICE) 文件 (For detailed attribution information, please refer to the [NOTICE](./NOTICE) file)。

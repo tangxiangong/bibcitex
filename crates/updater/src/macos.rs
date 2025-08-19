@@ -1,3 +1,11 @@
+// Copyright (c) 2025 BibCiTeX Contributors
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// This file contains code derived from tauri-plugin-updater
+// Original source: https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater
+// Copyright (c) 2015 - Present - The Tauri Programme within The Commons Conservancy.
+// Licensed under MIT OR MIT/Apache-2.0
+
 use crate::{Error, Result, Updater};
 use std::{
     io::Cursor,

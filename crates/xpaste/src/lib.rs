@@ -6,7 +6,7 @@
 //!
 //! # Note
 //!
-//! This module is forked from the [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste), which is licensed under [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE).
+//! This crate is forked from the [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste), which is licensed under [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE).
 
 pub(crate) static MAIN_WINDOW_TITLE: &str = "BibCiTeX";
 
