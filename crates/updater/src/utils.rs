@@ -6,7 +6,6 @@ use crate::{Error, Result};
 pub enum OS {
     Macos,
     Windows,
-    Linux,
 }
 
 impl std::fmt::Display for OS {
@@ -14,7 +13,6 @@ impl std::fmt::Display for OS {
         match self {
             OS::Macos => write!(f, "macos"),
             OS::Windows => write!(f, "windows"),
-            OS::Linux => write!(f, "linux"),
         }
     }
 }
@@ -43,9 +41,7 @@ pub struct SystemInfo {
 impl SystemInfo {
     /// Get local system info
     pub fn current() -> Result<Self> {
-        let os = if cfg!(target_os = "linux") {
-            OS::Linux
-        } else if cfg!(target_os = "macos") {
+        let os = if cfg!(target_os = "macos") {
             OS::Macos
         } else if cfg!(target_os = "windows") {
             OS::Windows

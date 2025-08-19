@@ -129,10 +129,8 @@ fn get_assets(assets: Vec<Asset>) -> Result<Vec<GitHubAsset>> {
                 OS::Macos
             } else if name.contains("windows") || name.contains("win") {
                 OS::Windows
-            } else if name.contains("linux") {
-                OS::Linux
             } else {
-                return Err(Error::TargetNotFound("windows or linux".into()));
+                return Err(Error::TargetNotFound("macos or windows".into()));
             };
             let arch = if name.contains("x86_64") || name.contains("amd64") {
                 Arch::X86_64

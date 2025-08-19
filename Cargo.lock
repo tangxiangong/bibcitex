@@ -7388,7 +7388,6 @@ dependencies = [
  "enigo",
  "objc2-app-kit",
  "windows-sys 0.60.2",
- "x11",
 ]
 
 [[package]]

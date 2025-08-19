@@ -10,15 +10,11 @@
 
 pub(crate) static MAIN_WINDOW_TITLE: &str = "BibCiTeX";
 
-#[cfg(target_os = "linux")]
-mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
-#[cfg(target_os = "linux")]
-pub use linux::{focus_previous_window, observe_app};
 #[cfg(target_os = "macos")]
 pub use macos::{focus_previous_window, observe_app};
 #[cfg(target_os = "windows")]

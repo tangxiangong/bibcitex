@@ -60,10 +60,6 @@ impl Updater {
                         // Set executable permissions (0o755 = rwxr-xr-x)
                         let permissions = std::fs::Permissions::from_mode(0o755);
                         std::fs::set_permissions(&outpath, permissions)?;
-                        println!(
-                            "[DEBUG] Set executable permissions for: {}",
-                            outpath.display()
-                        );
                     }
                 }
             }
@@ -234,32 +230,13 @@ impl Updater {
             .arg(&self.extract_path)
             .status();
 
-        // Restart the application after successful update
-        println!(
-            "[DEBUG] Restarting application: {}",
-            self.extract_path.display()
-        );
-
         // Use 'open' command to launch the updated app in the background
         // The -n flag opens a new instance even if one is already running
         // The -a flag specifies the application to open
-        let restart_result = std::process::Command::new("open")
+        let _ = std::process::Command::new("open")
             .arg("-n")
             .arg(&self.extract_path)
-            .spawn();
-
-        match restart_result {
-            Ok(_) => {
-                println!("[DEBUG] Successfully launched updated application");
-            }
-            Err(e) => {
-                eprintln!(
-                    "[WARNING] Failed to restart application automatically: {}. Please restart manually.",
-                    e
-                );
-                // Don't return error here as the update itself was successful
-            }
-        }
+            .spawn()?;
 
         Ok(())
     }
