@@ -72,6 +72,7 @@ fn main() {
         .append_items(&[
             &PredefinedMenuItem::about(Some("About BibCiTeX"), Some(about_metadata)),
             &MenuItem::with_id("helper", "快捷助手", true, None),
+            &MenuItem::with_id("check_update", "检查更新", true, None),
             &PredefinedMenuItem::separator(),
             &PredefinedMenuItem::fullscreen(None),
             &PredefinedMenuItem::hide(Some("Hide BibCiTeX")),

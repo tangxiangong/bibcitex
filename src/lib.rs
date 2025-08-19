@@ -1,6 +1,6 @@
 //! Collections of components, views and tests.
 
-use crate::views::open_spotlight_window;
+use crate::views::{UpdateWindow, open_spotlight_window};
 use bibcitex_core::{Setting, bib::Reference};
 use dioxus::{
     desktop::{
@@ -33,6 +33,7 @@ pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
 pub static CURRENT_REF: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
 pub static DRAWER_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 pub static DRAWER_REFERENCE: GlobalSignal<Option<Reference>> = Signal::global(|| None);
+pub static UPDATE_MODAL_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 
 // tailwindcss
 pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
@@ -88,11 +89,23 @@ pub fn App() -> Element {
             spawn(async move {
                 open_spotlight_window().await;
             });
+        } else if muda_event.id() == "check_update" {
+            *UPDATE_MODAL_OPEN.write() = true;
         }
     });
 
     rsx! {
         document::Stylesheet { href: TAILWINDCSS }
         Router::<route::Route> {}
+        // 更新模态对话框
+        if UPDATE_MODAL_OPEN() {
+            div { class: "modal modal-open",
+                div { class: "modal-box w-1/2", UpdateWindow {} }
+                div {
+                    class: "modal-backdrop",
+                    onclick: move |_| *UPDATE_MODAL_OPEN.write() = false,
+                }
+            }
+        }
     }
 }
