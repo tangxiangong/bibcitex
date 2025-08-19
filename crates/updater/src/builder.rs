@@ -8,8 +8,6 @@ use reqwest::{
     header::{HeaderMap, HeaderValue},
 };
 use semver::Version;
-#[cfg(not(target_os = "macos"))]
-use std::ffi::OsStr;
 use std::{
     env::current_exe,
     ffi::OsString,
@@ -284,92 +282,5 @@ impl Updater {
     ) -> Result<()> {
         let bytes = self.download(on_chunk, on_download_finish).await?;
         self.install(bytes)
-    }
-}
-
-#[cfg(windows)]
-fn encode_wide(string: impl AsRef<OsStr>) -> Vec<u16> {
-    use std::os::windows::ffi::OsStrExt;
-
-    string
-        .as_ref()
-        .encode_wide()
-        .chain(std::iter::once(0))
-        .collect()
-}
-
-#[cfg(windows)]
-trait PathExt {
-    fn wrap_in_quotes(&self) -> Self;
-}
-
-#[cfg(windows)]
-impl PathExt for PathBuf {
-    fn wrap_in_quotes(&self) -> Self {
-        let mut msi_path = OsString::from("\"");
-        msi_path.push(self.as_os_str());
-        msi_path.push("\"");
-        PathBuf::from(msi_path)
-    }
-}
-
-// adapted from https://github.com/rust-lang/rust/blob/1c047506f94cd2d05228eb992b0a6bbed1942349/library/std/src/sys/args/windows.rs#L174
-#[cfg(windows)]
-fn escape_nsis_current_exe_arg(arg: &&OsStr) -> String {
-    let arg = arg.to_string_lossy();
-    let mut cmd: Vec<char> = Vec::new();
-
-    // compared to std we additionally escape `/` so that nsis won't interpret them as a beginning of an nsis argument.
-    let quote = arg.chars().any(|c| c == ' ' || c == '\t' || c == '/') || arg.is_empty();
-    let escape = true;
-    if quote {
-        cmd.push('"');
-    }
-    let mut backslashes: usize = 0;
-    for x in arg.chars() {
-        if escape {
-            if x == '\\' {
-                backslashes += 1;
-            } else {
-                if x == '"' {
-                    // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..=backslashes).map(|_| '\\'));
-                }
-                backslashes = 0;
-            }
-        }
-        cmd.push(x);
-    }
-    if quote {
-        // Add n backslashes to total 2n before ending '"'.
-        cmd.extend((0..backslashes).map(|_| '\\'));
-        cmd.push('"');
-    }
-    cmd.into_iter().collect()
-}
-
-#[cfg(windows)]
-fn escape_msi_property_arg(arg: impl AsRef<OsStr>) -> String {
-    let mut arg = arg.as_ref().to_string_lossy().to_string();
-
-    // Otherwise this argument will get lost in ShellExecute
-    if arg.is_empty() {
-        return "\"\"\"\"".to_string();
-    } else if !arg.contains(' ') && !arg.contains('"') {
-        return arg;
-    }
-
-    if arg.contains('"') {
-        arg = arg.replace('"', r#""""""#);
-    }
-
-    if arg.starts_with('-') {
-        if let Some((a1, a2)) = arg.split_once('=') {
-            format!("{a1}=\"\"{a2}\"\"")
-        } else {
-            format!("\"\"{arg}\"\"")
-        }
-    } else {
-        format!("\"\"{arg}\"\"")
     }
 }

@@ -13,9 +13,6 @@ pub enum Error {
     /// Semver errors.
     #[error(transparent)]
     Semver(#[from] semver::Error),
-    /// Serialization errors.
-    #[error(transparent)]
-    Serialization(#[from] serde_json::Error),
     /// Could not fetch a valid response from the server.
     #[error("Could not fetch a valid release JSON from the remote")]
     ReleaseNotFound,
@@ -77,7 +74,7 @@ pub enum Error {
     #[error(transparent)]
     URLParseError(#[from] url::ParseError),
     /// Zip extraction errors.
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     #[error(transparent)]
     Zip(#[from] zip::result::ZipError),
 }

@@ -65,14 +65,8 @@ impl SystemInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BundleType {
-    AppImage,
-    Deb,
-    Rpm,
-    Zip,
-    TarGz,
-    MacOSDMG,
-    MacOSApp,
     MacOSAppZip,
+    MacOSDMG,
     WindowsMSI,
     WindowsSetUp,
 }

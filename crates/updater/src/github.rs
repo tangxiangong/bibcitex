@@ -85,17 +85,32 @@ pub fn find_proper_asset(release: &GitHubRelease) -> Result<GitHubAsset> {
 impl GitHubRelease {
     pub fn find_proper_asset(&self) -> Result<GitHubAsset> {
         let system_info = SystemInfo::current()?;
-        let result = self
-            .assets
-            .iter()
-            .find(|asset| {
-                asset.os == system_info.os && asset.arch == system_info.arch && {
-                    (system_info.os == OS::Macos && asset.bundle_type == BundleType::MacOSAppZip)
-                        || (system_info.os == OS::Windows && asset.bundle_type == BundleType::Zip)
-                }
-            })
-            .cloned()
-            .ok_or(Error::AssetNotFound)?;
+        let result = {
+            #[cfg(target_os = "windows")]
+            {
+                self.assets
+                    .iter()
+                    .find(|asset| {
+                        asset.os == system_info.os
+                            && asset.arch == system_info.arch
+                            && asset.bundle_type == BundleType::WindowsSetUp
+                    })
+                    .cloned()
+                    .ok_or(Error::AssetNotFound)?
+            }
+            #[cfg(target_os = "macos")]
+            {
+                self.assets
+                    .iter()
+                    .find(|asset| {
+                        asset.os == system_info.os
+                            && asset.arch == system_info.arch
+                            && asset.bundle_type == BundleType::MacOSAppZip
+                    })
+                    .cloned()
+                    .ok_or(Error::AssetNotFound)?
+            }
+        };
         Ok(result)
     }
     /// The release's download URL for the given target.
@@ -117,7 +132,7 @@ fn get_assets(assets: Vec<Asset>) -> Result<Vec<GitHubAsset>> {
             } else if name.contains("linux") {
                 OS::Linux
             } else {
-                return Err(Error::TargetNotFound("x86_64 or amd64".into()));
+                return Err(Error::TargetNotFound("windows or linux".into()));
             };
             let arch = if name.contains("x86_64") || name.contains("amd64") {
                 Arch::X86_64
@@ -130,20 +145,12 @@ fn get_assets(assets: Vec<Asset>) -> Result<Vec<GitHubAsset>> {
                 BundleType::MacOSDMG
             } else if name.ends_with(".app.zip") {
                 BundleType::MacOSAppZip
-            } else if name.ends_with(".zip") {
-                BundleType::Zip
-            } else if name.ends_with(".tar.gz") {
-                BundleType::TarGz
-            } else if name.ends_with(".deb") {
-                BundleType::Deb
-            } else if name.ends_with(".rpm") {
-                BundleType::Rpm
             } else if name.ends_with(".msi") {
                 BundleType::WindowsMSI
             } else if name.ends_with(".exe") {
                 BundleType::WindowsSetUp
             } else {
-                return Err(Error::TargetNotFound("x86_64 or amd64".into()));
+                return Err(Error::TargetNotFound("os-arch".into()));
             };
             Ok(GitHubAsset {
                 name,
