@@ -1,71 +1,56 @@
 use crate::{Result, Updater};
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, path::PathBuf, thread, time::Duration};
+use windows_sys::{
+    Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOW},
+    w,
+};
 
 type WindowsUpdaterType = (PathBuf, Option<tempfile::TempPath>);
 
-const NSIS_ARGS: &[&str] = &["/P", "/R"];
-
 impl Updater {
     pub(crate) fn install_inner(&self, bytes: &[u8]) -> Result<()> {
-        use std::iter::once;
-        use windows_sys::{
-            Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOW},
-            w,
-        };
-
         let updater_type = self.extract_exe(bytes)?;
 
-        let current_args = &self.current_exe_args()[1..];
-        let nsis_args = current_args
-            .iter()
-            .map(escape_nsis_current_exe_arg)
-            .collect::<Vec<_>>();
-
-        let installer_args: Vec<&OsStr> = NSIS_ARGS
-            .iter()
-            .map(OsStr::new)
-            .chain(once(OsStr::new("/UPDATE")))
-            .chain(once(OsStr::new("/ARGS")))
-            .chain(nsis_args.iter().map(OsStr::new))
-            .chain(self.installer_args())
-            .collect();
+        // Verify the installer file exists and is executable
+        if !updater_type.0.exists() {
+            return Err(crate::Error::InvalidUpdaterFormat);
+        }
 
         let file = updater_type.0.as_os_str().to_os_string();
         let file = encode_wide(file);
 
-        let parameters = installer_args.join(OsStr::new(" "));
-        let parameters = encode_wide(parameters);
-
-        unsafe {
+        // Open the installer for manual installation with admin privileges if needed
+        let result = unsafe {
             ShellExecuteW(
                 std::ptr::null_mut(),
-                w!("open"),
+                w!("runas"), // Request administrator privileges for installation
                 file.as_ptr(),
-                parameters.as_ptr(),
+                std::ptr::null_mut(),
                 std::ptr::null(),
                 SW_SHOW,
             )
-        };
+        } as i32;
+
+        // Check the result of ShellExecuteW
+        // Values <= 32 indicate an error
+        if result <= 32 {
+            return match result {
+                5 => Err(crate::Error::InsufficientPrivileges), // ERROR_ACCESS_DENIED
+                32 => Err(crate::Error::FileInUse),             // ERROR_SHARING_VIOLATION
+                1223 => Err(crate::Error::UserCancelledElevation), // ERROR_CANCELLED (UAC cancelled)
+                _ => Err(crate::Error::InstallerExecutionFailed(result)),
+            };
+        }
+
+        // Give the installer a moment to start before exiting
+        thread::sleep(Duration::from_millis(500));
 
         std::process::exit(0);
     }
 
-    fn installer_args(&self) -> Vec<&OsStr> {
-        self.installer_args
-            .iter()
-            .map(OsStr::new)
-            .collect::<Vec<_>>()
-    }
-
-    fn current_exe_args(&self) -> Vec<&OsStr> {
-        self.current_exe_args
-            .iter()
-            .map(OsStr::new)
-            .collect::<Vec<_>>()
-    }
-
     fn make_temp_dir(&self) -> Result<PathBuf> {
-        Ok(tempfile::Builder::new()
+        // Try to create temp directory in system temp first, fallback to current directory
+        let temp_dir = tempfile::Builder::new()
             .prefix(&format!(
                 "{}-{}-updater-",
                 self.app_name,
@@ -73,8 +58,32 @@ impl Updater {
                     .map(|v| v.to_string())
                     .unwrap_or_else(|| "unknown".to_string())
             ))
-            .tempdir()?
-            .keep())
+            .tempdir();
+
+        match temp_dir {
+            Ok(dir) => {
+                let path = dir.keep();
+                // Ensure the directory exists and is writable
+                if path.exists() && path.is_dir() {
+                    Ok(path)
+                } else {
+                    Err(crate::Error::TempDirNotFound)
+                }
+            }
+            Err(_) => {
+                // Fallback: try to create in current directory
+                let fallback_dir = std::env::current_dir()?.join(format!(
+                    "{}-{}-updater-temp",
+                    self.app_name,
+                    self.latest_version()
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "unknown".to_string())
+                ));
+
+                std::fs::create_dir_all(&fallback_dir)?;
+                Ok(fallback_dir)
+            }
+        }
     }
 
     fn extract_exe(&self, bytes: &[u8]) -> Result<WindowsUpdaterType> {
@@ -100,11 +109,20 @@ impl Updater {
             ))
             .suffix(ext)
             .rand_bytes(0)
-            .tempfile_in(temp_dir)?;
+            .tempfile_in(&temp_dir)?;
+
         temp_file.write_all(bytes)?;
+        temp_file.flush()?; // Ensure all data is written to disk
 
         let temp = temp_file.into_temp_path();
-        Ok((temp.to_path_buf(), Some(temp)))
+        let temp_path = temp.to_path_buf();
+
+        // Verify the file was written correctly
+        if !temp_path.exists() || std::fs::metadata(&temp_path)?.len() != bytes.len() as u64 {
+            return Err(crate::Error::InvalidUpdaterFormat);
+        }
+
+        Ok((temp_path, Some(temp)))
     }
 }
 
@@ -116,38 +134,4 @@ fn encode_wide(string: impl AsRef<OsStr>) -> Vec<u16> {
         .encode_wide()
         .chain(std::iter::once(0))
         .collect()
-}
-
-// adapted from https://github.com/rust-lang/rust/blob/1c047506f94cd2d05228eb992b0a6bbed1942349/library/std/src/sys/args/windows.rs#L174
-fn escape_nsis_current_exe_arg(arg: &&OsStr) -> String {
-    let arg = arg.to_string_lossy();
-    let mut cmd: Vec<char> = Vec::new();
-
-    // compared to std we additionally escape `/` so that nsis won't interpret them as a beginning of an nsis argument.
-    let quote = arg.chars().any(|c| c == ' ' || c == '\t' || c == '/') || arg.is_empty();
-    let escape = true;
-    if quote {
-        cmd.push('"');
-    }
-    let mut backslashes: usize = 0;
-    for x in arg.chars() {
-        if escape {
-            if x == '\\' {
-                backslashes += 1;
-            } else {
-                if x == '"' {
-                    // Add n+1 backslashes to total 2n+1 before internal '"'.
-                    cmd.extend((0..=backslashes).map(|_| '\\'));
-                }
-                backslashes = 0;
-            }
-        }
-        cmd.push(x);
-    }
-    if quote {
-        // Add n backslashes to total 2n before ending '"'.
-        cmd.extend((0..backslashes).map(|_| '\\'));
-        cmd.push('"');
-    }
-    cmd.into_iter().collect()
 }

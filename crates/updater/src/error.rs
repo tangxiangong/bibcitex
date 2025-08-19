@@ -4,18 +4,12 @@ pub enum Error {
     /// GitHub errors.
     #[error(transparent)]
     GitHub(#[from] octocrab::Error),
-    /// Endpoints are not sent.
-    #[error("Updater does not have any endpoints set.")]
-    EmptyEndpoints,
     /// IO errors.
     #[error(transparent)]
     Io(#[from] std::io::Error),
     /// Semver errors.
     #[error(transparent)]
     Semver(#[from] semver::Error),
-    /// Could not fetch a valid response from the server.
-    #[error("Could not fetch a valid release JSON from the remote")]
-    ReleaseNotFound,
     /// Unsupported app architecture.
     #[error(
         "Unsupported application architecture, expected one of `x86`, `x86_64`, `arm` or `aarch64`."
@@ -42,14 +36,10 @@ pub enum Error {
     /// Temp dir is not on same mount mount. This prevents our updater to rename the AppImage to a temp file.
     #[error("temp directory is not on the same mount point as the AppImage")]
     TempDirNotOnSameMountPoint,
-    #[error("binary for the current target not found in the archive")]
-    BinaryNotFoundInArchive,
     #[error("failed to create temporary directory")]
     TempDirNotFound,
     #[error("Authentication failed or was cancelled")]
     AuthenticationFailed,
-    #[error("Failed to install .deb package")]
-    DebInstallFailed,
     #[error("invalid updater binary format")]
     InvalidUpdaterFormat,
     /// Windows installer execution failed due to insufficient privileges
