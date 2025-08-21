@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-08-21
+
+### 🚀 Features
+
+- *(updater)* Add new updater crate with platform-specific support
+- *(update)* Add update checking and installation functionality
+- *(updater)* Implement cross-platform updater with GitHub integration
+
+### 🚜 Refactor
+
+- *(crates)* Restructure code into separate crates for better modularity
+- Remove linux support and cleanup code
+
 ## [0.3.0] - 2025-08-17
 
 ### 🚀 Features
