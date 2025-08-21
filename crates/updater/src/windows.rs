@@ -10,7 +10,7 @@ use crate::{Error, Result, Updater};
 use std::{
     ffi::{OsStr, OsString},
     path::PathBuf,
-    sync::OnceLock,
+    sync::{Mutex, OnceLock},
     thread,
     time::Duration,
 };
@@ -21,26 +21,37 @@ use windows_sys::{
 
 type WindowsUpdaterType = (PathBuf, Option<tempfile::TempPath>);
 static UPDATER_FILE: OnceLock<OsString> = OnceLock::new();
+static TEMP_FILE_KEEPER: Mutex<Option<tempfile::TempPath>> = Mutex::new(None);
 
 impl Updater {
     pub(crate) fn install_inner(&self, bytes: &[u8]) -> Result<()> {
         let updater_type = self.extract_exe(bytes)?;
+        let (temp_path, temp_keeper) = updater_type;
 
         // Verify the installer file exists and is executable
-        if !updater_type.0.exists() {
+        if !temp_path.exists() {
             return Err(Error::InvalidUpdaterFormat);
         }
 
-        let file = updater_type.0.as_os_str().to_os_string();
+        *TEMP_FILE_KEEPER.lock().unwrap() = temp_keeper;
+
+        let file = temp_path.as_os_str().to_os_string();
         UPDATER_FILE
             .set(file)
             .map_err(|_| Error::InvalidUpdaterFormat)?;
+
         Ok(())
     }
 
     pub(crate) fn relaunch_inner(&self) -> Result<()> {
         let file = UPDATER_FILE.get().ok_or(Error::InvalidUpdaterFormat)?;
+
+        if !std::path::Path::new(file).exists() {
+            return Err(Error::InvalidUpdaterFormat);
+        }
+
         let file = encode_wide(file);
+
         // Open the installer for manual installation with admin privileges if needed
         let result = unsafe {
             ShellExecuteW(
@@ -56,18 +67,21 @@ impl Updater {
         // Check the result of ShellExecuteW
         // Values <= 32 indicate an error
         if result <= 32 {
+            *TEMP_FILE_KEEPER.lock().unwrap() = None;
             return match result {
+                2 => Err(crate::Error::InvalidUpdaterFormat), // ERROR_FILE_NOT_FOUND
                 5 => Err(crate::Error::InsufficientPrivileges), // ERROR_ACCESS_DENIED
-                32 => Err(crate::Error::FileInUse),             // ERROR_SHARING_VIOLATION
+                32 => Err(crate::Error::FileInUse),           // ERROR_SHARING_VIOLATION
                 1223 => Err(crate::Error::UserCancelledElevation), // ERROR_CANCELLED (UAC cancelled)
                 _ => Err(crate::Error::InstallerExecutionFailed(result)),
             };
         }
 
+        *TEMP_FILE_KEEPER.lock().unwrap() = None;
+
         // Give the installer a moment to start before exiting
         thread::sleep(Duration::from_millis(500));
         std::process::exit(0);
-        Ok(())
     }
 
     fn make_temp_dir(&self) -> Result<PathBuf> {
