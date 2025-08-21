@@ -6,14 +6,21 @@
 // Copyright (c) 2015 - Present - The Tauri Programme within The Commons Conservancy.
 // Licensed under MIT OR MIT/Apache-2.0
 
-use crate::{Result, Updater};
-use std::{ffi::OsStr, path::PathBuf, thread, time::Duration};
+use crate::{Error, Result, Updater};
+use std::{
+    ffi::{OsStr, OsString},
+    path::PathBuf,
+    sync::OnceLock,
+    thread,
+    time::Duration,
+};
 use windows_sys::{
     Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOW},
     w,
 };
 
 type WindowsUpdaterType = (PathBuf, Option<tempfile::TempPath>);
+static UPDATER_FILE: OnceLock<OsString> = OnceLock::new();
 
 impl Updater {
     pub(crate) fn install_inner(&self, bytes: &[u8]) -> Result<()> {
@@ -21,12 +28,19 @@ impl Updater {
 
         // Verify the installer file exists and is executable
         if !updater_type.0.exists() {
-            return Err(crate::Error::InvalidUpdaterFormat);
+            return Err(Error::InvalidUpdaterFormat);
         }
 
         let file = updater_type.0.as_os_str().to_os_string();
-        let file = encode_wide(file);
+        UPDATER_FILE
+            .set(file)
+            .map_err(|_| Error::InvalidUpdaterFormat)?;
+        Ok(())
+    }
 
+    pub(crate) fn relaunch_inner(&self) -> Result<()> {
+        let file = UPDATER_FILE.get().ok_or(Error::InvalidUpdaterFormat)?;
+        let file = encode_wide(file);
         // Open the installer for manual installation with admin privileges if needed
         let result = unsafe {
             ShellExecuteW(
@@ -52,8 +66,8 @@ impl Updater {
 
         // Give the installer a moment to start before exiting
         thread::sleep(Duration::from_millis(500));
-
         std::process::exit(0);
+        Ok(())
     }
 
     fn make_temp_dir(&self) -> Result<PathBuf> {
@@ -136,7 +150,6 @@ impl Updater {
 
 fn encode_wide(string: impl AsRef<OsStr>) -> Vec<u16> {
     use std::os::windows::ffi::OsStrExt;
-
     string
         .as_ref()
         .encode_wide()

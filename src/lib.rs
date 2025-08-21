@@ -33,7 +33,6 @@ pub static STATE: GlobalSignal<Setting> = Signal::global(Setting::load);
 pub static CURRENT_REF: GlobalSignal<Option<Vec<Reference>>> = Signal::global(|| None);
 pub static DRAWER_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 pub static DRAWER_REFERENCE: GlobalSignal<Option<Reference>> = Signal::global(|| None);
-pub static UPDATE_MODAL_OPEN: GlobalSignal<bool> = Signal::global(|| false);
 
 // tailwindcss
 pub static TAILWINDCSS: Asset = asset!("assets/tailwind.css");
@@ -84,26 +83,29 @@ pub fn App() -> Element {
         },
     );
 
-    use_muda_event_handler(|muda_event| {
+    let mut show_check_window = use_signal(|| false);
+
+    use_muda_event_handler(move |muda_event| {
         if muda_event.id() == "helper" {
             spawn(async move {
                 open_spotlight_window().await;
             });
         } else if muda_event.id() == "check_update" {
-            *UPDATE_MODAL_OPEN.write() = true;
+            show_check_window.set(true);
         }
     });
 
     rsx! {
         document::Stylesheet { href: TAILWINDCSS }
         Router::<route::Route> {}
-        // 更新模态对话框
-        if UPDATE_MODAL_OPEN() {
+        if show_check_window() {
             div { class: "modal modal-open",
-                div { class: "modal-box w-1/2", UpdateWindow {} }
+                div { class: "modal-box w-1/2",
+                    UpdateWindow { show_window: show_check_window }
+                }
                 div {
                     class: "modal-backdrop",
-                    onclick: move |_| *UPDATE_MODAL_OPEN.write() = false,
+                    onclick: move |_| show_check_window.set(false),
                 }
             }
         }

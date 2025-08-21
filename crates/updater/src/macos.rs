@@ -236,8 +236,12 @@ impl Updater {
         // Touch the app to update modification time
         let _ = std::process::Command::new("touch")
             .arg(&self.extract_path)
-            .status();
+            .status()?;
 
+        Ok(())
+    }
+
+    pub(crate) fn relaunch_inner(&self) -> Result<()> {
         // Use 'open' command to launch the updated app in the background
         // The -n flag opens a new instance even if one is already running
         // The -a flag specifies the application to open

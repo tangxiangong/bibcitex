@@ -186,14 +186,13 @@ impl Updater {
     }
 
     pub async fn check(&self) -> Result<Option<Updater>> {
-        let updater = self.clone();
         let latest_release = self.latest_release().await?;
         if latest_release.version > self.current_version {
             let asset = latest_release.find_proper_asset()?;
             Ok(Some(Self {
                 latest_release: Some(latest_release),
                 proper_asset: Some(asset),
-                ..updater
+                ..self.clone()
             }))
         } else {
             Ok(None)
@@ -202,17 +201,15 @@ impl Updater {
 
     /// Check for updates and download/install if available.
     ///
-    /// This is a convenience method that combines `check()` and `download_and_install()`.
+    /// This is a convenience method that combines [`Updater::check()`] and [`Updater::download_and_install()`].
     /// Returns `Ok(true)` if an update was found and installed, `Ok(false)` if no update was needed.
-    pub async fn update<C: FnMut(usize, u64), D: FnOnce()>(
+    pub async fn update<C: FnMut(usize)>(
         &self,
         on_chunk: C,
-        on_download_finish: D,
+        // on_download_finish: D,
     ) -> Result<bool> {
         if let Some(updater) = self.check().await? {
-            updater
-                .download_and_install(on_chunk, on_download_finish)
-                .await?;
+            updater.download_and_install(on_chunk).await?;
             Ok(true)
         } else {
             Ok(false)
@@ -223,11 +220,11 @@ impl Updater {
 impl Updater {
     /// Downloads the updater package, verifies it then return it as bytes.
     ///
-    /// Use [`Update::install`] to install it
-    pub async fn download<C: FnMut(usize, u64), D: FnOnce()>(
+    /// Use [`Updater::install`] to install it
+    pub async fn download<C: FnMut(usize)>(
         &self,
         mut on_chunk: C,
-        on_download_finish: D,
+        // on_download_finish: D,
     ) -> Result<Vec<u8>> {
         // Fallback to reqwest if octocrab is not available
         let mut headers = self.headers.clone();
@@ -270,25 +267,28 @@ impl Updater {
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
-            on_chunk(chunk.len(), self.asset_size().unwrap());
+            on_chunk(chunk.len());
             buffer.extend(chunk);
         }
-        on_download_finish();
         Ok(buffer)
     }
 
-    /// Installs the updater package downloaded by [`Update::download`]
+    /// Installs the updater package downloaded by [`Updater::download`]
     pub fn install(&self, bytes: impl AsRef<[u8]>) -> Result<()> {
         self.install_inner(bytes.as_ref())
     }
 
+    pub fn relaunch(&self) -> Result<()> {
+        self.relaunch_inner()
+    }
+
     /// Downloads and installs the updater package
-    pub async fn download_and_install<C: FnMut(usize, u64), D: FnOnce()>(
+    pub async fn download_and_install<C: FnMut(usize)>(
         &self,
         on_chunk: C,
-        on_download_finish: D,
+        // on_download_finish: D,
     ) -> Result<()> {
-        let bytes = self.download(on_chunk, on_download_finish).await?;
+        let bytes = self.download(on_chunk).await?;
         self.install(bytes)
     }
 }
