@@ -141,7 +141,7 @@ pub fn Download(show_window: Signal<bool>) -> Element {
             }
             Err(e) => {
                 install_failed.set(true);
-                error_message.set(Some(format!("重新启动失败: {e}")));
+                error_message.set(Some(e.to_string()));
             }
         }
     };
