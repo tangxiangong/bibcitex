@@ -2,7 +2,7 @@
 members = [".", "crates/bibcitex-core", "crates/updater", "crates/xpaste"]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 description = "A BibTeX citation tool"
