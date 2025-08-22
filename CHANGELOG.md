@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2025-08-22
+
+### 🐛 Bug Fixes
+
+- *(bibliography)* Clear helper bib when deleting bibliography
+
 ## [0.4.0] - 2025-08-21
 
 ### 🚀 Features
