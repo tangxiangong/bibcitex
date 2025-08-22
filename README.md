@@ -1,85 +1,143 @@
-<div align=center>
-<img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
-<p align="center">
-    <img src="assets/readme/BibTeX.png" width="45">  文献快捷引用工具
-</p>
-<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-arm64.dmg"> macOS(M-series silicon) </a>
-<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-x86_64.dmg"> macOS(intel) </a>
-<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-arm64.exe"> Windows(arm64) </a>
-<a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-x86_64.exe"> Windows(x86_64) </a>
+<div align="center">
+  <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
+
+  <p>
+    <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具
+  </p>
+
+  <p>
+    <a href="https://github.com/tangxiangong/bibcitex/releases">
+      <img src="https://img.shields.io/github/v/release/tangxiangong/bibcitex?style=for-the-badge&logo=github&color=blue" alt="GitHub Release">
+    </a>
+    <a href="https://github.com/tangxiangong/bibcitex/blob/main/LICENSE-MIT">
+      <img src="https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=for-the-badge" alt="License">
+    </a>
+  </p>
+
+  <p>
+    <strong>快速下载</strong>
+  </p>
+
+  <p>
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-arm64.dmg">
+      <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
+    </a>
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-macos-x86_64.dmg">
+      <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
+    </a>
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-arm64.exe">
+      <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
+    </a>
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.3.0/BibCiTeX-v0.3.0-windows-x86_64.exe">
+      <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
+    </a>
+  </p>
 </div>
 
 ## 简介
 
-<img src="assets/transparent_logo.png" width="20"> 是一个使用 🦀 Rust 和 [<img src="assets/readme/dioxus.svg" width="15"> Dioxus](https://dioxuslabs.com) 框架开发的 Windows/macOS <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具。
+**BibCiTeX** 是一个使用 **Rust** 和 [<img src="assets/readme/dioxus.svg" width="15"> **Dioxus**](https://dioxuslabs.com) 框架开发的现代化 <img src="assets/readme/BibTeX.png" width="20"> **BibTeX** 文献快捷引用工具。
 
-### 下载安装
-从 [Release 页面](https://github.com/tangxiangong/bibcitex/releases) 下载对应平台架构的最新版本安装包。
+### 核心特性
 
-#### macOS
-若提示 `BibCiTeX` 已损坏，需要打开终端，执行以下命令：
+- **一键复制**: 便捷的引用复制功能
+- **跨应用粘贴**: 无缝集成到您的工作流程
+
+## 安装指南
+
+### 下载
+
+从 [**Release 页面**](https://github.com/tangxiangong/bibcitex/releases) 下载对应平台架构的最新版本安装包。
+
+### macOS 安装说明
+
+若提示 `BibCiTeX` 已损坏，请打开终端执行以下命令：
+
 ```bash
 sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 ```
 
-### 文献类型
-- [x] Article
-- [x] Book
-- [x] Thesis(PhDThesis && MastersThesis)
-- [x] Booklet
-- [x] InBook
-- [x] InCollection
-- [ ] Manual
-- [x] Misc
-- [ ] Proceedings
-- [x] TechReport
-- [x] InProceedings
-- [ ] Unpublished
+> **提示**: 这是由于 macOS 的安全机制导致的，执行上述命令后即可正常使用。
 
-## 界面功能预览
+### 支持的文献类型
+
 <div align="center">
 
-| 添加 `.bib` 文件 | 文献列表 | 搜索 |
+| 类型 | 状态 | 类型 | 状态 |
+|:---:|:---:|:---:|:---:|
+| Article | ✓ | Book | ✓ |
+| Thesis | ✓ | Booklet | ✓ |
+| InBook | ✓ | InCollection | ✓ |
+| Misc | ✓ | TechReport | ✓ |
+| InProceedings | ✓ | Manual | 进行中 |
+| Proceedings | 进行中 | Unpublished | 进行中 |
+
+</div>
+
+> ✓ 已支持 &nbsp;&nbsp; 进行中 开发中
+
+## 界面功能预览
+
+<div align="center">
+
+### 核心功能展示
+
+| 添加 `.bib` 文件 | 文献列表 | 智能搜索 |
 | :---: | :---: | :---: |
-| [<img src="assets/readme/add_bib.gif" width="100">](./assets/readme/add_bib.gif) | [<img src="assets/readme/show_details.gif" width="100">](./assets/readme/show_details.gif) | [<img src="assets/readme/search.gif" width="100">](./assets/readme/search.gif) |
+| [<img src="assets/readme/add_bib.gif" width="120" style="border-radius: 8px;">](./assets/readme/add_bib.gif) | [<img src="assets/readme/show_details.gif" width="120" style="border-radius: 8px;">](./assets/readme/show_details.gif) | [<img src="assets/readme/search.gif" width="120" style="border-radius: 8px;">](./assets/readme/search.gif) |
+| *快速导入 BibTeX 文件* | *查看文献详细信息* | *实时搜索过滤* |
 
 | 侧边详情 | 外部链接 | 复制引用 |
 | :---: | :---: | :---: |
-| [<img src="assets/readme/drawer.gif" width="100">](./assets/readme/drawer.gif) | [<img src="assets/readme/url.gif" width="100">](./assets/readme/url.gif) | [<img src="assets/readme/copy.gif" width="100">](./assets/readme/copy.gif) |
+| [<img src="assets/readme/drawer.gif" width="120" style="border-radius: 8px;">](./assets/readme/drawer.gif) | [<img src="assets/readme/url.gif" width="120" style="border-radius: 8px;">](./assets/readme/url.gif) | [<img src="assets/readme/copy.gif" width="120" style="border-radius: 8px;">](./assets/readme/copy.gif) |
+| *侧边栏详情展示* | *快速访问外部资源* | *一键复制引用格式* |
 
+### 特色功能
+
+<div style="margin: 20px 0;">
+  <h4>跨应用粘贴</h4>
+  <a href="assets/readme/cross_paste.gif">
+    <img src="assets/readme/cross_paste.gif" alt="跨应用粘贴演示" style="max-width: 600px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  </a>
+  <p><em>无缝集成到您的工作流程，支持跨应用程序粘贴功能</em></p>
 </div>
 
-<div align="center">
-<figure>
-<a href="assets/readme/cross_paste.gif">
-<img src="assets/readme/cross_paste.gif">
-</a>
-<figcaption>跨应用粘贴</figcaption>
-</figure>
 </div>
-
-
 
 ## 开发路线图
+
+<div align="center">
+
 ### 进行中
-- [x] 文献库删除功能
-- [x] 跨应用粘贴功能
-  - [x] macOS
-  - [x] Windows
-  - [x] Linux (x11)
-- [ ] 完整的搜索功能优化
-- [ ] 完善文献分类和标签系统
+
+| 功能 | 状态 | 描述 |
+|:---|:---:|:---|
+| 文献库删除功能 | ✓ | 支持删除不需要的文献条目 |
+| 跨应用粘贴功能 | ✓ | 无缝集成到其他应用程序 |
+| 搜索功能优化 | 进行中 | 提升搜索准确性和速度 |
+| 文献分类标签系统 | 进行中 | 更好的文献组织管理 |
 
 ### 计划中
-- [ ] macOS 系统级无焦点窗口实现 (NSPanel)
-- [ ] 自定义设置
+
+| 功能 | 优先级 | 描述 |
+|:---|:---:|:---|
+| macOS NSPanel 支持 | 高 | 系统级无焦点窗口实现 |
+| 自定义设置 | 高 | 个性化配置选项 |
 
 ### UI/UX 改进
-- [ ] 完整的 UI 设计系统
-- [ ] 自定义主题支持
-- [ ] 更好的响应式设计
 
-## 第三方代码版权声明 (Third-Party Code Attribution)
+| 功能 | 优先级 | 描述 |
+|:---|:---:|:---|
+| 完整设计系统 | 高 | 统一的视觉设计语言 |
+| 自定义主题支持 | 中 | 深色/浅色主题切换 |
+| 响应式设计 | 中 | 适配不同屏幕尺寸 |
+
+</div>
+
+> 高 高优先级 &nbsp;&nbsp; 中 中优先级 &nbsp;&nbsp; ✓ 已完成 &nbsp;&nbsp; 进行中 开发中
+
+## 第三方代码版权声明 (Third-Party Code Attribution**)
+
 ### [crates/nspanel](./crates/nspanel) (WIP)
 - **来源(Source)**: [ahkohd/tauri-nspanel](https://github.com/ahkohd/tauri-nspanel) (v2.1)
 - **作者(Author)**: Victor Aremu (ahkohd)
@@ -123,7 +181,10 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
   - 移除 Linux 支持和其对应的依赖 (Remove Linux support and its corresponding deps)
 
 
-详细的归属信息请参阅 [NOTICE](./NOTICE) 文件 (For detailed attribution information, please refer to the [NOTICE](./NOTICE) file)。
+---
+
+> **详细信息**: 完整的归属信息请参阅 [**NOTICE**](./NOTICE) 文件
+> **Detailed Info**: For complete attribution information, please refer to the [**NOTICE**](./NOTICE) file
 
 ## 许可协议
 
