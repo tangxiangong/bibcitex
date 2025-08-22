@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 futures-util = { workspace = true }
 http = { workspace = true }
-octocrab = "0.44"
+octocrab = { workspace = true }
 reqwest = { workspace = true }
 semver = { workspace = true }
 tempfile = { workspace = true }
