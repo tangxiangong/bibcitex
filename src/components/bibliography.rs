@@ -1,5 +1,7 @@
 use crate::{
-    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, ERR_ICON, OK_ICON, STATE, route::Route,
+    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, ERR_ICON, OK_ICON, STATE,
+    route::Route,
+    views::{get_helper_bib, set_helper_bib},
 };
 use bibcitex_core::{
     bib::parse,
@@ -269,6 +271,11 @@ pub fn BibliographyTable() -> Element {
         let result = state.update_file();
         if let Err(e) = result {
             error_message.set(Some(e.to_string()));
+        }
+        if let Some((helper_bib_name, _)) = get_helper_bib()
+            && helper_bib_name == bib_name
+        {
+            set_helper_bib(None);
         }
     };
 
