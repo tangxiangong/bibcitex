@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-08-23
+
+### 🚀 Features
+
+- *(filter)* Add new reference type filtering functions
+- *(references)* Add filter components and expand reference types
+
+### 🐛 Bug Fixes
+
+- *(macos)* Exit process after spawning updater
+
 ## [0.4.1] - 2025-08-22
 
 ### 🐛 Bug Fixes
