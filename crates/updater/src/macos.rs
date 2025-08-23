@@ -249,7 +249,6 @@ impl Updater {
             .arg("-n")
             .arg(&self.extract_path)
             .spawn()?;
-
-        Ok(())
+        std::process::exit(0);
     }
 }
