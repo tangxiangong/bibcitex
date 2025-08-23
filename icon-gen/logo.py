@@ -5,15 +5,32 @@ def create_gradient_background(width, height):
     gradient = Image.new("RGBA", (width, height))
     gradient_draw = ImageDraw.Draw(gradient)
 
+    # 创建现代化的径向渐变背景
+    center_x, center_y = width // 2, height // 2
+    max_distance = ((width/2)**2 + (height/2)**2)**0.5
+
     for y in range(height):
-        # 从灰到白色的渐变
-        ratio = y / height
-        # 起始颜色：灰色 (145, 145, 145)
-        # 结束颜色：白色 (255, 255, 255)
-        r = int(145 + (255 - 145) * ratio)
-        g = int(145 + (255 - 145) * ratio)
-        b = int(145 + (255 - 145) * ratio)
-        gradient_draw.line([(0, y), (width, y)], fill=(r, g, b, 255))
+        for x in range(width):
+            # 计算到中心的距离
+            distance = ((x - center_x)**2 + (y - center_y)**2)**0.5
+            ratio = min(distance / max_distance, 1.0)
+
+            # 创建从中心的浅蓝白色到边缘的深蓝紫色的径向渐变
+            # 中心颜色：浅蓝白色 (240, 245, 255)
+            # 边缘颜色：深蓝紫色 (45, 55, 120)
+            r = int(240 - (240 - 45) * ratio)
+            g = int(245 - (245 - 55) * ratio)
+            b = int(255 - (255 - 120) * ratio)
+
+            # 添加微妙的噪点效果增加质感
+            import random
+            random.seed(x * 1000 + y)  # 确保可重复的随机性
+            noise = random.randint(-8, 8)
+            r = max(0, min(255, r + noise))
+            g = max(0, min(255, g + noise))
+            b = max(0, min(255, b + noise))
+
+            gradient_draw.point((x, y), fill=(r, g, b, 255))
 
     return gradient
 
