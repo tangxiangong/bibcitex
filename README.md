@@ -165,7 +165,7 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
   - Windows: 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
   - Linux: 移除对 Linux 平台的支持 (Remove Linux support)
 
-### [crates/updater](./crates/updater) (WIP)
+### [crates/updater](./crates/updater)
 - **来源(Source)**: [tauri-apps/tauri-plugion-updater](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater)
 - **作者(Author)**: The Tauri Programme
 - **许可协议(License)**: [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT) OR [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT)/[Apache 2.0](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_APACHE-2.0)
