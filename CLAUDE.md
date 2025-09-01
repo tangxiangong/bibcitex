@@ -1,6 +1,6 @@
-# CLAUDE.md
+# WARP.md && CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to WARP (warp.dev) and Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
@@ -89,12 +89,46 @@ just desktop-icon   # Generate cross-platform desktop icons
 - **Assets**: Static assets in `assets/` (icons, logo, CSS), built icons in `icons/`
 
 ## crates/ Directory
-- **bibcitex-core**: Core business logic shared across the application
-- **nspanel**: macOS NSPanel wrapper for Dioxus (adapted from tauri-nspanel v2.1)
-- **updater**: GitHub release-based updater (adapted from Tauri updater plugin)
-- **xpaste**: Cross-application paste functionality (adapted from EcoPaste)
+
+### bibcitex-core (crates/bibcitex-core/src/)
+Core business logic including:
+- `bib.rs`: BibTeX parsing and Reference struct with detailed fields
+- `setting.rs`: Configuration management and bibliography tracking
+- `search.rs`: Reference search and filtering
+- `filter.rs`: Advanced filtering capabilities
+- `error.rs`: Error handling
+- `utils.rs`: Utility functions
+
+### Platform-Specific Crates
+- **nspanel**: macOS NSPanel wrapper for Dioxus (adapted from tauri-nspanel v2.1) **WIP**
+- **updater**: GitHub release-based updater (adapted from Tauri updater plugin) **OK**
+- **xpaste**: Cross-application paste functionality (adapted from EcoPaste) **OK**
 
 ## Platform Integration Notes
 - **macOS unfocused windows**: Current implementation uses tao's `with_focused(false)` which doesn't work properly. The nspanel crate is being developed to use native NSPanel APIs for true system-level unfocused windows.
 - **Tray integration**: Uses Dioxus desktop tray functionality with custom menu items
 - **Global shortcuts**: Integrated with Dioxus desktop's global shortcut system
+
+## Configuration Files
+- **Dioxus config**: `Dioxus.toml` (bundle settings, app metadata)
+- **Package metadata**: `Cargo.toml` (workspace configuration, dependencies)
+- **Build tasks**: `Justfile` (development commands)
+- **CSS pipeline**: `input.tailwind.css` → `assets/tailwind.css` (via Bun/TailwindCSS)
+
+## Common Development Patterns
+
+### Adding New BibTeX Fields
+1. Update `Reference` struct in `crates/bibcitex-core/src/bib.rs`
+2. Modify the `From<&biblatex::Entry>` implementation
+3. Update UI components in `src/components/reference.rs` for display
+4. Add search/filter support in `crates/bibcitex-core/src/search.rs`
+
+### Working with Global State
+- Use `STATE.read()` to access settings
+- Use `CURRENT_REF.write()` to update loaded references
+- Use `DRAWER_OPEN` and `DRAWER_REFERENCE` for UI state management
+
+### CSS Development
+- Always run `just css-watch` during development for live CSS updates
+- Use DaisyUI components where possible for consistency
+- CSS is processed through TailwindCSS v4.1.11 pipeline
