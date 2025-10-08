@@ -21,15 +21,14 @@ static CURRENT_APP_BUNDLE_ID: Mutex<Option<String>> = Mutex::new(None);
 
 fn init_current_app_info() {
     let current_pid = std::process::id() as i32;
-    unsafe {
-        if let Some(current_app) =
-            NSRunningApplication::runningApplicationWithProcessIdentifier(current_pid)
-        {
-            let bundle_id = current_app.bundleIdentifier().map(|id| id.to_string());
 
-            *CURRENT_APP_PID.lock().unwrap() = Some(current_pid);
-            *CURRENT_APP_BUNDLE_ID.lock().unwrap() = bundle_id.clone();
-        }
+    if let Some(current_app) =
+        NSRunningApplication::runningApplicationWithProcessIdentifier(current_pid)
+    {
+        let bundle_id = current_app.bundleIdentifier().map(|id| id.to_string());
+
+        *CURRENT_APP_PID.lock().unwrap() = Some(current_pid);
+        *CURRENT_APP_BUNDLE_ID.lock().unwrap() = bundle_id.clone();
     }
 }
 
@@ -51,27 +50,25 @@ fn is_current_app_window(app: &NSRunningApplication) -> bool {
     let current_pid = CURRENT_APP_PID.lock().unwrap();
     let current_bundle_id = CURRENT_APP_BUNDLE_ID.lock().unwrap();
 
-    unsafe {
-        let app_pid = app.processIdentifier();
-        let app_bundle_id = app.bundleIdentifier().map(|id| id.to_string());
+    let app_pid = app.processIdentifier();
+    let app_bundle_id = app.bundleIdentifier().map(|id| id.to_string());
 
-        if let Some(cur_pid) = *current_pid
-            && app_pid == cur_pid
-        {
-            return true;
-        }
-        if let (Some(cur_bundle), Some(app_bundle)) = (current_bundle_id.as_ref(), &app_bundle_id)
-            && cur_bundle == app_bundle
-        {
-            return true;
-        }
-        let app_name = app.localizedName().unwrap_or_default().to_string();
-        if app_name == MAIN_WINDOW_TITLE {
-            return true;
-        }
-
-        false
+    if let Some(cur_pid) = *current_pid
+        && app_pid == cur_pid
+    {
+        return true;
     }
+    if let (Some(cur_bundle), Some(app_bundle)) = (current_bundle_id.as_ref(), &app_bundle_id)
+        && cur_bundle == app_bundle
+    {
+        return true;
+    }
+    let app_name = app.localizedName().unwrap_or_default().to_string();
+    if app_name == MAIN_WINDOW_TITLE {
+        return true;
+    }
+
+    false
 }
 
 pub fn observe_app() {
@@ -80,25 +77,24 @@ pub fn observe_app() {
 
     thread::spawn(|| {
         loop {
-            unsafe {
-                let workspace = NSWorkspace::sharedWorkspace();
-                if let Some(active_app) = workspace.frontmostApplication() {
-                    let pid = active_app.processIdentifier();
-                    let _app_name = active_app.localizedName().unwrap_or_default().to_string();
+            let workspace = NSWorkspace::sharedWorkspace();
+            if let Some(active_app) = workspace.frontmostApplication() {
+                let pid = active_app.processIdentifier();
+                let _app_name = active_app.localizedName().unwrap_or_default().to_string();
 
-                    let mut last_pid = LAST_ACTIVE_APP.lock().unwrap();
+                let mut last_pid = LAST_ACTIVE_APP.lock().unwrap();
 
-                    if *last_pid != Some(pid) {
-                        // 如果当前应用不是当前 Dioxus 应用，更新 PREVIOUS_WINDOW
-                        if !is_current_app_window(&active_app) {
-                            let mut previous = PREVIOUS_WINDOW.lock().unwrap();
-                            *previous = Some(pid);
-                        }
-
-                        *last_pid = Some(pid);
+                if *last_pid != Some(pid) {
+                    // 如果当前应用不是当前 Dioxus 应用，更新 PREVIOUS_WINDOW
+                    if !is_current_app_window(&active_app) {
+                        let mut previous = PREVIOUS_WINDOW.lock().unwrap();
+                        *previous = Some(pid);
                     }
+
+                    *last_pid = Some(pid);
                 }
             }
+
             thread::sleep(Duration::from_millis(200)); // 减少到200ms提高响应性
         }
     });
@@ -119,39 +115,37 @@ pub fn focus_previous_window() -> Result<(), Box<dyn std::error::Error>> {
     let pid_option = get_most_recent_window();
 
     if let Some(pid) = pid_option {
-        unsafe {
-            if let Some(app) = NSRunningApplication::runningApplicationWithProcessIdentifier(pid) {
-                let app_name = app
-                    .localizedName()
-                    .map(|n| n.to_string())
-                    .unwrap_or_else(|| "Unknown".to_string());
+        if let Some(app) = NSRunningApplication::runningApplicationWithProcessIdentifier(pid) {
+            let app_name = app
+                .localizedName()
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "Unknown".to_string());
 
-                // 尝试多种激活方式
-                let success1 = app.activateWithOptions(
-                    objc2_app_kit::NSApplicationActivationOptions::ActivateAllWindows,
-                );
+            // 尝试多种激活方式
+            let success1 = app.activateWithOptions(
+                objc2_app_kit::NSApplicationActivationOptions::ActivateAllWindows,
+            );
 
-                let success2 = true;
+            let success2 = true;
 
-                if success1 || success2 {
-                    // 增加等待时间确保应用完全激活
-                    thread::sleep(Duration::from_millis(100));
+            if success1 || success2 {
+                // 增加等待时间确保应用完全激活
+                thread::sleep(Duration::from_millis(100));
 
-                    // 模拟 Cmd+V 粘贴操作
-                    let mut enigo = Enigo::new(&enigo::Settings::default())?;
-                    enigo.key(EnigoKey::Meta, Direction::Press)?;
-                    enigo.key(EnigoKey::Unicode('v'), Direction::Click)?;
-                    enigo.key(EnigoKey::Meta, Direction::Release)?;
+                // 模拟 Cmd+V 粘贴操作
+                let mut enigo = Enigo::new(&enigo::Settings::default())?;
+                enigo.key(EnigoKey::Meta, Direction::Press)?;
+                enigo.key(EnigoKey::Unicode('v'), Direction::Click)?;
+                enigo.key(EnigoKey::Meta, Direction::Release)?;
 
-                    Ok(())
-                } else {
-                    let error_msg = format!("所有激活方式都失败了: {}", app_name);
-                    Err(error_msg.into())
-                }
+                Ok(())
             } else {
-                let error_msg = format!("Application not found for PID: {}", pid);
+                let error_msg = format!("所有激活方式都失败了: {}", app_name);
                 Err(error_msg.into())
             }
+        } else {
+            let error_msg = format!("Application not found for PID: {}", pid);
+            Err(error_msg.into())
         }
     } else {
         let error_msg = "No previous window found";
