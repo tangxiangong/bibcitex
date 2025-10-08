@@ -14,15 +14,14 @@ bibcitex-core = { path = "crates/bibcitex-core" }
 biblatex = "0.10"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
-dioxus = { version = "0.7.0-rc.0", features = ["desktop", "router"] }
-dioxus-core = "0.7.0-rc.0"
+dioxus = { version = "0.7.0-rc.1", features = ["desktop", "router"] }
+dioxus-core = "0.7.0-rc.1"
 dirs = "6.0.0"
-enigo = "0.5"
+enigo = "0.6"
 fs-err = "3.1"
 futures-util = "0.3"
 http = "1"
 image = "0.25"
-infer = "0.19"
 itertools = "0.14"
 katex-gdef-v8 = { version = "0.1", default-features = false, features = [
     "qjs",
