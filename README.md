@@ -138,19 +138,6 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 ## 第三方代码版权声明 (Third-Party Code Attribution**)
 
-### [crates/nspanel](./crates/nspanel) (WIP)
-- **来源(Source)**: [ahkohd/tauri-nspanel](https://github.com/ahkohd/tauri-nspanel) (v2.1)
-- **作者(Author)**: Victor Aremu (ahkohd)
-- **许可协议(License)**: [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT) OR [MIT](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_MIT)/[Apache 2.0](https://github.com/ahkohd/tauri-nspanel/blob/v2.1/LICENSE_APACHE-2.0)
-- **用途(Usage)**: 为 Dioxus 框架适配 macOS NSPanel 功能 (Adapted macOS NSPanel functionality for Dioxus framework)
-- **版权声明(Copyright)**:
-  ```
-  Copyright (c) 2023 - Present Victor Aremu
-  ```
-- **主要修改(Key Modifications)**:
-  - 从 Tauri 框架适配为 Dioxus 框架 (Adapt from Tauri framework to Dioxus framework)
-  - 移除 Tauri 特定的运行时集成 (Remove Tauri-specific runtime integration)
-
 ### [crates/xpaste](./crates/xpaste)
 - **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
 - **作者(Author)**: EcoPasteHub
