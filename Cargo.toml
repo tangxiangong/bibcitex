@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/bibcitex-core", "crates/updater", "crates/xpaste"]
+members = [".", "crates/*"]
 
 [workspace.package]
 version = "0.5.0"
@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 arboard = "3.6"
 bibcitex-core = { path = "crates/bibcitex-core" }
-biblatex = "0.10"
+biblatex = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
 dioxus = { version = "0.7.0-rc.1", features = ["desktop", "router"] }
@@ -26,7 +26,7 @@ itertools = "0.14"
 katex-gdef-v8 = { version = "0.1", default-features = false, features = [
     "qjs",
 ] }
-octocrab = "0.44"
+octocrab = "0.47"
 once_cell = "1.21"
 opener = "0.8"
 rayon = "1"

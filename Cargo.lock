@@ -419,12 +419,12 @@ dependencies = [
 
 [[package]]
 name = "biblatex"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a35a7317fcbdbef94b60d0dd0a658711a936accfce4a631fea4bf8e527eff3c2"
+checksum = "53d0c374feba1b9a59042a7c1cf00ce7c34b977b9134fe7c42b08e5183729f66"
 dependencies = [
- "numerals",
  "paste",
+ "roman-numerals-rs",
  "strum",
  "unicode-normalization",
  "unscanny",
@@ -3627,12 +3627,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "numerals"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e25be21376a772d15f97ae789845340a9651d3c4246ff5ebb6a2b35f9c37bd31"
-
-[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3861,9 +3855,9 @@ dependencies = [
 
 [[package]]
 name = "octocrab"
-version = "0.44.1"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86996964f8b721067b6ed238aa0ccee56ecad6ee5e714468aa567992d05d2b91"
+checksum = "0860f9250b6db66c5a4b46e00b381f063c58ad06a90f95f9ef701dd8679bb2c6"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4925,6 +4919,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "roman-numerals-rs"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c85cd47a33a4510b1424fe796498e174c6a9cf94e606460ef022a19f3e4ff85e"
+
+[[package]]
 name = "ron"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5528,23 +5528,22 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.26.3"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fec0f0aef304996cf250b31b5a10dee7980c85da9d759361292b8bca5a18f06"
+checksum = "af23d6f6c1a224baef9d3f61e287d2761385a5b88fdab4eb4c6f11aeb54c4bcf"
 dependencies = [
  "strum_macros",
 ]
 
 [[package]]
 name = "strum_macros"
-version = "0.26.4"
+version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c6bee85a5a24955dc440386795aa378cd9cf82acd5f764469152d2270e581be"
+checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
  "quote",
- "rustversion",
  "syn 2.0.106",
 ]
 
