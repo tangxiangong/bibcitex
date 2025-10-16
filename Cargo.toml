@@ -14,8 +14,8 @@ bibcitex-core = { path = "crates/bibcitex-core" }
 biblatex = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
-dioxus = { version = "0.7.0-rc.1", features = ["desktop", "router"] }
-dioxus-core = "0.7.0-rc.1"
+dioxus = { version = "0.7.0-rc.2", features = ["desktop", "router"] }
+dioxus-core = "0.7.0-rc.2"
 dirs = "6.0.0"
 enigo = "0.6"
 fs-err = "3.1"
@@ -41,7 +41,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
 thiserror = "2"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }
 updater = { path = "crates/updater" }
 url = { version = "2", features = ["serde"] }
 xpaste = { path = "crates/xpaste" }
