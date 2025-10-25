@@ -80,7 +80,7 @@ jobs:
             else
               echo "cargo-binstall already installed"
             fi
-            cargo binstall dioxus-cli@0.7.0-rc.1 --no-confirm
+            cargo binstall dioxus-cli@0.7.0-rc.3 --no-confirm
           else
             echo "dioxus-cli already installed"
           fi
@@ -99,7 +99,7 @@ jobs:
             } else {
               Write-Host "cargo-binstall already installed"
             }
-            cargo binstall dioxus-cli@0.7.0-rc.1 --no-confirm
+            cargo binstall dioxus-cli@0.7.0-rc.3 --no-confirm
           } else {
             Write-Host "dioxus-cli already installed"
           }
