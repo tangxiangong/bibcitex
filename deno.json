@@ -1,0 +1,13 @@
+{
+    "imports": {
+        "daisyui": "npm:daisyui@^5.3.9",
+        "tailwindcss": "npm:tailwindcss@^4.1.16",
+        "@tailwindcss/cli": "npm:@tailwindcss/cli"
+    },
+    "nodeModulesDir": "auto",
+    "tasks": {
+        "css": "deno run --allow-all npm:@tailwindcss/cli -i ./input.tailwind.css -o ./assets/tailwind.css",
+        "css:watch": "deno run --allow-all npm:@tailwindcss/cli -i ./input.tailwind.css -o ./assets/tailwind.css --watch",
+        "css:minify": "deno run --allow-all npm:@tailwindcss/cli -i ./input.tailwind.css -o ./assets/tailwind.css --minify"
+    }
+}

@@ -1,14 +1,4 @@
 {
   "name": "bibcitex",
-  "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.8.3"
-  },
-  "dependencies": {
-    "daisyui": "^5.0.50",
-    "tailwindcss": "^4.1.11"
-  }
+  "private": true
 }

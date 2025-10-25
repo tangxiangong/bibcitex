@@ -2,16 +2,16 @@ fmt:
     dx fmt && cargo sort -w -o workspace,package && cargo fmt --all
 
 css:
-    bunx tailwindcss -i ./input.tailwind.css -o ./assets/tailwind.css
+    deno task css
 
 css-watch:
-    bunx tailwindcss -i ./input.tailwind.css -o ./assets/tailwind.css --watch
+    deno task css:watch
 
 dx-serve:
     dx serve
 
 css-minify:
-    bunx tailwindcss -i ./input.tailwind.css -o ./assets/tailwind.css --minify
+    deno task css:minify
 
 [parallel]
 serve: css-watch dx-serve
