@@ -1,8 +1,8 @@
 {
     "imports": {
-        "daisyui": "npm:daisyui@^5.3.9",
+        "daisyui": "npm:daisyui@^5.3.10",
         "tailwindcss": "npm:tailwindcss@^4.1.16",
-        "@tailwindcss/cli": "npm:@tailwindcss/cli"
+        "@tailwindcss/cli": "npm:@tailwindcss/cli@4.1.16"
     },
     "nodeModulesDir": "auto",
     "tasks": {

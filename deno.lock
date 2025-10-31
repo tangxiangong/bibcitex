@@ -1,8 +1,8 @@
 {
   "version": "5",
   "specifiers": {
-    "npm:@tailwindcss/cli@*": "4.1.16",
-    "npm:daisyui@^5.3.9": "5.3.9",
+    "npm:@tailwindcss/cli@4.1.16": "4.1.16",
+    "npm:daisyui@^5.3.10": "5.3.10",
     "npm:tailwindcss@^4.1.16": "4.1.16"
   },
   "npm": {
@@ -230,8 +230,8 @@
         "fill-range"
       ]
     },
-    "daisyui@5.3.9": {
-      "integrity": "sha512-741x1pGGSGHcrBYtdE7iKbqW1OoiijYdAZ8oJPZR9MhSKLcMBlHjKfN3YlM2/K7t5jd7O0sg4SqkVNPylalRFw=="
+    "daisyui@5.3.10": {
+      "integrity": "sha512-vmjyPmm0hvFhA95KB6uiGmWakziB2pBv6CUcs5Ka/3iMBMn9S+C3SZYx9G9l2JrgTZ1EFn61F/HrPcwaUm2kLQ=="
     },
     "detect-libc@1.0.3": {
       "integrity": "sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==",
@@ -389,8 +389,8 @@
   },
   "workspace": {
     "dependencies": [
-      "npm:@tailwindcss/cli@*",
-      "npm:daisyui@^5.3.9",
+      "npm:@tailwindcss/cli@4.1.16",
+      "npm:daisyui@^5.3.10",
       "npm:tailwindcss@^4.1.16"
     ]
   }
