@@ -8,7 +8,7 @@ You can add Dioxus to your `Cargo.toml` like this:
 
 ```toml
 [dependencies]
-dioxus = { version = "0.7.0-alpha.3" }
+dioxus = { version = "0.7.0" }
 
 [features]
 default = ["web", "webview", "server"]
@@ -231,7 +231,7 @@ fn App() -> Element {
 ```
 
 ```toml
-dioxus = { version = "0.7.0-alpha.3", features = ["router"] }
+dioxus = { version = "0.7.0", features = ["router"] }
 ```
 
 # Fullstack
@@ -239,16 +239,16 @@ dioxus = { version = "0.7.0-alpha.3", features = ["router"] }
 Fullstack enables server rendering and ipc calls. It uses Cargo features (`server` and a client feature like `web`) to split the code into a server and client binaries.
 
 ```toml
-dioxus = { version = "0.7.0-alpha.3", features = ["fullstack"] }
+dioxus = { version = "0.7.0", features = ["fullstack"] }
 ```
 
 ## Server Functions
 
-Use the `#[server]` macro to define an `async` function that will only run on the server. On the server, this macro generates an API endpoint. On the client, it generates a function that makes an HTTP request to that endpoint.
+Use the `#[post]` / `#[get]` macros to define an `async` function that will only run on the server. On the server, this macro generates an API endpoint. On the client, it generates a function that makes an HTTP request to that endpoint.
 
 ```rust
-#[server]
-async fn double_server(number: i32) -> Result<i32, ServerFnError> {
+#[post("/api/double/:path/&query")]
+async fn double_server(number: i32, path: String, query: i32) -> Result<i32, ServerFnError> {
 	tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 	Ok(number * 2)
 }
