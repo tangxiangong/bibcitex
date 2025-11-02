@@ -2,7 +2,7 @@
 members = [".", "crates/*"]
 
 [workspace.package]
-version = "0.5.2"
+version = "0.5.3"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 description = "A BibTeX citation tool"
@@ -14,8 +14,8 @@ bibcitex-core = { path = "crates/bibcitex-core" }
 biblatex = "0.11"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
-dioxus = { version = "0.7.0-rc.4", features = ["desktop", "router"] }
-dioxus-core = "0.7.0-rc.4"
+dioxus = { version = "0.7", features = ["desktop", "router"] }
+dioxus-core = "0.7"
 dirs = "6.0.0"
 enigo = "0.6"
 fs-err = "3.1"
