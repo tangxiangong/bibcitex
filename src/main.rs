@@ -66,7 +66,7 @@ fn main() {
     let mut about_metadata = from_cargo_metadata!();
     about_metadata.icon = about_icon;
     about_metadata.name = Some("BibCiTeX - BibTeX 快捷引用工具".to_string());
-    about_metadata.copyright = Some("Copyright 2025 tangxiangong".to_string());
+    about_metadata.copyright = Some("Copyright 2025 -- present tangxiangong".to_string());
 
     home_menu
         .append_items(&[
