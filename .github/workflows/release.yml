@@ -74,13 +74,7 @@ jobs:
         run: |
           if ! command -v dx > /dev/null 2>&1; then
             echo "dioxus-cli not found, installing..."
-            if ! command -v cargo-binstall > /dev/null 2>&1; then
-              echo "cargo-binstall not found, installing..."
-              cargo install cargo-binstall
-            else
-              echo "cargo-binstall already installed"
-            fi
-            cargo binstall dioxus-cli --no-confirm
+            curl -fsSL https://dioxus.dev/install.sh | bash
           else
             echo "dioxus-cli already installed"
           fi
@@ -92,14 +86,8 @@ jobs:
           $dxExists = Get-Command dx -ErrorAction SilentlyContinue
           if (-not $dxExists) {
             Write-Host "dioxus-cli not found, installing..."
-            $binstallExists = Get-Command cargo-binstall -ErrorAction SilentlyContinue
-            if (-not $binstallExists) {
-              Write-Host "cargo-binstall not found, installing..."
-              cargo install cargo-binstall
-            } else {
-              Write-Host "cargo-binstall already installed"
-            }
-            cargo binstall dioxus-cli --no-confirm
+            Invoke-RestMethod -Uri "https://dioxus.dev/install.sh" -OutFile "install.sh"
+            bash install.sh
           } else {
             Write-Host "dioxus-cli already installed"
           }
