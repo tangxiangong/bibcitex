@@ -17,11 +17,10 @@ dependencies = [
  "katex-gdef-v8",
  "once_cell",
  "opener",
+ "release-hub",
  "rfd",
  "semver",
  "tokio",
- "updater",
- "url",
  "winresource",
  "xpaste",
 ]
@@ -4773,6 +4772,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
+name = "release-hub"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc1c289f4094b7f78fe57c7db133171254514b828aed15c1f08b07d537497364"
+dependencies = [
+ "flate2",
+ "futures-util",
+ "http",
+ "octocrab",
+ "osakit",
+ "reqwest",
+ "semver",
+ "tempfile",
+ "thiserror 2.0.17",
+ "url",
+ "windows-sys 0.61.2",
+ "zip",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6147,25 +6166,6 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
-
-[[package]]
-name = "updater"
-version = "0.5.3"
-dependencies = [
- "flate2",
- "futures-util",
- "http",
- "octocrab",
- "osakit",
- "reqwest",
- "semver",
- "tempfile",
- "thiserror 2.0.17",
- "tokio",
- "url",
- "windows-sys 0.61.2",
- "zip",
-]
 
 [[package]]
 name = "url"

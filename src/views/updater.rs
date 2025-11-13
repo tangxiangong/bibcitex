@@ -1,7 +1,7 @@
 use crate::components::updater::*;
 use dioxus::prelude::*;
+use release_hub::{Updater, UpdaterBuilder};
 use semver::Version;
-use updater::{Updater, UpdaterBuilder};
 
 #[derive(Debug, Clone)]
 pub struct AvaliableUpdater {
