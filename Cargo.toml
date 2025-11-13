@@ -27,9 +27,8 @@ katex-gdef-v8 = { version = "0.1", default-features = false, features = [
 once_cell = "1.21"
 opener = "0.8"
 rayon = "1"
-release-hub = "0.1"
+release-hub = "0.2"
 rfd = "0.15"
-semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -58,7 +57,6 @@ once_cell = { workspace = true }
 opener = { workspace = true }
 release-hub = { workspace = true }
 rfd = { workspace = true }
-semver = { workspace = true }
 tokio = { workspace = true }
 xpaste = { workspace = true }
 

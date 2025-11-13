@@ -1,7 +1,6 @@
 use crate::components::updater::*;
 use dioxus::prelude::*;
 use release_hub::{Updater, UpdaterBuilder};
-use semver::Version;
 
 #[derive(Debug, Clone)]
 pub struct AvaliableUpdater {
@@ -19,8 +18,7 @@ pub enum UpdaterStatus {
 }
 
 pub async fn check_for_update() -> Result<Option<AvaliableUpdater>, String> {
-    let current_version =
-        Version::parse(env!("CARGO_PKG_VERSION")).map_err(|e| format!("解析当前版本失败: {e}"))?;
+    let current_version = env!("CARGO_PKG_VERSION");
     let updater = UpdaterBuilder::new("BibCiteX", current_version, "tangxiangong", "bibcitex")
         .build()
         .map_err(|e| format!("创建更新器失败: {e}"))?;

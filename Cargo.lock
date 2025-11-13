@@ -19,7 +19,6 @@ dependencies = [
  "opener",
  "release-hub",
  "rfd",
- "semver",
  "tokio",
  "winresource",
  "xpaste",
@@ -4773,9 +4772,9 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
 name = "release-hub"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc1c289f4094b7f78fe57c7db133171254514b828aed15c1f08b07d537497364"
+checksum = "c143440ed9ed0a18a66067f3409f1add922bc9058bb63145677fd269abfc9057"
 dependencies = [
  "flate2",
  "futures-util",
