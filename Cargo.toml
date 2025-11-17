@@ -18,7 +18,7 @@ dioxus = { version = "0.7", features = ["desktop", "router"] }
 dioxus-core = "0.7"
 dirs = "6.0.0"
 enigo = "0.6"
-fs-err = "3.1"
+fs-err = "3.2"
 image = "0.25"
 itertools = "0.14"
 katex-gdef-v8 = { version = "0.1", default-features = false, features = [
