@@ -152,22 +152,6 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
   - Windows: 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
   - Linux: 移除对 Linux 平台的支持 (Remove Linux support)
 
-### [crates/updater](./crates/updater)
-- **来源(Source)**: [tauri-apps/tauri-plugion-updater](https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/updater)
-- **作者(Author)**: The Tauri Programme
-- **许可协议(License)**: [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT) OR [MIT](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_MIT)/[Apache 2.0](https://github.com/tauri-apps/plugins-workspace/blob/v2/plugins/updater/LICENSE_APACHE-2.0)
-- **用途(Usage)**: 实现检查更新功能 (Implement updater for Dioxus apps)
-- **版权声明(Copyright)**:
-  ```
-  Copyright (c) 2015 - Present - The Tauri Programme within The Commons Conservancy.
-  ```
-- **主要修改(Key Modifications)**:
-  - 从 Tauri 插件适配为通用 Rust 库 (Adapt for universal Rust crate)
-  - 移除 Tauri 特定的运行时集成 (Remove Tauri-specific runtime integration)
-  - 使用 `octocrab` 库进行 GitHub API 交互 (Use `octocrab` library for GitHub API interaction)
-  - 移除 Linux 支持和其对应的依赖 (Remove Linux support and its corresponding deps)
-
-
 ---
 
 > **详细信息**: 完整的归属信息请参阅 [**NOTICE**](./NOTICE) 文件
