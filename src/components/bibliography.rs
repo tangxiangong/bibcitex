@@ -1,5 +1,5 @@
 use crate::{
-    ADD_ICON, CANCEL_ICON, CURRENT_REF, DELETE_ICON, ERR_ICON, OK_ICON, STATE,
+    ADD_ICON, CURRENT_REF, DELETE_ICON, ERR_ICON, OK_ICON, STATE,
     route::Route,
     views::{get_helper_bib, set_helper_bib},
 };
@@ -46,37 +46,37 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
         }
     });
     rsx! {
-        div { class: "relative",
-            h2 { class: "p-4 text-lg flex items-center",
-                "Bibliographies"
+        div { class: "relative container mx-auto p-6",
+            div { class: "flex items-center justify-between mb-8",
+                div {
+                    h2 { class: "text-3xl font-bold gradient-text", "Bibliographies" }
+                    p { class: "text-base-content/60 text-sm mt-1", "Manage your citation libraries" }
+                }
                 button {
-                    class: "tooltip tooltip-right ml-2 cursor-pointer flex items-center",
-                    "data-tip": "Add bibliography",
+                    class: "btn btn-primary btn-modern gap-2",
                     onclick: open_modal,
-                    img { width: 16, src: ADD_ICON }
+                    img {
+                        width: 16,
+                        src: ADD_ICON,
+                        class: "invert brightness-0",
+                    }
+                    "New Library"
                 }
             }
             BibliographyTable {}
             if show_error() {
-                div { class: if is_fading_out() { "absolute top-2 right-2 w-1/3 z-10 bg-base-100 animate-fade-out indicator" } else { "absolute top-2 right-2 w-1/3 z-10 bg-base-100 animate-fade-in indicator" },
-                    div { class: "indicator-item",
-                        button {
-                            class: "cursor-pointer rounded-full",
-                            onclick: move |_| {
-                                is_fading_out.set(true);
-                            },
-                            img { width: 10, src: ERR_ICON }
-                        }
-                    }
+                div { class: if is_fading_out() { "absolute top-2 right-2 w-1/3 z-50 animate-fade-out" } else { "absolute top-2 right-2 w-1/3 z-50 animate-fade-in" },
                     div {
                         role: "alert",
-                        class: "alert alert-error alert-outline flex justify-between items-center transition-all duration-300 ease-in-out",
-                        p { class: "flex break-all", "{error_message().unwrap_or_default()}" }
+                        class: "alert alert-error shadow-lg backdrop-blur-md bg-error/10 border-error/20 flex justify-between items-center",
+                        div { class: "flex items-center gap-2",
+                            img { width: 20, src: ERR_ICON }
+                            span { class: "font-medium", "{error_message().unwrap_or_default()}" }
+                        }
                         div {
-                            class: "radial-progress flex flex-shrink-0",
-                            style: "--value:{progress()}; --size:1.5rem; --thickness:2px;",
+                            class: "radial-progress text-error text-xs",
+                            style: "--value:{progress()}; --size:1.2rem; --thickness:2px;",
                             aria_valuenow: "{progress()}",
-                            role: "progressbar",
                         }
                     }
                 }
@@ -106,7 +106,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
         if let Some(path) = path() {
             path.as_os_str().to_str().unwrap().to_owned()
         } else {
-            "未选择文件，点击选择".to_string()
+            "Select a .bib file".to_string()
         }
     });
     let path_abbr_string = use_memo(move || {
@@ -121,7 +121,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     let select_file = move |_| {
         let file = FileDialog::new()
             .add_filter("bibtex", &["bib", "txt"])
-            .set_title("选择文献文件")
+            .set_title("Select Bibliography File")
             .pick_file();
         if let Some(file) = file {
             path.set(Some(file));
@@ -156,73 +156,103 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     };
 
     rsx! {
-        div { class: if show() { "modal modal-open" } else { "modal" },
-            div { class: "modal-box w-1/2",
-                h2 { class: "text-lg font-bold p-4", "添加文献库" }
-                label { class: "input",
-                    "名称"
-                    input {
-                        class: "grow",
-                        r#type: "text",
-                        value: "{name}",
-                        oninput: move |e| {
-                            name.set(e.data.value());
-                        },
+        div { class: if show() { "modal modal-open backdrop-blur-sm" } else { "modal" },
+            div { class: "modal-box w-1/2 max-w-2xl glass-panel shadow-2xl",
+                h3 { class: "text-2xl font-bold mb-6 gradient-text", "Add New Library" }
+
+                div { class: "form-control w-full mb-4",
+                    label { class: "label",
+                        span { class: "label-text font-medium", "Library Name" }
                     }
-                    if name_is_valid() {
-                        img { width: 20, src: OK_ICON }
-                    } else {
-                        img { width: 20, src: ERR_ICON }
+                    label { class: "input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors",
+                        input {
+                            class: "grow",
+                            r#type: "text",
+                            placeholder: "My Research",
+                            value: "{name}",
+                            oninput: move |e| {
+                                name.set(e.data.value());
+                            },
+                        }
+                        if !name().is_empty() {
+                            if name_is_valid() {
+                                img {
+                                    width: 20,
+                                    src: OK_ICON,
+                                    class: "opacity-50",
+                                }
+                            } else {
+                                img { width: 20, src: ERR_ICON }
+                            }
+                        }
+                    }
+                    if !name().is_empty() && !name_is_valid() {
+                        div { class: "label",
+                            span { class: "label-text-alt text-error", "Name already exists" }
+                        }
                     }
                 }
-                br {}
-                label {
-                    class: format!(
-                        "input tooltip tooltip-bottom {}",
-                        if path().is_some() { "tooltip-success" } else { "tooltip-error" },
-                    ),
-                    "data-tip": "{path_string}",
-                    "路径"
-                    input {
-                        class: "grow",
-                        r#type: "text",
-                        placeholder: "请选择文件",
-                        value: "{path_abbr_string}",
-                        readonly: true,
+
+                div { class: "form-control w-full mb-4",
+                    label { class: "label",
+                        span { class: "label-text font-medium", "File Path" }
                     }
-                    button { class: "cursor-pointer", onclick: select_file, "选取文件" }
+                    div { class: "join w-full",
+                        input {
+                            class: "input input-bordered join-item grow focus:outline-none cursor-default bg-base-200/50",
+                            r#type: "text",
+                            placeholder: "No file selected",
+                            value: "{path_abbr_string}",
+                            readonly: true,
+                            title: "{path_string}",
+                        }
+                        button {
+                            class: "btn btn-primary join-item",
+                            onclick: select_file,
+                            "Browse"
+                        }
+                    }
                 }
-                br {}
-                label { class: "input",
-                    "描述"
-                    input {
-                        class: "grow",
-                        r#type: "text",
-                        placeholder: "可选",
+
+                div { class: "form-control w-full mb-6",
+                    label { class: "label",
+                        span { class: "label-text font-medium", "Description" }
+                        span { class: "label-text-alt text-base-content/50", "Optional" }
+                    }
+                    textarea {
+                        class: "textarea textarea-bordered h-24 focus:textarea-primary transition-colors resize-none",
+                        placeholder: "Brief description of this collection...",
                         value: "{description}",
                         oninput: move |event| {
                             description.set(event.data.value());
                         },
                     }
                 }
+
                 if let Some(error) = error_message() {
-                    div { role: "alert", class: "alert alert-error", "{error}" }
+                    div {
+                        role: "alert",
+                        class: "alert alert-error mb-4 shadow-sm",
+                        img { width: 20, src: ERR_ICON }
+                        span { "{error}" }
+                    }
                 }
-                div { class: "modal-action p-3",
-                    button { class: "btn btn-soft btn-error", onclick: close_modal,
-                        img { width: 20, src: CANCEL_ICON }
-                        "取消"
+
+                div { class: "modal-action mt-8",
+                    button {
+                        class: "btn btn-ghost hover:bg-base-content/10",
+                        onclick: close_modal,
+                        "Cancel"
                     }
                     button {
-                        class: if save_available() { "btn btn-soft btn-success" } else { "btn btn-soft btn-disabled" },
+                        class: if save_available() { "btn btn-primary btn-modern px-8" } else { "btn btn-disabled px-8" },
                         onclick: save,
                         disabled: !save_available(),
-                        img { width: 20, src: OK_ICON }
-                        "保存"
+                        "Create Library"
                     }
                 }
             }
-            div { class: "modal-backdrop", onclick: close_modal }
+            div { class: "modal-backdrop bg-base-300/30", onclick: close_modal }
         }
     }
 }
@@ -240,6 +270,8 @@ pub fn BibliographyTable() -> Element {
             .map(|(name, info)| {
                 (
                     name.clone(),
+                    name.clone(),
+                    info.path.as_os_str().to_str().unwrap().to_string(),
                     info.path.as_os_str().to_str().unwrap().to_string(),
                     info.path.as_os_str().to_str().unwrap().to_string(),
                     info.updated_at.format("%Y-%m-%d %H:%M:%S").to_string(),
@@ -287,75 +319,105 @@ pub fn BibliographyTable() -> Element {
     };
 
     rsx! {
-        div {
-            div { class: "overflow-x-auto rounded-box border border-base-content/5 bg-base-100",
-                table { class: "table",
-                    thead {
-                        tr {
-                            th { class: "text-center", "name" }
-                            th { class: "text-center", "path" }
-                            th { class: "text-center", "description" }
-                            th { class: "text-center", "time" }
-                            th { class: "text-center", "action" }
-                        }
-                    }
-                    tbody {
-                        for (name , path , path_clone , updated_at , description , is_exist) in pairs() {
-                            tr {
-                                td { class: "text-center break-all",
-                                    if is_exist {
-                                        div { class: "inline-grid *:[grid-area:1/1]",
-                                            div { class: "status status-success animate-ping" }
-                                            div { class: "status status-success" }
+        div { class: "w-full",
+            if pairs().is_empty() {
+                div { class: "flex flex-col items-center justify-center h-64 text-base-content/50",
+                    div { class: "text-4xl mb-4", "📚" }
+                    p { class: "text-lg", "No bibliographies found" }
+                    p { class: "text-sm", "Click the + button to add one" }
+                }
+            } else {
+                div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-4",
+                    for (name , name_clone , path , path_clone , path_clone_2 , updated_at , description , is_exist) in pairs() {
+                        div { class: "card-modern card-shine group relative overflow-hidden flex flex-col h-full min-h-[200px] transition-all duration-500 hover:-translate-y-2 hover:shadow-primary/10 border-white/5",
+                            // Decorative Background Elements
+                            div { class: "absolute -top-20 -right-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700 animate-blob" }
+                            div { class: "absolute -bottom-20 -left-20 w-40 h-40 bg-secondary/5 rounded-full blur-3xl group-hover:bg-secondary/10 transition-all duration-700 animate-blob animation-delay-2000" }
+                            div { class: "absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full bg-linear-to-br from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" }
+
+                            div { class: "card-body p-6 flex-1 relative z-10 backdrop-blur-[2px]",
+                                // Header
+                                div { class: "flex items-start justify-between mb-4",
+                                    div { class: "flex items-center gap-3 overflow-hidden",
+                                        div { class: "w-10 h-10 rounded-xl bg-linear-to-br from-primary/10 to-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-inner border border-white/10",
+                                            span { class: "text-2xl", "📚" }
                                         }
-                                    } else {
                                         div {
-                                            class: "tooltip tooltip-error tooltip-right cursor-pointer",
-                                            "data-tip": "文件不存在",
-                                            div { class: "inline-grid *:[grid-area:1/1]",
-                                                div { class: "status status-error animate-ping" }
-                                                div { class: "status status-error" }
+                                            h3 {
+                                                class: "text-xl font-bold gradient-text truncate leading-tight",
+                                                title: "{name}",
+                                                "{name}"
                                             }
-                                        }
-                                    }
-                                    span { class: "ml-1", "{name}" }
-                                }
-                                td { class: "text-center break-all",
-                                    a {
-                                        class: "link tooltip",
-                                        "data-tip": "以默认应用程序打开 {path}",
-                                        onclick: move |_| open_bib_file(path.clone()),
-                                        "{abbr_path(&path, 40)}"
-                                    }
-                                }
-                                td { class: "text-center break-all",
-                                    if let Some(description) = description {
-                                        "{description}"
-                                    } else {
-                                        ""
-                                    }
-                                }
-                                td { class: "text-center break-all", "{updated_at}" }
-                                td { class: "text-center break-all",
-                                    div { class: "flex w-full",
-                                        div { class: "grid grow place-items-center",
-                                            button {
-                                                class: "cursor-pointer btn btn-sm btn-ghost",
-                                                onclick: move |_| open_bib(path_clone.clone()),
-                                                "View"
-                                            }
-                                        }
-                                        div { class: "grid grow place-items-center",
-                                            button {
-                                                class: "tooltip cursor-pointer",
-                                                "data-tip": "delete",
-                                                onclick: move |_| delete_bib(name.clone()),
-                                                img {
-                                                    alt: "delete",
-                                                    width: 20,
-                                                    src: DELETE_ICON,
+                                            if is_exist {
+                                                div { class: "flex items-center gap-1 mt-1",
+                                                    div { class: "w-1.5 h-1.5 rounded-full bg-success animate-pulse" }
+                                                    span { class: "text-[10px] uppercase tracking-wider font-bold text-success/80",
+                                                        "Active"
+                                                    }
+                                                }
+                                            } else {
+                                                div { class: "flex items-center gap-1 mt-1",
+                                                    div { class: "w-1.5 h-1.5 rounded-full bg-error animate-pulse" }
+                                                    span { class: "text-[10px] uppercase tracking-wider font-bold text-error/80",
+                                                        "Missing"
+                                                    }
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+
+                                // Content
+                                div { class: "flex-1 pl-1",
+                                    if let Some(desc) = description {
+                                        p {
+                                            class: "text-base-content/70 text-sm mb-6 line-clamp-2 font-light leading-relaxed",
+                                            title: "{desc}",
+                                            "{desc}"
+                                        }
+                                    } else {
+                                        p { class: "text-base-content/30 text-sm mb-6 italic font-light",
+                                            "No description provided"
+                                        }
+                                    }
+
+                                    div { class: "flex flex-col gap-3 text-xs text-base-content/60",
+                                        div { class: "flex items-center gap-2 group/link",
+                                            span { class: "opacity-50 group-hover/link:text-primary transition-colors",
+                                                "📂"
+                                            }
+                                            a {
+                                                class: "link link-hover truncate hover:text-primary transition-colors font-mono bg-base-200/50 px-2 py-1 rounded-md w-full text-left border border-transparent hover:border-primary/20 hover:bg-primary/5",
+                                                onclick: move |_| open_bib_file(path_clone_2.clone()),
+                                                title: "{path}",
+                                                "{abbr_path(&path, 35)}"
+                                            }
+                                        }
+                                        div { class: "flex items-center gap-2",
+                                            span { class: "opacity-50", "🕒" }
+                                            span { class: "font-mono opacity-80", "{updated_at}" }
+                                        }
+                                    }
+                                }
+
+                                // Actions overlay (visible on hover or always visible but styled)
+                                div { class: "absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300",
+                                    button {
+                                        class: "btn btn-sm btn-circle btn-ghost text-error hover:bg-error/10 tooltip tooltip-left shadow-sm border border-transparent hover:border-error/20",
+                                        "data-tip": "Delete",
+                                        onclick: move |_| delete_bib(name_clone.clone()),
+                                        img {
+                                            src: DELETE_ICON,
+                                            width: 14,
+                                            class: "opacity-70",
+                                        }
+                                    }
+                                    button {
+                                        class: "btn btn-sm btn-primary shadow-lg shadow-primary/30 hover:shadow-primary/50 border-none animate-gradient-x bg-linear-to-r from-primary to-secondary text-white gap-2 px-4 rounded-full",
+                                        onclick: move |_| open_bib(path_clone.clone()),
+                                        span { "Open" }
+                                        span { class: "group-hover:translate-x-1 transition-transform",
+                                            "→"
                                         }
                                     }
                                 }
