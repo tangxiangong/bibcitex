@@ -121,7 +121,6 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 | 功能 | 优先级 | 描述 |
 |:---|:---:|:---|
-| macOS NSPanel 支持 | 高 | 系统级无焦点窗口实现 |
 | 自定义设置 | 高 | 个性化配置选项 |
 
 ### UI/UX 改进
