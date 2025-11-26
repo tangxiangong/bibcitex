@@ -38,7 +38,7 @@ pub fn FilterFieldSelector(refs: Memo<Vec<Reference>>) -> Element {
         match filter_type() {
             FilterType::All | FilterType::Article => rsx! {
                 select {
-                    class: "select select-bordered select-sm w-28 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    class: "select select-bordered join-item w-28 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
                     onchange: on_filter_change,
                     option {
                         value: "{FilterField::All}",
@@ -69,7 +69,7 @@ pub fn FilterFieldSelector(refs: Memo<Vec<Reference>>) -> Element {
             },
             _ => rsx! {
                 select {
-                    class: "select select-bordered select-sm w-28 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
+                    class: "select select-bordered join-item w-28 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
                     onchange: on_filter_change,
                     option {
                         value: "{FilterField::All}",
@@ -133,7 +133,7 @@ pub fn FilterTypeSelector(refs: Memo<Vec<Reference>>) -> Element {
     };
     rsx! {
         select {
-            class: "select select-bordered select-sm w-40 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
+            class: "select select-bordered join-item w-40 max-w-xs shadow-sm bg-base-100 hover:bg-base-200 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
             onchange: on_type_change,
             option {
                 value: "{FilterType::All}",

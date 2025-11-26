@@ -47,7 +47,7 @@ pub fn BibliographySelector(
                         div {
                             key: "{i}",
                             "data-item-index": "{i}",
-                            class: if Some(i) == bib_selected_index() { "card card-compact bg-primary text-primary-content shadow-md cursor-pointer transition-all duration-200" } else { "card card-compact bg-base-100 hover:bg-base-200 shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 border border-base-200" },
+                            class: if Some(i) == bib_selected_index() { "rounded-lg bg-primary/10 text-primary shadow-sm mx-2 cursor-pointer transition-all duration-200" } else { "rounded-lg hover:bg-base-200/50 hover:shadow-sm mx-2 cursor-pointer transition-all duration-200 border border-transparent" },
                             onmounted: {
                                 let mut bib_item_elements = bib_item_elements;
                                 move |event| {
@@ -59,28 +59,30 @@ pub fn BibliographySelector(
                                 let bib_name = bib_info.0.clone();
                                 move |_| on_bib_click.call((bib_name.clone(), bib_path.clone()))
                             },
-                            div { class: "card-body",
+                            div { class: "p-3",
                                 div { class: "flex items-center justify-between",
                                     div { class: "flex items-center gap-2",
                                         if bib_info.4 {
-                                            div { class: "badge badge-success badge-xs gap-1",
+                                            div { class: "badge badge-success badge-xs gap-1 border-none",
                                                 div { class: "w-1.5 h-1.5 rounded-full bg-white animate-pulse" }
                                                 "Ready"
                                             }
                                         } else {
-                                            div { class: "badge badge-error badge-xs gap-1",
+                                            div { class: "badge badge-error badge-xs gap-1 border-none",
                                                 div { class: "w-1.5 h-1.5 rounded-full bg-white" }
                                                 "Error"
                                             }
                                         }
-                                        h3 { class: "card-title text-base", "{bib_info.0}" }
+                                        h3 { class: "font-bold text-base", "{bib_info.0}" }
                                     }
-                                    span { class: "text-xs opacity-70 font-mono", "{bib_info.2}" }
+                                    span { class: "text-xs opacity-60 font-mono", "{bib_info.2}" }
                                 }
                                 if let Some(ref desc) = bib_info.3 {
-                                    p { class: "text-sm opacity-80", "{desc}" }
+                                    p { class: "text-sm opacity-80 mt-1", "{desc}" }
                                 }
-                                p { class: "text-xs opacity-60 truncate", "{bib_info.1}" }
+                                p { class: "text-xs opacity-50 truncate mt-1 font-mono",
+                                    "{bib_info.1}"
+                                }
                             }
                         }
                     }

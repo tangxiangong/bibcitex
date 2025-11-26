@@ -41,7 +41,9 @@ pub fn SearchInput(
     });
 
     rsx! {
-        div { class: "relative w-full h-16 bg-base-100/50 backdrop-blur-sm border-b border-base-content/10 z-10",
+        div {
+            class: "relative w-full h-16 bg-base-100 z-20 border-b-0 border-none shadow-none outline-none ring-0 after:hidden before:hidden -mb-px",
+            style: "border: none !important; box-shadow: none !important;",
             // Search Icon
             div { class: "absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40",
                 svg {
@@ -58,7 +60,7 @@ pub fn SearchInput(
                 }
             }
             input {
-                class: "w-full h-full pl-12 pr-36 text-lg bg-transparent border-none focus:ring-0 placeholder:text-base-content/30 text-base-content",
+                class: "w-full h-full pl-12 pr-36 text-lg bg-transparent border-none! shadow-none! outline-none! ring-0! focus:border-none! focus:shadow-none! focus:outline-none! focus:ring-0! placeholder:text-base-content/30 text-base-content",
                 r#type: "text",
                 placeholder: if is_selecting_bib() { "选择文献库..." } else { "搜索文献、作者、标题..." },
                 value: "{query}",
@@ -87,7 +89,7 @@ pub fn SearchInput(
                     }
                 }
                 img {
-                    class: "opacity-30 hover:opacity-100 transition-opacity duration-300 cursor-default",
+                    class: "opacity-80 hover:opacity-100 transition-opacity duration-300 cursor-default",
                     width: 24,
                     src: LOGO,
                 }
@@ -129,7 +131,7 @@ fn SearchResults(
     } else {
         rsx! {
             div {
-                class: "flex-1 overflow-y-auto p-2 space-y-2 bg-base-200/30",
+                class: "overflow-y-auto p-2 space-y-2 h-fit",
                 style: format!("scroll-behavior: smooth; max-height: {}px;", MAX_HEIGHT - MIN_HEIGHT),
                 onmounted: on_container_mounted,
                 for (index , ((cite_key , kind) , bib)) in keys().into_iter().zip(result()).enumerate() {
@@ -140,7 +142,6 @@ fn SearchResults(
                             let border_color = match kind {
                                 EntryType::Article => "border-l-info",
                                 EntryType::Book => "border-l-success",
-
                                 EntryType::MastersThesis | EntryType::PhdThesis | EntryType::Thesis => {
                                     "border-l-secondary"
                                 }
@@ -152,11 +153,11 @@ fn SearchResults(
                                 EntryType::InCollection => "border-l-secondary",
                                 _ => "border-l-base-content/20",
                             };
-                            let base_classes = "card card-compact bg-base-100 shadow-sm transition-all duration-200 cursor-pointer border-l-4";
+                            let base_classes = "group relative rounded-r-lg px-1 transition-all duration-200 cursor-pointer border-l-[3px] mx-2";
                             let state_classes = if selected_index() == Some(index) {
-                                "ring-2 ring-primary shadow-md scale-[1.01] z-10"
+                                "bg-base-200 shadow-sm"
                             } else {
-                                "hover:shadow-md hover:scale-[1.005] hover:z-10 opacity-95 hover:opacity-100"
+                                "hover:bg-base-200/50 opacity-80 hover:opacity-100 border-opacity-50 hover:border-opacity-100"
                             };
                             format!("{} {} {}", base_classes, border_color, state_classes)
                         },
@@ -167,7 +168,7 @@ fn SearchResults(
                             }
                         },
                         onclick: move |_| on_item_click.call(cite_key.clone()),
-                        div { class: "card-body py-2 px-3",
+                        div { class: "py-3 px-3",
                             HelperComponent { entry: bib }
                         }
                     }
@@ -482,7 +483,7 @@ pub fn Search() -> Element {
 
         if let Some(mounted) = container_mounted() {
             spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
                 if let Ok(rect) = mounted.get_client_rect().await {
                     let measured_height = rect.height();
                     let final_height = measured_height
@@ -503,7 +504,7 @@ pub fn Search() -> Element {
         if let Some(container) = scrollable_container() {
             spawn(async move {
                 // 短暂延迟确保DOM更新完成
-                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
                 let _ = container
                     .scroll(
                         dioxus::html::geometry::PixelsVector2D::new(0.0, 0.0),
@@ -517,7 +518,7 @@ pub fn Search() -> Element {
     rsx! {
         div {
             class: format!(
-                "card card-modern bg-base-100 shadow-2xl flex flex-col h-[{}px] overflow-hidden border border-base-200",
+                "card bg-white shadow-none flex flex-col max-h-[{}px] overflow-hidden border border-base-200 rounded-xl h-fit",
                 MAX_HEIGHT,
             ),
             "data-content-container": "true",
@@ -538,7 +539,7 @@ pub fn Search() -> Element {
                 }
             }
             // 可滚动的内容区域
-            div { class: "flex-1 overflow-hidden",
+            div { class: "w-full overflow-hidden",
                 if is_selecting_bib() {
                     BibliographySelector {
                         bibs,

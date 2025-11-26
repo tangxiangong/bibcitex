@@ -92,13 +92,13 @@ pub async fn open_spotlight_window() {
     };
 
     let helper_html = r#"<!doctype html>
-<html style="background: transparent;">
+<html style="background: transparent; overflow: hidden;">
     <head>
         <title>BibCiteX Helper</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     </head>
-    <body style="background: transparent; margin: 0; padding: 0;">
-        <div id="main" style="background: transparent;"></div>
+    <body style="background: transparent; margin: 0; padding: 0; overflow: hidden;">
+        <div id="main" style="background: transparent; height: 100vh; overflow: hidden;"></div>
     </body>
 </html>"#;
 
