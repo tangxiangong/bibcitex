@@ -13,20 +13,25 @@ pub fn Checking(show_window: Signal<bool>) -> Element {
         show_window.set(false);
     };
     rsx! {
-        div { class: "rounded-lg p-6 mx-auto",
-            div { class: "flex items-center justify-center mb-6",
-                div { class: "mr-4",
-                    img { width: 80, height: 80, src: LOGO }
+        div { class: "card-modern glass-panel p-8 mx-auto max-w-md",
+            div { class: "flex flex-col items-center justify-center mb-6",
+                img {
+                    width: 80,
+                    height: 80,
+                    src: LOGO,
+                    class: "mb-4 drop-shadow-lg",
                 }
+                h3 { class: "text-xl font-bold gradient-text animate-pulse", "正在检查更新..." }
             }
-            div { class: "text-center mb-4",
-                h3 { "正在检查更新..." }
+            div { class: "mb-8 w-full",
+                progress { class: "progress progress-primary w-full h-2" }
             }
-            div { class: "mb-6 w-1/2 mx-auto",
-                progress { class: "w-full progress" }
-            }
-            div { class: "flex justify-end",
-                button { class: "btn btn-soft btn-error", onclick: cancle, "取消" }
+            div { class: "flex justify-center",
+                button {
+                    class: "btn btn-ghost text-base-content/70 hover:text-error",
+                    onclick: cancle,
+                    "取消"
+                }
             }
         }
     }
@@ -44,32 +49,42 @@ pub fn Available(show_window: Signal<bool>) -> Element {
         .unwrap_or_else(|| "unknown".to_string());
     let download_size = updater_info.unwrap().size;
     rsx! {
-        div { class: "rounded-lg p-6 mx-auto",
-            div { class: "flex items-center justify-center mb-6",
-                div { class: "mr-4",
-                    img { width: 80, height: 80, src: LOGO }
+        div { class: "card-modern glass-panel p-8 mx-auto max-w-md",
+            div { class: "flex flex-col items-center justify-center mb-6",
+                img {
+                    width: 80,
+                    height: 80,
+                    src: LOGO,
+                    class: "mb-4 drop-shadow-lg",
                 }
-            }
-            div { class: "text-center mb-4",
-                h3 { class: "font-bold", "发现新的版本!" }
-                p { class: "text-sm mt-2", "当前版本 v{current_version}" }
-                p { class: "text-sm mt-2", "最新版本 v{latest_version}" }
-                p { class: "text-sm mt-2", "更新大小 {format_bytes(download_size)}" }
+                h3 { class: "text-2xl font-bold gradient-text mb-2", "发现新版本!" }
+                div { class: "badge badge-primary badge-soft", "v{latest_version}" }
             }
 
-            div { class: "flex justify-end",
+            div { class: "bg-base-200/50 rounded-lg p-4 mb-6 text-sm space-y-2",
+                div { class: "flex justify-between",
+                    span { class: "text-base-content/60", "当前版本" }
+                    span { class: "font-mono", "v{current_version}" }
+                }
+                div { class: "flex justify-between",
+                    span { class: "text-base-content/60", "更新大小" }
+                    span { class: "font-mono", "{format_bytes(download_size)}" }
+                }
+            }
+
+            div { class: "flex justify-end gap-3",
                 button {
-                    class: "btn btn-soft mr-2",
+                    class: "btn btn-ghost text-base-content/70 hover:bg-base-200",
+                    onclick: move |_| show_window.set(false),
+                    "稍后"
+                }
+                button {
+                    class: "btn btn-primary btn-soft shadow-lg hover:scale-105 transition-transform",
                     onclick: move |_| {
                         let mut status = use_context::<Signal<UpdaterStatus>>();
                         status.set(UpdaterStatus::Download);
                     },
-                    "下载更新"
-                }
-                button {
-                    class: "btn btn-soft btn-error",
-                    onclick: move |_| show_window.set(false),
-                    "关闭"
+                    "立即下载"
                 }
             }
         }
@@ -153,57 +168,81 @@ pub fn Download(show_window: Signal<bool>) -> Element {
         } else if download_failed() {
             "下载失败".to_string()
         } else {
-            format!("正在下载更新... {:.2}%", progress * 100.0)
+            format!("正在下载更新... {:.0}%", progress * 100.0)
         }
     });
 
     rsx! {
-        div { class: "rounded-lg p-6 mx-auto",
-            div { class: "flex items-center justify-center mb-6",
-                div { class: "mr-4",
-                    img { width: 80, height: 80, src: LOGO }
+        div { class: "card-modern glass-panel p-8 mx-auto max-w-md",
+            div { class: "flex flex-col items-center justify-center mb-6",
+                img {
+                    width: 80,
+                    height: 80,
+                    src: LOGO,
+                    class: "mb-4 drop-shadow-lg",
                 }
+                h3 { class: "text-xl font-bold gradient-text", "{title}" }
             }
-            div { class: "text-center mb-4",
-                h3 { class: "mb-2", "{title}" }
+
+            div { class: "mb-6 w-full space-y-2",
                 if !downloaded() {
-                    div { class: "mb-6 w-1/2 mx-auto",
-                        progress {
-                            class: "w-full progress",
-                            value: "{total_download}",
-                            max: "{size}",
-                        }
+                    progress {
+                        class: "progress progress-primary w-full h-3",
+                        value: "{total_download}",
+                        max: "{size}",
+                    }
+                    div { class: "flex justify-between text-xs text-base-content/50 px-1",
+                        span { "{format_bytes(total_download())} / {format_bytes(size)}" }
+                        span { "{ (download_progress() * 100.0) as u64 }%" }
                     }
                     if download_failed() {
-                        p { class: "text-sm mt-2 text-error", "{error_message().unwrap_or_default()}" }
+                        div { class: "alert alert-error text-sm mt-4 shadow-lg",
+                            span { "{error_message().unwrap_or_default()}" }
+                        }
                     }
                 } else {
-                    if !preinstall() {
-                        p { "正在处理安装包..." }
-                        if preinstall_failed() {
-                            p { class: "text-sm mt-2 text-error",
-                                "处理安装包失败 {error_message().unwrap_or_default()}"
+                    div { class: "flex flex-col items-center gap-4 py-4",
+                        if !preinstall() {
+                            span { class: "loading loading-spinner loading-md text-primary" }
+                            p { class: "text-base-content/70", "正在准备安装..." }
+                            if preinstall_failed() {
+                                div { class: "alert alert-error text-sm shadow-lg",
+                                    span { "准备安装失败: {error_message().unwrap_or_default()}" }
+                                }
+                            }
+                        } else {
+                            div { class: "text-success text-5xl mb-2 animate-bounce",
+                                "✓"
+                            }
+                            p { class: "text-lg font-medium", "下载完成" }
+                            p { class: "text-sm text-base-content/60",
+                                "准备就绪，请重启应用以完成更新"
                             }
                         }
-                    } else {
-                        p { "安装包处理完成, 请点击重新启动以安装" }
                     }
                 }
             }
 
             if install_failed() {
-                p { class: "text-center text-sm mt-2 text-error",
-                    "安装失败 {error_message().unwrap_or_default()}"
+                div { class: "alert alert-error text-sm mb-4 shadow-lg",
+                    span { "安装失败: {error_message().unwrap_or_default()}" }
                 }
             }
-            div { class: "flex justify-end",
-                button {
-                    class: if preinstall() { "mr-2 btn btn-soft btn-success" } else { "mr-2  btn btn-soft btn-disabled" },
-                    disabled: !preinstall(),
-                    onclick: relaunch,
-                    "重新启动"
+
+            div { class: "flex justify-center gap-3",
+                if downloaded() && preinstall() {
+                    button {
+                        class: "btn btn-success btn-soft shadow-lg hover:scale-105 transition-transform w-full",
+                        onclick: relaunch,
+                        "立即重启"
+                    }
+                } else {
+                    button {
+                        class: "btn btn-ghost text-base-content/70 hover:text-error",
+                        onclick: cancle,
+                        "取消下载"
+                    }
                 }
-                button { class: "btn btn-soft btn-error", onclick: cancle, "取消" }
             }
         }
     }
@@ -213,23 +252,22 @@ pub fn Download(show_window: Signal<bool>) -> Element {
 pub fn UpToDate(show_window: Signal<bool>) -> Element {
     let current_version = env!("CARGO_PKG_VERSION");
     rsx! {
-        div { class: "rounded-lg p-6 mx-auto",
-            div { class: "flex items-center justify-center mb-6",
-                div { class: "mr-4",
-                    img { width: 80, height: 80, src: LOGO }
+        div { class: "card-modern glass-panel p-8 mx-auto max-w-md text-center",
+            div { class: "flex justify-center mb-6",
+                img {
+                    width: 80,
+                    height: 80,
+                    src: LOGO,
+                    class: "drop-shadow-lg",
                 }
             }
-            div { class: "text-center mb-4",
-                h3 { class: "font-bold", "您使用的就是最新版!" }
-                p { class: "text-sm mt-2", "BibCiTeX v{current_version} 是当前的最新版本" }
-            }
+            h3 { class: "text-2xl font-bold gradient-text mb-2", "已是最新版本" }
+            p { class: "text-base-content/60 mb-8", "BibCiTeX v{current_version} 目前是最新的" }
 
-            div { class: "flex justify-end",
-                button {
-                    class: "btn btn-soft btn-error",
-                    onclick: move |_| show_window.set(false),
-                    "关闭"
-                }
+            button {
+                class: "btn btn-primary btn-soft w-full",
+                onclick: move |_| show_window.set(false),
+                "太棒了"
             }
         }
     }
@@ -240,19 +278,28 @@ pub fn Failed(error_message: Signal<Option<String>>, show_window: Signal<bool>) 
     let error_msg = error_message().unwrap_or_else(|| "未知错误".into());
 
     rsx! {
-        div { class: "rounded-lg p-6 mx-auto",
-            div { class: "flex items-center justify-center mb-6",
-                div { class: "mr-4",
-                    img { width: 80, height: 80, src: LOGO }
+        div { class: "card-modern glass-panel p-8 mx-auto max-w-md text-center border-t-4 border-error",
+            div { class: "flex justify-center mb-6",
+                img {
+                    width: 80,
+                    height: 80,
+                    src: LOGO,
+                    class: "grayscale opacity-50",
                 }
             }
-            div { class: "text-center mb-4",
-                h3 { class: "font-bold", "检查更新失败" }
-                p { class: "text-sm mt-2 text-error", "{error_msg}" }
+            h3 { class: "text-xl font-bold text-error mb-4", "检查更新失败" }
+            div { class: "bg-error/10 text-error p-4 rounded-lg mb-8 text-sm text-left",
+                "{error_msg}"
             }
-            div { class: "flex justify-end",
+
+            div { class: "flex justify-end gap-3",
                 button {
-                    class: "btn btn-soft mr-2",
+                    class: "btn btn-ghost hover:bg-base-200",
+                    onclick: move |_| show_window.set(false),
+                    "关闭"
+                }
+                button {
+                    class: "btn btn-error btn-soft shadow-lg",
                     onclick: move |_| {
                         let mut check_update = use_context::<Resource<()>>();
                         let mut status = use_context::<Signal<UpdaterStatus>>();
@@ -260,11 +307,6 @@ pub fn Failed(error_message: Signal<Option<String>>, show_window: Signal<bool>) 
                         check_update.restart();
                     },
                     "重试"
-                }
-                button {
-                    class: "btn btn-soft btn-error",
-                    onclick: move |_| show_window.set(false),
-                    "关闭"
                 }
             }
         }
