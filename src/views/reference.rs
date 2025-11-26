@@ -118,7 +118,7 @@ pub fn References() -> Element {
     rsx! {
         div { class: "flex flex-col h-full overflow-hidden",
             // Fixed search bar at top
-            div { class: "flex-shrink-0 p-4 bg-base-100 border-b border-base-300 overflow-hidden",
+            div { class: "shrink-0 p-4 bg-base-100 border-b border-base-300 overflow-hidden",
                 div { class: "join w-full max-w-full overflow-hidden",
                     FilterTypeSelector { refs }
                     FilterFieldSelector { refs }

@@ -50,17 +50,15 @@ pub fn Bibliographies(mut show_modal: Signal<bool>) -> Element {
             div { class: "flex items-center justify-between mb-8",
                 div {
                     h2 { class: "text-3xl font-bold gradient-text", "Bibliographies" }
-                    p { class: "text-base-content/60 text-sm mt-1", "Manage your citation libraries" }
+                    p { class: "text-base-content/60 text-sm mt-1", "管理你的文献库" }
                 }
-                button {
-                    class: "btn btn-primary btn-modern gap-2",
-                    onclick: open_modal,
+                button { class: "btn btn-modern gap-2", onclick: open_modal,
                     img {
                         width: 16,
                         src: ADD_ICON,
                         class: "invert brightness-0",
                     }
-                    "New Library"
+                    "新建文献库"
                 }
             }
             BibliographyTable {}
@@ -106,7 +104,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
         if let Some(path) = path() {
             path.as_os_str().to_str().unwrap().to_owned()
         } else {
-            "Select a .bib file".to_string()
+            "请选择 .bib 文件".to_string()
         }
     });
     let path_abbr_string = use_memo(move || {
@@ -121,7 +119,7 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     let select_file = move |_| {
         let file = FileDialog::new()
             .add_filter("bibtex", &["bib", "txt"])
-            .set_title("Select Bibliography File")
+            .set_title("选择文献库文件")
             .pick_file();
         if let Some(file) = file {
             path.set(Some(file));
@@ -158,17 +156,17 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
     rsx! {
         div { class: if show() { "modal modal-open backdrop-blur-sm" } else { "modal" },
             div { class: "modal-box w-1/2 max-w-2xl glass-panel shadow-2xl",
-                h3 { class: "text-2xl font-bold mb-6 gradient-text", "Add New Library" }
+                h3 { class: "text-2xl font-bold mb-6 gradient-text", "新增文献库" }
 
                 div { class: "form-control w-full mb-4",
                     label { class: "label",
-                        span { class: "label-text font-medium", "Library Name" }
+                        span { class: "label-text font-medium", "文献库名称" }
                     }
                     label { class: "input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors",
                         input {
                             class: "grow",
                             r#type: "text",
-                            placeholder: "My Research",
+                            placeholder: "",
                             value: "{name}",
                             oninput: move |e| {
                                 name.set(e.data.value());
@@ -188,40 +186,36 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                     }
                     if !name().is_empty() && !name_is_valid() {
                         div { class: "label",
-                            span { class: "label-text-alt text-error", "Name already exists" }
+                            span { class: "label-text-alt text-error", "名称已存在" }
                         }
                     }
                 }
 
                 div { class: "form-control w-full mb-4",
                     label { class: "label",
-                        span { class: "label-text font-medium", "File Path" }
+                        span { class: "label-text font-medium", "文件路径" }
                     }
                     div { class: "join w-full",
                         input {
                             class: "input input-bordered join-item grow focus:outline-none cursor-default bg-base-200/50",
                             r#type: "text",
-                            placeholder: "No file selected",
+                            placeholder: "未选择文件",
                             value: "{path_abbr_string}",
                             readonly: true,
                             title: "{path_string}",
                         }
-                        button {
-                            class: "btn btn-primary join-item",
-                            onclick: select_file,
-                            "Browse"
-                        }
+                        button { class: "btn join-item", onclick: select_file, "🔍" }
                     }
                 }
 
                 div { class: "form-control w-full mb-6",
                     label { class: "label",
-                        span { class: "label-text font-medium", "Description" }
-                        span { class: "label-text-alt text-base-content/50", "Optional" }
+                        span { class: "label-text font-medium", "描述" }
+                        span { class: "label-text-alt text-base-content/50", "可选" }
                     }
                     textarea {
                         class: "textarea textarea-bordered h-24 focus:textarea-primary transition-colors resize-none",
-                        placeholder: "Brief description of this collection...",
+                        placeholder: "请输入该文献库的简要说明...",
                         value: "{description}",
                         oninput: move |event| {
                             description.set(event.data.value());
@@ -242,13 +236,13 @@ pub fn AddBibliography(mut show: Signal<bool>) -> Element {
                     button {
                         class: "btn btn-ghost hover:bg-base-content/10",
                         onclick: close_modal,
-                        "Cancel"
+                        "取消"
                     }
                     button {
                         class: if save_available() { "btn btn-primary btn-modern px-8" } else { "btn btn-disabled px-8" },
                         onclick: save,
                         disabled: !save_available(),
-                        "Create Library"
+                        "添加"
                     }
                 }
             }
@@ -323,8 +317,8 @@ pub fn BibliographyTable() -> Element {
             if pairs().is_empty() {
                 div { class: "flex flex-col items-center justify-center h-64 text-base-content/50",
                     div { class: "text-4xl mb-4", "📚" }
-                    p { class: "text-lg", "No bibliographies found" }
-                    p { class: "text-sm", "Click the + button to add one" }
+                    p { class: "text-lg", "未找到文献库" }
+                    p { class: "text-sm", "点击 + 按钮添加一个文献库" }
                 }
             } else {
                 div { class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 p-4",
@@ -352,14 +346,14 @@ pub fn BibliographyTable() -> Element {
                                                 div { class: "flex items-center gap-1 mt-1",
                                                     div { class: "w-1.5 h-1.5 rounded-full bg-success animate-pulse" }
                                                     span { class: "text-[10px] uppercase tracking-wider font-bold text-success/80",
-                                                        "Active"
+                                                        "可用"
                                                     }
                                                 }
                                             } else {
                                                 div { class: "flex items-center gap-1 mt-1",
                                                     div { class: "w-1.5 h-1.5 rounded-full bg-error animate-pulse" }
                                                     span { class: "text-[10px] uppercase tracking-wider font-bold text-error/80",
-                                                        "Missing"
+                                                        "缺失"
                                                     }
                                                 }
                                             }
@@ -377,7 +371,7 @@ pub fn BibliographyTable() -> Element {
                                         }
                                     } else {
                                         p { class: "text-base-content/30 text-sm mb-6 italic font-light",
-                                            "No description provided"
+                                            "暂无描述"
                                         }
                                     }
 
@@ -404,7 +398,7 @@ pub fn BibliographyTable() -> Element {
                                 div { class: "absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300",
                                     button {
                                         class: "btn btn-sm btn-circle btn-ghost text-error hover:bg-error/10 tooltip tooltip-left shadow-sm border border-transparent hover:border-error/20",
-                                        "data-tip": "Delete",
+                                        "data-tip": "删除",
                                         onclick: move |_| delete_bib(name_clone.clone()),
                                         img {
                                             src: DELETE_ICON,
@@ -415,7 +409,7 @@ pub fn BibliographyTable() -> Element {
                                     button {
                                         class: "btn btn-sm btn-primary shadow-lg shadow-primary/30 hover:shadow-primary/50 border-none animate-gradient-x bg-linear-to-r from-primary to-secondary text-white gap-2 px-4 rounded-full",
                                         onclick: move |_| open_bib(path_clone.clone()),
-                                        span { "Open" }
+                                        span { "打开" }
                                         span { class: "group-hover:translate-x-1 transition-transform",
                                             "→"
                                         }

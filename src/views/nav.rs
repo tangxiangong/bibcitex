@@ -56,7 +56,7 @@ pub fn NavBar() -> Element {
                     button {
                         class: "btn btn-ghost btn-sm gap-2 hover:bg-base-content/5 font-normal text-base-content/70",
                         onclick: helper,
-                        span { "Quick Helper" }
+                        span { "快捷助手" }
                         div { class: "hidden md:flex gap-1",
                             kbd { class: "kbd kbd-sm font-mono bg-base-200 border-base-300",
                                 "{cmd_ctrl}"
@@ -109,7 +109,7 @@ pub fn NavBar() -> Element {
                             } else {
                                 div { class: "flex flex-col items-center justify-center h-full text-base-content/50",
                                     span { class: "text-4xl mb-2", "📄" }
-                                    span { "No reference selected" }
+                                    span { "尚未选择任何参考文献" }
                                 }
                             }
                         }
