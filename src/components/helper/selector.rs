@@ -37,7 +37,7 @@ pub fn BibliographySelector(
         rsx! {
             div { class: "flex flex-col h-full",
                 div {
-                    class: "flex-1 overflow-y-auto",
+                    class: "flex-1 overflow-y-auto p-2 space-y-2",
                     style: {
                         let base_height = MAX_HEIGHT - MIN_HEIGHT;
                         let error_height = if error_message().is_some() { 60 } else { 0 };
@@ -47,7 +47,7 @@ pub fn BibliographySelector(
                         div {
                             key: "{i}",
                             "data-item-index": "{i}",
-                            class: if Some(i) == bib_selected_index() { "shrink-0 px-5 py-3 bg-base-200 cursor-pointer rounded-lg" } else { "shrink-0 px-5 py-3 hover:bg-base-200 hover:rounded-lg cursor-pointer" },
+                            class: if Some(i) == bib_selected_index() { "card card-compact bg-primary text-primary-content shadow-md cursor-pointer transition-all duration-200" } else { "card card-compact bg-base-100 hover:bg-base-200 shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 border border-base-200" },
                             onmounted: {
                                 let mut bib_item_elements = bib_item_elements;
                                 move |event| {
@@ -59,35 +59,35 @@ pub fn BibliographySelector(
                                 let bib_name = bib_info.0.clone();
                                 move |_| on_bib_click.call((bib_name.clone(), bib_path.clone()))
                             },
-                            div { class: "text-base font-medium text-base-content mb-1",
-                                if bib_info.4 {
-                                    div { class: "inline-grid *:[grid-area:1/1]",
-                                        div { class: "status status-success animate-ping" }
-                                        div { class: "status status-success" }
+                            div { class: "card-body",
+                                div { class: "flex items-center justify-between",
+                                    div { class: "flex items-center gap-2",
+                                        if bib_info.4 {
+                                            div { class: "badge badge-success badge-xs gap-1",
+                                                div { class: "w-1.5 h-1.5 rounded-full bg-white animate-pulse" }
+                                                "Ready"
+                                            }
+                                        } else {
+                                            div { class: "badge badge-error badge-xs gap-1",
+                                                div { class: "w-1.5 h-1.5 rounded-full bg-white" }
+                                                "Error"
+                                            }
+                                        }
+                                        h3 { class: "card-title text-base", "{bib_info.0}" }
                                     }
-                                } else {
-                                    div { class: "inline-grid *:[grid-area:1/1]",
-                                        div { class: "status status-error animate-ping" }
-                                        div { class: "status status-error" }
-                                    }
+                                    span { class: "text-xs opacity-70 font-mono", "{bib_info.2}" }
                                 }
-                                span { class: "ml-1", "{bib_info.0}" }
                                 if let Some(ref desc) = bib_info.3 {
-                                    span { class: "text-sm ml-2 text-base-content/70",
-                                        "{desc}"
-                                    }
+                                    p { class: "text-sm opacity-80", "{desc}" }
                                 }
-                            }
-                            div { class: "text-sm text-base-content/70 flex justify-between",
-                                span { "{bib_info.1}" }
-                                span { "{bib_info.2}" }
+                                p { class: "text-xs opacity-60 truncate", "{bib_info.1}" }
                             }
                         }
                     }
                 }
                 if let Some(ref error_msg) = error_message() {
-                    div { class: "shrink-0 px-5 py-3 text-red-600 text-sm bg-red-50 border-t border-red-200 font-medium rounded-b-xl",
-                        "{error_msg}"
+                    div { class: "alert alert-error shadow-lg m-2",
+                        span { "{error_msg}" }
                     }
                 }
             }

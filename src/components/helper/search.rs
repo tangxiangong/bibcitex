@@ -41,11 +41,24 @@ pub fn SearchInput(
     });
 
     rsx! {
-        div { class: if (!query().is_empty() && !query().is_empty())
-    || (is_selecting_bib() && !bibs().is_empty()) { "relative w-full h-14 bg-transparent rounded-t-lg" } else { "relative w-full h-14 bg-transparent rounded-lg" },
+        div { class: "relative w-full h-16 bg-base-100/50 backdrop-blur-sm border-b border-base-content/10 z-10",
+            // Search Icon
+            div { class: "absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40",
+                svg {
+                    class: "w-5 h-5",
+                    fill: "none",
+                    view_box: "0 0 24 24",
+                    stroke: "currentColor",
+                    path {
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round",
+                        stroke_width: "2",
+                        d: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+                    }
+                }
+            }
             input {
-                class: if (!query().is_empty() && !query().is_empty())
-    || (is_selecting_bib() && !bibs().is_empty()) { "w-full h-full pl-5 pr-12 text-lg text-base-content placeholder-base-content/50 font-normal bg-base-100 border-0 rounded-t-lg focus:outline-none" } else { "w-full h-full pl-5 pr-12 text-lg text-base-content placeholder-base-content/50 font-normal bg-base-100 border-0 rounded-lg focus:outline-none" },
+                class: "w-full h-full pl-12 pr-36 text-lg bg-transparent border-none focus:ring-0 placeholder:text-base-content/30 text-base-content",
                 r#type: "text",
                 placeholder: if is_selecting_bib() { "选择文献库..." } else { "搜索文献、作者、标题..." },
                 value: "{query}",
@@ -58,17 +71,26 @@ pub fn SearchInput(
                     }
                 },
             }
-            div { class: "absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center",
+            div { class: "absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2",
                 if let Some(bib) = current_bib() {
                     button {
-                        class: "btn btn-soft btn-primary btn-sm mr-1",
+                        class: "badge badge-primary badge-soft gap-1 cursor-pointer hover:scale-105 transition-transform font-medium",
                         onclick: move |_| on_bib_select_click.call(()),
+                        span { class: "w-1.5 h-1.5 rounded-full bg-primary" }
                         "{bib.0}"
                     }
                 } else {
-                    button { class: "btn btn-outline btn-primary btn-sm mr-1", "选择文献库" }
+                    button {
+                        class: "badge badge-ghost cursor-pointer hover:bg-base-200",
+                        onclick: move |_| on_bib_select_click.call(()),
+                        "选择文献库"
+                    }
                 }
-                img { class: "opacity-60", width: 50, src: LOGO }
+                img {
+                    class: "opacity-30 hover:opacity-100 transition-opacity duration-300 cursor-default",
+                    width: 24,
+                    src: LOGO,
+                }
             }
         }
     }
@@ -88,14 +110,26 @@ fn SearchResults(
 ) -> Element {
     if result().is_empty() {
         rsx! {
-            div { class: "shrink-0 px-5 py-10 text-center text-base-content/60 text-sm",
-                "没有找到结果"
+            div { class: "flex flex-col items-center justify-center h-full text-base-content/40 gap-4",
+                svg {
+                    class: "w-12 h-12 opacity-50",
+                    fill: "none",
+                    view_box: "0 0 24 24",
+                    stroke: "currentColor",
+                    path {
+                        stroke_linecap: "round",
+                        stroke_linejoin: "round",
+                        stroke_width: "1.5",
+                        d: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+                    }
+                }
+                span { class: "text-sm font-medium", "开始输入以搜索文献..." }
             }
         }
     } else {
         rsx! {
             div {
-                class: "flex-1 overflow-y-auto",
+                class: "flex-1 overflow-y-auto p-2 space-y-2 bg-base-200/30",
                 style: format!("scroll-behavior: smooth; max-height: {}px;", MAX_HEIGHT - MIN_HEIGHT),
                 onmounted: on_container_mounted,
                 for (index , ((cite_key , kind) , bib)) in keys().into_iter().zip(result()).enumerate() {
@@ -103,98 +137,28 @@ fn SearchResults(
                         key: "{index}",
                         "data-item-index": "{index}",
                         class: {
-                            let (bg_color, hover_bg_color, border_color) = match kind {
-                                EntryType::Article => {
-                                    (
-                                        "bg-blue-100 dark:bg-blue-900/30",
-                                        "hover:bg-blue-100 dark:hover:bg-blue-900/30",
-                                        "border-blue-500 dark:border-blue-400",
-                                    )
+                            let border_color = match kind {
+                                EntryType::Article => "border-l-info",
+                                EntryType::Book => "border-l-success",
+
+                                EntryType::MastersThesis | EntryType::PhdThesis | EntryType::Thesis => {
+                                    "border-l-secondary"
                                 }
-                                EntryType::Book => {
-                                    (
-                                        "bg-emerald-100 dark:bg-emerald-900/30",
-                                        "hover:bg-emerald-100 dark:hover:bg-emerald-900/30",
-                                        "border-emerald-500 dark:border-emerald-400",
-                                    )
-                                }
-                                EntryType::MastersThesis => {
-                                    (
-                                        "bg-pink-100 dark:bg-pink-900/30",
-                                        "hover:bg-pink-100 dark:hover:bg-pink-900/30",
-                                        "border-pink-500 dark:border-pink-400",
-                                    )
-                                }
-                                EntryType::Thesis | EntryType::PhdThesis => {
-                                    (
-                                        "bg-rose-100 dark:bg-rose-900/30",
-                                        "hover:bg-rose-100 dark:hover:bg-rose-900/30",
-                                        "border-rose-500 dark:border-rose-400",
-                                    )
-                                }
-                                EntryType::InProceedings => {
-                                    (
-                                        "bg-purple-100 dark:bg-purple-900/30",
-                                        "hover:bg-purple-100 dark:hover:bg-purple-900/30",
-                                        "border-purple-500 dark:border-purple-400",
-                                    )
-                                }
-                                EntryType::TechReport => {
-                                    (
-                                        "bg-amber-100 dark:bg-amber-900/30",
-                                        "hover:bg-amber-100 dark:hover:bg-amber-900/30",
-                                        "border-amber-500 dark:border-amber-400",
-                                    )
-                                }
-                                EntryType::Misc => {
-                                    (
-                                        "bg-gray-100 dark:bg-gray-900/30",
-                                        "hover:bg-gray-100 dark:hover:bg-gray-900/30",
-                                        "border-gray-500 dark:border-gray-400",
-                                    )
-                                }
-                                EntryType::Booklet => {
-                                    (
-                                        "bg-cyan-100 dark:bg-cyan-900/30",
-                                        "hover:bg-cyan-100 dark:hover:bg-cyan-900/30",
-                                        "border-cyan-500 dark:border-cyan-400",
-                                    )
-                                }
-                                EntryType::InBook => {
-                                    (
-                                        "bg-teal-100 dark:bg-teal-900/30",
-                                        "hover:bg-teal-100 dark:hover:bg-teal-900/30",
-                                        "border-teal-500 dark:border-teal-400",
-                                    )
-                                }
-                                EntryType::InCollection => {
-                                    (
-                                        "bg-fuchsia-100 dark:bg-fuchsia-900/30",
-                                        "hover:bg-fuchsia-100 dark:hover:bg-fuchsia-900/30",
-                                        "border-fuchsia-500 dark:border-fuchsia-400",
-                                    )
-                                }
-                                _ => {
-                                    (
-                                        "bg-blue-100 dark:bg-blue-900/30",
-                                        "hover:bg-blue-100 dark:hover:bg-blue-900/30",
-                                        "border-blue-500 dark:border-blue-400",
-                                    )
-                                }
+                                EntryType::InProceedings => "border-l-primary",
+                                EntryType::TechReport => "border-l-warning",
+                                EntryType::Misc => "border-l-neutral",
+                                EntryType::Booklet => "border-l-info",
+                                EntryType::InBook => "border-l-accent",
+                                EntryType::InCollection => "border-l-secondary",
+                                _ => "border-l-base-content/20",
                             };
-                            if selected_index() == Some(index) {
-                                format!(
-                                    "block {} rounded-lg text-gray-900 dark:text-gray-100 cursor-pointer transition-colors duration-100 border border-2 {}",
-                                    bg_color,
-                                    border_color,
-                                )
+                            let base_classes = "card card-compact bg-base-100 shadow-sm transition-all duration-200 cursor-pointer border-l-4";
+                            let state_classes = if selected_index() == Some(index) {
+                                "ring-2 ring-primary shadow-md scale-[1.01] z-10"
                             } else {
-                                format!(
-                                    "block {} cursor-pointer hover:rounded-lg transition-colors duration-100 hover:border hover:border-2 {}",
-                                    hover_bg_color,
-                                    border_color,
-                                )
-                            }
+                                "hover:shadow-md hover:scale-[1.005] hover:z-10 opacity-95 hover:opacity-100"
+                            };
+                            format!("{} {} {}", base_classes, border_color, state_classes)
                         },
                         onmounted: {
                             let mut item_elements = item_elements;
@@ -203,10 +167,8 @@ fn SearchResults(
                             }
                         },
                         onclick: move |_| on_item_click.call(cite_key.clone()),
-                        div { class: "flex px-3 py-3 min-h-14",
-                            div { class: "flex-1 min-w-0",
-                                HelperComponent { entry: bib }
-                            }
+                        div { class: "card-body py-2 px-3",
+                            HelperComponent { entry: bib }
                         }
                     }
                 }
@@ -554,7 +516,10 @@ pub fn Search() -> Element {
 
     rsx! {
         div {
-            class: format!("bg-base-100 rounded-xl shadow-2xl flex flex-col h-[{}px]", MAX_HEIGHT),
+            class: format!(
+                "card card-modern bg-base-100 shadow-2xl flex flex-col h-[{}px] overflow-hidden border border-base-200",
+                MAX_HEIGHT,
+            ),
             "data-content-container": "true",
             onmounted: move |event| {
                 container_mounted.set(Some(event));
