@@ -8,8 +8,8 @@
 
 use crate::MAIN_WINDOW_TITLE;
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
-use std::{ffi::OsString, os::windows::ffi::OsStringExt, ptr, sync::Mutex, thread, time::Duration};
-use windows_sys::Win32::{
+use std::{ffi::OsString, os::windows::ffi::OsStringExt, sync::Mutex, thread, time::Duration};
+use windows::Win32::{
     Foundation::HWND,
     UI::{
         Accessibility::{HWINEVENTHOOK, SetWinEventHook},
@@ -33,9 +33,9 @@ unsafe fn get_window_title(hwnd: HWND) -> String {
 
     let mut buffer: Vec<u16> = vec![0; (length + 1) as usize];
 
-    unsafe { GetWindowTextW(hwnd, buffer.as_mut_ptr(), length + 1) };
+    let copied = unsafe { GetWindowTextW(hwnd, &mut buffer) };
 
-    OsString::from_wide(&buffer[..length as usize])
+    OsString::from_wide(&buffer[..copied as usize])
         .to_string_lossy()
         .into_owned()
 }
@@ -59,20 +59,20 @@ unsafe extern "system" fn event_hook_callback(
 
         // 如果新窗口是我们的主窗口，不更新previous_window
         if window_title == MAIN_WINDOW_TITLE {
-            *current_window = Some(hwnd as isize);
+            *current_window = Some(hwnd.0 as isize);
             return;
         }
 
         // 如果之前的窗口不是我们的主窗口，则更新previous_window
         if let Some(prev_hwnd) = previous_hwnd {
-            let prev_title = unsafe { get_window_title(prev_hwnd as HWND) };
+            let prev_title = unsafe { get_window_title(HWND(prev_hwnd as *mut _)) };
             if prev_title != MAIN_WINDOW_TITLE {
                 let mut previous_window = PREVIOUS_WINDOW.lock().unwrap();
                 *previous_window = Some(prev_hwnd);
             }
         }
 
-        *current_window = Some(hwnd as isize);
+        *current_window = Some(hwnd.0 as isize);
     }
 }
 
@@ -80,9 +80,9 @@ unsafe extern "system" fn event_hook_callback(
 fn init_current_window() {
     unsafe {
         let current_hwnd = GetForegroundWindow();
-        if !current_hwnd.is_null() {
+        if !current_hwnd.0.is_null() {
             let mut current_window = CURRENT_WINDOW.lock().unwrap();
-            *current_window = Some(current_hwnd as isize);
+            *current_window = Some(current_hwnd.0 as isize);
         }
     }
 }
@@ -97,13 +97,13 @@ pub fn observe_app() {
         let hook = SetWinEventHook(
             EVENT_SYSTEM_FOREGROUND,
             EVENT_SYSTEM_FOREGROUND,
-            ptr::null_mut(),
+            None,
             Some(event_hook_callback),
             0,
             0,
             WINEVENT_OUTOFCONTEXT,
         );
-        if hook.is_null() {
+        if hook.0.is_null() {
             eprintln!("设置事件钩子失败");
         }
     }
@@ -117,7 +117,7 @@ fn get_most_recent_window() -> Option<isize> {
 
 // 检查窗口是否仍然有效
 unsafe fn is_window_valid(hwnd: HWND) -> bool {
-    unsafe { IsWindow(hwnd) != 0 }
+    unsafe { IsWindow(Some(hwnd)).as_bool() }
 }
 
 // 聚焦上一个窗口
@@ -126,7 +126,7 @@ pub fn focus_previous_window() -> Result<(), Box<dyn std::error::Error>> {
 
     if let Some(hwnd) = hwnd_option {
         unsafe {
-            let hwnd = hwnd as HWND;
+            let hwnd = HWND(hwnd as *mut _);
 
             // 检查窗口是否仍然有效
             if !is_window_valid(hwnd) {
@@ -138,7 +138,7 @@ pub fn focus_previous_window() -> Result<(), Box<dyn std::error::Error>> {
 
             // 尝试激活窗口
             let result = SetForegroundWindow(hwnd);
-            if result == 0 {
+            if !result.as_bool() {
                 return Err(format!("Failed to set foreground window: {window_title}").into());
             }
 
