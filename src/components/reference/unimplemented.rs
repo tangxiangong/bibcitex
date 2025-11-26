@@ -187,23 +187,29 @@ pub fn UnimplementedDrawer(entry: Reference) -> Element {
         "".to_string()
     };
     rsx! {
-        div {
-            div { class: "collapse collapse-arrow",
+        div { class: "space-y-2",
+            div { class: "collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box",
                 input { r#type: "checkbox", checked: true }
-                div { class: "collapse-title", "Info" }
+                div { class: "collapse-title font-medium", "Info" }
                 div { class: "collapse-content",
-                    table { class: "table",
+                    table { class: "table table-sm",
                         tbody {
                             tr {
-                                td { class: "text-right", "Type" }
+                                td { class: "text-right opacity-70 font-semibold",
+                                    "Type"
+                                }
                                 td { "{entry.type_} Unimplemented" }
                             }
                             tr {
-                                td { class: "text-right", "Key" }
+                                td { class: "text-right opacity-70 font-semibold",
+                                    "Key"
+                                }
                                 td { "{key}" }
                             }
                             tr {
-                                td { class: "text-right", "Title" }
+                                td { class: "text-right opacity-70 font-semibold",
+                                    "Title"
+                                }
                                 if let Some(title) = entry.title {
                                     td {
                                         ChunksComp {
@@ -338,9 +344,9 @@ pub fn UnimplementedDrawer(entry: Reference) -> Element {
                     }
                 }
             }
-            div { class: "collapse collapse-arrow",
+            div { class: "collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box",
                 input { r#type: "checkbox" }
-                div { class: "collapse-title", "Abstract" }
+                div { class: "collapse-title font-medium", "Abstract" }
                 div { class: "collapse-content",
                     if let Some(abstract_chunks) = entry.abstract_ {
                         ChunksComp {
@@ -350,21 +356,21 @@ pub fn UnimplementedDrawer(entry: Reference) -> Element {
                     }
                 }
             }
-            div { class: "collapse collapse-arrow",
+            div { class: "collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box",
                 input { r#type: "checkbox" }
-                div { class: "collapse-title", "Note" }
+                div { class: "collapse-title font-medium", "Note" }
                 div { class: "collapse-content",
                     if let Some(note) = entry.note {
                         ChunksComp { chunks: note, cite_key: format!("{key}-note") }
                     }
                 }
             }
-            div { class: "collapse collapse-arrow",
+            div { class: "collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box",
                 input { r#type: "checkbox" }
-                div { class: "collapse-title", "BibTeX" }
+                div { class: "collapse-title font-medium", "BibTeX" }
                 div { class: "collapse-content",
                     for line in bibtex {
-                        p { "{line}" }
+                        p { class: "font-mono text-xs", "{line}" }
                     }
                 }
             }
