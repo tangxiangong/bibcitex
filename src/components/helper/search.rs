@@ -42,8 +42,8 @@ pub fn SearchInput(
 
     rsx! {
         div {
-            class: "relative w-full h-16 bg-base-100 z-20 border-b-0 border-none shadow-none outline-none ring-0 after:hidden before:hidden -mb-px",
-            style: "border: none !important; box-shadow: none !important;",
+            class: "relative w-full h-16 bg-transparent z-20 border-b border-base-content/10 shadow-none outline-none ring-0 after:hidden before:hidden",
+            style: "box-shadow: none !important;",
             // Search Icon
             div { class: "absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40",
                 svg {
@@ -153,11 +153,11 @@ fn SearchResults(
                                 EntryType::InCollection => "border-l-secondary",
                                 _ => "border-l-base-content/20",
                             };
-                            let base_classes = "group relative rounded-r-lg px-1 transition-all duration-200 cursor-pointer border-l-[3px] mx-2";
+                            let base_classes = "group relative rounded-lg px-1 transition-all duration-200 cursor-pointer border-l-[3px] mx-2";
                             let state_classes = if selected_index() == Some(index) {
-                                "bg-base-200 shadow-sm"
+                                "bg-primary/15 shadow-md ring-1 ring-primary/30 scale-[1.01]"
                             } else {
-                                "hover:bg-base-200/50 opacity-80 hover:opacity-100 border-opacity-50 hover:border-opacity-100"
+                                "hover:bg-base-200/50 border-opacity-50 hover:border-opacity-100"
                             };
                             format!("{} {} {}", base_classes, border_color, state_classes)
                         },
@@ -518,7 +518,7 @@ pub fn Search() -> Element {
     rsx! {
         div {
             class: format!(
-                "card bg-white shadow-none flex flex-col max-h-[{}px] overflow-hidden border border-base-200 rounded-xl h-fit",
+                "card-modern flex flex-col max-h-[{}px] overflow-hidden rounded-xl h-fit",
                 MAX_HEIGHT,
             ),
             "data-content-container": "true",
