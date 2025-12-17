@@ -19,16 +19,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.3/BibCiTeX-v0.5.3-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.3/BibCiTeX-v0.5.3-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.3/BibCiTeX-v0.5.3-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.3/BibCiTeX-v0.5.3-windows-x86_64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-windows-x86_64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -103,37 +103,6 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 </div>
 
 </div>
-
-## 开发路线图
-
-<div align="center">
-
-### 进行中
-
-| 功能 | 状态 | 描述 |
-|:---|:---:|:---|
-| 文献库删除功能 | ✓ | 支持删除不需要的文献条目 |
-| 跨应用粘贴功能 | ✓ | 无缝集成到其他应用程序 |
-| 搜索功能优化 | 进行中 | 提升搜索准确性和速度 |
-| 文献分类标签系统 | 进行中 | 更好的文献组织管理 |
-
-### 计划中
-
-| 功能 | 优先级 | 描述 |
-|:---|:---:|:---|
-| 自定义设置 | 高 | 个性化配置选项 |
-
-### UI/UX 改进
-
-| 功能 | 优先级 | 描述 |
-|:---|:---:|:---|
-| 完整设计系统 | 高 | 统一的视觉设计语言 |
-| 自定义主题支持 | 中 | 深色/浅色主题切换 |
-| 响应式设计 | 中 | 适配不同屏幕尺寸 |
-
-</div>
-
-> 高 高优先级 &nbsp;&nbsp; 中 中优先级 &nbsp;&nbsp; ✓ 已完成 &nbsp;&nbsp; 进行中 开发中
 
 ## 第三方代码版权声明 (Third-Party Code Attribution**)
 

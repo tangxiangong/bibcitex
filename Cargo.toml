@@ -2,7 +2,7 @@
 members = [".", "crates/*"]
 
 [workspace.package]
-version = "0.5.3"
+version = "0.5.4"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 description = "A BibTeX citation tool"

@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "BibCiTeX"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "arboard",
  "bibcitex-core",
@@ -407,7 +407,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bibcitex-core"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "biblatex",
  "chrono",
@@ -7240,7 +7240,7 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 
 [[package]]
 name = "xpaste"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "enigo",
  "objc2-app-kit",
