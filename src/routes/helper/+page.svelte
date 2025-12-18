@@ -33,13 +33,14 @@
     await tick(); // 等待 DOM 更新
 
     const rect = containerRef.getBoundingClientRect();
-    const measuredHeight = Math.round(rect.height);
+    const scrollHeight = containerRef.scrollHeight;  // Use scrollHeight instead of clientHeight
+    const measuredHeight = Math.max(Math.round(rect.height), scrollHeight);
     const finalHeight = Math.min(Math.max(measuredHeight, MIN_HEIGHT), MAX_HEIGHT);
 
-    console.log('[Helper] Container height:', measuredHeight, 'Final height:', finalHeight);
+    console.log('[Helper] Container rect.height:', rect.height, 'scrollHeight:', scrollHeight, 'Final height:', finalHeight);
 
     // 只有高度变化超过阈值才真正调整（避免频繁调用）
-    if (Math.abs(finalHeight - lastHeight) > 10) {
+    if (Math.abs(finalHeight - lastHeight) > 5) {
       lastHeight = finalHeight;
       console.log('[Helper] Resizing window to:', finalHeight);
       await resizeHelperWindow(finalHeight);
@@ -82,6 +83,7 @@
   }
 
   onMount(async () => {
+    console.log('[Helper] MAX_HEIGHT:', MAX_HEIGHT, 'MIN_HEIGHT:', MIN_HEIGHT);
     // 立即尝试聚焦
     inputRef?.focus();
 
@@ -121,6 +123,13 @@
 
   onDestroy(() => {
     if (searchTimeout) clearTimeout(searchTimeout);
+  });
+
+  // Reactively update height when results or bibs change
+  $effect(() => {
+    if (results.length > 0 || bibs.length > 0) {
+      setTimeout(updateWindowHeight, 100);
+    }
   });
 
   async function selectBib(name: string, path: string) {
