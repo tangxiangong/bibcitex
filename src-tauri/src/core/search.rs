@@ -1,4 +1,4 @@
-use crate::bib::Reference;
+use crate::core::bib::Reference;
 use rayon::prelude::*;
 
 const THRESHOLD_PARALLEL_SIZE: usize = 100;

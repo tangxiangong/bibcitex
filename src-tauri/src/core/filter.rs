@@ -1,4 +1,4 @@
-use crate::bib::Reference;
+use crate::core::bib::Reference;
 use biblatex::EntryType;
 
 /// Filters references to articles.

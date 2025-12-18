@@ -27,8 +27,8 @@ pub enum Error {
     Core(String),
 }
 
-impl From<bibcitex_core::Error> for Error {
-    fn from(e: bibcitex_core::Error) -> Self {
+impl From<crate::core::Error> for Error {
+    fn from(e: crate::core::Error) -> Self {
         Error::Core(e.to_string())
     }
 }

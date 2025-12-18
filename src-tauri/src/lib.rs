@@ -1,6 +1,8 @@
 mod commands;
 mod error;
 
+pub mod core;
+pub mod xpaste;
 pub use error::{Error, Result};
 
 use tauri::Manager;

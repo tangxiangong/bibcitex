@@ -1,11 +1,14 @@
-use crate::{Error, Result};
-use bibcitex_core::{
-    bib::{parse, Reference},
-    search::{
-        search_references as search_references_impl, search_references_by_author,
-        search_references_by_journal, search_references_by_title, search_references_by_year,
+use crate::{
+    Error, Result,
+    core::{
+        bib::{Reference, parse},
+        search::{
+            search_references as search_references_impl, search_references_by_author,
+            search_references_by_journal, search_references_by_title, search_references_by_year,
+        },
+        setting::{BibliographyInfo, Setting},
     },
-    setting::{BibliographyInfo, Setting},
+    xpaste::focus_previous_window,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -127,7 +130,7 @@ pub fn paste_to_app(text: String) -> Result<()> {
     // First copy to clipboard
     copy_to_clipboard(text)?;
     // Then focus previous window and paste
-    xpaste::focus_previous_window().map_err(|e| Error::Clipboard(e.to_string()))
+    focus_previous_window().map_err(|e| Error::Clipboard(e.to_string()))
 }
 
 // File dialog command

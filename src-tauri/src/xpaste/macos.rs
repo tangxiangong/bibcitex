@@ -6,7 +6,7 @@
 // Copyright (c) EcoPasteHub
 // Licensed under Apache-2.0
 
-use crate::MAIN_WINDOW_TITLE;
+use crate::xpaste::MAIN_WINDOW_TITLE;
 use enigo::{Direction, Enigo, Key as EnigoKey, Keyboard};
 use objc2_app_kit::{NSRunningApplication, NSWorkspace};
 use std::{

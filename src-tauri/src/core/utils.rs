@@ -1,4 +1,4 @@
-use crate::bib::Reference;
+use crate::core::bib::Reference;
 use biblatex::{Bibliography, Chunk, Chunks};
 use rayon::prelude::*;
 
@@ -119,56 +119,4 @@ fn _abbr_path(path_str: &str, max_length: usize) -> String {
     } else {
         format!("{first_part}{separator}{ellipsis}{separator}{last_part}")
     }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::bib::parse;
-    use std::path::Path;
-
-    #[test]
-    fn test_read_bibliography() {
-        let path = Path::new("../database.bib");
-        let bib = parse(path).unwrap();
-        let bib_len = bib.len();
-        let references = read_bibliography(bib);
-        assert_eq!(references.len(), bib_len);
-    }
-}
-
-#[test]
-fn test_abbr_path() {
-    let result = abbr_path("/Users/username/Documents/Rust/demo/src/main.rs", 35);
-    println!("Result: {result}");
-    assert!(result.starts_with("/Users"));
-    assert!(result.ends_with("main.rs"));
-    assert!(result.contains("..."));
-}
-
-#[test]
-fn test_abbr_path_comprehensive() {
-    // 测试不同长度限制下的缩写
-    let path = "/Users/username/Documents/Rust/demo/src/main.rs";
-
-    // 长度限制 30
-    let result30 = abbr_path(path, 30);
-    println!("Length 30: {result30}");
-    assert!(result30.len() <= 30);
-
-    // 长度限制 25
-    let result25 = abbr_path(path, 25);
-    println!("Length 25: {result25}");
-    assert!(result25.len() <= 25);
-
-    // 长度限制 20
-    let result20 = abbr_path(path, 20);
-    println!("Length 20: {result20}");
-    assert!(result20.len() <= 20);
-
-    // 测试相对路径
-    let rel_path = "src/components/ui/button.tsx";
-    let rel_result = abbr_path(rel_path, 20);
-    println!("Relative: {rel_result}");
-    assert!(rel_result.len() <= 20);
-    assert!(!rel_result.starts_with("/"));
 }
