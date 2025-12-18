@@ -1,23 +1,51 @@
+default:
+    @just --list
+
+# Install dependencies
+install:
+    deno install
+
+# Start development server
+dev:
+    deno task dev
+
+# Build the application
+build:
+    deno task build
+
+# Run Vite dev server only (without Tauri)
+vite-dev:
+    deno task vite:dev
+
+# Build frontend only
+vite-build:
+    deno task vite:build
+
+# Preview built frontend
+preview:
+    deno task vite:preview
+
+# Type check
+check:
+    deno task check
+
+# Format code
 fmt:
-    dx fmt && cargo sort -w -o workspace,package && cargo fmt --all
+    deno fmt
 
-css:
-    deno task css
+# Lint code
+lint:
+    deno lint
 
-css-watch:
-    deno task css:watch
+# Clean build artifacts
+clean:
+    rm -rf build .svelte-kit node_modules
+    cd src-tauri && cargo clean
 
-dx-serve:
-    dx serve
-
-css-minify:
-    deno task css:minify
-
-[parallel]
-serve: css-watch dx-serve
-
+# Generate icons
 icon:
-    cd icon-gen && source .venv/bin/activate && uv run main.py
+    cd icon-gen && python main.py
 
-desktop-icon: icon
-    cargo tauri icon assets/logo.png -o icons && cd icons && rm -rf android && rm -rf ios
+# Update dependencies
+update:
+    deno outdated --update

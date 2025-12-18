@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+@plugin "daisyui" {
+    themes: winter --default, dracula --prefersdark;
+}
+
+/* Enable dark: variant using media query (works with DaisyUI's --prefersdark) */
+@variant dark (&:where([data-theme="dark"], [data-theme="dracula"]) *, @media (prefers-color-scheme: dark));
+
+/* Modern UI Utilities */
+.card-modern {
+    @apply bg-base-100/60 backdrop-blur-md border border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 rounded-3xl relative overflow-hidden;
+}
+
+.card-modern:hover {
+    @apply -translate-y-1 border-primary/20 shadow-primary/5;
+}
+
+.btn-modern {
+    @apply btn border-none shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 rounded-xl font-medium tracking-wide;
+}
+
+.gradient-text {
+    @apply bg-clip-text text-transparent bg-linear-to-r from-primary via-secondary to-accent;
+    background-size: 300%;
+    animation: gradient-x 3s ease infinite;
+}
+
+.glass-panel {
+    @apply bg-base-100/70 backdrop-blur-xl border border-base-content/10;
+}
+
+/* Badge soft variant - matches daisyui soft style */
+.badge-soft {
+    @apply border-none;
+    background-color: oklch(var(--bc) / 0.1);
+}
+.badge-info.badge-soft {
+    background-color: oklch(var(--in) / 0.15);
+    color: oklch(var(--in));
+}
+.badge-success.badge-soft {
+    background-color: oklch(var(--su) / 0.15);
+    color: oklch(var(--su));
+}
+.badge-warning.badge-soft {
+    background-color: oklch(var(--wa) / 0.15);
+    color: oklch(var(--wa));
+}
+.badge-error.badge-soft {
+    background-color: oklch(var(--er) / 0.15);
+    color: oklch(var(--er));
+}
+.badge-primary.badge-soft {
+    background-color: oklch(var(--p) / 0.15);
+    color: oklch(var(--p));
+}
+.badge-secondary.badge-soft {
+    background-color: oklch(var(--s) / 0.15);
+    color: oklch(var(--s));
+}
+.badge-accent.badge-soft {
+    background-color: oklch(var(--a) / 0.15);
+    color: oklch(var(--a));
+}
+.badge-neutral.badge-soft {
+    background-color: oklch(var(--n) / 0.15);
+    color: oklch(var(--n));
+}
+
+/* Cool Animations */
+@keyframes blob {
+    0% {
+        transform: translate(0px, 0px) scale(1);
+    }
+
+    33% {
+        transform: translate(30px, -50px) scale(1.1);
+    }
+
+    66% {
+        transform: translate(-20px, 20px) scale(0.9);
+    }
+
+    100% {
+        transform: translate(0px, 0px) scale(1);
+    }
+}
+
+.animate-blob {
+    animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
+
+@keyframes gradient-x {
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+.animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+}
+
+.card-shine::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent);
+    transition: 0.5s;
+    transform: skewX(-15deg);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.card-shine:hover::before {
+    left: 100%;
+    transition: 0.7s;
+}
+
+/* Custom Spotlight-style ultra blur effect */
+.backdrop-blur-spotlight {
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+}
+
+/* Custom fade-in animation for error messages */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-out {
+    animation: fadeOut 0.3s ease-in forwards;
+}
+
+/* Prevent scrolling on input areas */
+.no-scroll {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    -webkit-overflow-scrolling: auto !important;
+}
+
+.no-scroll::-webkit-scrollbar {
+    display: none !important;
+}
+
+/* Fix horizontal scrolling and right-side whitespace */
+html,
+body {
+    overflow-x: hidden !important;
+    width: 100%;
+    max-width: 100vw;
+}
+
+#main {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden !important;
+}
+
+/* Prevent horizontal overflow for all elements */
+* {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Specific fixes for drawer and content areas */
+.drawer-content {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.drawer {
+    overflow-x: hidden !important;
+}
+
+/* Prevent text overflow in reference components */
+.truncate {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Fix flexbox overflow issues */
+.flex-1 {
+    min-width: 0 !important;
+}
+
+/* Ensure join components don't overflow */
+.join {
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* KaTeX styles */
+.katex-display {
+    @apply my-4 overflow-x-auto overflow-y-hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-base-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-base-300 rounded-full hover:bg-base-content/30;
+}

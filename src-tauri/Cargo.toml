@@ -1,0 +1,38 @@
+[package]
+name = "bibcitex"
+version = "0.6.0"
+description = "A BibTeX citation tool"
+authors = ["tangxiangong <tangxiangong@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "bibcitex_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+arboard = "3"
+bibcitex-core = { path = "../crates/bibcitex-core" }
+biblatex = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.15"
+dirs = "6"
+enigo = { workspace = true }
+fs-err = "3"
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+xpaste = { path = "../crates/xpaste" }

@@ -1,7 +1,7 @@
 use crate::{Error, Result, utils::merge_chunks};
 use biblatex::{Bibliography, Chunk, EntryType, PermissiveType, Person, Spanned};
-use dioxus::prelude::Props;
 use fs_err as fs;
+use serde::{Deserialize, Serialize};
 use std::{ops::Range, path::Path};
 
 /// Parse BibTeX database `.bib` file
@@ -11,7 +11,7 @@ pub fn parse(file_path: impl AsRef<Path>) -> Result<Bibliography> {
 }
 
 /// Wrap a `biblatex::Entry` into a `Reference`, with detailed fields.
-#[derive(Debug, PartialEq, Eq, Clone, Props)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Reference {
     /// key
     pub cite_key: String,
