@@ -6,8 +6,8 @@
   import ChunksComp from '$lib/components/ChunksComp.svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
 
-  const MIN_HEIGHT = 60;
-  const MAX_HEIGHT = 600;
+  const MIN_HEIGHT = 70;  // Must match Rust side: 70px for search bar (64px) + padding
+  const MAX_HEIGHT = 800;
 
   // 状态
   let query = $state('');
@@ -36,9 +36,12 @@
     const measuredHeight = Math.round(rect.height);
     const finalHeight = Math.min(Math.max(measuredHeight, MIN_HEIGHT), MAX_HEIGHT);
 
+    console.log('[Helper] Container height:', measuredHeight, 'Final height:', finalHeight);
+
     // 只有高度变化超过阈值才真正调整（避免频繁调用）
     if (Math.abs(finalHeight - lastHeight) > 10) {
       lastHeight = finalHeight;
+      console.log('[Helper] Resizing window to:', finalHeight);
       await resizeHelperWindow(finalHeight);
     }
   }
@@ -344,7 +347,8 @@
 </script>
 
 <div
-  class="helper-container flex flex-col max-h-150 overflow-hidden rounded-xl h-fit w-full max-w-full box-border"
+  class="helper-container flex flex-col overflow-hidden rounded-xl h-fit w-full max-w-full box-border"
+  style="max-height: {MAX_HEIGHT}px;"
   bind:this={containerRef}
 >
   <!-- 搜索输入框 -->
@@ -824,11 +828,12 @@
   }
 
   /* 跨平台圆角效果 */
-  :global(html), :global(body) {
-    background: transparent !important;
+  :global(html), :global(body) { background: transparent !important;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow: visible;
+    height: 100%;
+    min-height: 100vh;
   }
 
   /* 为不同平台优化圆角效果 */

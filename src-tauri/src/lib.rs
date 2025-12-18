@@ -7,9 +7,12 @@ pub use error::{Error, Result};
 
 use tauri::Manager;
 
+#[cfg(target_os = "macos")]
+use tauri_nspanel::ManagerExt as NSPanelManagerExt;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -22,18 +25,38 @@ pub fn run() {
                     if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                         // Handle global shortcut (Cmd+Shift+K or Super+Shift+K)
                         if shortcut.key == tauri_plugin_global_shortcut::Code::KeyK {
-                            if let Some(window) = app.get_webview_window("helper") {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            } else {
-                                // Create helper window
-                                let _ = commands::create_helper_window(app.clone());
+                            #[cfg(target_os = "macos")]
+                            {
+                                // On macOS, use nspanel
+                                if let Ok(panel) = app.get_webview_panel("helper") {
+                                    if panel.is_visible() {
+                                        panel.hide();
+                                    } else {
+                                        panel.show();
+                                    }
+                                } else {
+                                    let _ = commands::create_helper_window(app.clone());
+                                }
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                if let Some(window) = app.get_webview_window("helper") {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                } else {
+                                    let _ = commands::create_helper_window(app.clone());
+                                }
                             }
                         }
                     }
                 })
                 .build(),
-        )
+        );
+    // Initialize nspanel plugin on macOS
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_nspanel::init());
+
+    builder
         .setup(|app| {
             // Start the app observer for cross-app paste
             xpaste::observe_app();
@@ -80,7 +103,22 @@ pub fn run() {
                             }
                         }
                         "helper" => {
-                            let _ = commands::create_helper_window(app.clone());
+                            #[cfg(target_os = "macos")]
+                            {
+                                if let Ok(panel) = app.get_webview_panel("helper") {
+                                    if panel.is_visible() {
+                                        panel.hide();
+                                    } else {
+                                        panel.show();
+                                    }
+                                } else {
+                                    let _ = commands::create_helper_window(app.clone());
+                                }
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                let _ = commands::create_helper_window(app.clone());
+                            }
                         }
                         _ => {}
                     })
