@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useApp } from "../lib/context/AppContext.tsx";
-import References from "../lib/components/References.tsx";
+import { useApp } from "@/context/AppContext.tsx";
+import References from "@/components/References.tsx";
 
 function DetailPage() {
   const { currentBibName, currentReferences } = useApp();

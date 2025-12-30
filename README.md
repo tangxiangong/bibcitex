@@ -2,7 +2,7 @@
   <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
 
   <p>
-    <img src="assets/readme/BibTeX.png" width="45"> 文献快捷引用工具
+    <img src="assets/BibTeX.png" width="45"> 文献快捷引用工具
   </p>
 
   <p>
@@ -36,7 +36,7 @@
 
 ## 简介
 
-**BibCiTeX** 是一个使用 **Rust** 和 [<img src="assets/readme/dioxus.svg" width="15"> **Dioxus**](https://dioxuslabs.com) 框架开发的现代化 <img src="assets/readme/BibTeX.png" width="20"> **BibTeX** 文献快捷引用工具。
+**BibCiTeX** 是一个使用 **Rust** 和 **Tauri** 框架开发的现代化 **BibTeX** 文献快捷引用工具。
 
 ### 核心特性
 
@@ -84,20 +84,20 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 | 添加 `.bib` 文件 | 文献列表 | 智能搜索 |
 | :---: | :---: | :---: |
-| [<img src="assets/readme/add_bib.gif" width="120" style="border-radius: 8px;">](./assets/readme/add_bib.gif) | [<img src="assets/readme/show_details.gif" width="120" style="border-radius: 8px;">](./assets/readme/show_details.gif) | [<img src="assets/readme/search.gif" width="120" style="border-radius: 8px;">](./assets/readme/search.gif) |
+| [<img src="assets/add_bib.gif" width="120">](./assets/add_bib.gif) | [<img src="assets/show_details.gif" width="120">](./assets/show_details.gif) | [<img src="assets/search.gif" width="120">](./assets/search.gif) |
 | *快速导入 BibTeX 文件* | *查看文献详细信息* | *实时搜索过滤* |
 
 | 侧边详情 | 外部链接 | 复制引用 |
 | :---: | :---: | :---: |
-| [<img src="assets/readme/drawer.gif" width="120" style="border-radius: 8px;">](./assets/readme/drawer.gif) | [<img src="assets/readme/url.gif" width="120" style="border-radius: 8px;">](./assets/readme/url.gif) | [<img src="assets/readme/copy.gif" width="120" style="border-radius: 8px;">](./assets/readme/copy.gif) |
+| [<img src="assets/drawer.gif" width="120">](./assets/drawer.gif) | [<img src="assets/url.gif" width="120">](./assets/url.gif) | [<img src="assets/copy.gif" width="120">](./assets/copy.gif) |
 | *侧边栏详情展示* | *快速访问外部资源* | *一键复制引用格式* |
 
 ### 特色功能
 
 <div style="margin: 20px 0;">
   <h4>跨应用粘贴</h4>
-  <a href="assets/readme/cross_paste.gif">
-    <img src="assets/readme/cross_paste.gif" alt="跨应用粘贴演示" style="max-width: 600px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <a href="assets/cross_paste.gif">
+    <img src="assets/cross_paste.gif" alt="跨应用粘贴演示">
   </a>
   <p><em>无缝集成到您的工作流程，支持跨应用程序粘贴功能</em></p>
 </div>

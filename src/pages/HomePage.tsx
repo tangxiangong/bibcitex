@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import Bibliographies from "../lib/components/Bibliographies.tsx";
-import AddBibliography from "../lib/components/AddBibliography.tsx";
+import Bibliographies from "@/components/Bibliographies.tsx";
+import AddBibliography from "@/components/AddBibliography.tsx";
 
 function HomePage() {
   const [showModal, setShowModal] = useState(false);

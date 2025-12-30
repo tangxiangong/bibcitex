@@ -9,9 +9,9 @@ import {
   resizeHelperWindow,
   searchReferences,
   setHelperBib,
-} from "../lib/tauri.ts";
-import type { EntryType, Reference } from "../lib/types.ts";
-import ChunksComp from "../lib/components/ChunksComp.tsx";
+} from "@/tauri.ts";
+import type { EntryType, Reference } from "@/types.ts";
+import ChunksComp from "@/components/ChunksComp.tsx";
 
 const MIN_HEIGHT = 70;
 const MAX_HEIGHT = 800;

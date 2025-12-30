@@ -1,6 +1,6 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
-import { AppProvider } from "./lib/context/AppContext.tsx";
+import { AppProvider } from "./context/AppContext.tsx";
 import MainLayout from "./layouts/MainLayout.tsx";
 import HomePage from "./pages/HomePage.tsx";
 import DetailPage from "./pages/DetailPage.tsx";

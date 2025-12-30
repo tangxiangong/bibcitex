@@ -197,7 +197,8 @@ The Tauri backend and IPC layer remain unchanged. All Tauri commands in
 
 ## TailwindCSS v4 Configuration
 
-**IMPORTANT**: This project uses TailwindCSS v4 with the new Vite plugin approach.
+**IMPORTANT**: This project uses TailwindCSS v4 with the new Vite plugin
+approach.
 
 ### ✅ Correct Setup (Current)
 
@@ -235,4 +236,7 @@ The Tauri backend and IPC layer remain unchanged. All Tauri commands in
 - `postcss.config.js` - NOT used in v4
 - Any PostCSS configuration
 
-TailwindCSS v4 uses CSS-based configuration via `@import` and `@plugin` directives in your CSS file, processed by the Vite plugin. All configuration (themes, custom utilities, plugins) should be defined in `src/app.css` using the new v4 syntax.
+TailwindCSS v4 uses CSS-based configuration via `@import` and `@plugin`
+directives in your CSS file, processed by the Vite plugin. All configuration
+(themes, custom utilities, plugins) should be defined in `src/app.css` using the
+new v4 syntax.
