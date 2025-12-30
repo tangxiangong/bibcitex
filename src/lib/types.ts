@@ -19,10 +19,10 @@ export type Chunk =
 
 // Helper to get chunk value
 export function getChunkValue(chunk: Chunk): string {
-  if ('Normal' in chunk) return chunk.Normal;
-  if ('Verbatim' in chunk) return chunk.Verbatim;
-  if ('Math' in chunk) return chunk.Math;
-  return '';
+  if ("Normal" in chunk) return chunk.Normal;
+  if ("Verbatim" in chunk) return chunk.Verbatim;
+  if ("Math" in chunk) return chunk.Math;
+  return "";
 }
 
 export interface Reference {
@@ -63,32 +63,32 @@ export interface Reference {
 }
 
 export type EntryType =
-  | 'Article'
-  | 'Book'
-  | 'Booklet'
-  | 'InBook'
-  | 'InCollection'
-  | 'InProceedings'
-  | 'Manual'
-  | 'MastersThesis'
-  | 'Misc'
-  | 'PhdThesis'
-  | 'Proceedings'
-  | 'TechReport'
-  | 'Thesis'
-  | 'Unpublished'
+  | "Article"
+  | "Book"
+  | "Booklet"
+  | "InBook"
+  | "InCollection"
+  | "InProceedings"
+  | "Manual"
+  | "MastersThesis"
+  | "Misc"
+  | "PhdThesis"
+  | "Proceedings"
+  | "TechReport"
+  | "Thesis"
+  | "Unpublished"
   | { Unknown: string };
 
 // Filter types
-export type FilterField = 'Author' | 'Title' | 'Journal' | 'Year' | 'All';
+export type FilterField = "Author" | "Title" | "Journal" | "Year" | "All";
 export type FilterType =
-  | 'Book'
-  | 'Article'
-  | 'Thesis'
-  | 'TechReport'
-  | 'Misc'
-  | 'Booklet'
-  | 'InBook'
-  | 'InCollection'
-  | 'InProceedings'
-  | 'All';
+  | "Book"
+  | "Article"
+  | "Thesis"
+  | "TechReport"
+  | "Misc"
+  | "Booklet"
+  | "InBook"
+  | "InCollection"
+  | "InProceedings"
+  | "All";
