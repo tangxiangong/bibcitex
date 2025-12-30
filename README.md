@@ -1,8 +1,8 @@
 <div align="center">
-  <img src="assets/transparent_logo.png" width="120" alt="BibCiTeX">
+  <img src="public/transparent_logo.png" width="120" alt="BibCiTeX">
 
   <p>
-    <img src="assets/BibTeX.png" width="45"> 文献快捷引用工具
+    BibTeX 文献快捷引用工具
   </p>
 
   <p>
