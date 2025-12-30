@@ -12,6 +12,7 @@ import {
 } from "@/tauri.ts";
 import type { EntryType, Reference } from "@/types.ts";
 import ChunksComp from "@/components/ChunksComp.tsx";
+import { TRANSPARENT_LOGO } from "@/constants/icons.ts";
 
 const MIN_HEIGHT = 70;
 const MAX_HEIGHT = 800;
@@ -434,7 +435,7 @@ function HelperPage() {
             )}
           <img
             className="opacity-80 hover:opacity-100 transition-opacity duration-300 w-6 h-6"
-            src="/assets/transparent_logo.png"
+            src={TRANSPARENT_LOGO}
             alt="logo"
           />
         </div>

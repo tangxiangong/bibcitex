@@ -1,5 +1,12 @@
 // TypeScript types matching Rust structs
 
+// Extend Window interface for Tauri
+declare global {
+  interface Window {
+    __TAURI__?: unknown;
+  }
+}
+
 export interface BibliographyInfo {
   path: string;
   created_at: string;

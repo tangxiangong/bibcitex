@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext.tsx";
 import References from "@/components/References.tsx";
+import { CANCEL_ICON, TRANSPARENT_LOGO } from "@/constants/icons.ts";
 
 function DetailPage() {
   const { currentBibName, currentReferences } = useApp();
@@ -12,7 +13,7 @@ function DetailPage() {
         <div className="flex items-center gap-4">
           <Link to="/" className="btn btn-ghost btn-sm gap-2">
             <img
-              src="/assets/icons/cancel.svg"
+              src={CANCEL_ICON}
               alt="Back"
               className="h-4 w-4"
             />
@@ -36,7 +37,7 @@ function DetailPage() {
           : (
             <div className="flex flex-col items-center justify-center h-full text-base-content/50">
               <img
-                src="/assets/transparent_logo.png"
+                src={TRANSPARENT_LOGO}
                 alt="No references"
                 className="w-24 h-24 mb-4 opacity-30"
               />

@@ -6,12 +6,20 @@ import {
   loadSettings,
   removeBibliography,
 } from "../tauri.ts";
+import {
+  ADD_ICON,
+  DELETE_ICON,
+  DETAILS_ICON,
+  ERROR_ICON,
+  TRANSPARENT_LOGO,
+} from "../constants/icons.ts";
 
 interface BibliographiesProps {
   onOpenModal: () => void;
+  onCheckUpdate?: () => void;
 }
 
-function Bibliographies({ onOpenModal }: BibliographiesProps) {
+function Bibliographies({ onOpenModal, onCheckUpdate }: BibliographiesProps) {
   const { settings, updateSettings, setCurrentReferences, setCurrentBibName } =
     useApp();
   const navigate = useNavigate();
@@ -120,14 +128,25 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
           <h2 className="text-3xl font-bold gradient-text">Bibliographies</h2>
           <p className="text-base-content/60 text-sm mt-1">管理你的文献库</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-modern gap-2"
-          onClick={onOpenModal}
-        >
-          <img src="/assets/icons/add.svg" alt="Add" className="h-4 w-4" />
-          新建文献库
-        </button>
+        <div className="flex gap-2">
+          {onCheckUpdate && (
+            <button
+              type="button"
+              className="btn btn-ghost gap-2"
+              onClick={onCheckUpdate}
+            >
+              检查更新
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-modern gap-2"
+            onClick={onOpenModal}
+          >
+            <img src={ADD_ICON} alt="Add" className="h-4 w-4" />
+            新建文献库
+          </button>
+        </div>
       </div>
 
       {/* Bibliography Grid */}
@@ -136,7 +155,7 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
           ? (
             <div className="flex flex-col items-center justify-center h-64 text-base-content/50">
               <img
-                src="/assets/transparent_logo.png"
+                src={TRANSPARENT_LOGO}
                 alt="No bibliographies"
                 className="w-16 h-16 mb-4 opacity-50"
               />
@@ -172,7 +191,7 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
                         <div className="flex items-center gap-3 overflow-hidden">
                           <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary/10 to-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-inner border border-white/10">
                             <img
-                              src="/assets/transparent_logo.png"
+                              src={TRANSPARENT_LOGO}
                               alt="Bibliography"
                               className="w-6 h-6"
                             />
@@ -227,7 +246,7 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
                         <div className="flex flex-col gap-3 text-xs text-base-content/60">
                           <div className="flex items-center gap-2 group/link">
                             <img
-                              src="/assets/icons/details.svg"
+                              src={DETAILS_ICON}
                               alt="File"
                               className="w-3 h-3 opacity-50 group-hover/link:opacity-100 transition-opacity"
                             />
@@ -259,7 +278,7 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
                           onClick={(e) => handleDelete(bib.name, e)}
                         >
                           <img
-                            src="/assets/icons/delete.svg"
+                            src={DELETE_ICON}
                             alt="Delete"
                             className="h-3.5 w-3.5 opacity-70"
                           />
@@ -296,7 +315,7 @@ function Bibliographies({ onOpenModal }: BibliographiesProps) {
           >
             <div className="flex items-center gap-2">
               <img
-                src="/assets/icons/error.svg"
+                src={ERROR_ICON}
                 alt="Error"
                 className="h-5 w-5"
               />

@@ -1,0 +1,81 @@
+import { Reference } from "../../types.ts";
+import ChunksComp from "../ChunksComp.tsx";
+
+interface BookletHelperProps {
+  entry: Reference;
+}
+
+function BookletHelper({ entry }: BookletHelperProps) {
+  const key = entry.cite_key;
+
+  return (
+    <div className="w-full">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div className="badge badge-info badge-soft badge-sm font-bold">
+            Booklet
+          </div>
+          {entry.title
+            ? (
+              <span className="text-gray-900 dark:text-gray-100 font-serif font-medium">
+                <ChunksComp chunks={entry.title} citeKey={key} />
+              </span>
+            )
+            : (
+              <span className="text-gray-900 dark:text-gray-100 font-serif italic">
+                No title available
+              </span>
+            )}
+        </div>
+        <div className="flex items-center shrink-0">
+          <div className="text-xs font-mono opacity-50 ml-2">{key}</div>
+        </div>
+      </div>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {entry.author && entry.author.length > 0
+          ? (
+            entry.author.length > 3
+              ? (
+                <>
+                  {entry.author.slice(0, 3).map((author, idx) => (
+                    <span
+                      key={idx}
+                      className="badge badge-ghost badge-xs hover:badge-info transition-colors cursor-default"
+                    >
+                      {author}
+                    </span>
+                  ))}
+                  <span className="badge badge-ghost badge-xs hover:badge-info transition-colors cursor-default">
+                    et al.
+                  </span>
+                </>
+              )
+              : (
+                entry.author.map((author, idx) => (
+                  <span
+                    key={idx}
+                    className="badge badge-ghost badge-xs hover:badge-info transition-colors cursor-default"
+                  >
+                    {author}
+                  </span>
+                ))
+              )
+          )
+          : (
+            <span className="text-xs text-base-content/50 italic">
+              Unknown Author
+            </span>
+          )}
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+        {entry.year && (
+          <span className="flex items-center gap-1 text-secondary">
+            <span>📅 {entry.year}</span>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default BookletHelper;

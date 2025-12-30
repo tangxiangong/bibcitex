@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.tsx";
 import { addBibliography, loadSettings, selectBibFile } from "../tauri.ts";
+import { CANCEL_ICON, ERROR_ICON, OK_ICON } from "../constants/icons.ts";
 
 interface AddBibliographyProps {
   show: boolean;
@@ -94,14 +95,14 @@ function AddBibliography({ show, onClose }: AddBibliographyProps) {
               nameIsValid
                 ? (
                   <img
-                    src="/assets/icons/ok.svg"
+                    src={OK_ICON}
                     alt="Valid"
                     className="h-5 w-5 text-success"
                   />
                 )
                 : (
                   <img
-                    src="/assets/icons/cancel.svg"
+                    src={CANCEL_ICON}
                     alt="Invalid"
                     className="h-5 w-5 text-error"
                   />
@@ -157,7 +158,7 @@ function AddBibliography({ show, onClose }: AddBibliographyProps) {
         {errorMessage && (
           <div className="alert alert-error mb-4">
             <img
-              src="/assets/icons/error.svg"
+              src={ERROR_ICON}
               alt="Error"
               className="h-5 w-5"
             />

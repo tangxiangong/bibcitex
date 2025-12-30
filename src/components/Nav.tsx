@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { openHelperWindow } from "../tauri.ts";
+import { TRANSPARENT_LOGO } from "../constants/icons.ts";
 
 const CMD_CTRL = navigator.platform.includes("Mac") ? "⌘" : "Win";
 
@@ -22,7 +23,7 @@ function Nav() {
         >
           <div className="w-10 h-10 relative">
             <img
-              src="/assets/transparent_logo.png"
+              src={TRANSPARENT_LOGO}
               alt="BibCiTeX Logo"
               className="w-full h-full object-contain"
             />

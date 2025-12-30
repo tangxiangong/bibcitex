@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { useApp } from "../context/AppContext.tsx";
-import ReferenceDrawer from "./reference/ReferenceDrawer.tsx";
+import ReferenceDrawer from "./drawer/ReferenceDrawer.tsx";
 import ChunksComp from "./ChunksComp.tsx";
 
 function Drawer() {

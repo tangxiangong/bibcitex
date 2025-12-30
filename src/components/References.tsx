@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.tsx";
 import { searchByField, searchReferences } from "../tauri.ts";
 import type { FilterField, FilterType, Reference } from "../types.ts";
-import ReferenceCard from "./reference/ReferenceCard.tsx";
+import ReferenceSelector from "./reference/ReferenceSelector.tsx";
 
 function References() {
   const { currentReferences } = useApp();
@@ -168,14 +168,14 @@ function References() {
         {!isSearching
           ? (
             filteredByType.map((entry) => (
-              <ReferenceCard key={entry.cite_key} entry={entry} />
+              <ReferenceSelector key={entry.cite_key} entry={entry} />
             ))
           )
           : (
             searchResult.length > 0
               ? (
                 searchResult.map((entry) => (
-                  <ReferenceCard key={entry.cite_key} entry={entry} />
+                  <ReferenceSelector key={entry.cite_key} entry={entry} />
                 ))
               )
               : <p className="p-2 text-lg text-red-500">No results</p>
