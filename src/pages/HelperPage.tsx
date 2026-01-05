@@ -15,7 +15,7 @@ import ChunksComp from "@/components/ChunksComp.tsx";
 import { TRANSPARENT_LOGO } from "@/constants/icons.ts";
 
 const MIN_HEIGHT = 70;
-const MAX_HEIGHT = 800;
+const MAX_HEIGHT = 2000;
 
 interface BibInfo {
   name: string;
@@ -45,19 +45,39 @@ function HelperPage() {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastHeightRef = useRef(MIN_HEIGHT);
 
+  const contentRef = useRef<HTMLDivElement>(null);
+
   const updateWindowHeight = useCallback(async () => {
+    // Wait for render
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
     if (!containerRef.current) return;
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // Measure the actual content height manually
+    // We explicitly look for the scrollable list container because parent containers are constrained by h-full
+    let totalHeight = MIN_HEIGHT;
+    const scrollable = containerRef.current.querySelector('.overflow-y-auto');
+    if (scrollable) {
+        // Header (64) + Content + Padding (approx 20)
+        totalHeight = 64 + scrollable.scrollHeight + 20;
+    } else {
+        // Fallback if no list is rendered (e.g. initial state)
+        totalHeight = containerRef.current.scrollHeight;
+    }
 
-    const scrollHeight = containerRef.current.scrollHeight;
-    const clientHeight = containerRef.current.clientHeight;
-    const measuredHeight = Math.max(scrollHeight, clientHeight);
+    console.log("DEBUG: measured totalHeight:", totalHeight, "scrollable found:", !!scrollable);
+
+    // Clamp the height
+    // Also clamp to screen height (minus some margin) to ensure we don't exceed physical screen
+    const screenMax = typeof window !== "undefined" ? window.screen.availHeight * 0.9 : MAX_HEIGHT;
+    const effectiveMax = Math.min(MAX_HEIGHT, screenMax);
+
     const finalHeight = Math.min(
-      Math.max(measuredHeight, MIN_HEIGHT),
-      MAX_HEIGHT,
+      Math.max(totalHeight, MIN_HEIGHT),
+      effectiveMax,
     );
 
+    // Only resize if difference is significant to avoid jitter
     if (Math.abs(finalHeight - lastHeightRef.current) > 2) {
       lastHeightRef.current = finalHeight;
       try {
@@ -157,7 +177,7 @@ function HelperPage() {
       await copyToClipboard(ref.cite_key);
       await pasteToApp(ref.cite_key);
       const window = getCurrentWindow();
-      await window.close();
+      await window.hide();
     } catch (e) {
       console.error("Paste failed:", e);
     }
@@ -169,9 +189,9 @@ function HelperPage() {
       e.stopPropagation();
       try {
         const win = getCurrentWindow();
-        await win.close();
+        await win.hide();
       } catch (err) {
-        console.error("Failed to close window:", err);
+        console.error("Failed to hide window:", err);
       }
       return;
     }
@@ -300,6 +320,16 @@ function HelperPage() {
   }, [selectBib, updateWindowHeight]);
 
   useEffect(() => {
+    // Ensure transparent background for rounded corners
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+    return () => {
+      document.documentElement.style.background = "";
+      document.body.style.background = "";
+    };
+  }, []);
+
+  useEffect(() => {
     setTimeout(updateWindowHeight, 100);
   }, [results.length, bibs.length, isSelectingBib, updateWindowHeight]);
 
@@ -376,8 +406,7 @@ function HelperPage() {
   return (
     <div
       ref={containerRef}
-      className="helper-container flex flex-col overflow-hidden rounded-xl h-fit w-full max-w-full box-border"
-      style={{ maxHeight: `${MAX_HEIGHT}px` }}
+      className="helper-container flex flex-col w-full h-full bg-base-100/80 backdrop-blur-xl border border-base-content/20 shadow-2xl rounded-xl overflow-hidden"
     >
       <div
         className="relative w-full max-w-full h-16 bg-transparent z-20 border-b border-base-content/10 shrink-0 overflow-hidden box-border"
@@ -453,12 +482,7 @@ function HelperPage() {
               : (
                 <div className="flex flex-col h-full w-full max-w-full overflow-hidden box-border">
                   <div
-                    className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 scroll-smooth w-full max-w-full box-border"
-                    style={{
-                      maxHeight: `${
-                        MAX_HEIGHT - MIN_HEIGHT - (errorMessage ? 60 : 0)
-                      }px`,
-                    }}
+                    className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 scroll-smooth w-full max-w-full box-border custom-scrollbar"
                   >
                     {bibs.map((bib, i) => (
                       <button
@@ -559,8 +583,7 @@ function HelperPage() {
           )
           : (
             <div
-              className="overflow-y-auto overflow-x-hidden p-2 space-y-2 w-full max-w-full box-border"
-              style={{ maxHeight: `${MAX_HEIGHT - MIN_HEIGHT}px` }}
+              className="overflow-y-auto overflow-x-hidden p-2 space-y-2 w-full max-w-full box-border custom-scrollbar"
             >
               {results.map((ref, i) => (
                 <button

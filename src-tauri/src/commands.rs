@@ -22,6 +22,19 @@ use tauri_plugin_opener::OpenerExt;
 #[cfg(target_os = "macos")]
 use tauri_nspanel::ManagerExt as NSPanelManagerExt;
 
+#[cfg(target_os = "macos")]
+use tauri_nspanel::tauri_panel;
+
+#[cfg(target_os = "macos")]
+tauri_panel! {
+    panel!(HelperPanel {
+        config: {
+            can_become_key_window: true,
+            is_floating_panel: true
+        }
+    })
+}
+
 /// Load references from a bib file
 fn load_references(path: impl AsRef<std::path::Path>) -> Result<Vec<Reference>> {
     let bib = parse(path)?;
@@ -218,17 +231,7 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
 #[cfg(target_os = "macos")]
 pub fn create_helper_window(app: AppHandle) -> Result<()> {
     use tauri::{LogicalPosition, LogicalSize, Position, Size};
-    use tauri_nspanel::{PanelBuilder, PanelLevel, tauri_panel};
-
-    // Define panel class for helper
-    tauri_panel! {
-        panel!(HelperPanel {
-            config: {
-                can_become_key_window: true,
-                is_floating_panel: true
-            }
-        })
-    }
+    use tauri_nspanel::{PanelBuilder, PanelLevel};
 
     // Check if helper panel already exists
     if let Ok(panel) = app.get_webview_panel("helper") {
@@ -274,9 +277,8 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
                 .transparent(true)
                 .resizable(true)
                 .min_inner_size(width, 70.0)
-                .max_inner_size(width, 800.0)
+                .max_inner_size(width, 2000.0)
                 .skip_taskbar(true)
-                .auto_resize()
         })
         .build()
         .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
@@ -331,7 +333,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
             .title("BibCiTeX Helper")
             .inner_size(width, height)
             .min_inner_size(width, 60.0)
-            .max_inner_size(width, 600.0)
+            .max_inner_size(width, 2000.0)
             .position(x, y)
             .decorations(false)
             .always_on_top(true)
@@ -362,27 +364,71 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
 // Resize helper window
 #[tauri::command]
 pub fn resize_helper_window(app: AppHandle, height: f64) -> Result<()> {
-    let new_height = height.clamp(70.0, 800.0);
+    println!("DEBUG: resize_helper_window request: {}", height);
+    let new_height = height.clamp(70.0, 2000.0);
 
     #[cfg(target_os = "macos")]
     {
-        if let Ok(panel) = app.get_webview_panel("helper")
-            && let Some(window) = panel.to_window()
-        {
-            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+        let window_opt = if let Ok(panel) = app.get_webview_panel("helper") {
+            if let Some(w) = panel.to_window() {
+                Some(w)
+            } else {
+                println!("DEBUG: Panel found but to_window() returned None");
+                None
+            }
+        } else {
+            println!("DEBUG: get_webview_panel(\"helper\") failed/not found");
+            None
+        };
+
+        let window = window_opt.or_else(|| {
+            println!("DEBUG: Attempting fallback to get_webview_window(\"helper\")");
+            app.get_webview_window("helper")
+        });
+
+        if let Some(window) = window {
+            let target_size = tauri::Size::Logical(tauri::LogicalSize {
                 width: 900.0,
                 height: new_height,
-            }));
+            });
+
+            println!(
+                "DEBUG: Force resizing macOS window to height: {}",
+                new_height
+            );
+
+            // Force resize by locking min/max constraints to the exact target size
+            // This forces the OS to comply immediately
+            let _ = window.set_min_size(Some(target_size));
+            let _ = window.set_max_size(Some(target_size));
+
+            match window.set_size(target_size) {
+                Ok(_) => println!("DEBUG: set_size success: {}", new_height),
+                Err(e) => println!("DEBUG: set_size failed: {}", e),
+            }
+
+            // Re-apply a slightly larger max size afterwards if we wanted manual resizing,
+            // but for a helper window, locking it to content size is actually better UI.
+            // So we leave it locked at the current content height.
+        } else {
+            println!("DEBUG: CRITICAL - Could not find helper window via Panel OR Window manager");
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
         if let Some(window) = app.get_webview_window("helper") {
-            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            let _ = window.set_resizable(true);
+            let _ = window.set_max_size(Some(tauri::Size::Logical(tauri::LogicalSize {
+                width: 900.0,
+                height: 2000.0,
+            })));
+            if let Err(e) = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
                 width: 900.0,
                 height: new_height,
-            }));
+            })) {
+                println!("DEBUG: Non-macOS resize failed: {}", e);
+            }
         }
     }
 
