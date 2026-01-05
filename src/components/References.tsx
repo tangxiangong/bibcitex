@@ -127,7 +127,7 @@ function References() {
       <div className="shrink-0 p-4 bg-base-100 border-b border-base-300 overflow-hidden">
         <div className="join w-full max-w-full overflow-hidden">
           <select
-            className="select select-bordered join-item"
+            className="select select-bordered join-item w-24 sm:w-32 md:w-40"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as FilterType)}
           >
@@ -139,7 +139,7 @@ function References() {
           </select>
 
           <select
-            className="select select-bordered join-item"
+            className="select select-bordered join-item w-24 sm:w-32 md:w-40"
             value={filterField}
             onChange={(e) => setFilterField(e.target.value as FilterField)}
           >

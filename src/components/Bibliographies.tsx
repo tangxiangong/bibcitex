@@ -16,10 +16,9 @@ import {
 
 interface BibliographiesProps {
   onOpenModal: () => void;
-  onCheckUpdate?: () => void;
 }
 
-function Bibliographies({ onOpenModal, onCheckUpdate }: BibliographiesProps) {
+function Bibliographies({ onOpenModal }: BibliographiesProps) {
   const { settings, updateSettings, setCurrentReferences, setCurrentBibName } =
     useApp();
   const navigate = useNavigate();
@@ -129,15 +128,6 @@ function Bibliographies({ onOpenModal, onCheckUpdate }: BibliographiesProps) {
           <p className="text-base-content/60 text-sm mt-1">管理你的文献库</p>
         </div>
         <div className="flex gap-2">
-          {onCheckUpdate && (
-            <button
-              type="button"
-              className="btn btn-ghost gap-2"
-              onClick={onCheckUpdate}
-            >
-              检查更新
-            </button>
-          )}
           <button
             type="button"
             className="btn btn-modern gap-2"

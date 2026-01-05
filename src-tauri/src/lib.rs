@@ -79,7 +79,8 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri::{
-                    menu::{Menu, MenuItem},
+                    Emitter,
+                    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
                     tray::TrayIconBuilder,
                 };
 
@@ -87,10 +88,10 @@ pub fn run() {
                 let helper = MenuItem::with_id(app, "helper", "快捷助手", true, None::<&str>)?;
                 let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
 
-                let menu = Menu::with_items(app, &[&show, &helper, &quit])?;
+                let tray_menu = Menu::with_items(app, &[&show, &helper, &quit])?;
 
                 TrayIconBuilder::new()
-                    .menu(&menu)
+                    .menu(&tray_menu)
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "quit" => {
@@ -123,6 +124,58 @@ pub fn run() {
                         _ => {}
                     })
                     .build(app)?;
+
+                // Application Menu
+                let app_menu = Submenu::with_items(
+                    app,
+                    "App",
+                    true,
+                    &[
+                        &PredefinedMenuItem::about(app, None, None)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &MenuItem::with_id(
+                            app,
+                            "check_update",
+                            "Check for Updates...",
+                            true,
+                            None::<&str>,
+                        )?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::services(app, None)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::hide(app, None)?,
+                        &PredefinedMenuItem::hide_others(app, None)?,
+                        &PredefinedMenuItem::show_all(app, None)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::quit(app, None)?,
+                    ],
+                )?;
+
+                let edit_menu = Submenu::with_items(
+                    app,
+                    "Edit",
+                    true,
+                    &[
+                        &PredefinedMenuItem::undo(app, None)?,
+                        &PredefinedMenuItem::redo(app, None)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::cut(app, None)?,
+                        &PredefinedMenuItem::copy(app, None)?,
+                        &PredefinedMenuItem::paste(app, None)?,
+                        &PredefinedMenuItem::select_all(app, None)?,
+                    ],
+                )?;
+
+                let menu = Menu::with_items(app, &[&app_menu, &edit_menu])?;
+                app.set_menu(menu)?;
+
+                app.on_menu_event(|app, event| {
+                    if event.id.as_ref() == "check_update"
+                        && app.emit_to("main", "check-update-trigger", ()).is_err()
+                    {
+                        let _ = app.emit("check-update-trigger", ());
+                    }
+                });
             }
 
             Ok(())

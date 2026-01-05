@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useApp } from "@/context/AppContext.tsx";
 import References from "@/components/References.tsx";
-import { CANCEL_ICON, TRANSPARENT_LOGO } from "@/constants/icons.ts";
+import { TRANSPARENT_LOGO } from "@/constants/icons.ts";
 
 function DetailPage() {
   const { currentBibName, currentReferences } = useApp();
@@ -11,15 +11,6 @@ function DetailPage() {
     <div className="flex flex-col h-full overflow-hidden bg-base-200/30">
       <div className="shrink-0 p-4 bg-base-100 border-b border-base-300 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link to="/" className="btn btn-ghost btn-sm gap-2">
-            <img
-              src={CANCEL_ICON}
-              alt="Back"
-              className="h-4 w-4"
-            />
-            返回
-          </Link>
-          <div className="divider divider-horizontal m-0"></div>
           <div>
             <h1 className="text-2xl font-bold gradient-text">
               {currentBibName || "Bibliography Details"}

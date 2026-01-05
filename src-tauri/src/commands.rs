@@ -232,6 +232,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
 
     // Check if helper panel already exists
     if let Ok(panel) = app.get_webview_panel("helper") {
+        println!("DEBUG: Helper panel already exists, toggling visibility");
         // If it exists, toggle visibility
         if panel.is_visible() {
             panel.hide();
@@ -241,6 +242,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         return Ok(());
     }
 
+    println!("DEBUG: Creating new helper panel");
     let width = 900.0;
     let height = 400.0; // Start with larger height to show content initially
 
