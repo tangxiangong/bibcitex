@@ -19,16 +19,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_aarch64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_x64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_arm64-setup.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.5.4/BibCiTeX-v0.5.4-windows-x86_64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_x64-setup.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -63,14 +63,14 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 <div align="center">
 
-| 类型 | 状态 | 类型 | 状态 |
-|:---:|:---:|:---:|:---:|
-| Article | ✓ | Book | ✓ |
-| Thesis | ✓ | Booklet | ✓ |
-| InBook | ✓ | InCollection | ✓ |
-| Misc | ✓ | TechReport | ✓ |
-| InProceedings | ✓ | Manual | 进行中 |
-| Proceedings | 进行中 | Unpublished | 进行中 |
+|     类型      |  状态  |     类型     |  状态  |
+| :-----------: | :----: | :----------: | :----: |
+|    Article    |   ✓    |     Book     |   ✓    |
+|    Thesis     |   ✓    |   Booklet    |   ✓    |
+|    InBook     |   ✓    | InCollection |   ✓    |
+|     Misc      |   ✓    |  TechReport  |   ✓    |
+| InProceedings |   ✓    |    Manual    | 进行中 |
+|  Proceedings  | 进行中 | Unpublished  | 进行中 |
 
 </div>
 
@@ -82,15 +82,15 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 ### 核心功能展示
 
-| 添加 `.bib` 文件 | 文献列表 | 智能搜索 |
-| :---: | :---: | :---: |
+|                          添加 `.bib` 文件                          |                                   文献列表                                   |                             智能搜索                             |
+| :----------------------------------------------------------------: | :--------------------------------------------------------------------------: | :--------------------------------------------------------------: |
 | [<img src="assets/add_bib.gif" width="120">](./assets/add_bib.gif) | [<img src="assets/show_details.gif" width="120">](./assets/show_details.gif) | [<img src="assets/search.gif" width="120">](./assets/search.gif) |
-| *快速导入 BibTeX 文件* | *查看文献详细信息* | *实时搜索过滤* |
+|                       *快速导入 BibTeX 文件*                       |                              *查看文献详细信息*                              |                          *实时搜索过滤*                          |
 
-| 侧边详情 | 外部链接 | 复制引用 |
-| :---: | :---: | :---: |
+|                             侧边详情                             |                          外部链接                          |                           复制引用                           |
+| :--------------------------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------: |
 | [<img src="assets/drawer.gif" width="120">](./assets/drawer.gif) | [<img src="assets/url.gif" width="120">](./assets/url.gif) | [<img src="assets/copy.gif" width="120">](./assets/copy.gif) |
-| *侧边栏详情展示* | *快速访问外部资源* | *一键复制引用格式* |
+|                         *侧边栏详情展示*                         |                     *快速访问外部资源*                     |                      *一键复制引用格式*                      |
 
 ### 特色功能
 
