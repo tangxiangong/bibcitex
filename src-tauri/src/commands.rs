@@ -292,6 +292,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         .has_shadow(true)
         .level(PanelLevel::MainMenu)
         .transparent(true)
+        .corner_radius(12.0)
         .hides_on_deactivate(true)
         .collection_behavior(
             CollectionBehavior::new()
@@ -367,6 +368,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
             .max_inner_size(width, 2000.0)
             .position(x, y)
             .decorations(false)
+            .transparent(true)
             .always_on_top(true)
             .resizable(true)
             .skip_taskbar(true)
