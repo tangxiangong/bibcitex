@@ -20,9 +20,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[cfg(target_os = "macos")]
-use tauri_nspanel::ManagerExt as NSPanelManagerExt;
-
-#[cfg(target_os = "macos")]
 use tauri_nspanel::tauri_panel;
 
 #[cfg(target_os = "macos")]
@@ -34,6 +31,11 @@ tauri_panel! {
         }
     })
 }
+
+// Store the panel handle globally since get_webview_panel() doesn't find it
+#[cfg(target_os = "macos")]
+static HELPER_PANEL: Mutex<Option<std::sync::Arc<dyn tauri_nspanel::Panel<tauri::Wry>>>> =
+    Mutex::new(None);
 
 /// Load references from a bib file
 fn load_references(path: impl AsRef<std::path::Path>) -> Result<Vec<Reference>> {
@@ -227,31 +229,49 @@ pub async fn install_update(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-// Helper window
+// Helper window — macOS panel management via global static
 #[cfg(target_os = "macos")]
-pub fn create_helper_window(app: AppHandle) -> Result<()> {
-    use tauri::{LogicalPosition, LogicalSize, Position, Size};
-    use tauri_nspanel::{PanelBuilder, PanelLevel};
-
-    // Check if helper panel already exists
-    if let Ok(panel) = app.get_webview_panel("helper") {
-        println!("DEBUG: Helper panel already exists, toggling visibility");
-        // If it exists, toggle visibility
+pub fn toggle_helper_panel(app: &AppHandle) {
+    let guard = HELPER_PANEL.lock().unwrap();
+    if let Some(panel) = guard.as_ref() {
         if panel.is_visible() {
             panel.hide();
         } else {
-            panel.show();
+            panel.show_and_make_key();
         }
-        return Ok(());
+    } else {
+        drop(guard);
+        let _ = create_helper_window(app.clone());
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn hide_helper_panel() {
+    let guard = HELPER_PANEL.lock().unwrap();
+    if let Some(panel) = guard.as_ref() {
+        panel.hide();
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn create_helper_window(app: AppHandle) -> Result<()> {
+    use tauri::{LogicalPosition, LogicalSize, Position, Size};
+    use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel};
+
+    // Already created — just toggle
+    {
+        let guard = HELPER_PANEL.lock().unwrap();
+        if guard.is_some() {
+            drop(guard);
+            toggle_helper_panel(&app);
+            return Ok(());
+        }
     }
 
-    println!("DEBUG: Creating new helper panel");
     let width = 900.0;
-    let height = 400.0; // Start with larger height to show content initially
+    let height = 400.0;
 
-    // Get primary monitor info for positioning
     let monitor = app.primary_monitor().ok().flatten();
-
     let (screen_width, screen_height) = monitor
         .as_ref()
         .map(|m| {
@@ -270,8 +290,16 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         .size(Size::Logical(LogicalSize::new(width, height)))
         .position(Position::Logical(LogicalPosition::new(x, y)))
         .has_shadow(true)
-        .level(PanelLevel::Floating)
+        .level(PanelLevel::MainMenu)
         .transparent(true)
+        .hides_on_deactivate(true)
+        .collection_behavior(
+            CollectionBehavior::new()
+                .can_join_all_spaces()
+                .full_screen_auxiliary()
+                .ignores_cycle()
+                .transient(),
+        )
         .with_window(move |w| {
             w.decorations(false)
                 .transparent(true)
@@ -283,36 +311,40 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         .build()
         .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
 
-    panel.show();
+    panel.show_and_make_key();
 
-    // Close panel when it loses focus
+    // Hide panel when it loses focus
     if let Some(window) = panel.to_window() {
-        let panel_clone = panel.clone();
-        window.on_window_event(move |event| {
-            if let tauri::WindowEvent::Focused(false) = event {
-                panel_clone.hide();
+        window.on_window_event(move |_event| {
+            if let tauri::WindowEvent::Focused(false) = _event {
+                hide_helper_panel();
             }
         });
     }
+
+    // Store in global
+    *HELPER_PANEL.lock().unwrap() = Some(panel);
 
     Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
 pub fn create_helper_window(app: AppHandle) -> Result<()> {
-    // Check if helper window already exists
+    // If already exists, toggle visibility
     if let Some(window) = app.get_webview_window("helper") {
-        // If it exists, close it (toggle behavior)
-        let _ = window.close();
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
         return Ok(());
     }
 
-    let width = 900.0; // 增加宽度以容纳更多内容
-    let height = 60.0;
+    let width = 900.0;
+    let height = 400.0;
 
-    // 获取主显示器信息以计算位置
     let monitor = app.primary_monitor().ok().flatten();
-
     let (screen_width, screen_height) = monitor
         .as_ref()
         .map(|m| {
@@ -322,39 +354,33 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         })
         .unwrap_or((1920.0, 1080.0));
 
-    // 窗口居中水平，垂直位置在屏幕中间靠上（1/3 处）
     let x = (screen_width - width) / 2.0;
     let y = screen_height / 3.0 - height / 2.0;
 
     use tauri::WebviewWindowBuilder;
 
-    let window_builder =
+    let window: WebviewWindow =
         WebviewWindowBuilder::new(&app, "helper", WebviewUrl::App("/helper".into()))
             .title("BibCiTeX Helper")
             .inner_size(width, height)
-            .min_inner_size(width, 60.0)
+            .min_inner_size(width, 70.0)
             .max_inner_size(width, 2000.0)
             .position(x, y)
             .decorations(false)
             .always_on_top(true)
             .resizable(true)
             .skip_taskbar(true)
-            .shadow(true);
-
-    let window: WebviewWindow = window_builder
-        .build()
-        .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
-
-    // 跨平台圆角效果通过 CSS 实现
-    // 无装饰窗口 + CSS 圆角 = 视觉上的圆角窗口
+            .shadow(true)
+            .build()
+            .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
 
     let _ = window.set_focus();
 
-    // Close window when it loses focus
+    // Hide (not close) when it loses focus
     let window_clone = window.clone();
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Focused(false) = event {
-            let _ = window_clone.close();
+            let _ = window_clone.hide();
         }
     });
 
@@ -364,71 +390,36 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
 // Resize helper window
 #[tauri::command]
 pub fn resize_helper_window(app: AppHandle, height: f64) -> Result<()> {
-    println!("DEBUG: resize_helper_window request: {}", height);
     let new_height = height.clamp(70.0, 2000.0);
 
     #[cfg(target_os = "macos")]
     {
-        let window_opt = if let Ok(panel) = app.get_webview_panel("helper") {
-            if let Some(w) = panel.to_window() {
-                Some(w)
-            } else {
-                println!("DEBUG: Panel found but to_window() returned None");
-                None
-            }
-        } else {
-            println!("DEBUG: get_webview_panel(\"helper\") failed/not found");
-            None
-        };
-
-        let window = window_opt.or_else(|| {
-            println!("DEBUG: Attempting fallback to get_webview_window(\"helper\")");
-            app.get_webview_window("helper")
-        });
-
-        if let Some(window) = window {
-            let target_size = tauri::Size::Logical(tauri::LogicalSize {
+        if let Some(window) = app.get_webview_window("helper") {
+            let size = tauri::Size::Logical(tauri::LogicalSize {
                 width: 900.0,
                 height: new_height,
             });
-
-            println!(
-                "DEBUG: Force resizing macOS window to height: {}",
-                new_height
-            );
-
-            // Force resize by locking min/max constraints to the exact target size
-            // This forces the OS to comply immediately
-            let _ = window.set_min_size(Some(target_size));
-            let _ = window.set_max_size(Some(target_size));
-
-            match window.set_size(target_size) {
-                Ok(_) => println!("DEBUG: set_size success: {}", new_height),
-                Err(e) => println!("DEBUG: set_size failed: {}", e),
-            }
-
-            // Re-apply a slightly larger max size afterwards if we wanted manual resizing,
-            // but for a helper window, locking it to content size is actually better UI.
-            // So we leave it locked at the current content height.
-        } else {
-            println!("DEBUG: CRITICAL - Could not find helper window via Panel OR Window manager");
+            let min = tauri::Size::Logical(tauri::LogicalSize {
+                width: 900.0,
+                height: 70.0,
+            });
+            let max = tauri::Size::Logical(tauri::LogicalSize {
+                width: 900.0,
+                height: 2000.0,
+            });
+            let _ = window.set_min_size(Some(min));
+            let _ = window.set_max_size(Some(max));
+            let _ = window.set_size(size);
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
         if let Some(window) = app.get_webview_window("helper") {
-            let _ = window.set_resizable(true);
-            let _ = window.set_max_size(Some(tauri::Size::Logical(tauri::LogicalSize {
-                width: 900.0,
-                height: 2000.0,
-            })));
-            if let Err(e) = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
                 width: 900.0,
                 height: new_height,
-            })) {
-                println!("DEBUG: Non-macOS resize failed: {}", e);
-            }
+            }));
         }
     }
 
@@ -439,4 +430,22 @@ pub fn resize_helper_window(app: AppHandle, height: f64) -> Result<()> {
 #[tauri::command]
 pub fn open_helper_window(app: AppHandle) -> Result<()> {
     create_helper_window(app)
+}
+
+// Hide helper window (called from frontend for Esc key)
+#[tauri::command]
+pub fn hide_helper_window(_app: AppHandle) -> Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        hide_helper_panel();
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Some(window) = _app.get_webview_window("helper") {
+            let _ = window.hide();
+        }
+    }
+
+    Ok(())
 }

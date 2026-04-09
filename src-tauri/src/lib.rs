@@ -7,9 +7,6 @@ pub use error::{Error, Result};
 
 use tauri::Manager;
 
-#[cfg(target_os = "macos")]
-use tauri_nspanel::ManagerExt as NSPanelManagerExt;
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -27,16 +24,7 @@ pub fn run() {
                         if shortcut.key == tauri_plugin_global_shortcut::Code::KeyK {
                             #[cfg(target_os = "macos")]
                             {
-                                // On macOS, use nspanel
-                                if let Ok(panel) = app.get_webview_panel("helper") {
-                                    if panel.is_visible() {
-                                        panel.hide();
-                                    } else {
-                                        panel.show();
-                                    }
-                                } else {
-                                    let _ = commands::create_helper_window(app.clone());
-                                }
+                                commands::toggle_helper_panel(app);
                             }
                             #[cfg(not(target_os = "macos"))]
                             {
@@ -106,15 +94,7 @@ pub fn run() {
                         "helper" => {
                             #[cfg(target_os = "macos")]
                             {
-                                if let Ok(panel) = app.get_webview_panel("helper") {
-                                    if panel.is_visible() {
-                                        panel.hide();
-                                    } else {
-                                        panel.show();
-                                    }
-                                } else {
-                                    let _ = commands::create_helper_window(app.clone());
-                                }
+                                commands::toggle_helper_panel(app);
                             }
                             #[cfg(not(target_os = "macos"))]
                             {
@@ -198,6 +178,7 @@ pub fn run() {
             commands::install_update,
             commands::resize_helper_window,
             commands::open_helper_window,
+            commands::hide_helper_window,
             commands::get_helper_bib,
             commands::set_helper_bib,
         ])

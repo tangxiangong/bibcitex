@@ -98,6 +98,10 @@ export async function openHelperWindow(): Promise<void> {
   return await invoke("open_helper_window");
 }
 
+export async function hideHelperWindow(): Promise<void> {
+  return await invoke("hide_helper_window");
+}
+
 // Helper bib persistence (stored in Rust memory)
 export async function getHelperBib(): Promise<[string, string] | null> {
   return await invoke<[string, string] | null>("get_helper_bib");

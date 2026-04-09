@@ -211,10 +211,11 @@ body,
   overflow: hidden !important;
 }
 
-/* Prevent horizontal overflow for all elements */
-* {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
+/* Global box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 /* Specific fixes for drawer and content areas */

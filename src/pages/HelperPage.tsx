@@ -1,8 +1,8 @@
 import { createEffect, createSignal, For, onCleanup, onMount, Show, Switch, Match } from "solid-js";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   copyToClipboard,
   getHelperBib,
+  hideHelperWindow,
   loadBibliography,
   loadSettings,
   pasteToApp,
@@ -15,7 +15,7 @@ import ChunksComp from "@/components/ChunksComp.tsx";
 import { TRANSPARENT_LOGO } from "@/constants/icons.ts";
 
 const MIN_HEIGHT = 70;
-const MAX_HEIGHT = 2000;
+const MAX_CONTENT_HEIGHT = 480; // max height for scrollable content area
 
 interface BibInfo {
   name: string;
@@ -42,31 +42,34 @@ function HelperPage() {
 
   let inputRef: HTMLInputElement | undefined;
   let containerRef: HTMLDivElement | undefined;
+  let contentRef: HTMLDivElement | undefined;
   let searchTimeoutRef: ReturnType<typeof setTimeout> | null = null;
   let lastHeight = MIN_HEIGHT;
+  let resizeRafId: number | null = null;
 
-  const updateWindowHeight = async () => {
-    await new Promise((resolve) => setTimeout(resolve, 10));
+  const HEADER_HEIGHT = 64; // h-16 = 64px
 
-    if (!containerRef) return;
+  const measureContentHeight = (): number => {
+    if (!contentRef) return MIN_HEIGHT;
 
-    let totalHeight = MIN_HEIGHT;
-    const scrollable = containerRef.querySelector('.overflow-y-auto');
-    if (scrollable) {
-      totalHeight = 64 + scrollable.scrollHeight + 20;
-    } else {
-      totalHeight = containerRef.scrollHeight;
+    const contentChildren = contentRef.children;
+    if (contentChildren.length === 0) return HEADER_HEIGHT;
+
+    // Sum the natural height of content children
+    let contentHeight = 0;
+    for (let i = 0; i < contentChildren.length; i++) {
+      const child = contentChildren[i] as HTMLElement;
+      contentHeight += child.scrollHeight;
     }
 
-    const screenMax = typeof window !== "undefined" ? window.screen.availHeight * 0.9 : MAX_HEIGHT;
-    const effectiveMax = Math.min(MAX_HEIGHT, screenMax);
+    // Cap content area so it scrolls instead of growing forever
+    const cappedContent = Math.min(contentHeight, MAX_CONTENT_HEIGHT);
+    return HEADER_HEIGHT + cappedContent;
+  };
 
-    const finalHeight = Math.min(
-      Math.max(totalHeight, MIN_HEIGHT),
-      effectiveMax,
-    );
-
-    if (Math.abs(finalHeight - lastHeight) > 2) {
+  const doResize = async () => {
+    const finalHeight = Math.max(measureContentHeight(), MIN_HEIGHT);
+    if (finalHeight !== lastHeight) {
       lastHeight = finalHeight;
       try {
         await resizeHelperWindow(finalHeight);
@@ -76,6 +79,17 @@ function HelperPage() {
     }
   };
 
+  const updateWindowHeight = () => {
+    if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
+    // Double rAF: first rAF waits for SolidJS to flush DOM, second waits for layout
+    resizeRafId = requestAnimationFrame(() => {
+      resizeRafId = requestAnimationFrame(() => {
+        resizeRafId = null;
+        doResize();
+      });
+    });
+  };
+
   const doSearch = (q: string) => {
     if (searchTimeoutRef) clearTimeout(searchTimeoutRef);
 
@@ -83,7 +97,7 @@ function HelperPage() {
     if (!bib || q.trim() === "") {
       setResults([]);
       setSelectedIndex(null);
-      setTimeout(updateWindowHeight, 50);
+      updateWindowHeight();
       return;
     }
 
@@ -92,7 +106,7 @@ function HelperPage() {
         const r = await searchReferences(bib.refs, q);
         setResults(r);
         setSelectedIndex(r.length > 0 ? 0 : null);
-        setTimeout(updateWindowHeight, 50);
+        updateWindowHeight();
       } catch (e) {
         console.error("Search failed:", e);
         setResults([]);
@@ -119,8 +133,8 @@ function HelperPage() {
       setErrorMessage(null);
 
       await setHelperBib(name, path);
-      setTimeout(updateWindowHeight, 100);
-      setTimeout(() => inputRef?.focus(), 150);
+      updateWindowHeight();
+      setTimeout(() => inputRef?.focus(), 50);
     } catch (e) {
       setErrorMessage(`加载失败: ${e}`);
     }
@@ -159,8 +173,7 @@ function HelperPage() {
     try {
       await copyToClipboard(ref.cite_key);
       await pasteToApp(ref.cite_key);
-      const window = getCurrentWindow();
-      await window.hide();
+      await hideHelperWindow();
     } catch (e) {
       console.error("Paste failed:", e);
     }
@@ -171,8 +184,7 @@ function HelperPage() {
       e.preventDefault();
       e.stopPropagation();
       try {
-        const win = getCurrentWindow();
-        await win.hide();
+        await hideHelperWindow();
       } catch (err) {
         console.error("Failed to hide window:", err);
       }
@@ -238,10 +250,8 @@ function HelperPage() {
     setResults([]);
     setSelectedIndex(null);
     setErrorMessage(null);
-    setTimeout(() => {
-      inputRef?.focus();
-      updateWindowHeight();
-    }, 100);
+    setTimeout(() => inputRef?.focus(), 50);
+    updateWindowHeight();
   };
 
   // Load bibs on mount
@@ -271,7 +281,6 @@ function HelperPage() {
 
       setBibs(loadedBibs);
 
-      await new Promise((resolve) => setTimeout(resolve, 0));
       updateWindowHeight();
 
       const storedBib = await getHelperBib();
@@ -304,20 +313,24 @@ function HelperPage() {
     document.documentElement.style.background = "";
     document.body.style.background = "";
     if (searchTimeoutRef) clearTimeout(searchTimeoutRef);
+    if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
   });
 
-  // Resize on content changes
+  // Resize on content changes via MutationObserver
+  onMount(() => {
+    if (!contentRef) return;
+    const observer = new MutationObserver(() => updateWindowHeight());
+    observer.observe(contentRef, { childList: true, subtree: true, characterData: true });
+    onCleanup(() => observer.disconnect());
+  });
+
+  // Also trigger resize when reactive state changes
   createEffect(() => {
-    // Track reactive dependencies
     results().length;
     bibs().length;
     isSelectingBib();
-    setTimeout(updateWindowHeight, 100);
-  });
-
-  createEffect(() => {
     errorMessage();
-    setTimeout(updateWindowHeight, 50);
+    updateWindowHeight();
   });
 
   const getEntryTypeLabel = (type_: EntryType): string => {
@@ -454,7 +467,7 @@ function HelperPage() {
         </div>
       </div>
 
-      <div class="w-full max-w-full overflow-hidden box-border">
+      <div ref={contentRef} class="w-full max-w-full overflow-hidden box-border">
         <Switch>
           {/* Selecting bib - no bibs */}
           <Match when={isSelectingBib() && bibs().length === 0}>
@@ -468,6 +481,7 @@ function HelperPage() {
             <div class="flex flex-col h-full w-full max-w-full overflow-hidden box-border">
               <div
                 class="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 scroll-smooth w-full max-w-full box-border custom-scrollbar"
+                style={`max-height: ${MAX_CONTENT_HEIGHT}px`}
               >
                 <For each={bibs()}>
                   {(bib, i) => (
@@ -574,6 +588,7 @@ function HelperPage() {
           <Match when={!isSelectingBib() && results().length > 0}>
             <div
               class="overflow-y-auto overflow-x-hidden p-2 space-y-2 w-full max-w-full box-border custom-scrollbar"
+              style={`max-height: ${MAX_CONTENT_HEIGHT}px`}
             >
               <For each={results()}>
                 {(ref, i) => (

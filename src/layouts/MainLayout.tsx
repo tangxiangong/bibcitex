@@ -4,7 +4,7 @@ import Drawer from "@components/Drawer";
 
 function MainLayout(props: RouteSectionProps) {
   return (
-    <div class="drawer drawer-end">
+    <div class="drawer drawer-end h-screen">
       <input id="my-drawer" type="checkbox" class="drawer-toggle" />
       <div class="drawer-content flex flex-col">
         <Nav />
