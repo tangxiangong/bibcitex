@@ -75,8 +75,9 @@ pub fn run() {
                 let quit = MenuItem::with_id(app, "quit", "退出 BibCiTeX", true, None::<&str>)?;
                 let helper = MenuItem::with_id(app, "helper", "快捷助手", true, None::<&str>)?;
                 let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
+                let check_update_tray = MenuItem::with_id(app, "check_update_tray", "检查更新", true, None::<&str>)?;
 
-                let tray_menu = Menu::with_items(app, &[&show, &helper, &quit])?;
+                let tray_menu = Menu::with_items(app, &[&show, &helper, &PredefinedMenuItem::separator(app)?, &check_update_tray, &PredefinedMenuItem::separator(app)?, &quit])?;
 
                 TrayIconBuilder::new()
                     .menu(&tray_menu)
@@ -99,6 +100,15 @@ pub fn run() {
                             #[cfg(not(target_os = "macos"))]
                             {
                                 let _ = commands::create_helper_window(app.clone());
+                            }
+                        }
+                        "check_update_tray" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            if app.emit_to("main", "check-update-trigger", ()).is_err() {
+                                let _ = app.emit("check-update-trigger", ());
                             }
                         }
                         _ => {}
@@ -174,8 +184,6 @@ pub fn run() {
             commands::select_bib_file,
             commands::open_url,
             commands::open_file,
-            commands::check_update,
-            commands::install_update,
             commands::resize_helper_window,
             commands::open_helper_window,
             commands::hide_helper_window,

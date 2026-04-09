@@ -1,1 +1,1 @@
-export { default as UpdaterModal } from "./UpdaterModal.tsx";
+export { default as UpdateBanner } from "./UpdateBanner.tsx";

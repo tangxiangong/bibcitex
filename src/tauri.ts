@@ -78,17 +78,6 @@ export async function openFile(path: string): Promise<void> {
   return await invoke("open_file", { path });
 }
 
-// Check for updates
-export async function checkUpdate(): Promise<
-  { available: boolean; version?: string; notes?: string }
-> {
-  return await invoke("check_update");
-}
-
-export async function installUpdate(): Promise<void> {
-  return await invoke("install_update");
-}
-
 // Helper window
 export async function resizeHelperWindow(height: number): Promise<void> {
   return await invoke("resize_helper_window", { height });

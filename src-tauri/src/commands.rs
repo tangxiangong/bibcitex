@@ -182,53 +182,6 @@ pub async fn open_file(app: AppHandle, path: String) -> Result<()> {
         .map_err(|e| Error::Tauri(e.to_string()))
 }
 
-// Update commands
-#[tauri::command]
-pub async fn check_update(app: AppHandle) -> Result<serde_json::Value> {
-    use tauri_plugin_updater::UpdaterExt;
-
-    match app.updater() {
-        Ok(updater) => match updater.check().await {
-            Ok(Some(update)) => Ok(serde_json::json!({
-                "available": true,
-                "version": update.version,
-                "notes": update.body
-            })),
-            Ok(None) => Ok(serde_json::json!({
-                "available": false
-            })),
-            Err(e) => Ok(serde_json::json!({
-                "available": false,
-                "error": e.to_string()
-            })),
-        },
-        Err(e) => Ok(serde_json::json!({
-            "available": false,
-            "error": e.to_string()
-        })),
-    }
-}
-
-#[tauri::command]
-pub async fn install_update(app: AppHandle) -> Result<()> {
-    use tauri_plugin_updater::UpdaterExt;
-
-    let updater = app.updater().map_err(|e| Error::Tauri(e.to_string()))?;
-
-    if let Some(update) = updater
-        .check()
-        .await
-        .map_err(|e| Error::Tauri(e.to_string()))?
-    {
-        update
-            .download_and_install(|_, _| {}, || {})
-            .await
-            .map_err(|e| Error::Tauri(e.to_string()))?;
-    }
-
-    Ok(())
-}
-
 // Helper window — macOS panel management via global static
 #[cfg(target_os = "macos")]
 pub fn toggle_helper_panel(app: &AppHandle) {

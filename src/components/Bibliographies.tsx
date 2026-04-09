@@ -258,8 +258,8 @@ function Bibliographies(props: BibliographiesProps) {
                         </div>
                       </div>
 
-                      {/* Actions overlay (visible on hover) */}
-                      <div class="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                      {/* Actions (visible on hover) */}
+                      <div class="flex justify-end gap-2 mt-4 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300">
                         <button
                           type="button"
                           class="btn btn-sm btn-circle btn-ghost text-error hover:bg-error/10 tooltip tooltip-left shadow-sm border border-transparent hover:border-error/20"
