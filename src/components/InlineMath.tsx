@@ -1,26 +1,26 @@
-import React, { useMemo } from "react";
+import { createMemo } from "solid-js";
 import katex from "katex";
 
 interface InlineMathProps {
   content: string;
 }
 
-function InlineMath({ content }: InlineMathProps) {
-  const html = useMemo(() => {
+function InlineMath(props: InlineMathProps) {
+  const html = createMemo(() => {
     try {
-      return katex.renderToString(content, {
+      return katex.renderToString(props.content, {
         output: "mathml",
         throwOnError: false,
       });
     } catch {
-      return content;
+      return props.content;
     }
-  }, [content]);
+  });
 
   return (
     <span
-      className="inline-math"
-      dangerouslySetInnerHTML={{ __html: html }}
+      class="inline-math"
+      innerHTML={html()}
     />
   );
 }

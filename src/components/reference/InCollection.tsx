@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { createSignal, For, Show } from "solid-js";
 import {
   COPY_ICON,
   DETAILS_ICON,
@@ -16,8 +16,8 @@ interface InCollectionProps {
 
 function InCollection({ entry }: InCollectionProps) {
   const { openDrawer } = useApp();
-  const [copied, setCopied] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(true);
+  const [copied, setCopied] = createSignal(false);
+  const [copySuccess, setCopySuccess] = createSignal(true);
 
   const key = entry.cite_key;
   const doiUrl = entry.doi ? `https://doi.org/${entry.doi}` : "";
@@ -58,70 +58,75 @@ function InCollection({ entry }: InCollectionProps) {
   };
 
   return (
-    <div className="card-modern card-shine group hover:-translate-y-1 transition-all duration-300 m-4 border-l-4 border-l-fuchsia-500">
-      <div className="card-body p-5">
+    <div class="card-modern card-shine group hover:-translate-y-1 transition-all duration-300 m-4 border-l-4 border-l-fuchsia-500">
+      <div class="card-body p-5">
         {/* Header: Type + Title + Actions */}
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="badge badge-secondary badge-soft badge-sm font-bold">
+        <div class="flex justify-between items-start gap-4">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="badge badge-secondary badge-soft badge-sm font-bold">
                 InCollection
               </span>
-              <span className="text-xs font-mono opacity-50 select-all">
+              <span class="text-xs font-mono opacity-50 select-all">
                 {key}
               </span>
             </div>
-            {entry.title
-              ? (
-                <h3 className="text-xl font-bold leading-snug gradient-text">
-                  <ChunksComp chunks={entry.title} citeKey={key} />
-                </h3>
-              )
-              : (
-                <span className="text-lg text-base-content/50 italic">
+            <Show
+              when={entry.title}
+              fallback={
+                <span class="text-lg text-base-content/50 italic">
                   No title available
                 </span>
-              )}
+              }
+            >
+              <h3 class="text-xl font-bold leading-snug gradient-text">
+                <ChunksComp chunks={entry.title} citeKey={key} />
+              </h3>
+            </Show>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button
               type="button"
-              className="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
+              class="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
               data-tip="Copy Key"
               onClick={handleCopyKey}
             >
-              {!copied
-                ? (
-                  <img
-                    width={18}
-                    src={COPY_ICON}
-                    alt="Copy"
-                    className="opacity-70"
-                  />
-                )
-                : copySuccess
-                ? (
-                  <img
-                    width={18}
-                    src={OK_ICON}
-                    alt="Success"
-                    className="text-success"
-                  />
-                )
-                : (
-                  <img
-                    width={18}
-                    src={ERROR_ICON}
-                    alt="Error"
-                    className="text-error"
-                  />
-                )}
+              <Show
+                when={!copied()}
+                fallback={
+                  <Show
+                    when={copySuccess()}
+                    fallback={
+                      <img
+                        width={18}
+                        src={ERROR_ICON}
+                        alt="Error"
+                        class="text-error"
+                      />
+                    }
+                  >
+                    <img
+                      width={18}
+                      src={OK_ICON}
+                      alt="Success"
+                      class="text-success"
+                    />
+                  </Show>
+                }
+              >
+                <img
+                  width={18}
+                  src={COPY_ICON}
+                  alt="Copy"
+                  class="opacity-70"
+                />
+              </Show>
             </button>
             <button
               type="button"
-              className="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
+              class="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
               data-tip="Details"
               onClick={handleOpenDrawer}
             >
@@ -129,90 +134,92 @@ function InCollection({ entry }: InCollectionProps) {
                 width={18}
                 src={DETAILS_ICON}
                 alt="Details"
-                className="opacity-70"
+                class="opacity-70"
               />
             </button>
           </div>
         </div>
 
         {/* Authors */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {entry.author && entry.author.length > 0
-            ? (
-              entry.author.map((author, idx) => (
-                <span
-                  key={idx}
-                  className="badge badge-ghost hover:badge-secondary transition-colors cursor-default bg-base-200/50"
-                >
-                  {author}
-                </span>
-              ))
-            )
-            : (
-              <span className="text-sm text-base-content/50 italic">
+        <div class="mt-3 flex flex-wrap gap-2">
+          <Show
+            when={entry.author && entry.author.length > 0}
+            fallback={
+              <span class="text-sm text-base-content/50 italic">
                 Unknown Author
               </span>
-            )}
+            }
+          >
+            <For each={entry.author}>
+              {(author) => (
+                <span class="badge badge-ghost hover:badge-secondary transition-colors cursor-default bg-base-200/50">
+                  {author}
+                </span>
+              )}
+            </For>
+          </Show>
         </div>
 
         {/* Metadata Row */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
-          {entry.book_title && (
-            <div className="flex items-center gap-1">
-              <span className="font-semibold text-primary">📘</span>
-              <span className="italic">
+        <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
+          <Show when={entry.book_title}>
+            <div class="flex items-center gap-1">
+              <span class="font-semibold text-primary">📘</span>
+              <span class="italic">
                 <ChunksComp
                   chunks={entry.book_title}
                   citeKey={`InCollection-BT-${key}`}
                 />
               </span>
             </div>
-          )}
-          {entry.publisher && entry.publisher.length > 0 && (
-            entry.publisher.map((publisher, idx) => (
-              <div key={idx} className="flex items-center gap-1">
-                <span className="font-semibold text-primary">🏢</span>
-                <span>{publisher}</span>
-              </div>
-            ))
-          )}
-          {entry.year && (
-            <div className="flex items-center gap-1">
-              <span className="font-semibold text-secondary">📅</span>
+          </Show>
+          <Show when={entry.publisher && entry.publisher.length > 0}>
+            <For each={entry.publisher}>
+              {(publisher) => (
+                <div class="flex items-center gap-1">
+                  <span class="font-semibold text-primary">🏢</span>
+                  <span>{publisher}</span>
+                </div>
+              )}
+            </For>
+          </Show>
+          <Show when={entry.year}>
+            <div class="flex items-center gap-1">
+              <span class="font-semibold text-secondary">📅</span>
               <span>{entry.year}</span>
             </div>
-          )}
+          </Show>
 
           {/* Links */}
-          <div className="flex-1"></div>
+          <div class="flex-1"></div>
 
-          {entry.doi && (
+          <Show when={entry.doi}>
             <button
               type="button"
-              className="btn btn-xs btn-ghost gap-1 hover:text-secondary"
+              class="btn btn-xs btn-ghost gap-1 hover:text-secondary"
               onClick={handleOpenDoi}
             >
               DOI
             </button>
-          )}
-          {entry.url && (
+          </Show>
+          <Show when={entry.url}>
             <button
               type="button"
-              className="btn btn-xs btn-ghost gap-1 hover:text-secondary"
+              class="btn btn-xs btn-ghost gap-1 hover:text-secondary"
               onClick={handleOpenUrl}
             >
               URL
             </button>
-          )}
-          {entry.file && (
+          </Show>
+          <Show when={entry.file}>
             <button
               type="button"
-              className="btn btn-xs btn-secondary btn-soft gap-1"
+              class="btn btn-xs btn-secondary btn-soft gap-1"
               onClick={handleOpenFile}
             >
               PDF
             </button>
-          )}
+          </Show>
         </div>
       </div>
     </div>

@@ -1,5 +1,4 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { A } from "@solidjs/router";
 import { openHelperWindow } from "../tauri.ts";
 import { TRANSPARENT_LOGO } from "../constants/icons.ts";
 
@@ -15,42 +14,42 @@ function Nav() {
   };
 
   return (
-    <div className="navbar bg-base-100/80 backdrop-blur-md border-b border-base-content/5 shrink-0 z-40 sticky top-0">
-      <div className="navbar-start pl-4">
-        <Link
-          to="/"
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+    <div class="navbar bg-base-100/80 backdrop-blur-md border-b border-base-content/5 shrink-0 z-40 sticky top-0">
+      <div class="navbar-start pl-4">
+        <A
+          href="/"
+          class="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
-          <div className="w-10 h-10 relative">
+          <div class="w-10 h-10 relative">
             <img
               src={TRANSPARENT_LOGO}
               alt="BibCiTeX Logo"
-              className="w-full h-full object-contain"
+              class="w-full h-full object-contain"
             />
           </div>
-          <span className="font-bold text-xl tracking-tight gradient-text hidden sm:block">
+          <span class="font-bold text-xl tracking-tight gradient-text hidden sm:block">
             BibCiTeX
           </span>
-        </Link>
+        </A>
       </div>
 
-      <div className="navbar-center"></div>
+      <div class="navbar-center"></div>
 
-      <div className="navbar-end pr-4">
+      <div class="navbar-end pr-4">
         <button
           type="button"
-          className="btn btn-ghost btn-sm gap-2 hover:bg-base-content/5 font-normal text-base-content/70"
+          class="btn btn-ghost btn-sm gap-2 hover:bg-base-content/5 font-normal text-base-content/70"
           onClick={handleOpenSpotlight}
         >
           <span>快捷助手</span>
-          <div className="hidden md:flex gap-1">
-            <kbd className="kbd kbd-sm font-mono bg-base-200 border-base-300">
+          <div class="hidden md:flex gap-1">
+            <kbd class="kbd kbd-sm font-mono bg-base-200 border-base-300">
               {CMD_CTRL}
             </kbd>
-            <kbd className="kbd kbd-sm font-mono bg-base-200 border-base-300">
+            <kbd class="kbd kbd-sm font-mono bg-base-200 border-base-300">
               shift
             </kbd>
-            <kbd className="kbd kbd-sm font-mono bg-base-200 border-base-300">
+            <kbd class="kbd kbd-sm font-mono bg-base-200 border-base-300">
               k
             </kbd>
           </div>

@@ -1,16 +1,15 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
+import type { RouteSectionProps } from "@solidjs/router";
 import Nav from "@components/Nav";
 import Drawer from "@components/Drawer";
 
-function MainLayout() {
+function MainLayout(props: RouteSectionProps) {
   return (
-    <div className="drawer drawer-end">
-      <input id="my-drawer" type="checkbox" className="drawer-toggle" />
-      <div className="drawer-content flex flex-col">
+    <div class="drawer drawer-end">
+      <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+      <div class="drawer-content flex flex-col">
         <Nav />
-        <main className="flex-1 overflow-hidden">
-          <Outlet />
+        <main class="flex-1 overflow-hidden">
+          {props.children}
         </main>
       </div>
       <Drawer />

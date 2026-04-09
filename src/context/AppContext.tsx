@@ -1,68 +1,69 @@
-import React, {
+import {
   createContext,
-  ReactNode,
-  useCallback,
+  createMemo,
+  createSignal,
+  type JSX,
   useContext,
-  useState,
-} from "react";
+} from "solid-js";
 import type { BibliographyInfo, Reference, Setting } from "../types.ts";
 
 interface AppContextType {
-  settings: Setting;
+  settings: () => Setting;
   setSettings: (settings: Setting) => void;
   updateSettings: (settings: Setting) => void;
 
-  currentReferences: Reference[] | null;
+  currentReferences: () => Reference[] | null;
   setCurrentReferences: (refs: Reference[] | null) => void;
 
-  drawerOpen: boolean;
-  drawerReference: Reference | null;
+  drawerOpen: () => boolean;
+  drawerReference: () => Reference | null;
   openDrawer: (reference: Reference) => void;
   closeDrawer: () => void;
 
-  currentBibName: string | null;
+  currentBibName: () => string | null;
   setCurrentBibName: (name: string | null) => void;
 
-  bibliographyList: Array<{ name: string } & BibliographyInfo>;
+  bibliographyList: () => Array<{ name: string } & BibliographyInfo>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<Setting>({
+export function AppProvider(props: { children: JSX.Element }) {
+  const [settings, setSettings] = createSignal<Setting>({
     bibliographies: {},
   });
 
-  const [currentReferences, setCurrentReferences] = useState<
+  const [currentReferences, setCurrentReferences] = createSignal<
     Reference[] | null
   >(null);
-  const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
-  const [drawerReference, setDrawerReference] = useState<Reference | null>(
+  const [drawerOpen, setDrawerOpen] = createSignal<boolean>(false);
+  const [drawerReference, setDrawerReference] = createSignal<Reference | null>(
     null,
   );
-  const [currentBibName, setCurrentBibName] = useState<string | null>(null);
+  const [currentBibName, setCurrentBibName] = createSignal<string | null>(null);
 
-  const openDrawer = useCallback((reference: Reference) => {
+  const openDrawer = (reference: Reference) => {
     setDrawerReference(reference);
     setDrawerOpen(true);
-  }, []);
+  };
 
-  const closeDrawer = useCallback(() => {
+  const closeDrawer = () => {
     setDrawerOpen(false);
     setDrawerReference(null);
-  }, []);
+  };
 
-  const updateSettings = useCallback((newSettings: Setting) => {
+  const updateSettings = (newSettings: Setting) => {
     setSettings(newSettings);
-  }, []);
+  };
 
-  // Derived bibliography list
-  const bibliographyList = Object.entries(settings.bibliographies).map((
-    [name, info],
-  ) => ({
-    name,
-    ...info,
-  }));
+  const bibliographyList = createMemo(() =>
+    Object.entries(settings().bibliographies).map(
+      ([name, info]) => ({
+        name,
+        ...info,
+      }),
+    )
+  );
 
   const value: AppContextType = {
     settings,
@@ -79,7 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     bibliographyList,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>{props.children}</AppContext.Provider>;
 }
 
 export function useApp() {

@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
@@ -15,7 +15,7 @@ declare const process: {
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [solid(), tailwindcss()],
 
   // Vite options tailored for Tauri development
   clearScreen: false,
@@ -43,7 +43,7 @@ export default defineConfig({
     // Tauri uses Chromium on Windows and WebKit on macOS and Linux
     target: process.env.TAURI_PLATFORM == "windows" ? "chrome105" : "safari14",
     // Don't minify for debug builds
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    minify: !process.env.TAURI_DEBUG ? "oxc" : false,
     // Produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
   },

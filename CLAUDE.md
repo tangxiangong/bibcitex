@@ -1,242 +1,136 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with code in this
-repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with
+code in this repository.
 
 ## Project Overview
 
-BibCiTeX is a cross-platform BibTeX citation management tool built with **Tauri
-v2**, **React 19**, and **Deno**. It provides a desktop application for
-researchers to manage, search, and quickly cite BibTeX references with global
-shortcuts and cross-application paste functionality.
+BibCiTeX is a cross-platform BibTeX citation management desktop app built with
+**Tauri v2** (Rust backend), **SolidJS** (frontend), and **Bun** (package
+manager). Researchers use it to manage, search, and quickly cite BibTeX
+references with global shortcuts (Cmd+Shift+K) and cross-application paste.
+
+## Development Commands
+
+```bash
+bun install           # Install dependencies
+bun run tauri:dev     # Start Tauri dev (frontend + backend)
+bun run dev           # Start Vite dev server only (frontend)
+bun run tauri:build   # Production build (Tauri)
+bun run build         # Production build (Vite only)
+bun run check         # TypeScript type check
+```
 
 ## Architecture
 
 ### Tech Stack
 
-- **Backend**: Tauri v2 (Rust)
-- **Frontend**: React 19 + React Router v7
-- **Package Manager**: Deno
-- **Styling**: TailwindCSS v4 + DaisyUI v5 (via Vite plugin, NO config files)
-- **Math Rendering**: KaTeX
+- **Backend**: Tauri v2 (Rust) — `src-tauri/`
+- **Frontend**: SolidJS + @solidjs/router — `src/`
+- **Build**: Vite 8 with `vite-plugin-solid` + `@tailwindcss/vite`
+- **Styling**: TailwindCSS v4 + DaisyUI v5
+- **Math**: KaTeX for LaTeX rendering in BibTeX fields
 
-### Project Structure
+### Frontend Architecture
 
-```
-bibcitex/
-├── src/                    # React frontend
-│   ├── main.tsx           # React app entry point
-│   ├── App.tsx            # Main app component with routing
-│   ├── app.css            # Global styles (TailwindCSS)
-│   ├── layouts/           # Layout components
-│   │   └── MainLayout.tsx # Main layout with drawer
-│   ├── pages/             # Page components
-│   │   ├── HomePage.tsx   # Bibliography management
-│   │   ├── DetailPage.tsx # Reference detail page
-│   │   └── HelperPage.tsx # Spotlight helper window
-│   └── lib/
-│       ├── components/    # React components
-│       ├── context/       # React context (global state)
-│       │   └── AppContext.tsx
-│       ├── types.ts       # TypeScript types
-│       └── tauri.ts       # Tauri IPC commands
-├── src-tauri/             # Tauri backend (Rust)
-│   ├── Cargo.toml
-│   ├── tauri.conf.json
-│   └── src/
-│       ├── main.rs        # Entry point
-│       ├── lib.rs         # App setup & plugins
-│       ├── commands.rs    # Tauri IPC commands
-│       ├── bib.rs         # BibTeX parsing
-│       ├── setting.rs     # Settings management
-│       ├── search.rs      # Reference search
-│       ├── xpaste.rs      # Cross-app paste
-│       └── error.rs       # Error handling
-├── index.html             # HTML template
-├── deno.json              # Deno configuration
-├── package.json           # NPM compatibility
-├── vite.config.ts         # Vite configuration
-├── tsconfig.json          # TypeScript configuration
-└── tailwind.config.js     # TailwindCSS configuration
-```
+**Entry**: `src/main.tsx` → `render()` from `solid-js/web`
 
-## Development Commands
+**Routing** (`src/App.tsx`): Uses `@solidjs/router` with nested routes:
+- `/` → `MainLayout` → `HomePage` (bibliography management)
+- `/detail` → `MainLayout` → `DetailPage` (reference list + search)
+- `/helper` → `HelperPage` (standalone spotlight search window)
 
-```bash
-# Install dependencies
-deno install
-
-# Start development server
-deno task dev
-
-# Build for production
-deno task build
-
-# Type check
-deno task check
-
-# Format code
-deno fmt
-
-# Lint code
-deno lint
-```
-
-## Key Features
-
-### Global State Management (src/lib/context/AppContext.tsx)
-
-React Context provides:
-
-- `settings`: Application settings and bibliography list
-- `currentReferences`: Currently loaded bibliography references
-- `drawerOpen`: Boolean for reference details drawer visibility
-- `drawerReference`: Currently selected reference for drawer display
-- `currentBibName`: Name of currently loaded bibliography
-- `updateSettings()`: Update settings
-- `openDrawer()`: Open drawer with a reference
-- `closeDrawer()`: Close drawer
-
-Usage:
+**State** (`src/context/AppContext.tsx`): SolidJS Context with signals. All
+context values are signal getters (functions):
 
 ```tsx
-import { useApp } from "@lib/context/AppContext";
-
-function MyComponent() {
-  const { settings, openDrawer, currentReferences } = useApp();
-  // ...
-}
+const { settings, currentReferences, drawerOpen } = useApp();
+// Access: settings(), currentReferences(), drawerOpen()
+// Functions like openDrawer, closeDrawer are plain functions (not signals)
 ```
 
-### Tauri Commands (src-tauri/src/commands.rs)
+**Tauri IPC** (`src/tauri.ts`): Framework-agnostic async wrappers around
+`invoke()`. These are plain functions, not tied to any UI framework.
 
-- Settings: `load_settings`, `save_settings`, `add_bibliography`,
-  `remove_bibliography`
-- Bibliography: `load_bibliography`, `parse_bib_file`
-- Search: `search_references`, `search_by_field`
-- Clipboard: `copy_to_clipboard`, `paste_to_app`
-- File: `select_bib_file`, `open_url`, `open_file`
-- Update: `check_update`, `install_update`
+**Component patterns**: Each bibliography entry type (Article, Book, Thesis,
+etc.) has three component variants:
+- `src/components/reference/` — Card display with copy/detail actions
+- `src/components/drawer/` — Full detail view in side drawer
+- `src/components/helper/` — Compact display for spotlight search
 
-### Tauri Plugins Used
+Selector components (`ReferenceSelector`, `ReferenceDrawer`, `HelperSelector`)
+dispatch to the correct variant via `switch` on `entry.type_`.
 
-- `tauri-plugin-clipboard-manager`: Clipboard access
-- `tauri-plugin-dialog`: File dialogs
-- `tauri-plugin-fs`: File system access
-- `tauri-plugin-global-shortcut`: Global keyboard shortcuts (Cmd+Shift+K)
-- `tauri-plugin-opener`: Open URLs and files
-- `tauri-plugin-process`: Process management
-- `tauri-plugin-updater`: Auto-update functionality
+### Backend Architecture (`src-tauri/`)
 
-### Platform-Specific Features
+- `lib.rs` — App setup: plugins, global shortcut, system tray, menus
+- `commands.rs` — All 18 IPC command handlers
+- `core/bib.rs` — `Reference` struct and BibTeX parsing (via `biblatex` crate)
+- `core/setting.rs` — Settings persistence (`~/.config/BibCiTeX/setting.json`)
+- `core/search.rs` — Parallel search with Rayon for large datasets
+- `xpaste/` — Platform-specific cross-app paste (macOS: objc2, Windows: Win32)
 
-- **macOS**: Global shortcuts, system tray, cross-app paste via AppleScript
-- **Windows**: Global shortcuts, system tray, cross-app paste via Win32 API
-- **Cross-platform**: Clipboard access, file dialogs, system notifications
+### Two-Window Architecture
 
-## Supported Bibliography Types
+The app has two windows:
+1. **Main window** (1200×800) — Full bibliography management UI
+2. **Helper window** (spotlight) — Floating search panel triggered by global
+   shortcut, dynamically resizes based on content. macOS uses NSPanel (via
+   `tauri-nspanel`); Windows uses always-on-top undecorated window.
 
-- Article ✓
-- Book ✓
-- Thesis (MastersThesis, PhdThesis) ✓
-- Booklet ✓
-- InBook ✓
-- InCollection ✓
-- Misc ✓
-- TechReport ✓
-- InProceedings ✓
-- Manual (WIP)
-- Proceedings (WIP)
-- Unpublished (WIP)
+## SolidJS Conventions
 
-## Migration from Svelte to React
+This project uses SolidJS (not React). Key differences:
 
-This project was migrated from Svelte 5 to React 19:
-
-### Key Changes
-
-1. **State Management**: Svelte stores → React Context API
-2. **Routing**: SvelteKit → React Router v7
-3. **Reactivity**: Svelte's `$state`, `$derived` → React's `useState`, `useMemo`
-4. **Components**: `.svelte` files → `.tsx` files
-5. **Build**: SvelteKit adapter → Standard Vite + React
-
-### Component Patterns
-
-**Svelte Pattern:**
-
-```svelte
-<script lang="ts">
-  let count = $state(0);
-  let doubled = $derived(count * 2);
-</script>
-```
-
-**React Pattern:**
-
-```tsx
-import React, { useMemo, useState } from "react";
-
-function Component() {
-  const [count, setCount] = useState(0);
-  const doubled = useMemo(() => count * 2, [count]);
-}
-```
-
-### Tauri Integration
-
-The Tauri backend and IPC layer remain unchanged. All Tauri commands in
-`src/lib/tauri.ts` work exactly the same way in React as they did in Svelte.
-
-## Development Notes
-
-- Use path aliases: `@/`, `@lib/`, `@components/` for cleaner imports
-- All Tauri commands are async and return Promises
-- DaisyUI provides pre-built components that work with TailwindCSS
-- KaTeX is used for rendering mathematical formulas in BibTeX fields
+- **Signals**: `createSignal`, `createMemo`, `createEffect` — values are getter
+  functions that must be called: `count()` not `count`
+- **Control flow**: `<Show>`, `<For>`, `<Switch>`/`<Match>` components instead
+  of ternaries and `.map()`
+- **Props**: Do NOT destructure reactive props — use `props.x`. Destructuring
+  in leaf components receiving static data from `<For>` is safe.
+- **Refs**: Plain `let ref: HTMLElement | undefined` instead of `useRef`
+- **Lifecycle**: `onMount`, `onCleanup` instead of `useEffect`
+- **Router**: `<A href="/">` (not `<Link to="/">`), `props.children` (not
+  `<Outlet/>`)
+- **HTML**: Use `class` (not `className`), `innerHTML` (not
+  `dangerouslySetInnerHTML`), `for` (not `htmlFor`)
 
 ## TailwindCSS v4 Configuration
 
-**IMPORTANT**: This project uses TailwindCSS v4 with the new Vite plugin
-approach.
+**IMPORTANT**: TailwindCSS v4 uses the Vite plugin approach. There are NO
+config files.
 
-### ✅ Correct Setup (Current)
+- Config lives in `src/app.css` via `@import "tailwindcss"` and
+  `@plugin "daisyui"`
+- **DO NOT** create `tailwind.config.js`, `postcss.config.js`, or any PostCSS
+  config
+- The Vite plugin (`@tailwindcss/vite`) handles everything
+- DaisyUI themes: `winter` (default light), `dracula` (dark)
 
-1. **Vite Plugin** - `vite.config.ts`:
-   ```ts
-   import tailwindcss from "@tailwindcss/vite";
+## Path Aliases
 
-   export default defineConfig({
-     plugins: [react(), tailwindcss()],
-   });
-   ```
+- `@/` → `src/`
+- `@components/` → `src/components/`
+- `@context/` → `src/context/`
 
-2. **CSS Import** - `src/app.css`:
-   ```css
-   @import "tailwindcss";
-   @plugin "daisyui" {
-     themes: winter --default, dracula --prefersdark;
-   }
-   ```
+Configured in both `vite.config.ts` (resolve.alias) and `tsconfig.json` (paths).
 
-3. **Dependencies** - `package.json`:
-   ```json
-   {
-     "dependencies": {
-       "@tailwindcss/vite": "^4.1.18",
-       "tailwindcss": "^4.1.18",
-       "daisyui": "^5.5.14"
-     }
-   }
-   ```
+## Tauri Commands
 
-### ❌ DO NOT Create These Files
+All frontend-callable commands (defined in `src-tauri/src/commands.rs`):
 
-- `tailwind.config.js` - NOT used in v4
-- `postcss.config.js` - NOT used in v4
-- Any PostCSS configuration
+- **Settings**: `load_settings`, `save_settings`, `add_bibliography`,
+  `remove_bibliography`
+- **Bibliography**: `load_bibliography`, `parse_bib_file`
+- **Search**: `search_references`, `search_by_field`
+- **Clipboard**: `copy_to_clipboard`, `paste_to_app`
+- **File**: `select_bib_file`, `open_url`, `open_file`
+- **Update**: `check_update`, `install_update`
+- **Helper**: `resize_helper_window`, `open_helper_window`, `get_helper_bib`,
+  `set_helper_bib`
 
-TailwindCSS v4 uses CSS-based configuration via `@import` and `@plugin`
-directives in your CSS file, processed by the Vite plugin. All configuration
-(themes, custom utilities, plugins) should be defined in `src/app.css` using the
-new v4 syntax.
+## Supported Bibliography Types
+
+Article, Book, Thesis (Masters/PhD), Booklet, InBook, InCollection, Misc,
+TechReport, InProceedings — all supported. Manual, Proceedings, Unpublished are
+WIP.

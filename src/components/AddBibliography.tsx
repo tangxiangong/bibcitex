@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { createMemo, createSignal, Show } from "solid-js";
 import { useApp } from "../context/AppContext.tsx";
 import { addBibliography, loadSettings, selectBibFile } from "../tauri.ts";
 import { CANCEL_ICON, ERROR_ICON, OK_ICON } from "../constants/icons.ts";
@@ -8,26 +8,23 @@ interface AddBibliographyProps {
   onClose: () => void;
 }
 
-function AddBibliography({ show, onClose }: AddBibliographyProps) {
+function AddBibliography(props: AddBibliographyProps) {
   const { settings, updateSettings } = useApp();
-  const [name, setName] = useState("");
-  const [path, setPath] = useState<string | null>(null);
-  const [description, setDescription] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [name, setName] = createSignal("");
+  const [path, setPath] = createSignal<string | null>(null);
+  const [description, setDescription] = createSignal("");
+  const [errorMessage, setErrorMessage] = createSignal<string | null>(null);
 
-  const existNames = useMemo(
-    () => Object.keys(settings.bibliographies),
-    [settings.bibliographies],
+  const existNames = createMemo(() =>
+    Object.keys(settings().bibliographies)
   );
 
-  const nameIsValid = useMemo(
-    () => name.trim() !== "" && !existNames.includes(name),
-    [name, existNames],
+  const nameIsValid = createMemo(() =>
+    name().trim() !== "" && !existNames().includes(name())
   );
 
-  const saveAvailable = useMemo(
-    () => path !== null && nameIsValid,
-    [path, nameIsValid],
+  const saveAvailable = createMemo(() =>
+    path() !== null && nameIsValid()
   );
 
   const handleSelectFile = async () => {
@@ -43,10 +40,10 @@ function AddBibliography({ show, onClose }: AddBibliographyProps) {
   };
 
   const handleSave = async () => {
-    if (!path || !nameIsValid) return;
+    if (!path() || !nameIsValid()) return;
 
     try {
-      await addBibliography(name, path, description || undefined);
+      await addBibliography(name(), path()!, description() || undefined);
       const loadedSettings = await loadSettings();
       updateSettings(loadedSettings);
       handleClose();
@@ -55,13 +52,13 @@ function AddBibliography({ show, onClose }: AddBibliographyProps) {
     }
   };
 
-  const handleClose = useCallback(() => {
-    onClose();
+  const handleClose = () => {
+    props.onClose();
     setName("");
     setPath(null);
     setDescription("");
     setErrorMessage(null);
-  }, [onClose]);
+  };
 
   const abbrPath = (p: string, maxLen: number = 40): string => {
     if (p.length <= maxLen) return p;
@@ -70,126 +67,127 @@ function AddBibliography({ show, onClose }: AddBibliographyProps) {
     return parts[0] + "/.../" + parts.slice(-2).join("/");
   };
 
-  if (!show) return null;
-
   return (
-    <div className="modal modal-open backdrop-blur-sm">
-      <div className="modal-box w-1/2 max-w-2xl glass-panel shadow-2xl">
-        <h3 className="text-2xl font-bold mb-6 gradient-text">新增文献库</h3>
+    <Show when={props.show}>
+      <div class="modal modal-open backdrop-blur-sm">
+        <div class="modal-box w-1/2 max-w-2xl glass-panel shadow-2xl">
+          <h3 class="text-2xl font-bold mb-6 gradient-text">新增文献库</h3>
 
-        {/* Name Input */}
-        <div className="form-control w-full mb-4">
-          <label className="label" htmlFor="bib-name">
-            <span className="label-text font-medium">文献库名称</span>
-          </label>
-          <label className="input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors">
-            <input
-              id="bib-name"
-              className="grow"
-              type="text"
-              placeholder="输入名称"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            {name.trim() !== "" && (
-              nameIsValid
-                ? (
+          {/* Name Input */}
+          <div class="form-control w-full mb-4">
+            <label class="label" for="bib-name">
+              <span class="label-text font-medium">文献库名称</span>
+            </label>
+            <label class="input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors">
+              <input
+                id="bib-name"
+                class="grow"
+                type="text"
+                placeholder="输入名称"
+                value={name()}
+                onInput={(e) => setName(e.currentTarget.value)}
+              />
+              <Show when={name().trim() !== ""}>
+                <Show
+                  when={nameIsValid()}
+                  fallback={
+                    <img
+                      src={CANCEL_ICON}
+                      alt="Invalid"
+                      class="h-5 w-5 text-error"
+                    />
+                  }
+                >
                   <img
                     src={OK_ICON}
                     alt="Valid"
-                    className="h-5 w-5 text-success"
+                    class="h-5 w-5 text-success"
                   />
-                )
-                : (
-                  <img
-                    src={CANCEL_ICON}
-                    alt="Invalid"
-                    className="h-5 w-5 text-error"
-                  />
-                )
-            )}
-          </label>
-          {name.trim() !== "" && !nameIsValid && (
-            <div className="label">
-              <span className="label-text-alt text-error">名称已存在</span>
-            </div>
-          )}
-        </div>
+                </Show>
+              </Show>
+            </label>
+            <Show when={name().trim() !== "" && !nameIsValid()}>
+              <div class="label">
+                <span class="label-text-alt text-error">名称已存在</span>
+              </div>
+            </Show>
+          </div>
 
-        {/* File Path */}
-        <div className="form-control w-full mb-4">
-          <label className="label" htmlFor="bib-path">
-            <span className="label-text font-medium">文件路径</span>
-          </label>
-          <div className="join w-full">
-            <input
-              id="bib-path"
-              className="input input-bordered join-item grow focus:outline-none cursor-default bg-base-200/50"
-              type="text"
-              readOnly
-              value={path ? abbrPath(path) : "请选择 .bib 文件"}
-              title={path || ""}
+          {/* File Path */}
+          <div class="form-control w-full mb-4">
+            <label class="label" for="bib-path">
+              <span class="label-text font-medium">文件路径</span>
+            </label>
+            <div class="join w-full">
+              <input
+                id="bib-path"
+                class="input input-bordered join-item grow focus:outline-none cursor-default bg-base-200/50"
+                type="text"
+                readOnly
+                value={path() ? abbrPath(path()!) : "请选择 .bib 文件"}
+                title={path() || ""}
+              />
+              <button
+                type="button"
+                class="btn btn-primary join-item"
+                onClick={handleSelectFile}
+              >
+                选择文件
+              </button>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div class="form-control w-full mb-6">
+            <label class="label" for="bib-desc">
+              <span class="label-text font-medium">描述（可选）</span>
+            </label>
+            <textarea
+              id="bib-desc"
+              class="textarea textarea-bordered"
+              placeholder="添加描述..."
+              value={description()}
+              onInput={(e) => setDescription(e.currentTarget.value)}
             />
+          </div>
+
+          {/* Error Message */}
+          <Show when={errorMessage()}>
+            <div class="alert alert-error mb-4">
+              <img
+                src={ERROR_ICON}
+                alt="Error"
+                class="h-5 w-5"
+              />
+              <span>{errorMessage()}</span>
+            </div>
+          </Show>
+
+          {/* Actions */}
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" onClick={handleClose}>
+              取消
+            </button>
             <button
               type="button"
-              className="btn btn-primary join-item"
-              onClick={handleSelectFile}
+              class="btn btn-primary"
+              disabled={!saveAvailable()}
+              onClick={handleSave}
             >
-              选择文件
+              保存
             </button>
           </div>
         </div>
-
-        {/* Description */}
-        <div className="form-control w-full mb-6">
-          <label className="label" htmlFor="bib-desc">
-            <span className="label-text font-medium">描述（可选）</span>
-          </label>
-          <textarea
-            id="bib-desc"
-            className="textarea textarea-bordered"
-            placeholder="添加描述..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        {/* Error Message */}
-        {errorMessage && (
-          <div className="alert alert-error mb-4">
-            <img
-              src={ERROR_ICON}
-              alt="Error"
-              className="h-5 w-5"
-            />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="modal-action">
-          <button type="button" className="btn btn-ghost" onClick={handleClose}>
-            取消
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!saveAvailable}
-            onClick={handleSave}
-          >
-            保存
-          </button>
-        </div>
+        <div
+          class="modal-backdrop"
+          onClick={handleClose}
+          role="button"
+          tabIndex={-1}
+          aria-label="Close modal"
+          onKeyDown={(e) => e.key === "Escape" && handleClose()}
+        />
       </div>
-      <div
-        className="modal-backdrop"
-        onClick={handleClose}
-        role="button"
-        tabIndex={-1}
-        aria-label="Close modal"
-        onKeyDown={(e) => e.key === "Escape" && handleClose()}
-      />
-    </div>
+    </Show>
   );
 }
 

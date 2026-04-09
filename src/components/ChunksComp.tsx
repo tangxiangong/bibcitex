@@ -1,4 +1,4 @@
-import React from "react";
+import { For } from "solid-js";
 import type { Chunk } from "../types.ts";
 import InlineMath from "./InlineMath.tsx";
 
@@ -7,22 +7,21 @@ interface ChunksCompProps {
   citeKey: string;
 }
 
-function ChunksComp({ chunks = [], citeKey }: ChunksCompProps) {
+function ChunksComp(props: ChunksCompProps) {
   return (
     <>
-      {chunks.map((chunk, i) => {
-        const key = `${citeKey}-${i}`;
-
-        if ("Normal" in chunk) {
-          return <span key={key}>{chunk.Normal}</span>;
-        } else if ("Verbatim" in chunk) {
-          return <span key={key}>{chunk.Verbatim}</span>;
-        } else if ("Math" in chunk) {
-          return <InlineMath key={key} content={chunk.Math} />;
-        }
-
-        return null;
-      })}
+      <For each={props.chunks || []}>
+        {(chunk) => {
+          if ("Normal" in chunk) {
+            return <span>{chunk.Normal}</span>;
+          } else if ("Verbatim" in chunk) {
+            return <span>{chunk.Verbatim}</span>;
+          } else if ("Math" in chunk) {
+            return <InlineMath content={chunk.Math} />;
+          }
+          return null;
+        }}
+      </For>
     </>
   );
 }

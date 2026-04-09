@@ -17,3 +17,5 @@ src-tauri/target/
 build/
 
 src-tauri/gen/
+
+dist/

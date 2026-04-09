@@ -1,4 +1,4 @@
-import React from "react";
+import { For, Show } from "solid-js";
 import type { Reference } from "../../types.ts";
 import ChunksComp from "../ChunksComp.tsx";
 import { openFile, openUrl } from "../../tauri.ts";
@@ -34,7 +34,7 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
     <div className="space-y-2">
       {/* Info Section */}
       <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
-        <input type="checkbox" defaultChecked />
+        <input type="checkbox" checked />
         <div className="collapse-title font-medium">Info</div>
         <div className="collapse-content">
           <table className="table table-sm">
@@ -50,31 +50,32 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
               <tr>
                 <td className="text-right opacity-70 font-semibold">Title</td>
                 <td>
-                  {entry.title
-                    ? (
-                      <ChunksComp
-                        chunks={entry.title}
-                        citeKey={`BookletDrawer-${key}`}
-                      />
-                    )
-                    : ""}
+                  <Show when={entry.title} fallback={""}>
+                    <ChunksComp
+                      chunks={entry.title}
+                      citeKey={`BookletDrawer-${key}`}
+                    />
+                  </Show>
                 </td>
               </tr>
-              {entry.author && entry.author.length > 0
-                ? (
-                  entry.author.map((author, idx) => (
-                    <tr key={idx}>
-                      <td className="text-right">Author</td>
-                      <td>{author}</td>
-                    </tr>
-                  ))
-                )
-                : (
+              <Show
+                when={entry.author && entry.author.length > 0}
+                fallback={
                   <tr>
                     <td className="text-right">Author</td>
                     <td></td>
                   </tr>
-                )}
+                }
+              >
+                <For each={entry.author}>
+                  {(author, idx) => (
+                    <tr>
+                      <td className="text-right">Author</td>
+                      <td>{author}</td>
+                    </tr>
+                  )}
+                </For>
+              </Show>
               <tr>
                 <td className="text-right">Series</td>
                 <td>{entry.series || ""}</td>
@@ -83,14 +84,16 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
                 <td className="text-right">How Published</td>
                 <td>{entry.how_published || ""}</td>
               </tr>
-              {entry.editor && entry.editor.length > 0 && (
-                entry.editor.map(([editor, type_], idx) => (
-                  <tr key={idx}>
-                    <td className="text-right">{type_}</td>
-                    <td>{editor}</td>
-                  </tr>
-                ))
-              )}
+              <Show when={entry.editor && entry.editor.length > 0}>
+                <For each={entry.editor}>
+                  {([editor, type_], idx) => (
+                    <tr>
+                      <td className="text-right">{type_}</td>
+                      <td>{editor}</td>
+                    </tr>
+                  )}
+                </For>
+              </Show>
               <tr>
                 <td className="text-right">Address</td>
                 <td>{entry.address || ""}</td>
@@ -118,52 +121,46 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
               <tr>
                 <td className="text-right">DOI</td>
                 <td className="break-all">
-                  {entry.doi
-                    ? (
-                      <button
-                        type="button"
-                        className="tooltip cursor-pointer text-left break-all"
-                        data-tip="在浏览器中打开"
-                        onClick={handleOpenDoi}
-                      >
-                        {entry.doi}
-                      </button>
-                    )
-                    : ""}
+                  <Show when={entry.doi} fallback={""}>
+                    <button
+                      type="button"
+                      className="tooltip cursor-pointer text-left break-all"
+                      data-tip="在浏览器中打开"
+                      onClick={handleOpenDoi}
+                    >
+                      {entry.doi}
+                    </button>
+                  </Show>
                 </td>
               </tr>
               <tr>
                 <td className="text-right">URL</td>
                 <td className="break-all">
-                  {entry.url
-                    ? (
-                      <button
-                        type="button"
-                        className="tooltip cursor-pointer text-left break-all"
-                        data-tip="在浏览器中打开"
-                        onClick={handleOpenUrl}
-                      >
-                        {entry.url}
-                      </button>
-                    )
-                    : ""}
+                  <Show when={entry.url} fallback={""}>
+                    <button
+                      type="button"
+                      className="tooltip cursor-pointer text-left break-all"
+                      data-tip="在浏览器中打开"
+                      onClick={handleOpenUrl}
+                    >
+                      {entry.url}
+                    </button>
+                  </Show>
                 </td>
               </tr>
               <tr>
                 <td className="text-right">File</td>
                 <td>
-                  {entry.file
-                    ? (
-                      <button
-                        type="button"
-                        className="tooltip cursor-pointer text-left break-all"
-                        data-tip="打开"
-                        onClick={handleOpenFile}
-                      >
-                        {entry.file}
-                      </button>
-                    )
-                    : ""}
+                  <Show when={entry.file} fallback={""}>
+                    <button
+                      type="button"
+                      className="tooltip cursor-pointer text-left break-all"
+                      data-tip="打开"
+                      onClick={handleOpenFile}
+                    >
+                      {entry.file}
+                    </button>
+                  </Show>
                 </td>
               </tr>
             </tbody>
@@ -176,9 +173,9 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
         <input type="checkbox" />
         <div className="collapse-title font-medium">Note</div>
         <div className="collapse-content">
-          {entry.note && (
+          <Show when={entry.note}>
             <ChunksComp chunks={entry.note} citeKey={`${key}-note`} />
-          )}
+          </Show>
         </div>
       </div>
 
@@ -187,11 +184,13 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
         <input type="checkbox" />
         <div className="collapse-title font-medium">BibTeX</div>
         <div className="collapse-content">
-          {bibtex.map((line, idx) => (
-            <p key={idx} className="font-mono text-xs">
-              {line}
-            </p>
-          ))}
+          <For each={bibtex}>
+            {(line, idx) => (
+              <p className="font-mono text-xs">
+                {line}
+              </p>
+            )}
+          </For>
         </div>
       </div>
     </div>
