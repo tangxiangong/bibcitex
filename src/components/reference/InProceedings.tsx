@@ -92,7 +92,7 @@ function InProceedings({ entry }: InProceedingsProps) {
               }
             >
               <h3 class="text-xl font-bold leading-snug gradient-text">
-                <ChunksComp chunks={entry.title} citeKey={key} />
+                <ChunksComp chunks={entry.title!} citeKey={key} />
               </h3>
             </Show>
           </div>
@@ -155,14 +155,14 @@ function InProceedings({ entry }: InProceedingsProps) {
         {/* Authors */}
         <div class="mt-3 flex flex-wrap gap-2">
           <Show
-            when={entry.author && entry.author.length > 0}
+            when={entry.author && entry.author!.length > 0}
             fallback={
               <span class="text-sm text-base-content/50 italic">
                 Unknown Author
               </span>
             }
           >
-            <For each={entry.author}>
+            <For each={entry.author!}>
               {(author) => (
                 <span class="badge badge-ghost hover:badge-purple transition-colors cursor-default bg-base-200/50">
                   {author}
@@ -179,7 +179,7 @@ function InProceedings({ entry }: InProceedingsProps) {
               <span class="font-semibold text-primary">📚</span>
               <span class="italic">
                 <ChunksComp
-                  chunks={entry.book_title}
+                  chunks={entry.book_title!}
                   citeKey={`booktitle_${key}`}
                 />
               </span>

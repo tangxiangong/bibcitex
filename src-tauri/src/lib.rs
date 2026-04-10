@@ -75,9 +75,20 @@ pub fn run() {
                 let quit = MenuItem::with_id(app, "quit", "退出 BibCiTeX", true, None::<&str>)?;
                 let helper = MenuItem::with_id(app, "helper", "快捷助手", true, None::<&str>)?;
                 let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-                let check_update_tray = MenuItem::with_id(app, "check_update_tray", "检查更新", true, None::<&str>)?;
+                let check_update_tray =
+                    MenuItem::with_id(app, "check_update_tray", "检查更新", true, None::<&str>)?;
 
-                let tray_menu = Menu::with_items(app, &[&show, &helper, &PredefinedMenuItem::separator(app)?, &check_update_tray, &PredefinedMenuItem::separator(app)?, &quit])?;
+                let tray_menu = Menu::with_items(
+                    app,
+                    &[
+                        &show,
+                        &helper,
+                        &PredefinedMenuItem::separator(app)?,
+                        &check_update_tray,
+                        &PredefinedMenuItem::separator(app)?,
+                        &quit,
+                    ],
+                )?;
 
                 TrayIconBuilder::new()
                     .menu(&tray_menu)

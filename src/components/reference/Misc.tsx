@@ -95,7 +95,7 @@ function Misc({ entry }: MiscProps) {
               }
             >
               <h3 class="text-xl font-bold leading-snug gradient-text">
-                <ChunksComp chunks={entry.title} citeKey={key} />
+                <ChunksComp chunks={entry.title!} citeKey={key} />
               </h3>
             </Show>
           </div>
@@ -158,14 +158,14 @@ function Misc({ entry }: MiscProps) {
         {/* Authors */}
         <div class="mt-3 flex flex-wrap gap-2">
           <Show
-            when={entry.author && entry.author.length > 0}
+            when={entry.author && entry.author!.length > 0}
             fallback={
               <span class="text-sm text-base-content/50 italic">
                 Unknown Author
               </span>
             }
           >
-            <For each={entry.author}>
+            <For each={entry.author!}>
               {(author) => (
                 <span class="badge badge-ghost hover:badge-error transition-colors cursor-default bg-base-200/50">
                   {author}

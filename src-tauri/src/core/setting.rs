@@ -74,6 +74,14 @@ impl Setting {
 
     /// The config file is located at the default config directory, e.g., `$XDG_CONFIG_HOME` or `$HOME/.config` for Linux, `$HOME/Library/Application Support` for macOS, and `{FOLDERID_RoamingAppData}` for Windows
     pub fn config_file_path() -> PathBuf {
+        #[cfg(test)]
+        {
+            std::env::temp_dir()
+                .join("bibcitex-tests")
+                .join("setting.json")
+        }
+
+        #[cfg(not(test))]
         dirs::config_dir()
             .unwrap()
             .join("BibCiTeX")
@@ -145,9 +153,35 @@ impl Setting {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fs_err as fs;
+    use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
+
+    fn sample_bib_path() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("bibcitex-test-{unique}.bib"));
+        fs::write(
+            &path,
+            r#"@article{smith2024,
+  author = {John Smith and Jane Doe},
+  title = {A Sample Article},
+  journal = {Journal of Testing},
+  year = {2024}
+}
+"#,
+        )
+        .unwrap();
+        path
+    }
 
     #[test]
     fn test_load() {
+        let _guard = TEST_LOCK.lock().unwrap();
         Setting::delete().unwrap();
         let setting = Setting::load();
         assert!(setting.bibliographies.is_empty());
@@ -156,20 +190,24 @@ mod tests {
 
     #[test]
     fn test_add_update_bibliography() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let mut setting = Setting::default();
-        let path = PathBuf::from("../database.bib");
+        let path = sample_bib_path();
         setting
             .add_update_bibliography("test", path.clone(), None)
             .unwrap();
         assert!(setting.bibliographies.contains_key("test"));
         assert_eq!(setting.bibliographies.get("test").unwrap().path, path);
         Setting::delete().unwrap();
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn test_update() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        Setting::delete().unwrap();
         let mut setting = Setting::load();
-        let path = PathBuf::from("../database.bib");
+        let path = sample_bib_path();
         setting
             .add_update_bibliography("test", path.clone(), None)
             .unwrap();
@@ -177,5 +215,6 @@ mod tests {
         let reload_setting = Setting::load();
         assert_eq!(setting, reload_setting);
         Setting::delete().unwrap();
+        fs::remove_file(path).unwrap();
     }
 }

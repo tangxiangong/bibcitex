@@ -8,7 +8,7 @@ function Drawer() {
 
   createEffect(() => {
     const checkbox = document.getElementById(
-      "reference-drawer",
+      "my-drawer",
     ) as HTMLInputElement;
     if (checkbox) {
       checkbox.checked = drawerOpen();
@@ -22,7 +22,7 @@ function Drawer() {
   return (
     <div class="drawer-side z-50">
       <label
-        for="reference-drawer"
+        for="my-drawer"
         aria-label="close sidebar"
         class="drawer-overlay backdrop-blur-sm"
         onClick={handleClose}

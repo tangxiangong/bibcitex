@@ -31,100 +31,100 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
   };
 
   return (
-    <div className="space-y-2">
+    <div class="space-y-2">
       {/* Info Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" checked />
-        <div className="collapse-title font-medium">Info</div>
-        <div className="collapse-content">
-          <table className="table table-sm">
+        <div class="collapse-title font-medium">Info</div>
+        <div class="collapse-content">
+          <table class="table table-sm">
             <tbody>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Type</td>
+                <td class="text-right opacity-70 font-semibold">Type</td>
                 <td>Booklet</td>
               </tr>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Key</td>
+                <td class="text-right opacity-70 font-semibold">Key</td>
                 <td>{key}</td>
               </tr>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Title</td>
+                <td class="text-right opacity-70 font-semibold">Title</td>
                 <td>
                   <Show when={entry.title} fallback={""}>
                     <ChunksComp
-                      chunks={entry.title}
+                      chunks={entry.title!}
                       citeKey={`BookletDrawer-${key}`}
                     />
                   </Show>
                 </td>
               </tr>
               <Show
-                when={entry.author && entry.author.length > 0}
+                when={entry.author && entry.author!.length > 0}
                 fallback={
                   <tr>
-                    <td className="text-right">Author</td>
+                    <td class="text-right">Author</td>
                     <td></td>
                   </tr>
                 }
               >
-                <For each={entry.author}>
+                <For each={entry.author!}>
                   {(author, idx) => (
                     <tr>
-                      <td className="text-right">Author</td>
+                      <td class="text-right">Author</td>
                       <td>{author}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td className="text-right">Series</td>
+                <td class="text-right">Series</td>
                 <td>{entry.series || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">How Published</td>
+                <td class="text-right">How Published</td>
                 <td>{entry.how_published || ""}</td>
               </tr>
               <Show when={entry.editor && entry.editor.length > 0}>
                 <For each={entry.editor}>
                   {([editor, type_], idx) => (
                     <tr>
-                      <td className="text-right">{type_}</td>
+                      <td class="text-right">{type_}</td>
                       <td>{editor}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td className="text-right">Address</td>
+                <td class="text-right">Address</td>
                 <td>{entry.address || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Volume</td>
+                <td class="text-right">Volume</td>
                 <td>{entry.volume || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Edition</td>
+                <td class="text-right">Edition</td>
                 <td>{entry.edition || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Pages</td>
+                <td class="text-right">Pages</td>
                 <td>{entry.book_pages || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Year</td>
+                <td class="text-right">Year</td>
                 <td>{entry.year || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">ISBN</td>
+                <td class="text-right">ISBN</td>
                 <td>{entry.isbn || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">DOI</td>
-                <td className="break-all">
+                <td class="text-right">DOI</td>
+                <td class="break-all">
                   <Show when={entry.doi} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="在浏览器中打开"
                       onClick={handleOpenDoi}
                     >
@@ -134,12 +134,12 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td className="text-right">URL</td>
-                <td className="break-all">
+                <td class="text-right">URL</td>
+                <td class="break-all">
                   <Show when={entry.url} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="在浏览器中打开"
                       onClick={handleOpenUrl}
                     >
@@ -149,12 +149,12 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td className="text-right">File</td>
+                <td class="text-right">File</td>
                 <td>
                   <Show when={entry.file} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="打开"
                       onClick={handleOpenFile}
                     >
@@ -169,24 +169,24 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
       </div>
 
       {/* Note Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div className="collapse-title font-medium">Note</div>
-        <div className="collapse-content">
+        <div class="collapse-title font-medium">Note</div>
+        <div class="collapse-content">
           <Show when={entry.note}>
-            <ChunksComp chunks={entry.note} citeKey={`${key}-note`} />
+            <ChunksComp chunks={entry.note!} citeKey={`${key}-note`} />
           </Show>
         </div>
       </div>
 
       {/* BibTeX Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div className="collapse-title font-medium">BibTeX</div>
-        <div className="collapse-content">
+        <div class="collapse-title font-medium">BibTeX</div>
+        <div class="collapse-content">
           <For each={bibtex}>
             {(line, idx) => (
-              <p className="font-mono text-xs">
+              <p class="font-mono text-xs">
                 {line}
               </p>
             )}

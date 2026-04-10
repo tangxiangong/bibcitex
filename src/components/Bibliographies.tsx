@@ -4,6 +4,7 @@ import { useApp } from "../context/AppContext.tsx";
 import {
   loadBibliography,
   loadSettings,
+  openFile,
   removeBibliography,
 } from "../tauri.ts";
 import {
@@ -70,9 +71,14 @@ function Bibliographies(props: BibliographiesProps) {
     }
   };
 
-  const handleOpenFile = (path: string, event: MouseEvent) => {
+  const handleOpenFile = async (path: string, event: MouseEvent) => {
     event.stopPropagation();
-    console.log("Open file:", path);
+    try {
+      await openFile(path);
+    } catch (e) {
+      setErrorMessage(`打开文件失败: ${e}`);
+      startErrorTimer();
+    }
   };
 
   const startErrorTimer = () => {

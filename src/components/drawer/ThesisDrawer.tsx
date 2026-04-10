@@ -44,70 +44,70 @@ function ThesisDrawer({ entry }: ThesisDrawerProps) {
   };
 
   return (
-    <div className="space-y-2">
+    <div class="space-y-2">
       {/* Info Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" checked />
-        <div className="collapse-title font-medium">Info</div>
-        <div className="collapse-content">
-          <table className="table table-sm">
+        <div class="collapse-title font-medium">Info</div>
+        <div class="collapse-content">
+          <table class="table table-sm">
             <tbody>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Type</td>
+                <td class="text-right opacity-70 font-semibold">Type</td>
                 <td>{type_}</td>
               </tr>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Key</td>
+                <td class="text-right opacity-70 font-semibold">Key</td>
                 <td>{key}</td>
               </tr>
               <tr>
-                <td className="text-right opacity-70 font-semibold">Title</td>
+                <td class="text-right opacity-70 font-semibold">Title</td>
                 <td>
                   <Show when={entry.title} fallback={""}>
                     <ChunksComp
-                      chunks={entry.title}
+                      chunks={entry.title!}
                       citeKey={`ThesisDrawer-${key}`}
                     />
                   </Show>
                 </td>
               </tr>
               <Show
-                when={entry.author && entry.author.length > 0}
+                when={entry.author && entry.author!.length > 0}
                 fallback={
                   <tr>
-                    <td className="text-right">Author</td>
+                    <td class="text-right">Author</td>
                     <td></td>
                   </tr>
                 }
               >
-                <For each={entry.author}>
+                <For each={entry.author!}>
                   {(author, idx) => (
                     <tr>
-                      <td className="text-right">Author</td>
+                      <td class="text-right">Author</td>
                       <td>{author}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td className="text-right">School</td>
+                <td class="text-right">School</td>
                 <td>{entry.school || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Address</td>
+                <td class="text-right">Address</td>
                 <td>{entry.address || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">Year</td>
+                <td class="text-right">Year</td>
                 <td>{entry.year || ""}</td>
               </tr>
               <tr>
-                <td className="text-right">DOI</td>
-                <td className="break-all">
+                <td class="text-right">DOI</td>
+                <td class="break-all">
                   <Show when={entry.doi} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="在浏览器中打开"
                       onClick={handleOpenDoi}
                     >
@@ -117,12 +117,12 @@ function ThesisDrawer({ entry }: ThesisDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td className="text-right">URL</td>
-                <td className="break-all">
+                <td class="text-right">URL</td>
+                <td class="break-all">
                   <Show when={entry.url} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="在浏览器中打开"
                       onClick={handleOpenUrl}
                     >
@@ -132,12 +132,12 @@ function ThesisDrawer({ entry }: ThesisDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td className="text-right">File</td>
+                <td class="text-right">File</td>
                 <td>
                   <Show when={entry.file} fallback={""}>
                     <button
                       type="button"
-                      className="tooltip cursor-pointer text-left break-all"
+                      class="tooltip cursor-pointer text-left break-all"
                       data-tip="打开"
                       onClick={handleOpenFile}
                     >
@@ -152,35 +152,35 @@ function ThesisDrawer({ entry }: ThesisDrawerProps) {
       </div>
 
       {/* Abstract Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div className="collapse-title font-medium">Abstract</div>
-        <div className="collapse-content">
+        <div class="collapse-title font-medium">Abstract</div>
+        <div class="collapse-content">
           <Show when={entry.abstract_}>
-            <ChunksComp chunks={entry.abstract_} citeKey={`${key}-abstract`} />
+            <ChunksComp chunks={entry.abstract_!} citeKey={`${key}-abstract`} />
           </Show>
         </div>
       </div>
 
       {/* Note Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div className="collapse-title font-medium">Note</div>
-        <div className="collapse-content">
+        <div class="collapse-title font-medium">Note</div>
+        <div class="collapse-content">
           <Show when={entry.note}>
-            <ChunksComp chunks={entry.note} citeKey={`${key}-note`} />
+            <ChunksComp chunks={entry.note!} citeKey={`${key}-note`} />
           </Show>
         </div>
       </div>
 
       {/* BibTeX Section */}
-      <div className="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
+      <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div className="collapse-title font-medium">BibTeX</div>
-        <div className="collapse-content">
+        <div class="collapse-title font-medium">BibTeX</div>
+        <div class="collapse-content">
           <For each={bibtex}>
             {(line, idx) => (
-              <p className="font-mono text-xs">
+              <p class="font-mono text-xs">
                 {line}
               </p>
             )}

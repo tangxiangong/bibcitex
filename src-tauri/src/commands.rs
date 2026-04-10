@@ -128,7 +128,7 @@ pub fn search_references(references: Vec<Reference>, query: String) -> Vec<Refer
 
 #[tauri::command]
 pub fn search_by_field(references: Vec<Reference>, query: String, field: String) -> Vec<Reference> {
-    match field.as_str() {
+    match field.to_lowercase().as_str() {
         "author" => search_references_by_author(&references, &query),
         "title" => search_references_by_title(&references, &query),
         "journal" => search_references_by_journal(&references, &query),

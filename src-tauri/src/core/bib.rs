@@ -317,23 +317,56 @@ pub(crate) fn parse_optional_field(entry: &biblatex::Entry, field: &str) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::Path;
+    use fs_err as fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn sample_bib_path() -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("bibcitex-bib-test-{unique}.bib"));
+        fs::write(
+            &path,
+            r#"@article{smith2024,
+  author = {John Smith and Jane Doe},
+  title = {A Sample Article},
+  journal = {Journal of Testing},
+  year = {2024}
+}
+
+@article{doe2023,
+  author = {Jane Doe},
+  title = {Another Sample Article},
+  journal = {Journal of Examples},
+  year = {2023}
+}
+"#,
+        )
+        .unwrap();
+        path
+    }
 
     #[test]
     fn test_parse() {
-        let path = Path::new("../database.bib");
-        let bib = parse(path).unwrap();
-        let entry = bib.get("MR4293957").unwrap();
+        let path = sample_bib_path();
+        let bib = parse(&path).unwrap();
+        let entry = bib.get("smith2024").unwrap();
         let title = entry.title().unwrap();
+        assert!(!title.is_empty());
         println!("{title:#?}");
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn test_show_article() {
-        let path = Path::new("../database.bib");
-        let bib = parse(path).unwrap();
-        let entry = bib.get("MR0404849").unwrap();
+        let path = sample_bib_path();
+        let bib = parse(&path).unwrap();
+        let entry = bib.get("doe2023").unwrap();
         let article = Reference::from(entry);
+        assert_eq!(article.cite_key, "doe2023");
         println!("{article:#?}");
+        fs::remove_file(path).unwrap();
     }
 }
