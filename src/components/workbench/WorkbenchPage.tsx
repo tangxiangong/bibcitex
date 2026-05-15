@@ -11,11 +11,18 @@ export default function WorkbenchPage() {
   const [addBibliographyOpen, setAddBibliographyOpen] = createSignal(false);
   const [errorMessage, setErrorMessage] = createSignal<string | null>(null);
 
+  const isBrowserPreviewError = (error: unknown) =>
+    String(error).includes("invoke");
+
   onMount(async () => {
     try {
       updateSettings(await loadSettings());
       setErrorMessage(null);
     } catch (e) {
+      if (isBrowserPreviewError(e)) {
+        setErrorMessage(null);
+        return;
+      }
       setErrorMessage(`Failed to load settings: ${e}`);
     }
   });
