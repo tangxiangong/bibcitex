@@ -71,7 +71,7 @@ function InCollectionHelper({ entry }: InCollectionHelperProps) {
         <Show when={entry.book_title}>
           <span class="flex items-center gap-1">
             <span class="italic">
-              📘{" "}
+              Book{" "}
               <ChunksComp
                 chunks={entry.book_title!}
                 citeKey={`InCollection-BT-${key}`}
@@ -83,14 +83,14 @@ function InCollectionHelper({ entry }: InCollectionHelperProps) {
           <For each={entry.publisher}>
             {(publisher, _idx) => (
               <span class="flex items-center gap-1">
-                <span>🏢 {publisher}</span>
+                <span>Publisher {publisher}</span>
               </span>
             )}
           </For>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {entry.year}</span>
+            <span>Year {entry.year}</span>
           </span>
         </Show>
       </div>

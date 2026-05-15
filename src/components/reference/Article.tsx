@@ -163,13 +163,13 @@ function Article({ entry }: ArticleProps) {
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <Show when={entry.journal}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-primary">📖</span>
+              <span class="font-semibold text-primary">Journal</span>
               <span class="italic">{entry.journal}</span>
             </div>
           </Show>
           <Show when={entry.year}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">📅</span>
+              <span class="font-semibold text-secondary">Year</span>
               <span>{entry.year}</span>
             </div>
           </Show>

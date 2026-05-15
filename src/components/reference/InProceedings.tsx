@@ -176,7 +176,7 @@ function InProceedings({ entry }: InProceedingsProps) {
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <Show when={entry.book_title}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-primary">📚</span>
+              <span class="font-semibold text-primary">Proceedings</span>
               <span class="italic">
                 <ChunksComp
                   chunks={entry.book_title!}
@@ -187,7 +187,7 @@ function InProceedings({ entry }: InProceedingsProps) {
           </Show>
           <Show when={date}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">📅</span>
+              <span class="font-semibold text-secondary">Year</span>
               <span>{date}</span>
             </div>
           </Show>

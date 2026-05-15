@@ -82,14 +82,14 @@ function InBookHelper({ entry }: InBookHelperProps) {
           <For each={entry.publisher}>
             {(publisher, _idx) => (
               <span class="flex items-center gap-1">
-                <span>🏢 {publisher}</span>
+                <span>Publisher {publisher}</span>
               </span>
             )}
           </For>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {entry.year}</span>
+            <span>Year {entry.year}</span>
           </span>
         </Show>
       </div>

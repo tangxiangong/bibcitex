@@ -77,11 +77,11 @@ function ArXivHelperComponent({ entry }: MiscHelperProps) {
       </div>
       <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
         <span class="flex items-center gap-1 text-error">
-          <span>📜 {arxiv}</span>
+          <span>Archive {arxiv}</span>
         </span>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {entry.year}</span>
+            <span>Year {entry.year}</span>
           </span>
         </Show>
       </div>
@@ -161,18 +161,18 @@ function MiscHelper({ entry }: MiscHelperProps) {
           fallback={
             <Show when={entry.how_published}>
               <span class="flex items-center gap-1">
-                <span>📢 {entry.how_published}</span>
+                <span>Published {entry.how_published}</span>
               </span>
             </Show>
           }
         >
           <span class="flex items-center gap-1">
-            <span>📦 {entry.archive_prefix}</span>
+            <span>Archive {entry.archive_prefix}</span>
           </span>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {entry.year}</span>
+            <span>Year {entry.year}</span>
           </span>
         </Show>
       </div>

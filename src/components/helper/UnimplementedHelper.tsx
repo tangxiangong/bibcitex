@@ -77,12 +77,12 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
       <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
         <Show when={entry.journal}>
           <span class="flex items-center gap-1">
-            <span>📖 {entry.journal}</span>
+            <span>Journal {entry.journal}</span>
           </span>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {entry.year}</span>
+            <span>Year {entry.year}</span>
           </span>
         </Show>
       </div>

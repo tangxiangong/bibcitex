@@ -164,7 +164,7 @@ function InBook({ entry }: InBookProps) {
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <Show when={entry.book_title}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-primary">📘</span>
+              <span class="font-semibold text-primary">Book</span>
               <span class="italic">
                 <ChunksComp
                   chunks={entry.book_title!}
@@ -177,7 +177,7 @@ function InBook({ entry }: InBookProps) {
             <For each={entry.publisher}>
               {(publisher) => (
                 <div class="flex items-center gap-1">
-                  <span class="font-semibold text-primary">🏢</span>
+                  <span class="font-semibold text-primary">Publisher</span>
                   <span>{publisher}</span>
                 </div>
               )}
@@ -185,7 +185,7 @@ function InBook({ entry }: InBookProps) {
           </Show>
           <Show when={entry.year}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">📅</span>
+              <span class="font-semibold text-secondary">Year</span>
               <span>{entry.year}</span>
             </div>
           </Show>

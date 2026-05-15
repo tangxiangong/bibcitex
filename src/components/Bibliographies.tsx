@@ -256,7 +256,7 @@ function Bibliographies(props: BibliographiesProps) {
                             </button>
                           </div>
                           <div class="flex items-center gap-2">
-                            <span class="text-xs opacity-50">⏱</span>
+                            <span class="text-xs opacity-50">Updated</span>
                             <span class="font-mono opacity-80">
                               {formatDate(bib.updated_at)}
                             </span>
@@ -286,7 +286,7 @@ function Bibliographies(props: BibliographiesProps) {
                         >
                           <span>打开</span>
                           <span class="group-hover:translate-x-1 transition-transform text-lg">
-                            →
+                            Open
                           </span>
                         </button>
                       </div>

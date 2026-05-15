@@ -75,7 +75,7 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
         <Show when={entry.book_title}>
           <span class="flex items-center gap-1">
             <span class="italic">
-              📚{" "}
+              Proceedings{" "}
               <ChunksComp
                 chunks={entry.book_title!}
                 citeKey={`booktitle_${key}`}
@@ -85,7 +85,7 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
         </Show>
         <Show when={date}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>📅 {date}</span>
+            <span>Year {date}</span>
           </span>
         </Show>
       </div>
