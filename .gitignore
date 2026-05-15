@@ -19,3 +19,4 @@ build/
 src-tauri/gen/
 
 dist/
+.superpowers/
