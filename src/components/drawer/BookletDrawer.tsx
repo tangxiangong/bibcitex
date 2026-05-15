@@ -68,7 +68,7 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
                 }
               >
                 <For each={entry.author!}>
-                  {(author, idx) => (
+                  {(author) => (
                     <tr>
                       <td class="text-right">作者</td>
                       <td>{author}</td>
@@ -86,7 +86,7 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
               </tr>
               <Show when={entry.editor && entry.editor.length > 0}>
                 <For each={entry.editor}>
-                  {([editor, type_], idx) => (
+                  {([editor, type_]) => (
                     <tr>
                       <td class="text-right">{type_}</td>
                       <td>{editor}</td>
@@ -185,7 +185,7 @@ function BookletDrawer({ entry }: BookletDrawerProps) {
         <div class="collapse-title font-medium">BibTeX</div>
         <div class="collapse-content">
           <For each={bibtex}>
-            {(line, idx) => (
+            {(line) => (
               <p class="font-mono text-xs">
                 {line}
               </p>

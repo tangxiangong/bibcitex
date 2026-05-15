@@ -68,7 +68,7 @@ function BookDrawer({ entry }: BookDrawerProps) {
                 }
               >
                 <For each={entry.author!}>
-                  {(author, idx) => (
+                  {(author) => (
                     <tr>
                       <td class="text-right">作者</td>
                       <td>{author}</td>
@@ -90,7 +90,7 @@ function BookDrawer({ entry }: BookDrawerProps) {
                 }
               >
                 <For each={entry.publisher}>
-                  {(publisher, idx) => (
+                  {(publisher) => (
                     <tr>
                       <td class="text-right">出版方</td>
                       <td>{publisher}</td>
@@ -100,7 +100,7 @@ function BookDrawer({ entry }: BookDrawerProps) {
               </Show>
               <Show when={entry.editor && entry.editor.length > 0}>
                 <For each={entry.editor}>
-                  {([editor, type_], idx) => (
+                  {([editor, type_]) => (
                     <tr>
                       <td class="text-right">{type_}</td>
                       <td>{editor}</td>
@@ -199,7 +199,7 @@ function BookDrawer({ entry }: BookDrawerProps) {
         <div class="collapse-title font-medium">BibTeX</div>
         <div class="collapse-content">
           <For each={bibtex}>
-            {(line, idx) => (
+            {(line) => (
               <p class="font-mono text-xs">
                 {line}
               </p>

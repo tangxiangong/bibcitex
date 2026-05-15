@@ -73,7 +73,7 @@ function ArticleDrawer({ entry }: ArticleDrawerProps) {
                 }
               >
                 <For each={entry.author!}>
-                  {(author, idx) => (
+                  {(author) => (
                     <tr>
                       <td class="text-right">作者</td>
                       <td>{author}</td>
@@ -193,7 +193,7 @@ function ArticleDrawer({ entry }: ArticleDrawerProps) {
         <div class="collapse-title font-medium">BibTeX</div>
         <div class="collapse-content">
           <For each={bibtex}>
-            {(line, idx) => (
+            {(line) => (
               <p class="font-mono text-xs">
                 {line}
               </p>

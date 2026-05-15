@@ -69,14 +69,15 @@ const { settings, currentReferences, drawerOpen } = useApp();
 **Tauri IPC** (`src/tauri.ts`): Framework-agnostic async wrappers around
 `invoke()`. These are plain functions, not tied to any UI framework.
 
-**Component patterns**: Each bibliography entry type (Article, Book, Thesis,
-etc.) has three component variants:
-- `src/components/reference/` — Card display with copy/detail actions
-- `src/components/drawer/` — Full detail view in side drawer
-- `src/components/helper/` — Compact display for spotlight search
+**Component patterns**:
+- `src/components/workbench/` — Main bibliography workspace: library list,
+  reference search/list, metadata rows, and detail pane.
+- `src/components/drawer/` — Full detail view variants used by the side drawer.
+- `src/pages/HelperPage.tsx` — Standalone spotlight search window UI.
+- `src/components/reference/semantic.ts` — Shared reference labels, icons, and
+  display helpers used by workbench and helper views.
 
-Selector components (`ReferenceSelector`, `ReferenceDrawer`, `HelperSelector`)
-dispatch to the correct variant via `switch` on `entry.type_`.
+`ReferenceDrawer` dispatches drawer variants via `switch` on `entry.type_`.
 
 ### Backend Architecture (`src-tauri/`)
 
