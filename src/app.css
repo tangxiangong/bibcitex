@@ -1,11 +1,12 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: winter --default, dracula --prefersdark;
+  themes: false;
 }
 
-/* Enable dark: variant using media query (works with DaisyUI's --prefersdark) */
-@variant dark (&:where([data-theme="dark"], [data-theme="dracula"]) *, @media
-  (prefers-color-scheme: dark));
+@plugin "./catppuccinTheme.latte.ts";
+@plugin "./catppuccinTheme.mocha.ts";
+
+@variant dark (&:where([data-theme="mocha"]) *);
 
 /* Modern UI Utilities */
 .card-modern {
