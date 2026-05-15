@@ -21,6 +21,22 @@ bun run build         # Production build (Vite only)
 bun run check         # TypeScript type check
 ```
 
+Rust-side checks (run from `src-tauri/`, enforced by `.pre-commit-config.yaml`
+on any `*.rs` change):
+
+```bash
+cd src-tauri && cargo fmt                                                      # format
+cd src-tauri && cargo clippy --all-targets --all-features --tests --benches -- -D warnings
+cd src-tauri && cargo test                                                     # backend tests
+cd src-tauri && cargo sort                                                     # sort Cargo.toml deps
+```
+
+## Sibling File: AGENTS.md
+
+`AGENTS.md` at the repo root mirrors this file verbatim (only the opening
+header differs — it targets Codex). When updating guidance here, apply the
+same change to `AGENTS.md` to keep them in sync.
+
 ## Architecture
 
 ### Tech Stack
@@ -38,6 +54,7 @@ bun run check         # TypeScript type check
 **Routing** (`src/App.tsx`): Uses `@solidjs/router` with nested routes:
 - `/` → `MainLayout` → `HomePage` (bibliography management)
 - `/detail` → `MainLayout` → `DetailPage` (reference list + search)
+- `/detail/:citeKey` → `MainLayout` → `DetailPage` (deep-link to a specific entry)
 - `/helper` → `HelperPage` (standalone spotlight search window)
 
 **State** (`src/context/AppContext.tsx`): SolidJS Context with signals. All
@@ -117,17 +134,24 @@ Configured in both `vite.config.ts` (resolve.alias) and `tsconfig.json` (paths).
 
 ## Tauri Commands
 
-All frontend-callable commands (defined in `src-tauri/src/commands.rs`):
+Frontend-callable commands live in `src-tauri/src/commands.rs` (annotated with
+`#[tauri::command]`); the corresponding TypeScript wrappers live in
+`src/tauri.ts`. Treat the source as the source of truth — listing every
+command here goes stale fast. The rough groupings are:
 
-- **Settings**: `load_settings`, `save_settings`, `add_bibliography`,
-  `remove_bibliography`
-- **Bibliography**: `load_bibliography`, `parse_bib_file`
-- **Search**: `search_references`, `search_by_field`
-- **Clipboard**: `copy_to_clipboard`, `paste_to_app`
-- **File**: `select_bib_file`, `open_url`, `open_file`
-- **Update**: `check_update`, `install_update`
-- **Helper**: `resize_helper_window`, `open_helper_window`, `get_helper_bib`,
-  `set_helper_bib`
+- **Settings / bibliography registry**: load and persist the user's
+  bibliography list and per-app settings.
+- **Bibliography parsing**: load a `.bib` file and produce `Reference` records.
+- **Search**: full-text and per-field search (`search_references`,
+  `search_by_field`), parallelised via Rayon for large datasets.
+- **Clipboard / cross-app paste**: `copy_to_clipboard`, `paste_to_app`.
+- **File / OS**: `select_bib_file`, `open_url`, `open_file`.
+- **Helper window**: open/hide/resize the spotlight panel and get/set its
+  active bibliography.
+
+Auto-update is **not** exposed as a frontend IPC command — it is wired through
+`tauri_plugin_updater` plus tray-menu and `check_update` events handled in
+`src-tauri/src/lib.rs`.
 
 ## Supported Bibliography Types
 
