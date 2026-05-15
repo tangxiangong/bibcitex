@@ -1,4 +1,13 @@
-import { createEffect, createSignal, For, onCleanup, onMount, Show, Switch, Match } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+} from "solid-js";
 import {
   copyToClipboard,
   getHelperBib,
@@ -10,12 +19,19 @@ import {
   searchReferences,
   setHelperBib,
 } from "@/tauri.ts";
-import type { EntryType, Reference } from "@/types.ts";
+import type { Reference } from "@/types.ts";
 import ChunksComp from "@/components/ChunksComp.tsx";
-import { TRANSPARENT_LOGO } from "@/constants/icons.ts";
+import { SvgIcon } from "@/components/ui/SvgIcon";
+import {
+  getReferenceTypeKey,
+  getReferenceVenue,
+  METADATA_STYLES,
+  TYPE_STYLES,
+} from "@/components/reference/semantic";
 
 const MIN_HEIGHT = 70;
-const MAX_CONTENT_HEIGHT = 480; // max height for scrollable content area
+const HEADER_HEIGHT = 64;
+const MAX_CONTENT_HEIGHT = 480;
 
 interface BibInfo {
   name: string;
@@ -32,56 +48,44 @@ function HelperPage() {
   const [isSelectingBib, setIsSelectingBib] = createSignal(true);
   const [bibSelectedIndex, setBibSelectedIndex] = createSignal<number | null>(0);
   const [errorMessage, setErrorMessage] = createSignal<string | null>(null);
+  const [failedPasteKey, setFailedPasteKey] = createSignal<string | null>(null);
   const [bibs, setBibs] = createSignal<BibInfo[]>([]);
   const [currentBib, setCurrentBib] = createSignal<
-    {
-      name: string;
-      refs: Reference[];
-    } | null
+    { name: string; refs: Reference[] } | null
   >(null);
 
   let inputRef: HTMLInputElement | undefined;
   let containerRef: HTMLDivElement | undefined;
   let contentRef: HTMLDivElement | undefined;
   let searchTimeoutRef: ReturnType<typeof setTimeout> | null = null;
-  let lastHeight = MIN_HEIGHT;
   let resizeRafId: number | null = null;
-
-  const HEADER_HEIGHT = 64; // h-16 = 64px
+  let lastHeight = MIN_HEIGHT;
 
   const measureContentHeight = (): number => {
     if (!contentRef) return MIN_HEIGHT;
+    if (contentRef.children.length === 0) return HEADER_HEIGHT;
 
-    const contentChildren = contentRef.children;
-    if (contentChildren.length === 0) return HEADER_HEIGHT;
-
-    // Sum the natural height of content children
     let contentHeight = 0;
-    for (let i = 0; i < contentChildren.length; i++) {
-      const child = contentChildren[i] as HTMLElement;
-      contentHeight += child.scrollHeight;
+    for (let i = 0; i < contentRef.children.length; i++) {
+      contentHeight += (contentRef.children[i] as HTMLElement).scrollHeight;
     }
-
-    // Cap content area so it scrolls instead of growing forever
-    const cappedContent = Math.min(contentHeight, MAX_CONTENT_HEIGHT);
-    return HEADER_HEIGHT + cappedContent;
+    return HEADER_HEIGHT + Math.min(contentHeight, MAX_CONTENT_HEIGHT);
   };
 
   const doResize = async () => {
     const finalHeight = Math.max(measureContentHeight(), MIN_HEIGHT);
-    if (finalHeight !== lastHeight) {
-      lastHeight = finalHeight;
-      try {
-        await resizeHelperWindow(finalHeight);
-      } catch (e) {
-        console.error("Failed to resize window:", e);
-      }
+    if (finalHeight === lastHeight) return;
+
+    lastHeight = finalHeight;
+    try {
+      await resizeHelperWindow(finalHeight);
+    } catch (e) {
+      console.error("Failed to resize window:", e);
     }
   };
 
   const updateWindowHeight = () => {
     if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
-    // Double rAF: first rAF waits for SolidJS to flush DOM, second waits for layout
     resizeRafId = requestAnimationFrame(() => {
       resizeRafId = requestAnimationFrame(() => {
         resizeRafId = null;
@@ -90,11 +94,11 @@ function HelperPage() {
     });
   };
 
-  const doSearch = (q: string) => {
+  const doSearch = (value: string) => {
     if (searchTimeoutRef) clearTimeout(searchTimeoutRef);
 
     const bib = currentBib();
-    if (!bib || q.trim() === "") {
+    if (!bib || value.trim() === "") {
       setResults([]);
       setSelectedIndex(null);
       updateWindowHeight();
@@ -103,9 +107,9 @@ function HelperPage() {
 
     searchTimeoutRef = setTimeout(async () => {
       try {
-        const r = await searchReferences(bib.refs, q);
-        setResults(r);
-        setSelectedIndex(r.length > 0 ? 0 : null);
+        const found = await searchReferences(bib.refs, value);
+        setResults(found);
+        setSelectedIndex(found.length > 0 ? 0 : null);
         updateWindowHeight();
       } catch (e) {
         console.error("Search failed:", e);
@@ -114,12 +118,11 @@ function HelperPage() {
     }, 100);
   };
 
-  const handleInput = (e: Event & { currentTarget: HTMLInputElement }) => {
-    const value = e.currentTarget.value;
+  const handleInput = (event: Event & { currentTarget: HTMLInputElement }) => {
+    const value = event.currentTarget.value;
     setQuery(value);
-    if (!isSelectingBib()) {
-      doSearch(value);
-    }
+    setFailedPasteKey(null);
+    if (!isSelectingBib()) doSearch(value);
   };
 
   const selectBib = async (name: string, path: string) => {
@@ -131,42 +134,32 @@ function HelperPage() {
       setResults([]);
       setSelectedIndex(null);
       setErrorMessage(null);
-
+      setFailedPasteKey(null);
       await setHelperBib(name, path);
       updateWindowHeight();
       setTimeout(() => inputRef?.focus(), 50);
     } catch (e) {
       setErrorMessage(`加载失败: ${e}`);
+      updateWindowHeight();
     }
   };
 
   const scrollToItem = (index: number) => {
     const item = document.querySelector(
       `[data-item-index="${index}"]`,
-    ) as HTMLElement;
-    if (!item) return;
-
-    const container = item.closest(".overflow-y-auto") as HTMLElement;
-    if (!container) return;
+    ) as HTMLElement | null;
+    const container = item?.closest(".overflow-y-auto") as HTMLElement | null;
+    if (!item || !container) return;
 
     const containerRect = container.getBoundingClientRect();
     const itemRect = item.getBoundingClientRect();
-
     const itemTop = itemRect.top - containerRect.top + container.scrollTop;
     const itemHeight = itemRect.height;
-    const containerHeight = containerRect.height;
+    const targetScrollTop = index < 3
+      ? Math.max(0, itemTop - 8)
+      : itemTop - containerRect.height / 2 + itemHeight / 2;
 
-    let targetScrollTop;
-    if (index < 3) {
-      targetScrollTop = Math.max(0, itemTop - 8);
-    } else {
-      targetScrollTop = itemTop - containerHeight / 2 + itemHeight / 2;
-    }
-
-    container.scrollTo({
-      top: targetScrollTop,
-      behavior: "smooth",
-    });
+    container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
   };
 
   const handleSelect = async (ref: Reference) => {
@@ -176,17 +169,20 @@ function HelperPage() {
       await hideHelperWindow();
     } catch (e) {
       console.error("Paste failed:", e);
+      setFailedPasteKey(ref.cite_key);
+      setErrorMessage(`粘贴失败，已保留 cite key，可手动复制: ${ref.cite_key}`);
+      updateWindowHeight();
     }
   };
 
-  const handleKeyDown = async (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleKeyDown = async (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
       try {
         await hideHelperWindow();
-      } catch (err) {
-        console.error("Failed to hide window:", err);
+      } catch (e) {
+        console.error("Failed to hide window:", e);
       }
       return;
     }
@@ -195,52 +191,43 @@ function HelperPage() {
       const len = bibs().length;
       if (len === 0) return;
 
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const idx = bibSelectedIndex();
-        if (idx === null) {
-          setBibSelectedIndex(0);
-        } else {
-          setBibSelectedIndex(Math.min(idx + 1, len - 1));
-        }
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const idx = bibSelectedIndex();
-        if (idx === null) {
-          setBibSelectedIndex(len - 1);
-        } else {
-          setBibSelectedIndex(Math.max(idx - 1, 0));
-        }
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        const idx = bibSelectedIndex();
-        if (idx !== null && bibs()[idx]) {
-          await selectBib(bibs()[idx].name, bibs()[idx].path);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        const index = bibSelectedIndex();
+        setBibSelectedIndex(index === null ? 0 : Math.min(index + 1, len - 1));
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        const index = bibSelectedIndex();
+        setBibSelectedIndex(index === null ? len - 1 : Math.max(index - 1, 0));
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const index = bibSelectedIndex();
+        if (index !== null && bibs()[index]) {
+          await selectBib(bibs()[index].name, bibs()[index].path);
         }
       }
-    } else {
-      const len = results().length;
-      if (len === 0) return;
+      return;
+    }
 
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const idx = selectedIndex();
-        const newIndex = idx === null ? 0 : Math.min(idx + 1, len - 1);
-        setSelectedIndex(newIndex);
-        scrollToItem(newIndex);
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const idx = selectedIndex();
-        const newIndex = idx === null ? len - 1 : Math.max(idx - 1, 0);
-        setSelectedIndex(newIndex);
-        scrollToItem(newIndex);
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        const idx = selectedIndex();
-        if (idx !== null && results()[idx]) {
-          await handleSelect(results()[idx]);
-        }
-      }
+    const len = results().length;
+    if (len === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const index = selectedIndex();
+      const nextIndex = index === null ? 0 : Math.min(index + 1, len - 1);
+      setSelectedIndex(nextIndex);
+      scrollToItem(nextIndex);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const index = selectedIndex();
+      const nextIndex = index === null ? len - 1 : Math.max(index - 1, 0);
+      setSelectedIndex(nextIndex);
+      scrollToItem(nextIndex);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const index = selectedIndex();
+      if (index !== null && results()[index]) await handleSelect(results()[index]);
     }
   };
 
@@ -250,45 +237,32 @@ function HelperPage() {
     setResults([]);
     setSelectedIndex(null);
     setErrorMessage(null);
+    setFailedPasteKey(null);
     setTimeout(() => inputRef?.focus(), 50);
     updateWindowHeight();
   };
 
-  // Load bibs on mount
   onMount(async () => {
     inputRef?.focus();
-
     try {
       const settings = await loadSettings();
-      const bibEntries = Object.entries(settings.bibliographies);
-
-      const loadedBibs = bibEntries
-        .map(([name, info]: [string, unknown]) => {
-          const bibInfo = info as {
-            path: string;
-            updated_at: string;
-            description?: string;
-          };
-          return {
-            name,
-            path: bibInfo.path,
-            updatedAt: bibInfo.updated_at,
-            description: bibInfo.description,
-            exists: true,
-          };
-        })
+      const loadedBibs = Object.entries(settings.bibliographies)
+        .map(([name, info]) => ({
+          name,
+          path: info.path,
+          updatedAt: info.updated_at,
+          description: info.description,
+          exists: true,
+        }))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
       setBibs(loadedBibs);
-
       updateWindowHeight();
 
       const storedBib = await getHelperBib();
       if (
         storedBib &&
-        loadedBibs.some((b) =>
-          b.name === storedBib[0] && b.path === storedBib[1]
-        )
+        loadedBibs.some((bib) => bib.name === storedBib[0] && bib.path === storedBib[1])
       ) {
         await selectBib(storedBib[0], storedBib[1]);
       }
@@ -303,10 +277,20 @@ function HelperPage() {
     setTimeout(focusInput, 300);
   });
 
-  // Transparent background
   onMount(() => {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
+  });
+
+  onMount(() => {
+    if (!contentRef) return;
+    const observer = new MutationObserver(() => updateWindowHeight());
+    observer.observe(contentRef, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    onCleanup(() => observer.disconnect());
   });
 
   onCleanup(() => {
@@ -316,112 +300,46 @@ function HelperPage() {
     if (resizeRafId !== null) cancelAnimationFrame(resizeRafId);
   });
 
-  // Resize on content changes via MutationObserver
-  onMount(() => {
-    if (!contentRef) return;
-    const observer = new MutationObserver(() => updateWindowHeight());
-    observer.observe(contentRef, { childList: true, subtree: true, characterData: true });
-    onCleanup(() => observer.disconnect());
-  });
-
-  // Also trigger resize when reactive state changes
   createEffect(() => {
     results().length;
     bibs().length;
     isSelectingBib();
     errorMessage();
+    failedPasteKey();
     updateWindowHeight();
   });
 
-  const getEntryTypeLabel = (type_: EntryType): string => {
-    if (typeof type_ === "string") {
-      if (type_ === "MastersThesis") return "Master Thesis";
-      if (type_ === "PhdThesis") return "PhD Thesis";
-      return type_;
-    }
-    if (typeof type_ === "object" && "Unknown" in type_) return type_.Unknown;
-    return "Unknown";
-  };
-
-  const getBorderColor = (type_: EntryType): string => {
-    const typeStr = typeof type_ === "string" ? type_ : "Unknown";
-    switch (typeStr) {
-      case "Article":
-        return "border-l-info";
-      case "Book":
-        return "border-l-success";
-      case "MastersThesis":
-      case "PhdThesis":
-      case "Thesis":
-        return "border-l-secondary";
-      case "InProceedings":
-        return "border-l-primary";
-      case "TechReport":
-        return "border-l-warning";
-      case "Misc":
-        return "border-l-neutral";
-      case "Booklet":
-        return "border-l-info";
-      case "InBook":
-        return "border-l-accent";
-      case "InCollection":
-        return "border-l-secondary";
-      default:
-        return "border-l-base-content/20";
-    }
-  };
-
-  const getBadgeColor = (type_: EntryType): string => {
-    const typeStr = typeof type_ === "string" ? type_ : "Unknown";
-    switch (typeStr) {
-      case "Article":
-        return "badge-info badge-soft";
-      case "Book":
-        return "badge-success badge-soft";
-      case "MastersThesis":
-      case "PhdThesis":
-      case "Thesis":
-        return "badge-secondary badge-soft";
-      case "InProceedings":
-        return "badge-primary badge-soft";
-      case "TechReport":
-        return "badge-warning badge-soft";
-      case "Misc":
-        return "badge-neutral badge-soft";
-      case "Booklet":
-        return "badge-info badge-soft";
-      case "InBook":
-        return "badge-accent badge-soft";
-      case "InCollection":
-        return "badge-secondary badge-soft";
-      default:
-        return "badge-ghost";
-    }
-  };
+  const renderError = () => (
+    <Show when={errorMessage()}>
+      <div class="m-2 rounded-box border border-error/30 bg-error/10 px-3 py-2 text-sm text-error">
+        <div class="flex items-center gap-2">
+          <SvgIcon name="alert" size={16} aria-hidden />
+          <span class="min-w-0 flex-1 truncate">{errorMessage()}</span>
+          <Show when={failedPasteKey()}>
+            <button
+              type="button"
+              class="btn btn-primary btn-xs"
+              onClick={() => copyToClipboard(failedPasteKey()!)}
+            >
+              Copy
+            </button>
+          </Show>
+        </div>
+      </div>
+    </Show>
+  );
 
   return (
     <div
       ref={containerRef}
-      class="helper-container flex flex-col w-full h-full bg-base-100/80 backdrop-blur-xl border border-base-content/20 shadow-2xl rounded-xl overflow-hidden"
+      class="helper-container flex h-full w-full flex-col overflow-hidden rounded-box border border-base-300 bg-base-100/95 shadow-xl backdrop-blur-xl"
     >
       <div
-        class="relative w-full max-w-full h-16 bg-transparent z-20 border-b border-base-content/10 shrink-0 overflow-hidden box-border"
+        class="relative h-16 shrink-0 border-b border-base-300"
         data-tauri-drag-region
       >
-        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/40">
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+        <div class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50">
+          <SvgIcon name="search" size={20} aria-hidden />
         </div>
 
         <input
@@ -429,7 +347,7 @@ function HelperPage() {
           value={query()}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
-          class="w-full max-w-full h-full pl-12 pr-36 text-lg bg-transparent border-none outline-none ring-0 focus:border-none focus:outline-none focus:ring-0 placeholder:text-base-content/30 text-base-content disabled:cursor-default disabled:opacity-100 overflow-hidden"
+          class="h-full w-full border-none bg-transparent pl-12 pr-40 text-lg text-base-content outline-none placeholder:text-base-content/35 focus:outline-none focus:ring-0 disabled:cursor-default disabled:opacity-100"
           type="text"
           placeholder={isSelectingBib()
             ? "选择文献库..."
@@ -437,13 +355,13 @@ function HelperPage() {
           readOnly={isSelectingBib()}
         />
 
-        <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+        <div class="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
           <Show
             when={currentBib()}
             fallback={
               <button
                 type="button"
-                class="badge badge-ghost cursor-pointer hover:bg-base-200"
+                class="badge bg-base-200 text-base-content border-base-300 cursor-pointer"
                 onClick={handleBibSelectClick}
               >
                 选择文献库
@@ -452,216 +370,157 @@ function HelperPage() {
           >
             <button
               type="button"
-              class="badge badge-primary badge-soft gap-1 cursor-pointer hover:scale-105 transition-transform font-medium"
+              class="badge bg-primary/10 text-base-content border-primary/30 cursor-pointer gap-1"
               onClick={handleBibSelectClick}
             >
-              <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+              <SvgIcon name="library" size={12} aria-hidden />
               {currentBib()!.name}
             </button>
           </Show>
-          <img
-            class="opacity-80 hover:opacity-100 transition-opacity duration-300 w-6 h-6"
-            src={TRANSPARENT_LOGO}
-            alt="logo"
-          />
         </div>
       </div>
 
-      <div ref={contentRef} class="w-full max-w-full overflow-hidden box-border">
+      <div ref={contentRef} class="w-full max-w-full overflow-hidden">
         <Switch>
-          {/* Selecting bib - no bibs */}
           <Match when={isSelectingBib() && bibs().length === 0}>
-            <div class="shrink-0 px-5 py-10 text-center text-base-content/60 text-sm">
+            <div class="shrink-0 px-5 py-10 text-center text-sm text-base-content/60">
               未找到文献库，请先在主页添加文献库
             </div>
           </Match>
 
-          {/* Selecting bib - has bibs */}
           <Match when={isSelectingBib()}>
-            <div class="flex flex-col h-full w-full max-w-full overflow-hidden box-border">
+            <div class="flex h-full w-full flex-col overflow-hidden">
               <div
-                class="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-2 scroll-smooth w-full max-w-full box-border custom-scrollbar"
+                class="flex-1 space-y-1 overflow-y-auto overflow-x-hidden p-2"
                 style={`max-height: ${MAX_CONTENT_HEIGHT}px`}
               >
                 <For each={bibs()}>
-                  {(bib, i) => (
+                  {(bib, index) => (
                     <button
                       type="button"
-                      data-item-index={i()}
-                      class={`w-full max-w-full text-left rounded-lg transition-all duration-200 cursor-pointer mx-2 overflow-hidden ${
-                        i() === bibSelectedIndex()
-                          ? "bg-primary/10 text-primary shadow-sm"
-                          : "hover:bg-base-200/50 hover:shadow-sm border border-transparent"
+                      data-item-index={index()}
+                      class={`w-full rounded-field border px-3 py-2 text-left transition-colors ${
+                        index() === bibSelectedIndex()
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-transparent hover:border-base-300 hover:bg-base-200"
                       }`}
                       onClick={() => selectBib(bib.name, bib.path)}
-                      onMouseEnter={() => setBibSelectedIndex(i())}
+                      onMouseEnter={() => setBibSelectedIndex(index())}
                     >
-                      <div class="p-3">
-                        <div class="flex items-center justify-between gap-2">
-                          <div class="flex items-center gap-2 flex-1 min-w-0">
-                            <Show
-                              when={bib.exists}
-                              fallback={
-                                <div class="badge badge-error badge-xs gap-1 border-none shrink-0">
-                                  <div class="w-1.5 h-1.5 rounded-full bg-white">
-                                  </div>
-                                  Error
-                                </div>
-                              }
-                            >
-                              <div class="badge badge-success badge-xs gap-1 border-none shrink-0">
-                                <div class="w-1.5 h-1.5 rounded-full bg-white animate-pulse">
-                                </div>
-                                Ready
-                              </div>
-                            </Show>
-                            <h3 class="font-bold text-base truncate">
-                              {bib.name}
-                            </h3>
-                          </div>
-                          <span class="text-xs opacity-60 font-mono shrink-0">
-                            {bib.updatedAt}
+                      <div class="flex items-center justify-between gap-2">
+                        <div class="flex min-w-0 items-center gap-2">
+                          <span class="badge bg-success/10 text-base-content border-success/30 badge-xs">
+                            Ready
+                          </span>
+                          <span class="truncate text-sm font-semibold">
+                            {bib.name}
                           </span>
                         </div>
-                        <Show when={bib.description}>
-                          <p class="text-sm opacity-80 mt-1">
-                            {bib.description}
-                          </p>
-                        </Show>
-                        <p class="text-xs opacity-50 truncate mt-1 font-mono">
-                          {bib.path}
-                        </p>
+                        <span class="shrink-0 text-xs font-mono text-base-content/50">
+                          {bib.updatedAt}
+                        </span>
                       </div>
+                      <Show when={bib.description}>
+                        <p class="mt-1 truncate text-xs text-base-content/70">
+                          {bib.description}
+                        </p>
+                      </Show>
+                      <p class="mt-1 truncate font-mono text-xs text-base-content/45">
+                        {bib.path}
+                      </p>
                     </button>
                   )}
                 </For>
               </div>
-              <Show when={errorMessage()}>
-                <div class="alert alert-error shadow-lg m-2">
-                  <span>{errorMessage()}</span>
-                </div>
-              </Show>
+              {renderError()}
             </div>
           </Match>
 
-          {/* Search mode - empty query */}
           <Match when={!isSelectingBib() && query().trim() === ""}>
-            <div class="flex flex-col items-center justify-center h-32 text-base-content/40 gap-4">
-              <svg
-                class="w-12 h-12 opacity-50"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+            <div class="flex h-32 flex-col items-center justify-center gap-3 text-base-content/45">
+              <SvgIcon name="search" size={42} aria-hidden />
               <span class="text-sm font-medium">开始输入以搜索文献...</span>
             </div>
+            {renderError()}
           </Match>
 
-          {/* Search mode - no results */}
           <Match when={!isSelectingBib() && results().length === 0}>
-            <div class="flex flex-col items-center justify-center h-32 text-base-content/40 gap-4">
-              <svg
-                class="w-12 h-12 opacity-50"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div class="flex h-32 flex-col items-center justify-center gap-3 text-base-content/45">
+              <SvgIcon name="alert" size={42} aria-hidden />
               <span class="text-sm font-medium">未找到匹配的文献</span>
             </div>
+            {renderError()}
           </Match>
 
-          {/* Search mode - has results */}
           <Match when={!isSelectingBib() && results().length > 0}>
             <div
-              class="overflow-y-auto overflow-x-hidden p-2 space-y-2 w-full max-w-full box-border custom-scrollbar"
+              class="space-y-1 overflow-y-auto overflow-x-hidden p-2"
               style={`max-height: ${MAX_CONTENT_HEIGHT}px`}
             >
               <For each={results()}>
-                {(ref, i) => (
-                  <button
-                    type="button"
-                    data-item-index={i()}
-                    class={`w-full max-w-full text-left group relative rounded-lg px-1 transition-all duration-200 cursor-pointer border-l-[3px] mx-2 overflow-hidden box-border ${
-                      getBorderColor(ref.type_)
-                    } ${
-                      i() === selectedIndex()
-                        ? "bg-primary/15 shadow-md ring-1 ring-primary/30 scale-[1.01]"
-                        : "hover:bg-base-200/50 border-opacity-50 hover:border-opacity-100"
-                    }`}
-                    onClick={() => handleSelect(ref)}
-                    onMouseEnter={() => setSelectedIndex(i())}
-                  >
-                    <div class="py-3 px-3 w-full max-w-full overflow-hidden box-border">
-                      <div class="w-full">
-                        <div class="flex justify-between items-center gap-2">
-                          <div class="flex items-center gap-2 flex-1 min-w-0">
-                            <div
-                              class={`badge ${
-                                getBadgeColor(ref.type_)
-                              } badge-sm font-bold shrink-0`}
-                            >
-                              {getEntryTypeLabel(ref.type_)}
-                            </div>
+                {(ref, index) => {
+                  const typeStyle = () => TYPE_STYLES[getReferenceTypeKey(ref.type_)];
+                  const venue = () => getReferenceVenue(ref);
+                  return (
+                    <button
+                      type="button"
+                      data-item-index={index()}
+                      class={`w-full rounded-field border border-l-4 px-3 py-2 text-left transition-colors ${
+                        typeStyle().borderClass
+                      } ${
+                        index() === selectedIndex()
+                          ? "border-primary/40 bg-primary/10 ring-1 ring-primary/30"
+                          : "border-base-300 bg-base-100 hover:bg-base-200"
+                      }`}
+                      onClick={() => handleSelect(ref)}
+                      onMouseEnter={() => setSelectedIndex(index())}
+                    >
+                      <div class="flex items-start gap-2">
+                        <span class={`${typeStyle().badgeClass} badge-sm gap-1 shrink-0`}>
+                          <SvgIcon name={typeStyle().icon} size={12} aria-hidden />
+                          {typeStyle().label}
+                        </span>
+                        <div class="min-w-0 flex-1">
+                          <div class="truncate font-medium leading-snug text-base-content">
                             <Show
                               when={ref.title}
-                              fallback={
-                                <span class="text-gray-900 dark:text-gray-100 font-serif italic truncate">
-                                  No title available
-                                </span>
-                              }
+                              fallback={<span class="italic">No title available</span>}
                             >
-                              <span class="text-gray-900 dark:text-gray-100 font-serif font-medium truncate">
-                                <ChunksComp
-                                  chunks={ref.title!}
-                                  citeKey={ref.cite_key}
-                                />
+                              <ChunksComp chunks={ref.title!} citeKey={ref.cite_key} />
+                            </Show>
+                          </div>
+                          <div class="mt-1 flex flex-wrap gap-1 text-xs">
+                            <span class={`inline-flex items-center gap-1 rounded-field px-1.5 py-0.5 ${METADATA_STYLES.citeKey.chipClass}`}>
+                              <SvgIcon name={METADATA_STYLES.citeKey.icon} size={11} aria-hidden />
+                              {ref.cite_key}
+                            </span>
+                            <Show when={ref.author?.[0]}>
+                              <span class={`inline-flex items-center gap-1 rounded-field px-1.5 py-0.5 ${METADATA_STYLES.author.chipClass}`}>
+                                <SvgIcon name={METADATA_STYLES.author.icon} size={11} aria-hidden />
+                                {ref.author!.slice(0, 2).join(", ")}
+                              </span>
+                            </Show>
+                            <Show when={ref.year}>
+                              <span class={`inline-flex items-center gap-1 rounded-field px-1.5 py-0.5 ${METADATA_STYLES.year.chipClass}`}>
+                                <SvgIcon name={METADATA_STYLES.year.icon} size={11} aria-hidden />
+                                {ref.year}
+                              </span>
+                            </Show>
+                            <Show when={venue()}>
+                              <span class={`inline-flex items-center gap-1 rounded-field px-1.5 py-0.5 ${METADATA_STYLES.venue.chipClass}`}>
+                                <SvgIcon name={METADATA_STYLES.venue.icon} size={11} aria-hidden />
+                                {venue()}
                               </span>
                             </Show>
                           </div>
-                          <div class="flex items-center shrink-0">
-                            <div class="text-xs font-mono opacity-50">
-                              {ref.cite_key}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="mt-1 flex flex-wrap gap-1">
-                          <For each={ref.author || []}>
-                            {(author, idx) => (
-                              <span class="text-xs opacity-70">
-                                {author}
-                                {idx() < (ref.author?.length || 0) - 1 ? "," : ""}
-                              </span>
-                            )}
-                          </For>
-                        </div>
-                        <div class="mt-1 flex items-center gap-2 text-xs opacity-60">
-                          <Show when={ref.journal}>
-                            <span class="italic">{ref.journal}</span>
-                          </Show>
-                          <Show when={ref.year}>
-                            <span>{ref.year}</span>
-                          </Show>
                         </div>
                       </div>
-                    </div>
-                  </button>
-                )}
+                    </button>
+                  );
+                }}
               </For>
             </div>
+            {renderError()}
           </Match>
         </Switch>
       </div>
