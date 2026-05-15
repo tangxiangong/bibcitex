@@ -90,7 +90,7 @@ function Misc({ entry }: MiscProps) {
               when={entry.title}
               fallback={
                 <span class="text-lg text-base-content/50 italic">
-                  No title available
+                  暂无标题
                 </span>
               }
             >
@@ -105,7 +105,7 @@ function Misc({ entry }: MiscProps) {
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
-              data-tip="Copy Key"
+              data-tip="复制引用键"
               onClick={handleCopyKey}
             >
               <Show
@@ -117,7 +117,7 @@ function Misc({ entry }: MiscProps) {
                       <img
                         width={18}
                         src={ERROR_ICON}
-                        alt="Error"
+                        alt="错误"
                         class="text-error"
                       />
                     }
@@ -134,7 +134,7 @@ function Misc({ entry }: MiscProps) {
                 <img
                   width={18}
                   src={COPY_ICON}
-                  alt="Copy"
+                  alt="复制"
                   class="opacity-70"
                 />
               </Show>
@@ -161,7 +161,7 @@ function Misc({ entry }: MiscProps) {
             when={entry.author && entry.author!.length > 0}
             fallback={
               <span class="text-sm text-base-content/50 italic">
-                Unknown Author
+                未知作者
               </span>
             }
           >
@@ -178,12 +178,12 @@ function Misc({ entry }: MiscProps) {
         {/* Metadata Row */}
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <div class="flex items-center gap-1">
-            <span class="font-semibold text-error">Archive</span>
+            <span class="font-semibold text-error">归档</span>
             <span>{arxiv}</span>
           </div>
           <Show when={entry.year}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">Year</span>
+              <span class="font-semibold text-secondary">年份</span>
               <span>{entry.year}</span>
             </div>
           </Show>

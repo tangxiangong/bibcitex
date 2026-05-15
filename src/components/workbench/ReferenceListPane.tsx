@@ -29,6 +29,27 @@ const FILTER_TYPES: FilterType[] = [
 
 const FILTER_FIELDS: FilterField[] = ["All", "Author", "Title", "Journal", "Year"];
 
+const FILTER_TYPE_LABELS: Record<FilterType, string> = {
+  All: "全部类型",
+  Article: "期刊论文",
+  Book: "图书",
+  Thesis: "学位论文",
+  TechReport: "技术报告",
+  Misc: "其他",
+  Booklet: "小册子",
+  InBook: "书籍章节",
+  InCollection: "文集章节",
+  InProceedings: "会议论文",
+};
+
+const FILTER_FIELD_LABELS: Record<FilterField, string> = {
+  All: "全部字段",
+  Author: "作者",
+  Title: "标题",
+  Journal: "期刊",
+  Year: "年份",
+};
+
 function matchesFilterType(reference: Reference, filterType: FilterType) {
   if (filterType === "All") return true;
   if (filterType === "Thesis") {
@@ -84,7 +105,7 @@ export default function ReferenceListPane() {
       } catch (e) {
         if (!cancelled) {
           setVisibleReferences(filtered);
-          setErrorMessage(`Search failed: ${e}`);
+          setErrorMessage(`搜索失败: ${e}`);
         }
       } finally {
         if (!cancelled) {
@@ -105,19 +126,19 @@ export default function ReferenceListPane() {
       <div class="flex h-14 shrink-0 items-center gap-2 border-b border-base-300 px-3">
         <IconButton
           icon={leftPaneOpen() ? "panelLeftClose" : "panelLeftOpen"}
-          label={leftPaneOpen() ? "Hide libraries" : "Show libraries"}
+          label={leftPaneOpen() ? "隐藏文献库" : "显示文献库"}
           size="sm"
           onClick={toggleLeftPane}
         />
         <div class="min-w-0 flex-1">
-          <h1 class="truncate text-sm font-semibold">{currentBibName() ?? "Workbench"}</h1>
+          <h1 class="truncate text-sm font-semibold">{currentBibName() ?? "文献工作台"}</h1>
           <p class="text-xs text-base-content/55">
-            {references().length} references
+            {references().length} 条文献
           </p>
         </div>
         <IconButton
           icon={rightPaneOpen() ? "panelRightClose" : "panelRightOpen"}
-          label={rightPaneOpen() ? "Hide details" : "Show details"}
+          label={rightPaneOpen() ? "隐藏详情" : "显示详情"}
           size="sm"
           onClick={toggleRightPane}
         />
@@ -132,7 +153,7 @@ export default function ReferenceListPane() {
             onChange={(event) => setFilterType(event.currentTarget.value as FilterType)}
           >
             <For each={FILTER_TYPES}>
-              {(type) => <option value={type}>{type}</option>}
+              {(type) => <option value={type}>{FILTER_TYPE_LABELS[type]}</option>}
             </For>
           </select>
         </label>
@@ -145,7 +166,7 @@ export default function ReferenceListPane() {
             onChange={(event) => setFilterField(event.currentTarget.value as FilterField)}
           >
             <For each={FILTER_FIELDS}>
-              {(field) => <option value={field}>{field}</option>}
+              {(field) => <option value={field}>{FILTER_FIELD_LABELS[field]}</option>}
             </For>
           </select>
         </label>
@@ -155,7 +176,7 @@ export default function ReferenceListPane() {
           <input
             type="search"
             class="min-w-0 flex-1"
-            placeholder="Search references"
+            placeholder="搜索文献"
             value={query()}
             onInput={(event) => setQuery(event.currentTarget.value)}
           />
@@ -176,7 +197,7 @@ export default function ReferenceListPane() {
           when={visibleReferences().length > 0}
           fallback={
             <div class="flex h-full items-center justify-center px-6 text-sm text-base-content/55">
-              No references to display.
+              暂无可显示的文献
             </div>
           }
         >

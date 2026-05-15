@@ -75,7 +75,7 @@ function InBook({ entry }: InBookProps) {
               when={entry.title}
               fallback={
                 <span class="text-lg text-base-content/50 italic">
-                  No title available
+                  暂无标题
                 </span>
               }
             >
@@ -90,7 +90,7 @@ function InBook({ entry }: InBookProps) {
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
-              data-tip="Copy Key"
+              data-tip="复制引用键"
               onClick={handleCopyKey}
             >
               <Show
@@ -102,7 +102,7 @@ function InBook({ entry }: InBookProps) {
                       <img
                         width={18}
                         src={ERROR_ICON}
-                        alt="Error"
+                        alt="错误"
                         class="text-error"
                       />
                     }
@@ -119,7 +119,7 @@ function InBook({ entry }: InBookProps) {
                 <img
                   width={18}
                   src={COPY_ICON}
-                  alt="Copy"
+                  alt="复制"
                   class="opacity-70"
                 />
               </Show>
@@ -146,7 +146,7 @@ function InBook({ entry }: InBookProps) {
             when={entry.author && entry.author!.length > 0}
             fallback={
               <span class="text-sm text-base-content/50 italic">
-                Unknown Author
+                未知作者
               </span>
             }
           >
@@ -164,7 +164,7 @@ function InBook({ entry }: InBookProps) {
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <Show when={entry.book_title}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-primary">Book</span>
+              <span class="font-semibold text-primary">图书</span>
               <span class="italic">
                 <ChunksComp
                   chunks={entry.book_title!}
@@ -177,7 +177,7 @@ function InBook({ entry }: InBookProps) {
             <For each={entry.publisher}>
               {(publisher) => (
                 <div class="flex items-center gap-1">
-                  <span class="font-semibold text-primary">Publisher</span>
+                  <span class="font-semibold text-primary">出版方</span>
                   <span>{publisher}</span>
                 </div>
               )}
@@ -185,7 +185,7 @@ function InBook({ entry }: InBookProps) {
           </Show>
           <Show when={entry.year}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">Year</span>
+              <span class="font-semibold text-secondary">年份</span>
               <span>{entry.year}</span>
             </div>
           </Show>

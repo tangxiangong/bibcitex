@@ -190,7 +190,7 @@ function AddBibliography(props: AddBibliographyProps) {
           onClick={handleClose}
           role="button"
           tabIndex={-1}
-          aria-label="Close modal"
+          aria-label="关闭弹窗"
           onKeyDown={(e) => e.key === "Escape" && handleClose()}
         />
       </div>

@@ -65,7 +65,7 @@ function Article({ entry }: ArticleProps) {
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-2">
               <span class="badge badge-info badge-soft badge-sm font-bold">
-                Article
+                期刊论文
               </span>
               <span class="text-xs font-mono opacity-50 select-all">
                 {key}
@@ -75,7 +75,7 @@ function Article({ entry }: ArticleProps) {
               when={entry.title}
               fallback={
                 <span class="text-lg text-base-content/50 italic">
-                  No title available
+                  暂无标题
                 </span>
               }
             >
@@ -89,7 +89,7 @@ function Article({ entry }: ArticleProps) {
             <button
               type="button"
               class="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
-              data-tip="Copy Key"
+              data-tip="复制引用键"
               onClick={handleCopyKey}
             >
               <Show
@@ -101,7 +101,7 @@ function Article({ entry }: ArticleProps) {
                       <img
                         width={18}
                         src={ERROR_ICON}
-                        alt="Error"
+                        alt="错误"
                         class="text-error"
                       />
                     }
@@ -118,7 +118,7 @@ function Article({ entry }: ArticleProps) {
                 <img
                   width={18}
                   src={COPY_ICON}
-                  alt="Copy"
+                  alt="复制"
                   class="opacity-70"
                 />
               </Show>
@@ -145,7 +145,7 @@ function Article({ entry }: ArticleProps) {
             when={entry.author && entry.author!.length > 0}
             fallback={
               <span class="text-sm text-base-content/50 italic">
-                Unknown Author
+                未知作者
               </span>
             }
           >
@@ -163,13 +163,13 @@ function Article({ entry }: ArticleProps) {
         <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-base-content/70 border-t border-base-content/5 pt-3">
           <Show when={entry.journal}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-primary">Journal</span>
+              <span class="font-semibold text-primary">期刊</span>
               <span class="italic">{entry.journal}</span>
             </div>
           </Show>
           <Show when={entry.year}>
             <div class="flex items-center gap-1">
-              <span class="font-semibold text-secondary">Year</span>
+              <span class="font-semibold text-secondary">年份</span>
               <span>{entry.year}</span>
             </div>
           </Show>

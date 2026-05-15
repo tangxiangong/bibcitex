@@ -35,20 +35,20 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
       {/* Info Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" checked />
-        <div class="collapse-title font-medium">Info</div>
+        <div class="collapse-title font-medium">信息</div>
         <div class="collapse-content">
           <table class="table table-sm">
             <tbody>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Type</td>
-                <td>Misc</td>
+                <td class="text-right opacity-70 font-semibold">类型</td>
+                <td>其他</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Key</td>
+                <td class="text-right opacity-70 font-semibold">引用键</td>
                 <td>{key}</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Title</td>
+                <td class="text-right opacity-70 font-semibold">标题</td>
                 <td>
                   <Show when={entry.title} fallback={""}>
                     <ChunksComp
@@ -62,7 +62,7 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
                 when={entry.author && entry.author!.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Author</td>
+                    <td class="text-right">作者</td>
                     <td></td>
                   </tr>
                 }
@@ -70,26 +70,26 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
                 <For each={entry.author!}>
                   {(author, idx) => (
                     <tr>
-                      <td class="text-right">Author</td>
+                      <td class="text-right">作者</td>
                       <td>{author}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td class="text-right">Archive</td>
+                <td class="text-right">归档</td>
                 <td>arXiv</td>
               </tr>
               <tr>
-                <td class="text-right">ePrint</td>
+                <td class="text-right">电子预印本</td>
                 <td>{entry.eprint || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Primary Class</td>
+                <td class="text-right">主分类</td>
                 <td>{entry.arxiv_primary_class || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Year</td>
+                <td class="text-right">年份</td>
                 <td>{entry.year || ""}</td>
               </tr>
               <tr>
@@ -123,7 +123,7 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td class="text-right">File</td>
+                <td class="text-right">文件</td>
                 <td>
                   <Show when={entry.file} fallback={""}>
                     <button
@@ -145,7 +145,7 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
       {/* Abstract Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Abstract</div>
+        <div class="collapse-title font-medium">摘要</div>
         <div class="collapse-content">
           <Show when={entry.abstract_}>
             <ChunksComp chunks={entry.abstract_!} citeKey={`${key}-abstract`} />
@@ -156,7 +156,7 @@ function MiscDrawer({ entry }: MiscDrawerProps) {
       {/* Note Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Note</div>
+        <div class="collapse-title font-medium">备注</div>
         <div class="collapse-content">
           <Show when={entry.note}>
             <ChunksComp chunks={entry.note!} citeKey={`${key}-note`} />

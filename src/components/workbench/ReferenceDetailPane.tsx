@@ -43,7 +43,7 @@ export default function ReferenceDetailPane() {
       <div class="flex h-14 shrink-0 items-center justify-between border-b border-base-300 px-4">
         <div class="flex min-w-0 items-center gap-2">
           <SvgIcon name="info" class="h-4 w-4 shrink-0 text-base-content/70" aria-hidden />
-          <h2 class="truncate text-sm font-semibold">Reference Detail</h2>
+          <h2 class="truncate text-sm font-semibold">文献详情</h2>
         </div>
       </div>
 
@@ -51,7 +51,7 @@ export default function ReferenceDetailPane() {
         when={reference()}
         fallback={
           <div class="flex min-h-0 flex-1 items-center justify-center px-6 text-center text-sm text-base-content/55">
-            Select a reference to inspect its fields and actions.
+            选择一条文献查看字段和操作
           </div>
         }
       >
@@ -79,7 +79,7 @@ export default function ReferenceDetailPane() {
               <div class="mt-4 flex flex-wrap gap-2">
                 <IconButton
                   icon="copy"
-                  label="Copy cite key"
+                  label="复制引用键"
                   size="sm"
                   variant="primary"
                   onClick={handleCopyCiteKey}
@@ -88,7 +88,7 @@ export default function ReferenceDetailPane() {
                   {(url) => (
                     <IconButton
                       icon="link"
-                      label="Open DOI"
+                      label="打开 DOI"
                       size="sm"
                       onClick={() => openUrl(url())}
                     />
@@ -98,7 +98,7 @@ export default function ReferenceDetailPane() {
                   {(url) => (
                     <IconButton
                       icon="externalLink"
-                      label="Open URL"
+                      label="打开 URL"
                       size="sm"
                       onClick={() => openUrl(url())}
                     />
@@ -108,7 +108,7 @@ export default function ReferenceDetailPane() {
                   {(file) => (
                     <IconButton
                       icon="folderOpen"
-                      label="Open file"
+                      label="打开文件"
                       size="sm"
                       onClick={() => openFile(file())}
                     />
@@ -118,16 +118,16 @@ export default function ReferenceDetailPane() {
             </div>
 
             <section>
-              <MetadataRow kind="author" label="Authors" value={selected().author?.join(", ")} />
-              <MetadataRow kind="year" label="Year" value={selected().year} />
-              <MetadataRow kind="venue" label="Venue" value={venue()} />
-              <MetadataRow kind="note" label="Publisher" value={selected().publisher?.join(", ")} />
-              <MetadataRow kind="note" label="Pages" value={pagesText()} />
+              <MetadataRow kind="author" label="作者" value={selected().author?.join(", ")} />
+              <MetadataRow kind="year" label="年份" value={selected().year} />
+              <MetadataRow kind="venue" label="来源" value={venue()} />
+              <MetadataRow kind="note" label="出版方" value={selected().publisher?.join(", ")} />
+              <MetadataRow kind="note" label="页码" value={pagesText()} />
               <MetadataRow kind="link" label="DOI" value={selected().doi} />
               <MetadataRow kind="link" label="URL" value={selected().url} />
-              <MetadataRow kind="note" label="File" value={selected().file} />
+              <MetadataRow kind="note" label="文件" value={selected().file} />
               <Show when={selected().abstract_?.length}>
-                <MetadataRow kind="note" label="Abstract">
+                <MetadataRow kind="note" label="摘要">
                   <div class="leading-6 text-base-content/80">
                     <ChunksComp
                       chunks={selected().abstract_ ?? []}
@@ -136,7 +136,7 @@ export default function ReferenceDetailPane() {
                   </div>
                 </MetadataRow>
               </Show>
-              <MetadataRow kind="note" label="Note" value={getChunkText(selected().note)} />
+              <MetadataRow kind="note" label="备注" value={getChunkText(selected().note)} />
             </section>
           </div>
         )}

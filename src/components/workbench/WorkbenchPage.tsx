@@ -23,7 +23,7 @@ export default function WorkbenchPage() {
         setErrorMessage(null);
         return;
       }
-      setErrorMessage(`Failed to load settings: ${e}`);
+      setErrorMessage(`读取设置失败: ${e}`);
     }
   });
 

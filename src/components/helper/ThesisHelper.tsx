@@ -14,10 +14,10 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
     : "";
 
   const thesisType = entry.type_ === "PhdThesis"
-    ? "PhD Thesis"
+    ? "博士论文"
     : entry.type_ === "MastersThesis"
-    ? "Master Thesis"
-    : "Thesis";
+    ? "硕士论文"
+    : "学位论文";
 
   const badgeClass = entry.type_ === "MastersThesis"
     ? "badge badge-outline mr-2 text-pink-800 dark:text-pink-200"
@@ -34,7 +34,7 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -54,7 +54,7 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2">
-              Unknown
+              未知作者
             </span>
           }
         >
@@ -78,7 +78,7 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
               )}
             </For>
             <span class="badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2">
-              et al.
+              等
             </span>
           </Show>
         </Show>
@@ -88,7 +88,7 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
           when={schoolAddress}
           fallback={
             <span class="badge badge-outline text-purple-600 dark:text-purple-300 mr-2">
-              Unknown
+              未知学校
             </span>
           }
         >
@@ -100,7 +100,7 @@ function ThesisHelper({ entry }: ThesisHelperProps) {
           when={entry.year}
           fallback={
             <span class="badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2">
-              year
+              年份
             </span>
           }
         >

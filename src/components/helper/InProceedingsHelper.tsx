@@ -18,13 +18,13 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <div class="badge badge-purple badge-soft badge-sm font-bold">
-            InProceedings
+            会议论文
           </div>
           <Show
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -42,7 +42,7 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -75,7 +75,7 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
         <Show when={entry.book_title}>
           <span class="flex items-center gap-1">
             <span class="italic">
-              Proceedings{" "}
+              会议论文集{" "}
               <ChunksComp
                 chunks={entry.book_title!}
                 citeKey={`booktitle_${key}`}
@@ -85,7 +85,7 @@ function InProceedingsHelper({ entry }: InProceedingsHelperProps) {
         </Show>
         <Show when={date}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {date}</span>
+            <span>年份 {date}</span>
           </span>
         </Show>
       </div>

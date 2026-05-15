@@ -35,20 +35,20 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
       {/* Info Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" checked />
-        <div class="collapse-title font-medium">Info</div>
+        <div class="collapse-title font-medium">信息</div>
         <div class="collapse-content">
           <table class="table table-sm">
             <tbody>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Type</td>
-                <td>InCollection</td>
+                <td class="text-right opacity-70 font-semibold">类型</td>
+                <td>文集章节</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Key</td>
+                <td class="text-right opacity-70 font-semibold">引用键</td>
                 <td>{key}</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Title</td>
+                <td class="text-right opacity-70 font-semibold">标题</td>
                 <td>
                   <Show when={entry.title} fallback={""}>
                     <ChunksComp
@@ -62,7 +62,7 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 when={entry.author && entry.author!.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Author</td>
+                    <td class="text-right">作者</td>
                     <td></td>
                   </tr>
                 }
@@ -70,14 +70,14 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 <For each={entry.author!}>
                   {(author, idx) => (
                     <tr>
-                      <td class="text-right">Author</td>
+                      <td class="text-right">作者</td>
                       <td>{author}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td class="text-right">Book Title</td>
+                <td class="text-right">书名</td>
                 <td>
                   <Show when={entry.book_title} fallback={""}>
                     <ChunksComp
@@ -88,14 +88,14 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td class="text-right">Series</td>
+                <td class="text-right">丛书</td>
                 <td>{entry.series || ""}</td>
               </tr>
               <Show
                 when={entry.publisher && entry.publisher.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Publisher</td>
+                    <td class="text-right">出版方</td>
                     <td></td>
                   </tr>
                 }
@@ -103,7 +103,7 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 <For each={entry.publisher}>
                   {(publisher, idx) => (
                     <tr>
-                      <td class="text-right">Publisher</td>
+                      <td class="text-right">出版方</td>
                       <td>{publisher}</td>
                     </tr>
                   )}
@@ -120,23 +120,23 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 </For>
               </Show>
               <tr>
-                <td class="text-right">Address</td>
+                <td class="text-right">地址</td>
                 <td>{entry.address || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Volume</td>
+                <td class="text-right">卷</td>
                 <td>{entry.volume || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Edition</td>
+                <td class="text-right">版本</td>
                 <td>{entry.edition || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Pages</td>
+                <td class="text-right">页码</td>
                 <td>{entry.book_pages || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Year</td>
+                <td class="text-right">年份</td>
                 <td>{entry.year || ""}</td>
               </tr>
               <tr>
@@ -174,7 +174,7 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td class="text-right">File</td>
+                <td class="text-right">文件</td>
                 <td>
                   <Show when={entry.file} fallback={""}>
                     <button
@@ -196,7 +196,7 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
       {/* Abstract Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Abstract</div>
+        <div class="collapse-title font-medium">摘要</div>
         <div class="collapse-content">
           <Show when={entry.abstract_}>
             <ChunksComp chunks={entry.abstract_!} citeKey={`${key}-abstract`} />
@@ -207,7 +207,7 @@ function InCollectionDrawer({ entry }: InCollectionDrawerProps) {
       {/* Note Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Note</div>
+        <div class="collapse-title font-medium">备注</div>
         <div class="collapse-content">
           <Show when={entry.note}>
             <ChunksComp chunks={entry.note!} citeKey={`${key}-note`} />

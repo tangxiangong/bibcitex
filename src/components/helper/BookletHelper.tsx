@@ -14,13 +14,13 @@ function BookletHelper({ entry }: BookletHelperProps) {
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <div class="badge badge-info badge-soft badge-sm font-bold">
-            Booklet
+            小册子
           </div>
           <Show
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -38,7 +38,7 @@ function BookletHelper({ entry }: BookletHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -70,7 +70,7 @@ function BookletHelper({ entry }: BookletHelperProps) {
       <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {entry.year}</span>
+            <span>年份 {entry.year}</span>
           </span>
         </Show>
       </div>

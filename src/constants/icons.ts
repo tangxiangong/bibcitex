@@ -29,6 +29,39 @@ export const ICONS = {
   CANCEL: getAssetUrl("/icons/cancel.svg"),
 } as const;
 
+export const SVG_ICON_PATHS = {
+  alert: getAssetUrl("/icons/alert.svg"),
+  book: getAssetUrl("/icons/book.svg"),
+  calendar: getAssetUrl("/icons/calendar.svg"),
+  check: getAssetUrl("/icons/check.svg"),
+  chevronLeft: getAssetUrl("/icons/chevronLeft.svg"),
+  chevronRight: getAssetUrl("/icons/chevronRight.svg"),
+  clipboard: getAssetUrl("/icons/clipboard.svg"),
+  copy: getAssetUrl("/icons/copy.svg"),
+  download: getAssetUrl("/icons/download.svg"),
+  externalLink: getAssetUrl("/icons/externalLink.svg"),
+  fileText: getAssetUrl("/icons/fileText.svg"),
+  folderOpen: getAssetUrl("/icons/folderOpen.svg"),
+  info: getAssetUrl("/icons/info.svg"),
+  library: getAssetUrl("/icons/library.svg"),
+  link: getAssetUrl("/icons/link.svg"),
+  moon: getAssetUrl("/icons/moon.svg"),
+  panelLeftClose: getAssetUrl("/icons/panelLeftClose.svg"),
+  panelLeftOpen: getAssetUrl("/icons/panelLeftOpen.svg"),
+  panelRightClose: getAssetUrl("/icons/panelRightClose.svg"),
+  panelRightOpen: getAssetUrl("/icons/panelRightOpen.svg"),
+  refresh: getAssetUrl("/icons/refresh.svg"),
+  search: getAssetUrl("/icons/search.svg"),
+  settings: getAssetUrl("/icons/settings.svg"),
+  sun: getAssetUrl("/icons/sun.svg"),
+  tag: getAssetUrl("/icons/tag.svg"),
+  trash: getAssetUrl("/icons/trash.svg"),
+  user: getAssetUrl("/icons/user.svg"),
+  x: getAssetUrl("/icons/x.svg"),
+} as const;
+
+export type StaticSvgIconName = keyof typeof SVG_ICON_PATHS;
+
 export const LOGO = getAssetUrl("/logo.png");
 export const TRANSPARENT_LOGO = getAssetUrl("/transparent_logo.png");
 export const FAVICON = getAssetUrl("/favicon.png");

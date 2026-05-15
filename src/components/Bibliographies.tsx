@@ -127,7 +127,7 @@ function Bibliographies(props: BibliographiesProps) {
     <div class="relative container mx-auto p-6">
       <div class="flex items-center justify-between mb-8">
         <div>
-          <h2 class="text-3xl font-bold gradient-text">Bibliographies</h2>
+          <h2 class="text-3xl font-bold gradient-text">文献库</h2>
           <p class="text-base-content/60 text-sm mt-1">管理你的文献库</p>
         </div>
         <div class="flex gap-2">
@@ -243,7 +243,7 @@ function Bibliographies(props: BibliographiesProps) {
                           <div class="flex items-center gap-2 group/link">
                             <img
                               src={DETAILS_ICON}
-                              alt="File"
+                              alt="文件"
                               class="w-3 h-3 opacity-50 group-hover/link:opacity-100 transition-opacity"
                             />
                             <button
@@ -256,7 +256,7 @@ function Bibliographies(props: BibliographiesProps) {
                             </button>
                           </div>
                           <div class="flex items-center gap-2">
-                            <span class="text-xs opacity-50">Updated</span>
+                            <span class="text-xs opacity-50">更新于</span>
                             <span class="font-mono opacity-80">
                               {formatDate(bib.updated_at)}
                             </span>
@@ -313,7 +313,7 @@ function Bibliographies(props: BibliographiesProps) {
             <div class="flex items-center gap-2">
               <img
                 src={ERROR_ICON}
-                alt="Error"
+                alt="错误"
                 class="h-5 w-5"
               />
               <span class="font-medium">{errorMessage()}</span>

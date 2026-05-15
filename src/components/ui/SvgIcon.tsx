@@ -1,73 +1,18 @@
 import { splitProps } from "solid-js";
-import { Dynamic } from "solid-js/web";
+import type { JSX } from "solid-js";
 import {
-  Book,
-  Calendar,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleAlert,
-  Clipboard,
-  Copy,
-  Download,
-  ExternalLink,
-  FileText,
-  FolderOpen,
-  Info,
-  Library,
-  Link,
-  Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightClose,
-  PanelRightOpen,
-  RefreshCw,
-  Search,
-  Settings,
-  Sun,
-  Tag,
-  Trash,
-  User,
-  X,
-  type LucideIcon,
-  type LucideProps,
-} from "lucide-solid";
+  SVG_ICON_PATHS,
+  type StaticSvgIconName,
+} from "../../constants/icons.ts";
 
-export const ICONS = {
-  alert: CircleAlert,
-  book: Book,
-  calendar: Calendar,
-  check: Check,
-  chevronLeft: ChevronLeft,
-  chevronRight: ChevronRight,
-  clipboard: Clipboard,
-  copy: Copy,
-  download: Download,
-  externalLink: ExternalLink,
-  fileText: FileText,
-  folderOpen: FolderOpen,
-  info: Info,
-  library: Library,
-  link: Link,
-  moon: Moon,
-  panelLeftClose: PanelLeftClose,
-  panelLeftOpen: PanelLeftOpen,
-  panelRightClose: PanelRightClose,
-  panelRightOpen: PanelRightOpen,
-  refresh: RefreshCw,
-  search: Search,
-  settings: Settings,
-  sun: Sun,
-  tag: Tag,
-  trash: Trash,
-  user: User,
-  x: X,
-} as const satisfies Record<string, LucideIcon>;
+export const ICONS = SVG_ICON_PATHS;
 
-export type SvgIconName = keyof typeof ICONS;
+export type SvgIconName = StaticSvgIconName;
 
-export interface SvgIconProps extends LucideProps {
+export interface SvgIconProps
+  extends Omit<JSX.HTMLAttributes<HTMLSpanElement>, "children"> {
   name: SvgIconName;
+  size?: number | string;
   title?: string;
 }
 
@@ -77,28 +22,40 @@ export function SvgIcon(props: SvgIconProps) {
     "title",
     "class",
     "size",
-    "strokeWidth",
     "aria-label",
     "aria-hidden",
     "role",
+    "style",
   ]);
-  const Icon = () => ICONS[local.name];
+  const iconUrl = () => ICONS[local.name];
+  const size = () =>
+    typeof local.size === "number" ? `${local.size}px` : local.size ?? "18px";
   const ariaHidden = () =>
     local["aria-hidden"] ?? (local.title || local["aria-label"] ? undefined : true);
 
   return (
-    <Dynamic
-      component={Icon()}
+    <span
       {...iconProps}
       class={`inline-block shrink-0 ${local.class ?? ""}`.trim()}
-      size={local.size ?? 18}
-      strokeWidth={local.strokeWidth ?? 2}
       aria-label={local["aria-label"] ?? local.title}
       aria-hidden={ariaHidden()}
       role={local.role ?? (local.title || local["aria-label"] ? "img" : undefined)}
-    >
-      {local.title ? <title>{local.title}</title> : undefined}
-    </Dynamic>
+      title={local.title}
+      style={{
+        width: size(),
+        height: size(),
+        "background-color": "currentColor",
+        "mask-image": `url("${iconUrl()}")`,
+        "mask-position": "center",
+        "mask-repeat": "no-repeat",
+        "mask-size": "contain",
+        "-webkit-mask-image": `url("${iconUrl()}")`,
+        "-webkit-mask-position": "center",
+        "-webkit-mask-repeat": "no-repeat",
+        "-webkit-mask-size": "contain",
+        ...(typeof local.style === "object" ? local.style : {}),
+      }}
+    />
   );
 }
 

@@ -22,13 +22,13 @@ function ArXivHelperComponent({ entry }: MiscHelperProps) {
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <div class="badge badge-error badge-soft badge-sm font-bold">
-            Misc
+            其他
           </div>
           <Show
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -46,7 +46,7 @@ function ArXivHelperComponent({ entry }: MiscHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -81,7 +81,7 @@ function ArXivHelperComponent({ entry }: MiscHelperProps) {
         </span>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {entry.year}</span>
+            <span>年份 {entry.year}</span>
           </span>
         </Show>
       </div>
@@ -102,13 +102,13 @@ function MiscHelper({ entry }: MiscHelperProps) {
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <div class="badge badge-neutral badge-soft badge-sm font-bold">
-            Misc
+            其他
           </div>
           <Show
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -126,7 +126,7 @@ function MiscHelper({ entry }: MiscHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -172,7 +172,7 @@ function MiscHelper({ entry }: MiscHelperProps) {
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {entry.year}</span>
+            <span>年份 {entry.year}</span>
           </span>
         </Show>
       </div>

@@ -40,20 +40,20 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
       {/* Info Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" checked />
-        <div class="collapse-title font-medium">Info</div>
+        <div class="collapse-title font-medium">信息</div>
         <div class="collapse-content">
           <table class="table table-sm">
             <tbody>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Type</td>
-                <td>InProceedings</td>
+                <td class="text-right opacity-70 font-semibold">类型</td>
+                <td>会议论文</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Key</td>
+                <td class="text-right opacity-70 font-semibold">引用键</td>
                 <td>{key}</td>
               </tr>
               <tr>
-                <td class="text-right opacity-70 font-semibold">Title</td>
+                <td class="text-right opacity-70 font-semibold">标题</td>
                 <td>
                   <Show when={entry.title} fallback={""}>
                     <ChunksComp
@@ -67,7 +67,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 when={entry.author && entry.author!.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Author</td>
+                    <td class="text-right">作者</td>
                     <td></td>
                   </tr>
                 }
@@ -75,14 +75,14 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 <For each={entry.author!}>
                   {(author, idx) => (
                     <tr>
-                      <td class="text-right">Author</td>
+                      <td class="text-right">作者</td>
                       <td>{author}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td class="text-right">Book Title</td>
+                <td class="text-right">书名</td>
                 <td>
                   <Show when={entry.book_title} fallback={""}>
                     <ChunksComp
@@ -93,14 +93,14 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td class="text-right">Series</td>
+                <td class="text-right">丛书</td>
                 <td>{entry.series || ""}</td>
               </tr>
               <Show
                 when={entry.editor && entry.editor.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Editor</td>
+                    <td class="text-right">编辑</td>
                     <td></td>
                   </tr>
                 }
@@ -118,7 +118,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 when={entry.publisher && entry.publisher.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Publisher</td>
+                    <td class="text-right">出版方</td>
                     <td></td>
                   </tr>
                 }
@@ -126,7 +126,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 <For each={entry.publisher}>
                   {(publisher, idx) => (
                     <tr>
-                      <td class="text-right">Publisher</td>
+                      <td class="text-right">出版方</td>
                       <td>{publisher}</td>
                     </tr>
                   )}
@@ -136,7 +136,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 when={entry.organization && entry.organization.length > 0}
                 fallback={
                   <tr>
-                    <td class="text-right">Organization</td>
+                    <td class="text-right">组织</td>
                     <td></td>
                   </tr>
                 }
@@ -144,34 +144,34 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 <For each={entry.organization}>
                   {(organization, idx) => (
                     <tr>
-                      <td class="text-right">Organization</td>
+                      <td class="text-right">组织</td>
                       <td>{organization}</td>
                     </tr>
                   )}
                 </For>
               </Show>
               <tr>
-                <td class="text-right">Address</td>
+                <td class="text-right">地址</td>
                 <td>{entry.address || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Volume</td>
+                <td class="text-right">卷</td>
                 <td>{entry.volume || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Number</td>
+                <td class="text-right">编号</td>
                 <td>{entry.number || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Pages</td>
+                <td class="text-right">页码</td>
                 <td>{pagesString}</td>
               </tr>
               <tr>
-                <td class="text-right">Year</td>
+                <td class="text-right">年份</td>
                 <td>{entry.year || ""}</td>
               </tr>
               <tr>
-                <td class="text-right">Month</td>
+                <td class="text-right">月份</td>
                 <td>{entry.month || ""}</td>
               </tr>
               <tr>
@@ -205,7 +205,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
                 </td>
               </tr>
               <tr>
-                <td class="text-right">File</td>
+                <td class="text-right">文件</td>
                 <td>
                   <Show when={entry.file} fallback={""}>
                     <button
@@ -227,7 +227,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
       {/* Abstract Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Abstract</div>
+        <div class="collapse-title font-medium">摘要</div>
         <div class="collapse-content">
           <Show when={entry.abstract_}>
             <ChunksComp chunks={entry.abstract_!} citeKey={`${key}-abstract`} />
@@ -238,7 +238,7 @@ function InProceedingsDrawer({ entry }: InProceedingsDrawerProps) {
       {/* Note Section */}
       <div class="collapse collapse-arrow bg-base-200/30 hover:bg-base-200/50 transition-colors rounded-box">
         <input type="checkbox" />
-        <div class="collapse-title font-medium">Note</div>
+        <div class="collapse-title font-medium">备注</div>
         <div class="collapse-content">
           <Show when={entry.note}>
             <ChunksComp chunks={entry.note!} citeKey={`${key}-note`} />

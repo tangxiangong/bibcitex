@@ -52,27 +52,27 @@ function References() {
   const showType = createMemo(() => {
     switch (filterType()) {
       case "All":
-        return "References";
+        return "全部文献";
       case "Article":
-        return "Articles";
+        return "期刊论文";
       case "Book":
-        return "Books";
+        return "图书";
       case "Thesis":
-        return "Thesis";
+        return "学位论文";
       case "TechReport":
-        return "TechReports";
+        return "技术报告";
       case "Misc":
-        return "Misc";
+        return "其他";
       case "Booklet":
-        return "Booklets";
+        return "小册子";
       case "InBook":
-        return "InBooks";
+        return "书籍章节";
       case "InCollection":
-        return "InCollections";
+        return "文集章节";
       case "InProceedings":
-        return "InProceedings";
+        return "会议论文";
       default:
-        return "References";
+        return "全部文献";
     }
   });
 
@@ -133,7 +133,18 @@ function References() {
             <For each={filterTypes}>
               {(type) => (
                 <option value={type}>
-                  {type === "All" ? "Type" : type}
+                  {{
+                    All: "类型",
+                    Article: "期刊论文",
+                    Book: "图书",
+                    Thesis: "学位论文",
+                    TechReport: "技术报告",
+                    Misc: "其他",
+                    Booklet: "小册子",
+                    InBook: "书籍章节",
+                    InCollection: "文集章节",
+                    InProceedings: "会议论文",
+                  }[type]}
                 </option>
               )}
             </For>
@@ -147,7 +158,13 @@ function References() {
             <For each={filterFields}>
               {(field) => (
                 <option value={field}>
-                  {field === "All" ? "Field" : field}
+                  {{
+                    All: "字段",
+                    Author: "作者",
+                    Title: "标题",
+                    Journal: "期刊",
+                    Year: "年份",
+                  }[field]}
                 </option>
               )}
             </For>
@@ -173,7 +190,7 @@ function References() {
           fallback={
             <Show
               when={searchResult().length > 0}
-              fallback={<p class="p-2 text-lg text-red-500">No results</p>}
+              fallback={<p class="p-2 text-lg text-red-500">没有结果</p>}
             >
               <For each={searchResult()}>
                 {(entry) => <ReferenceSelector entry={entry} />}

@@ -32,79 +32,79 @@ export interface MetadataStyle {
 
 export const TYPE_STYLES: Record<ReferenceTypeKey, TypeStyle> = {
   article: {
-    label: "Article",
+    label: "期刊论文",
     badgeClass: "badge bg-info/15 text-base-content border-info/30",
     borderClass: "border-info",
     icon: "fileText",
   },
   book: {
-    label: "Book",
+    label: "图书",
     badgeClass: "badge bg-primary/15 text-base-content border-primary/30",
     borderClass: "border-primary",
     icon: "book",
   },
   booklet: {
-    label: "Booklet",
+    label: "小册子",
     badgeClass: "badge bg-secondary/15 text-base-content border-secondary/30",
     borderClass: "border-secondary",
     icon: "book",
   },
   inBook: {
-    label: "In Book",
+    label: "书籍章节",
     badgeClass: "badge bg-accent/15 text-base-content border-accent/30",
     borderClass: "border-accent",
     icon: "book",
   },
   inCollection: {
-    label: "In Collection",
+    label: "文集章节",
     badgeClass: "badge bg-success/15 text-base-content border-success/30",
     borderClass: "border-success",
     icon: "library",
   },
   inProceedings: {
-    label: "In Proceedings",
+    label: "会议论文",
     badgeClass: "badge bg-warning/15 text-base-content border-warning/30",
     borderClass: "border-warning",
     icon: "fileText",
   },
   manual: {
-    label: "Manual",
+    label: "手册",
     badgeClass: "badge bg-neutral/15 text-base-content border-neutral/30",
     borderClass: "border-neutral",
     icon: "fileText",
   },
   misc: {
-    label: "Misc",
+    label: "其他",
     badgeClass: "badge bg-base-200 text-base-content border-base-300",
     borderClass: "border-base-300",
     icon: "tag",
   },
   proceedings: {
-    label: "Proceedings",
+    label: "会议论文集",
     badgeClass: "badge bg-warning/15 text-base-content border-warning/30",
     borderClass: "border-warning",
     icon: "library",
   },
   techReport: {
-    label: "Tech Report",
+    label: "技术报告",
     badgeClass: "badge bg-error/15 text-base-content border-error/30",
     borderClass: "border-error",
     icon: "fileText",
   },
   thesis: {
-    label: "Thesis",
+    label: "学位论文",
     badgeClass: "badge bg-secondary/15 text-base-content border-secondary/30",
     borderClass: "border-secondary",
     icon: "book",
   },
   unpublished: {
-    label: "Unpublished",
+    label: "未发表",
     badgeClass: "badge bg-neutral/15 text-base-content border-neutral/30",
     borderClass: "border-neutral",
     icon: "fileText",
   },
   unknown: {
-    label: "Unknown",
+    label: "未知类型",
     badgeClass: "badge bg-base-200 text-base-content border-base-300",
     borderClass: "border-base-300",
     icon: "tag",
@@ -189,7 +189,7 @@ export function getChunkText(chunks?: Chunk[]): string {
 }
 
 export function getReferenceTitleText(reference: Reference): string {
-  return getChunkText(reference.title) || "No title available";
+  return getChunkText(reference.title) || "暂无标题";
 }
 
 export function getReferenceVenue(reference: Reference): string {

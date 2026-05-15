@@ -321,7 +321,7 @@ function HelperPage() {
               class="btn btn-primary btn-xs"
               onClick={() => copyToClipboard(failedPasteKey()!)}
             >
-              Copy
+              复制
             </button>
           </Show>
         </div>
@@ -410,7 +410,7 @@ function HelperPage() {
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex min-w-0 items-center gap-2">
                           <span class="badge bg-success/10 text-base-content border-success/30 badge-xs">
-                            Ready
+                            可用
                           </span>
                           <span class="truncate text-sm font-semibold">
                             {bib.name}
@@ -484,7 +484,7 @@ function HelperPage() {
                           <div class="truncate font-medium leading-snug text-base-content">
                             <Show
                               when={ref.title}
-                              fallback={<span class="italic">No title available</span>}
+                              fallback={<span class="italic">暂无标题</span>}
                             >
                               <ChunksComp chunks={ref.title!} citeKey={ref.cite_key} />
                             </Show>

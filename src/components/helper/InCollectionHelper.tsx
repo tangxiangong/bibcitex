@@ -20,7 +20,7 @@ function InCollectionHelper({ entry }: InCollectionHelperProps) {
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -38,7 +38,7 @@ function InCollectionHelper({ entry }: InCollectionHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -83,14 +83,14 @@ function InCollectionHelper({ entry }: InCollectionHelperProps) {
           <For each={entry.publisher}>
             {(publisher, _idx) => (
               <span class="flex items-center gap-1">
-                <span>Publisher {publisher}</span>
+                <span>出版方 {publisher}</span>
               </span>
             )}
           </For>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {entry.year}</span>
+            <span>年份 {entry.year}</span>
           </span>
         </Show>
       </div>

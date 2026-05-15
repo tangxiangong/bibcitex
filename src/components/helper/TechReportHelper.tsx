@@ -14,13 +14,13 @@ function TechReportHelper({ entry }: TechReportHelperProps) {
       <div class="flex justify-between items-center">
         <div class="flex items-center">
           <div class="badge badge-outline mr-2 text-amber-800 dark:text-amber-200">
-            TechReport
+            技术报告
           </div>
           <Show
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -40,7 +40,7 @@ function TechReportHelper({ entry }: TechReportHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2">
-              Unknown
+              未知作者
             </span>
           }
         >
@@ -66,7 +66,7 @@ function TechReportHelper({ entry }: TechReportHelperProps) {
               )}
             </For>
             <span class="badge badge-outline text-blue-700 dark:text-blue-300 font-semibold mr-2">
-              et al.
+              等
             </span>
           </Show>
         </Show>
@@ -76,7 +76,7 @@ function TechReportHelper({ entry }: TechReportHelperProps) {
           when={entry.institution}
           fallback={
             <span class="badge badge-outline text-purple-600 dark:text-purple-300 mr-2">
-              Unknown
+              未知机构
             </span>
           }
         >
@@ -88,7 +88,7 @@ function TechReportHelper({ entry }: TechReportHelperProps) {
           when={entry.year}
           fallback={
             <span class="badge badge-outline text-emerald-700 dark:text-emerald-300 mr-2">
-              year
+              年份
             </span>
           }
         >

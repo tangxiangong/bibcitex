@@ -25,7 +25,7 @@ function Drawer() {
     <div class="drawer-side z-50">
       <label
         for="my-drawer"
-        aria-label="close sidebar"
+        aria-label="关闭侧栏"
         class="drawer-overlay backdrop-blur-sm"
         onClick={handleClose}
       >

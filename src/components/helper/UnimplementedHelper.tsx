@@ -14,7 +14,7 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
     ? entry.type_
     : entry.type_ && typeof entry.type_ === "object" && "Unknown" in entry.type_
     ? entry.type_.Unknown
-    : "Unknown";
+    : "未知类型";
 
   return (
     <div class="w-full">
@@ -27,7 +27,7 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
             when={entry.title}
             fallback={
               <span class="text-gray-900 dark:text-gray-100 font-serif italic">
-                No title available
+                暂无标题
               </span>
             }
           >
@@ -45,7 +45,7 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
           when={entry.author && entry.author!.length > 0}
           fallback={
             <span class="text-xs text-base-content/50 italic">
-              Unknown Author
+              未知作者
             </span>
           }
         >
@@ -69,7 +69,7 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
               )}
             </For>
             <span class="badge badge-ghost badge-xs hover:badge-neutral transition-colors cursor-default">
-              et al.
+              等
             </span>
           </Show>
         </Show>
@@ -77,12 +77,12 @@ function UnimplementedHelper({ entry }: UnimplementedHelperProps) {
       <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
         <Show when={entry.journal}>
           <span class="flex items-center gap-1">
-            <span>Journal {entry.journal}</span>
+            <span>期刊 {entry.journal}</span>
           </span>
         </Show>
         <Show when={entry.year}>
           <span class="flex items-center gap-1 text-secondary">
-            <span>Year {entry.year}</span>
+            <span>年份 {entry.year}</span>
           </span>
         </Show>
       </div>

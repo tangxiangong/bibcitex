@@ -21,7 +21,7 @@ export default function LibraryPane(props: LibraryPaneProps) {
       const refs = await loadBibliography(path);
       selectBibliography(name, refs);
     } catch (e) {
-      setErrorMessage(`Failed to load bibliography: ${e}`);
+      setErrorMessage(`文献库加载失败: ${e}`);
     } finally {
       setBusyName(null);
     }
@@ -35,7 +35,7 @@ export default function LibraryPane(props: LibraryPaneProps) {
       await removeBibliography(name);
       updateSettings(await loadSettings());
     } catch (e) {
-      setErrorMessage(`Failed to remove bibliography: ${e}`);
+      setErrorMessage(`文献库删除失败: ${e}`);
     } finally {
       setBusyName(null);
     }
@@ -47,7 +47,7 @@ export default function LibraryPane(props: LibraryPaneProps) {
     try {
       await openFile(path);
     } catch (e) {
-      setErrorMessage(`Failed to open file: ${e}`);
+      setErrorMessage(`打开文件失败: ${e}`);
     }
   };
 
@@ -56,11 +56,11 @@ export default function LibraryPane(props: LibraryPaneProps) {
       <div class="flex h-14 shrink-0 items-center justify-between border-b border-base-300 px-3">
         <div class="flex min-w-0 items-center gap-2">
           <SvgIcon name="library" class="h-4 w-4 shrink-0 text-base-content/70" aria-hidden />
-          <h2 class="truncate text-sm font-semibold">Libraries</h2>
+          <h2 class="truncate text-sm font-semibold">文献库</h2>
         </div>
         <IconButton
           icon="folderOpen"
-          label="Add bibliography"
+          label="添加文献库"
           size="sm"
           variant="primary"
           onClick={props.onAddBibliography}
@@ -78,7 +78,7 @@ export default function LibraryPane(props: LibraryPaneProps) {
           when={bibliographyList().length > 0}
           fallback={
             <div class="px-4 py-8 text-center text-sm text-base-content/55">
-              No bibliography yet.
+              暂无文献库
             </div>
           }
         >
@@ -113,14 +113,14 @@ export default function LibraryPane(props: LibraryPaneProps) {
                   </Show>
                   <IconButton
                     icon="externalLink"
-                    label={`Open ${bib.name}`}
+                    label={`打开 ${bib.name}`}
                     size="xs"
                     class="opacity-0 group-hover:opacity-100 focus:opacity-100"
                     onClick={(event) => handleOpen(event, bib.path)}
                   />
                   <IconButton
                     icon="trash"
-                    label={`Remove ${bib.name}`}
+                    label={`删除 ${bib.name}`}
                     size="xs"
                     variant="error"
                     class="opacity-0 group-hover:opacity-100 focus:opacity-100"
