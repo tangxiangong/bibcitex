@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup, Show, Switch, Match } from "solid-js";
 import { listen } from "@tauri-apps/api/event";
 import type { Update, DownloadEvent } from "@tauri-apps/plugin-updater";
+import { SvgIcon } from "../ui/SvgIcon";
 
 type BannerStatus = "hidden" | "checking" | "available" | "downloading" | "ready" | "error" | "uptodate";
 
@@ -123,13 +124,11 @@ function UpdateBanner() {
           {/* Available */}
           <Match when={status() === "available" && update()}>
             <div class="flex items-center gap-3 px-4 py-2 bg-primary/10 border-b border-primary/20 text-sm">
-              <svg class="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
+              <SvgIcon name="download" size={16} class="text-primary shrink-0" aria-hidden />
               <span class="text-primary font-medium">
                 发现新版本
               </span>
-              <span class="badge badge-primary badge-soft badge-sm">
+              <span class="badge badge-primary badge-sm">
                 v{update()!.version}
               </span>
               <Show when={update()!.body}>
@@ -175,9 +174,7 @@ function UpdateBanner() {
           {/* Ready to restart */}
           <Match when={status() === "ready"}>
             <div class="flex items-center gap-3 px-4 py-2 bg-success/10 border-b border-success/20 text-sm">
-              <svg class="w-4 h-4 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <SvgIcon name="check" size={16} class="text-success shrink-0" aria-hidden />
               <span class="text-success font-medium">
                 更新已就绪，重启以完成更新
               </span>
@@ -202,9 +199,7 @@ function UpdateBanner() {
           {/* Up to date */}
           <Match when={status() === "uptodate"}>
             <div class="flex items-center gap-3 px-4 py-2 bg-success/10 border-b border-success/20 text-sm">
-              <svg class="w-4 h-4 text-success shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+              <SvgIcon name="check" size={16} class="text-success shrink-0" aria-hidden />
               <span class="text-success font-medium">已是最新版本</span>
               <div class="flex-1" />
               <button
@@ -220,9 +215,7 @@ function UpdateBanner() {
           {/* Error */}
           <Match when={status() === "error"}>
             <div class="flex items-center gap-3 px-4 py-2 bg-error/10 border-b border-error/20 text-sm">
-              <svg class="w-4 h-4 text-error shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+              <SvgIcon name="alert" size={16} class="text-error shrink-0" aria-hidden />
               <span class="text-error font-medium truncate">
                 {errorMsg()}
               </span>

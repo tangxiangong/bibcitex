@@ -2,6 +2,8 @@ import { createEffect, Show } from "solid-js";
 import { useApp } from "../context/AppContext.tsx";
 import ReferenceDrawer from "./drawer/ReferenceDrawer.tsx";
 import ChunksComp from "./ChunksComp.tsx";
+import { IconButton } from "./ui/IconButton";
+import { SvgIcon } from "./ui/SvgIcon";
 
 function Drawer() {
   const { drawerOpen, drawerReference, closeDrawer } = useApp();
@@ -41,13 +43,12 @@ function Drawer() {
               </Show>
             </h3>
           </div>
-          <button
-            type="button"
-            class="btn btn-sm btn-circle btn-ghost"
+          <IconButton
+            icon="x"
+            label="关闭详情"
+            size="sm"
             onClick={handleClose}
-          >
-            ✕
-          </button>
+          />
         </div>
 
         {/* Drawer Content */}
@@ -56,7 +57,7 @@ function Drawer() {
             when={drawerReference()}
             fallback={
               <div class="flex flex-col items-center justify-center h-full text-base-content/50">
-                <span class="text-4xl mb-2">📄</span>
+                <SvgIcon name="fileText" size={40} class="mb-2" aria-hidden />
                 <span>尚未选择任何参考文献</span>
               </div>
             }

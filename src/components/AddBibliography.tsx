@@ -1,6 +1,7 @@
 import { createMemo, createSignal, Show } from "solid-js";
 import { useApp } from "../context/AppContext.tsx";
 import { addBibliography, loadSettings, selectBibFile } from "../tauri.ts";
+import { SvgIcon } from "./ui/SvgIcon";
 
 interface AddBibliographyProps {
   show: boolean;
@@ -69,16 +70,11 @@ function AddBibliography(props: AddBibliographyProps) {
   return (
     <Show when={props.show}>
       <div class="modal modal-open backdrop-blur-sm">
-        <div class="modal-box w-1/2 max-w-2xl glass-panel rounded-3xl shadow-2xl border border-white/10 relative overflow-hidden animate-fade-in">
-          {/* Decorative blobs */}
-          <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl animate-blob pointer-events-none" />
-          <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-secondary/10 rounded-full blur-3xl animate-blob animation-delay-2000 pointer-events-none" />
-
-          {/* Content */}
-          <div class="relative z-10">
+        <div class="modal-box w-[min(42rem,92vw)] max-w-2xl rounded-box border border-base-300 bg-base-100 shadow-xl animate-fade-in">
+          <div>
             {/* Header */}
-            <div class="mb-8">
-              <h3 class="text-2xl font-bold gradient-text">新增文献库</h3>
+            <div class="mb-6">
+              <h3 class="text-xl font-semibold text-base-content">新增文献库</h3>
               <p class="text-base-content/50 text-sm mt-1">添加一个 .bib 文件到你的工作空间</p>
             </div>
 
@@ -102,14 +98,10 @@ function AddBibliography(props: AddBibliographyProps) {
                     <Show
                       when={nameIsValid()}
                       fallback={
-                        <svg class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <SvgIcon name="x" class="text-error" size={20} aria-hidden />
                       }
                     >
-                      <svg class="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <SvgIcon name="check" class="text-success" size={20} aria-hidden />
                     </Show>
                   </Show>
                 </div>
@@ -136,12 +128,10 @@ function AddBibliography(props: AddBibliographyProps) {
                 />
                 <button
                   type="button"
-                  class="btn rounded-xl border-none shadow-md hover:shadow-lg text-white bg-linear-to-r from-primary to-secondary hover:-translate-y-0.5 transition-all duration-300"
+                  class="btn btn-primary rounded-field gap-2"
                   onClick={handleSelectFile}
                 >
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
+                  <SvgIcon name="folderOpen" size={16} aria-hidden />
                   选择文件
                 </button>
               </div>
@@ -169,9 +159,7 @@ function AddBibliography(props: AddBibliographyProps) {
             <Show when={errorMessage()}>
               <div class="mb-4 animate-fade-in">
                 <div class="flex items-center gap-2 px-4 py-3 rounded-xl bg-error/10 border border-error/20 text-sm text-error">
-                  <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
+                  <SvgIcon name="alert" size={16} class="shrink-0" aria-hidden />
                   <span>{errorMessage()}</span>
                 </div>
               </div>
@@ -188,7 +176,7 @@ function AddBibliography(props: AddBibliographyProps) {
               </button>
               <button
                 type="button"
-                class="btn rounded-xl border-none shadow-lg text-white bg-linear-to-r from-primary to-secondary hover:shadow-primary/30 hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-40 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed"
+                class="btn btn-primary rounded-field disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={!saveAvailable()}
                 onClick={handleSave}
               >
