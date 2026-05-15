@@ -12,7 +12,6 @@ export interface IconButtonProps
   > {
   icon: SvgIconName;
   label: string;
-  tooltip?: string;
   variant?: IconButtonVariant;
   size?: IconButtonSize;
   iconClass?: string;
@@ -35,7 +34,6 @@ export function IconButton(props: IconButtonProps) {
   const [local, buttonProps] = splitProps(props, [
     "icon",
     "label",
-    "tooltip",
     "variant",
     "size",
     "iconClass",
@@ -43,7 +41,6 @@ export function IconButton(props: IconButtonProps) {
     "type",
     "disabled",
   ]);
-  const tooltipText = () => local.tooltip ?? local.label;
   const variantClass = () => VARIANT_CLASSES[local.variant ?? "ghost"];
   const sizeClass = () => SIZE_CLASSES[local.size ?? "sm"];
   const classes = () =>
@@ -52,7 +49,6 @@ export function IconButton(props: IconButtonProps) {
       "btn-square",
       variantClass(),
       sizeClass(),
-      tooltipText() ? "tooltip" : "",
       local.class,
     ]
       .filter(Boolean)
@@ -64,8 +60,6 @@ export function IconButton(props: IconButtonProps) {
       type={local.type ?? "button"}
       class={classes()}
       aria-label={local.label}
-      title={tooltipText()}
-      data-tip={tooltipText()}
       disabled={local.disabled}
     >
       <SvgIcon name={local.icon} class={local.iconClass} aria-hidden />

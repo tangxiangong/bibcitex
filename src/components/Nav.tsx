@@ -49,14 +49,12 @@ function Nav() {
         <IconButton
           icon="refresh"
           label="检查更新"
-          tooltip="检查更新"
           size="sm"
           onClick={handleCheckUpdate}
         />
         <IconButton
           icon={theme() === "latte" ? "moon" : "sun"}
           label={theme() === "latte" ? "切换到深色主题" : "切换到浅色主题"}
-          tooltip={theme() === "latte" ? "Mocha" : "Latte"}
           size="sm"
           onClick={toggleTheme}
         />
