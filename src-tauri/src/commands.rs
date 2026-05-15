@@ -12,10 +12,8 @@ use crate::{
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, WebviewUrl};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl};
 
-#[cfg(not(target_os = "macos"))]
-use tauri::WebviewWindow;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -48,6 +46,34 @@ static SETTINGS: Mutex<Option<Setting>> = Mutex::new(None);
 
 // Helper window 选择的文献库 (持久化在内存中)
 static HELPER_BIB: Mutex<Option<(String, String)>> = Mutex::new(None); // (name, path)
+
+const HELPER_WIDTH: f64 = 760.0;
+const HELPER_MIN_HEIGHT: f64 = 70.0;
+const HELPER_DEFAULT_HEIGHT: f64 = 400.0;
+const HELPER_MAX_HEIGHT: f64 = 2000.0;
+
+fn helper_webview_window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(window) = app.get_webview_window("helper") {
+            return Some(window);
+        }
+
+        let guard = HELPER_PANEL.lock().unwrap();
+        return guard.as_ref().and_then(|panel| panel.to_window());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        app.get_webview_window("helper")
+    }
+}
+
+fn notify_helper_opened(app: &AppHandle) {
+    if let Some(window) = helper_webview_window(app) {
+        let _ = window.emit("helper-opened", ());
+    }
+}
 
 fn get_settings() -> Setting {
     let mut settings = SETTINGS.lock().unwrap();
@@ -191,6 +217,7 @@ pub fn toggle_helper_panel(app: &AppHandle) {
             panel.hide();
         } else {
             panel.show_and_make_key();
+            notify_helper_opened(app);
         }
     } else {
         drop(guard);
@@ -221,8 +248,8 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         }
     }
 
-    let width = 900.0;
-    let height = 400.0;
+    let width = HELPER_WIDTH;
+    let height = HELPER_DEFAULT_HEIGHT;
 
     let monitor = app.primary_monitor().ok().flatten();
     let (screen_width, screen_height) = monitor
@@ -239,7 +266,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
 
     let panel = PanelBuilder::<_, HelperPanel>::new(app.app_handle(), "helper")
         .url(WebviewUrl::App("/helper".into()))
-        .title("BibCiTeX Helper")
+        .title("BibCiTeX 助手")
         .size(Size::Logical(LogicalSize::new(width, height)))
         .position(Position::Logical(LogicalPosition::new(x, y)))
         .has_shadow(true)
@@ -258,14 +285,12 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
             w.decorations(false)
                 .transparent(true)
                 .resizable(true)
-                .min_inner_size(width, 70.0)
-                .max_inner_size(width, 2000.0)
+                .min_inner_size(HELPER_WIDTH, HELPER_MIN_HEIGHT)
+                .max_inner_size(HELPER_WIDTH, HELPER_MAX_HEIGHT)
                 .skip_taskbar(true)
         })
         .build()
         .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
-
-    panel.show_and_make_key();
 
     // Hide panel when it loses focus
     if let Some(window) = panel.to_window() {
@@ -276,8 +301,11 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         });
     }
 
+    panel.show_and_make_key();
+
     // Store in global
     *HELPER_PANEL.lock().unwrap() = Some(panel);
+    notify_helper_opened(&app);
 
     Ok(())
 }
@@ -291,12 +319,13 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
         } else {
             let _ = window.show();
             let _ = window.set_focus();
+            notify_helper_opened(&app);
         }
         return Ok(());
     }
 
-    let width = 900.0;
-    let height = 400.0;
+    let width = HELPER_WIDTH;
+    let height = HELPER_DEFAULT_HEIGHT;
 
     let monitor = app.primary_monitor().ok().flatten();
     let (screen_width, screen_height) = monitor
@@ -313,23 +342,23 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
 
     use tauri::WebviewWindowBuilder;
 
-    let window: WebviewWindow =
-        WebviewWindowBuilder::new(&app, "helper", WebviewUrl::App("/helper".into()))
-            .title("BibCiTeX Helper")
-            .inner_size(width, height)
-            .min_inner_size(width, 70.0)
-            .max_inner_size(width, 2000.0)
-            .position(x, y)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .resizable(true)
-            .skip_taskbar(true)
-            .shadow(true)
-            .build()
-            .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
+    let window = WebviewWindowBuilder::new(&app, "helper", WebviewUrl::App("/helper".into()))
+        .title("BibCiTeX 助手")
+        .inner_size(width, height)
+        .min_inner_size(HELPER_WIDTH, HELPER_MIN_HEIGHT)
+        .max_inner_size(HELPER_WIDTH, HELPER_MAX_HEIGHT)
+        .position(x, y)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .resizable(true)
+        .skip_taskbar(true)
+        .shadow(true)
+        .build()
+        .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
 
     let _ = window.set_focus();
+    notify_helper_opened(&app);
 
     // Hide (not close) when it loses focus
     let window_clone = window.clone();
@@ -342,39 +371,37 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+fn apply_helper_window_height(window: &tauri::WebviewWindow, height: f64) {
+    let _ = window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize {
+        width: HELPER_WIDTH,
+        height: HELPER_MIN_HEIGHT,
+    })));
+    let _ = window.set_max_size(Some(tauri::Size::Logical(tauri::LogicalSize {
+        width: HELPER_WIDTH,
+        height: HELPER_MAX_HEIGHT,
+    })));
+    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+        width: HELPER_WIDTH,
+        height,
+    }));
+}
+
 // Resize helper window
 #[tauri::command]
 pub fn resize_helper_window(app: AppHandle, height: f64) -> Result<()> {
-    let new_height = height.clamp(70.0, 2000.0);
+    let new_height = height.clamp(HELPER_MIN_HEIGHT, HELPER_MAX_HEIGHT);
 
     #[cfg(target_os = "macos")]
     {
-        if let Some(window) = app.get_webview_window("helper") {
-            let size = tauri::Size::Logical(tauri::LogicalSize {
-                width: 900.0,
-                height: new_height,
-            });
-            let min = tauri::Size::Logical(tauri::LogicalSize {
-                width: 900.0,
-                height: 70.0,
-            });
-            let max = tauri::Size::Logical(tauri::LogicalSize {
-                width: 900.0,
-                height: 2000.0,
-            });
-            let _ = window.set_min_size(Some(min));
-            let _ = window.set_max_size(Some(max));
-            let _ = window.set_size(size);
+        if let Some(window) = helper_webview_window(&app) {
+            apply_helper_window_height(&window, new_height);
         }
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        if let Some(window) = app.get_webview_window("helper") {
-            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize {
-                width: 900.0,
-                height: new_height,
-            }));
+        if let Some(window) = helper_webview_window(&app) {
+            apply_helper_window_height(&window, new_height);
         }
     }
 

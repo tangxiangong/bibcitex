@@ -28,12 +28,7 @@ pub fn run() {
                             }
                             #[cfg(not(target_os = "macos"))]
                             {
-                                if let Some(window) = app.get_webview_window("helper") {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                } else {
-                                    let _ = commands::create_helper_window(app.clone());
-                                }
+                                let _ = commands::create_helper_window(app.clone());
                             }
                         }
                     }
