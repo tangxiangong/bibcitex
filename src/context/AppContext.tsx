@@ -23,6 +23,9 @@ interface AppContextType {
 
   currentReferences: () => Reference[] | null;
   setCurrentReferences: (refs: Reference[] | null) => void;
+  selectedReference: () => Reference | null;
+  setSelectedReference: (reference: Reference | null) => void;
+  selectBibliography: (name: string, refs: Reference[]) => void;
 
   drawerOpen: () => boolean;
   drawerReference: () => Reference | null;
@@ -31,6 +34,12 @@ interface AppContextType {
 
   currentBibName: () => string | null;
   setCurrentBibName: (name: string | null) => void;
+  leftPaneOpen: () => boolean;
+  setLeftPaneOpen: Setter<boolean>;
+  toggleLeftPane: () => void;
+  rightPaneOpen: () => boolean;
+  setRightPaneOpen: Setter<boolean>;
+  toggleRightPane: () => void;
 
   bibliographyList: () => Array<{ name: string } & BibliographyInfo>;
 }
@@ -49,14 +58,18 @@ export function AppProvider(props: { children: JSX.Element }) {
   };
   const [theme, setTheme] = createSignal<AppTheme>(getInitialTheme());
 
-  const [currentReferences, setCurrentReferences] = createSignal<
+  const [currentReferences, setCurrentReferencesState] = createSignal<
     Reference[] | null
   >(null);
+  const [selectedReference, setSelectedReference] =
+    createSignal<Reference | null>(null);
   const [drawerOpen, setDrawerOpen] = createSignal<boolean>(false);
   const [drawerReference, setDrawerReference] = createSignal<Reference | null>(
     null,
   );
   const [currentBibName, setCurrentBibName] = createSignal<string | null>(null);
+  const [leftPaneOpen, setLeftPaneOpen] = createSignal(true);
+  const [rightPaneOpen, setRightPaneOpen] = createSignal(true);
 
   createEffect(() => {
     document.documentElement.setAttribute("data-theme", theme());
@@ -66,7 +79,26 @@ export function AppProvider(props: { children: JSX.Element }) {
     setTheme((current) => (current === "latte" ? "mocha" : "latte"));
   };
 
+  const setCurrentReferences = (refs: Reference[] | null) => {
+    setCurrentReferencesState(refs);
+    setSelectedReference(refs?.[0] ?? null);
+  };
+
+  const selectBibliography = (name: string, refs: Reference[]) => {
+    setCurrentBibName(name);
+    setCurrentReferences(refs);
+  };
+
+  const toggleLeftPane = () => {
+    setLeftPaneOpen((current) => !current);
+  };
+
+  const toggleRightPane = () => {
+    setRightPaneOpen((current) => !current);
+  };
+
   const openDrawer = (reference: Reference) => {
+    setSelectedReference(reference);
     setDrawerReference(reference);
     setDrawerOpen(true);
   };
@@ -98,12 +130,21 @@ export function AppProvider(props: { children: JSX.Element }) {
     toggleTheme,
     currentReferences,
     setCurrentReferences,
+    selectedReference,
+    setSelectedReference,
+    selectBibliography,
     drawerOpen,
     drawerReference,
     openDrawer,
     closeDrawer,
     currentBibName,
     setCurrentBibName,
+    leftPaneOpen,
+    setLeftPaneOpen,
+    toggleLeftPane,
+    rightPaneOpen,
+    setRightPaneOpen,
+    toggleRightPane,
     bibliographyList,
   };
 
