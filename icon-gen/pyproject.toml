@@ -4,4 +4,4 @@ version = "0.1.0"
 description = "BibCiTeX Icon Generator"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["pillow>=11.3.0"]
+dependencies = ["pillow>=12.2.0"]
