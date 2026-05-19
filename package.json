@@ -14,8 +14,8 @@
   },
   "devDependencies": {
     "@catppuccin/daisyui": "^2.1.1",
-    "@tauri-apps/cli": "^2.11.1",
-    "@types/node": "^25.8.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "@types/node": "^25.9.0",
     "autoprefixer": "^10.5.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
@@ -33,8 +33,8 @@
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
-    "daisyui": "^5.5.19",
-    "katex": "^0.16.46",
-    "solid-js": "^1.9.12"
+    "daisyui": "^5.5.20",
+    "katex": "^0.16.47",
+    "solid-js": "^1.9.13"
   }
 }
