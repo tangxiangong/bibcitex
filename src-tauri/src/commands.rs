@@ -60,7 +60,7 @@ fn helper_webview_window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
         }
 
         let guard = HELPER_PANEL.lock().unwrap();
-        return guard.as_ref().and_then(|panel| panel.to_window());
+        guard.as_ref().and_then(|panel| panel.to_window())
     }
 
     #[cfg(not(target_os = "macos"))]
