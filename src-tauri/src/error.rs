@@ -23,6 +23,9 @@ pub enum Error {
     #[error("Tauri error: {0}")]
     Tauri(String),
 
+    #[error("Native helper error: {0}")]
+    NativeHelper(String),
+
     #[error("Core error: {0}")]
     Core(String),
 }

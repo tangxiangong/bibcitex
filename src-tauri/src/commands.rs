@@ -8,32 +8,31 @@ use crate::{
         },
         setting::{BibliographyInfo, Setting},
     },
+    native_helper::{ThemeMode, bridge as native_helper_bridge, state as native_helper_state},
     xpaste::focus_previous_window,
 };
+use arboard::Clipboard;
 use std::path::PathBuf;
 use std::sync::Mutex;
+#[cfg(target_os = "macos")]
+use tauri::AppHandle;
+#[cfg(not(target_os = "macos"))]
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl};
 
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
-#[cfg(target_os = "macos")]
-use tauri_nspanel::tauri_panel;
-
-#[cfg(target_os = "macos")]
-tauri_panel! {
-    panel!(HelperPanel {
-        config: {
-            can_become_key_window: true,
-            is_floating_panel: true
-        }
-    })
+fn set_clipboard_text(text: &str) -> Result<()> {
+    let mut clipboard = Clipboard::new().map_err(|e| Error::Clipboard(e.to_string()))?;
+    clipboard
+        .set_text(text)
+        .map_err(|e| Error::Clipboard(e.to_string()))
 }
 
-// Store the panel handle globally since get_webview_panel() doesn't find it
-#[cfg(target_os = "macos")]
-static HELPER_PANEL: Mutex<Option<std::sync::Arc<dyn tauri_nspanel::Panel<tauri::Wry>>>> =
-    Mutex::new(None);
+pub(crate) fn paste_reference_key(cite_key: &str) -> Result<()> {
+    set_clipboard_text(cite_key)?;
+    focus_previous_window().map_err(|e| Error::Clipboard(e.to_string()))
+}
 
 /// Load references from a bib file
 fn load_references(path: impl AsRef<std::path::Path>) -> Result<Vec<Reference>> {
@@ -44,33 +43,23 @@ fn load_references(path: impl AsRef<std::path::Path>) -> Result<Vec<Reference>> 
 // Global settings state
 static SETTINGS: Mutex<Option<Setting>> = Mutex::new(None);
 
-// Helper window 选择的文献库 (持久化在内存中)
-static HELPER_BIB: Mutex<Option<(String, String)>> = Mutex::new(None); // (name, path)
-
+#[cfg(not(target_os = "macos"))]
 const HELPER_WIDTH: f64 = 760.0;
+#[cfg(not(target_os = "macos"))]
 const HELPER_MIN_HEIGHT: f64 = 70.0;
+#[cfg(not(target_os = "macos"))]
 const HELPER_DEFAULT_HEIGHT: f64 = 400.0;
+#[cfg(not(target_os = "macos"))]
 const HELPER_MAX_HEIGHT: f64 = 2000.0;
 
+#[cfg(not(target_os = "macos"))]
 fn helper_webview_window(app: &AppHandle) -> Option<tauri::WebviewWindow> {
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(window) = app.get_webview_window("helper") {
-            return Some(window);
-        }
-
-        let guard = HELPER_PANEL.lock().unwrap();
-        guard.as_ref().and_then(|panel| panel.to_window())
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        app.get_webview_window("helper")
-    }
+    app.get_webview_window("helper")
 }
 
-fn notify_helper_opened(app: &AppHandle) {
-    if let Some(window) = helper_webview_window(app) {
+fn notify_helper_opened(_app: &AppHandle) {
+    #[cfg(not(target_os = "macos"))]
+    if let Some(window) = helper_webview_window(_app) {
         let _ = window.emit("helper-opened", ());
     }
 }
@@ -91,12 +80,15 @@ fn set_settings(new_settings: Setting) {
 // Helper bib persistence
 #[tauri::command]
 pub fn get_helper_bib() -> Option<(String, String)> {
-    HELPER_BIB.lock().unwrap().clone()
+    native_helper_state::current_bibliography()
 }
 
 #[tauri::command]
-pub fn set_helper_bib(name: String, path: String) {
-    *HELPER_BIB.lock().unwrap() = Some((name, path));
+pub fn set_helper_bib(name: String, path: String) -> Result<()> {
+    native_helper_state::set_current_bibliography(name, path)
+        .map(|_| ())
+        .map_err(Error::NativeHelper)?;
+    Ok(())
 }
 
 // Settings commands
@@ -166,18 +158,12 @@ pub fn search_by_field(references: Vec<Reference>, query: String, field: String)
 // Clipboard commands
 #[tauri::command]
 pub fn copy_to_clipboard(text: String) -> Result<()> {
-    let mut clipboard = arboard::Clipboard::new().map_err(|e| Error::Clipboard(e.to_string()))?;
-    clipboard
-        .set_text(&text)
-        .map_err(|e| Error::Clipboard(e.to_string()))
+    set_clipboard_text(&text)
 }
 
 #[tauri::command]
 pub fn paste_to_app(text: String) -> Result<()> {
-    // First copy to clipboard
-    copy_to_clipboard(text)?;
-    // Then focus previous window and paste
-    focus_previous_window().map_err(|e| Error::Clipboard(e.to_string()))
+    paste_reference_key(&text)
 }
 
 // File dialog command
@@ -208,103 +194,40 @@ pub async fn open_file(app: AppHandle, path: String) -> Result<()> {
         .map_err(|e| Error::Tauri(e.to_string()))
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn set_native_helper_theme(theme: String) {
+    let native_theme = match theme.as_str() {
+        "mocha" => ThemeMode::Dark,
+        _ => ThemeMode::Light,
+    };
+    native_helper_bridge::set_theme(native_theme);
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub fn set_native_helper_theme(_theme: String) {}
+
 // Helper window — macOS panel management via global static
 #[cfg(target_os = "macos")]
 pub fn toggle_helper_panel(app: &AppHandle) {
-    let guard = HELPER_PANEL.lock().unwrap();
-    if let Some(panel) = guard.as_ref() {
-        if panel.is_visible() {
-            panel.hide();
-        } else {
-            panel.show_and_make_key();
-            notify_helper_opened(app);
-        }
+    if native_helper_bridge::is_panel_visible() {
+        native_helper_bridge::hide_helper();
     } else {
-        drop(guard);
-        let _ = create_helper_window(app.clone());
+        native_helper_bridge::show_helper();
+        notify_helper_opened(app);
     }
 }
 
 #[cfg(target_os = "macos")]
 pub fn hide_helper_panel() {
-    let guard = HELPER_PANEL.lock().unwrap();
-    if let Some(panel) = guard.as_ref() {
-        panel.hide();
-    }
+    native_helper_bridge::hide_helper();
 }
 
 #[cfg(target_os = "macos")]
 pub fn create_helper_window(app: AppHandle) -> Result<()> {
-    use tauri::{LogicalPosition, LogicalSize, Position, Size};
-    use tauri_nspanel::{CollectionBehavior, PanelBuilder, PanelLevel};
-
-    // Already created — just toggle
-    {
-        let guard = HELPER_PANEL.lock().unwrap();
-        if guard.is_some() {
-            drop(guard);
-            toggle_helper_panel(&app);
-            return Ok(());
-        }
-    }
-
-    let width = HELPER_WIDTH;
-    let height = HELPER_DEFAULT_HEIGHT;
-
-    let monitor = app.primary_monitor().ok().flatten();
-    let (screen_width, screen_height) = monitor
-        .as_ref()
-        .map(|m| {
-            let size = m.size();
-            let scale = m.scale_factor();
-            (size.width as f64 / scale, size.height as f64 / scale)
-        })
-        .unwrap_or((1920.0, 1080.0));
-
-    let x = (screen_width - width) / 2.0;
-    let y = screen_height / 3.0 - height / 2.0;
-
-    let panel = PanelBuilder::<_, HelperPanel>::new(app.app_handle(), "helper")
-        .url(WebviewUrl::App("/helper".into()))
-        .title("BibCiTeX 助手")
-        .size(Size::Logical(LogicalSize::new(width, height)))
-        .position(Position::Logical(LogicalPosition::new(x, y)))
-        .has_shadow(true)
-        .level(PanelLevel::MainMenu)
-        .transparent(true)
-        .corner_radius(12.0)
-        .hides_on_deactivate(true)
-        .collection_behavior(
-            CollectionBehavior::new()
-                .can_join_all_spaces()
-                .full_screen_auxiliary()
-                .ignores_cycle()
-                .transient(),
-        )
-        .with_window(move |w| {
-            w.decorations(false)
-                .transparent(true)
-                .resizable(true)
-                .min_inner_size(HELPER_WIDTH, HELPER_MIN_HEIGHT)
-                .max_inner_size(HELPER_WIDTH, HELPER_MAX_HEIGHT)
-                .skip_taskbar(true)
-        })
-        .build()
-        .map_err(|e: tauri::Error| Error::Tauri(e.to_string()))?;
-
-    // Hide panel when it loses focus
-    if let Some(window) = panel.to_window() {
-        window.on_window_event(move |_event| {
-            if let tauri::WindowEvent::Focused(false) = _event {
-                hide_helper_panel();
-            }
-        });
-    }
-
-    panel.show_and_make_key();
-
-    // Store in global
-    *HELPER_PANEL.lock().unwrap() = Some(panel);
+    let _ = app;
+    native_helper_bridge::show_helper();
     notify_helper_opened(&app);
 
     Ok(())
@@ -371,6 +294,7 @@ pub fn create_helper_window(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "macos"))]
 fn apply_helper_window_height(window: &tauri::WebviewWindow, height: f64) {
     let _ = window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize {
         width: HELPER_WIDTH,
@@ -389,17 +313,11 @@ fn apply_helper_window_height(window: &tauri::WebviewWindow, height: f64) {
 // Resize helper window
 #[tauri::command]
 pub fn resize_helper_window(app: AppHandle, height: f64) -> Result<()> {
-    let new_height = height.clamp(HELPER_MIN_HEIGHT, HELPER_MAX_HEIGHT);
-
-    #[cfg(target_os = "macos")]
-    {
-        if let Some(window) = helper_webview_window(&app) {
-            apply_helper_window_height(&window, new_height);
-        }
-    }
-
+    let _ = app;
+    let _ = height;
     #[cfg(not(target_os = "macos"))]
     {
+        let new_height = height.clamp(HELPER_MIN_HEIGHT, HELPER_MAX_HEIGHT);
         if let Some(window) = helper_webview_window(&app) {
             apply_helper_window_height(&window, new_height);
         }

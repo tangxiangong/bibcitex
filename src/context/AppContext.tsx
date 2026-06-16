@@ -9,6 +9,13 @@ import {
   useContext,
 } from "solid-js";
 import type { BibliographyInfo, Reference, Setting } from "../types.ts";
+import { setNativeHelperTheme } from "@/tauri.ts";
+
+const isMacOS = () => {
+  if (typeof navigator === "undefined") return false;
+
+  return /Mac/i.test(navigator.platform) || /Macintosh|Mac OS X/i.test(navigator.userAgent);
+};
 
 export type AppTheme = "latte" | "mocha";
 
@@ -72,7 +79,13 @@ export function AppProvider(props: { children: JSX.Element }) {
   const [rightPaneOpen, setRightPaneOpen] = createSignal(true);
 
   createEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme());
+    const nextTheme = theme();
+    document.documentElement.setAttribute("data-theme", nextTheme);
+    if (!isMacOS()) return;
+
+    setNativeHelperTheme(nextTheme).catch((error) => {
+      console.error("Failed to sync native helper theme:", error);
+    });
   });
 
   const toggleTheme = () => {
