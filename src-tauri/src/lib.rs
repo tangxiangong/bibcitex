@@ -2,6 +2,7 @@ mod commands;
 mod error;
 
 pub mod core;
+mod native_helper;
 pub mod xpaste;
 pub use error::{Error, Result};
 
@@ -35,10 +36,6 @@ pub fn run() {
                 })
                 .build(),
         );
-    // Initialize nspanel plugin on macOS
-    #[cfg(target_os = "macos")]
-    let builder = builder.plugin(tauri_nspanel::init());
-
     builder
         .setup(|app| {
             // Start the app observer for cross-app paste
@@ -195,6 +192,7 @@ pub fn run() {
             commands::hide_helper_window,
             commands::get_helper_bib,
             commands::set_helper_bib,
+            commands::set_native_helper_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

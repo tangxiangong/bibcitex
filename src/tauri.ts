@@ -99,3 +99,7 @@ export async function getHelperBib(): Promise<[string, string] | null> {
 export async function setHelperBib(name: string, path: string): Promise<void> {
   return await invoke("set_helper_bib", { name, path });
 }
+
+export async function setNativeHelperTheme(theme: "latte" | "mocha"): Promise<void> {
+  return await invoke("set_native_helper_theme", { theme });
+}
