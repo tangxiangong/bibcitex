@@ -39,7 +39,7 @@ struct HelperView: View {
 
     private var background: some View {
         ZStack {
-            BlurView(material: model.theme.isDark ? .systemUltraThinMaterial : .systemThinMaterial)
+            BlurView(material: model.theme.isDark ? .hudWindow : .popover)
                 .ignoresSafeArea()
             Color.clear
         }
@@ -104,7 +104,7 @@ struct HelperView: View {
                 }
             }
         }
-        .scrollIndicators(.hidden)
+        .helperHiddenScrollIndicators()
     }
 
     @ViewBuilder
@@ -139,8 +139,7 @@ struct HelperView: View {
                 : Color.clear,
         )
         .onTapGesture {
-            model.selectedBibliographyIndex = index
-            model.selectBibliography(bibliography)
+            model.selectBibliography(bibliography, at: index)
         }
     }
 
@@ -163,7 +162,7 @@ struct HelperView: View {
                         }
                     }
                 }
-                .scrollIndicators(.hidden)
+                .helperHiddenScrollIndicators()
             }
         }
     }
@@ -210,8 +209,7 @@ struct HelperView: View {
                 : Color.clear,
         )
         .onTapGesture {
-            model.selectedReferenceIndex = index
-            model.copyAndPaste(reference, onSuccess: onHidePanel)
+            model.copyAndPaste(reference, at: index, onSuccess: onHidePanel)
         }
     }
 
@@ -222,7 +220,7 @@ struct HelperView: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
             Spacer()
-            if let failed = model.failedPasteKey {
+            if model.failedPasteKey != nil {
                 Button("复制") {
                     model.copyFailedKeyAgain()
                 }
@@ -238,7 +236,7 @@ struct HelperView: View {
 }
 
 struct BlurView: NSViewRepresentable {
-    let material: NSWindow.Material
+    let material: NSVisualEffectView.Material
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
@@ -249,6 +247,17 @@ struct BlurView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+private extension View {
+    @ViewBuilder
+    func helperHiddenScrollIndicators() -> some View {
+        if #available(macOS 13.0, *) {
+            scrollIndicators(.hidden)
+        } else {
+            self
+        }
+    }
 }
 
 struct MathChunkText: View {

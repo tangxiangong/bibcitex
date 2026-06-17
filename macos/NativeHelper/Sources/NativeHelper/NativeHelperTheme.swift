@@ -33,8 +33,15 @@ enum NativeHelperError: LocalizedError {
 
 final class NativeHelperService {
     func loadBibliographies() throws -> [NativeHelperBibliography] {
-        let array = bibcitex_native_helper_init_list()
-        defer { bibcitex_free_bibliography_array(array) }
+        var array = FfiBibliographyArray.empty
+        guard bibcitex_native_helper_init_list(&array) != 0 else {
+            throw NativeHelperError.ffiError("加载文献库失败")
+        }
+        defer {
+            withUnsafePointer(to: array) {
+                bibcitex_free_bibliography_array($0)
+            }
+        }
 
         guard boolValue(array.hasValue) == true, array.len > 0, let ptr = array.ptr else {
             return []
@@ -56,16 +63,25 @@ final class NativeHelperService {
     }
 
     func currentBibliography() throws -> NativeHelperBibliography? {
-        let bibliography = bibcitex_native_helper_current_bibliography()
+        var bibliography = FfiBibliography.empty
+        guard bibcitex_native_helper_current_bibliography(&bibliography) != 0 else {
+            throw NativeHelperError.ffiError(fetchLastError() ?? "读取当前文献库失败")
+        }
 
         let hasName = bibliography.name.len > 0
         let hasPath = bibliography.path.len > 0
         if !hasName || !hasPath {
-            bibcitex_free_bibliography(bibliography)
+            withUnsafePointer(to: bibliography) {
+                bibcitex_free_bibliography($0)
+            }
             return nil
         }
 
-        defer { bibcitex_free_bibliography(bibliography) }
+        defer {
+            withUnsafePointer(to: bibliography) {
+                bibcitex_free_bibliography($0)
+            }
+        }
 
         let description = boolValue(bibliography.hasDescription)
             ? stringFromFfi(bibliography.description)
@@ -97,11 +113,19 @@ final class NativeHelperService {
     }
 
     func searchReferences(query: String) throws -> [NativeHelperReference] {
-        let references = query.withCString { queryPointer in
-            bibcitex_native_helper_search_references(queryPointer)
+        var references = FfiReferenceArray.empty
+        let ok = query.withCString { queryPointer in
+            bibcitex_native_helper_search_references(queryPointer, &references)
+        }
+        guard ok != 0 else {
+            throw NativeHelperError.ffiError(fetchLastError() ?? "搜索失败")
         }
 
-        defer { bibcitex_free_reference_array(references) }
+        defer {
+            withUnsafePointer(to: references) {
+                bibcitex_free_reference_array($0)
+            }
+        }
 
         guard boolValue(references.hasValue) == true, references.len > 0, let ptr = references.ptr else {
             return []
@@ -124,9 +148,6 @@ final class NativeHelperService {
 
     private func buildReference(from value: FfiReference) -> NativeHelperReference {
         let entryKind = NativeEntryTypeKind(rawValue: value.entryType.kind) ?? .unknown
-        defer {
-            bibcitex_free_reference(value)
-        }
 
         let typeUnknown = value.entryType.unknown.len > 0 ? stringFromFfi(value.entryType.unknown) : nil
         let hasYear = boolValue(value.hasYear)
@@ -177,8 +198,15 @@ final class NativeHelperService {
     }
 
     private func fetchLastError() -> String? {
-        let error = bibcitex_native_helper_last_error()
-        defer { bibcitex_free_string(error) }
+        var error = FfiString.empty
+        guard bibcitex_native_helper_last_error(&error) != 0 else {
+            return nil
+        }
+        defer {
+            withUnsafePointer(to: error) {
+                bibcitex_free_string($0)
+            }
+        }
         let message = stringFromFfi(error)
         return message.isEmpty ? nil : message
     }

@@ -166,6 +166,7 @@ pub struct FfiReference {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct FfiReferenceArray {
     pub has_value: bool,
     pub ptr: *mut FfiReference,
@@ -183,6 +184,7 @@ pub struct FfiBibliography {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct FfiBibliographyArray {
     pub has_value: bool,
     pub ptr: *mut FfiBibliography,
@@ -509,36 +511,14 @@ fn free_chunk_array(value: FfiChunkArray) {
     drop(unsafe { Box::from_raw(slice) });
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_string(value: FfiString) {
-    free_string(value);
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_string_array(value: FfiStringArray) {
-    free_string_array(value);
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_editor_array(value: FfiEditorArray) {
-    free_editor_array(value);
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_chunk_array(value: FfiChunkArray) {
-    free_chunk_array(value);
-}
-
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_bibliography(value: FfiBibliography) {
+fn free_bibliography(value: FfiBibliography) {
     free_string(value.name);
     free_string(value.path);
     free_string(value.updated_at);
     free_string(value.description);
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_bibliography_array(value: FfiBibliographyArray) {
+fn free_bibliography_array(value: FfiBibliographyArray) {
     if !value.has_value || value.ptr.is_null() {
         return;
     }
@@ -546,15 +526,12 @@ pub unsafe extern "C" fn bibcitex_free_bibliography_array(value: FfiBibliography
     let len = value.len;
     let slice = unsafe { slice::from_raw_parts_mut(value.ptr, len) };
     for item in &mut *slice {
-        unsafe {
-            bibcitex_free_bibliography(*item);
-        }
+        free_bibliography(*item);
     }
     drop(unsafe { Box::from_raw(slice) });
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_reference(value: FfiReference) {
+fn free_reference(value: FfiReference) {
     free_string(value.cite_key);
     free_string(value.source);
     free_string(value.journal);
@@ -577,21 +554,18 @@ pub unsafe extern "C" fn bibcitex_free_reference(value: FfiReference) {
     free_string(value.how_published);
     free_string(value.type_.unknown);
 
-    unsafe {
-        bibcitex_free_string_array(value.author);
-        bibcitex_free_chunk_array(value.title);
-        bibcitex_free_chunk_array(value.note);
-        bibcitex_free_string_array(value.publisher);
-        bibcitex_free_chunk_array(value.abstract_);
-        bibcitex_free_chunk_array(value.issue);
-        bibcitex_free_chunk_array(value.book_title);
-        bibcitex_free_editor_array(value.editor);
-        bibcitex_free_string_array(value.organization);
-    }
+    free_string_array(value.author);
+    free_chunk_array(value.title);
+    free_chunk_array(value.note);
+    free_string_array(value.publisher);
+    free_chunk_array(value.abstract_);
+    free_chunk_array(value.issue);
+    free_chunk_array(value.book_title);
+    free_editor_array(value.editor);
+    free_string_array(value.organization);
 }
 
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_free_reference_array(value: FfiReferenceArray) {
+fn free_reference_array(value: FfiReferenceArray) {
     if !value.has_value || value.ptr.is_null() {
         return;
     }
@@ -599,11 +573,65 @@ pub unsafe extern "C" fn bibcitex_free_reference_array(value: FfiReferenceArray)
     let len = value.len;
     let slice = unsafe { slice::from_raw_parts_mut(value.ptr, len) };
     for item in &mut *slice {
-        unsafe {
-            bibcitex_free_reference(*item);
-        }
+        free_reference(*item);
     }
     drop(unsafe { Box::from_raw(slice) });
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_string(value: *const FfiString) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_string(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_string_array(value: *const FfiStringArray) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_string_array(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_editor_array(value: *const FfiEditorArray) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_editor_array(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_chunk_array(value: *const FfiChunkArray) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_chunk_array(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_bibliography(value: *const FfiBibliography) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_bibliography(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_bibliography_array(value: *const FfiBibliographyArray) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_bibliography_array(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_reference(value: *const FfiReference) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_reference(*value);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn bibcitex_free_reference_array(value: *const FfiReferenceArray) {
+    if let Some(value) = unsafe { value.as_ref() } {
+        free_reference_array(*value);
+    }
 }
 
 pub fn cstring_to_str(ptr: *const c_char) -> Option<String> {

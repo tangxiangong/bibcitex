@@ -52,8 +52,15 @@ pub fn is_panel_visible() -> bool {
 
 #[cfg(target_os = "macos")]
 #[unsafe(no_mangle)]
-pub extern "C" fn bibcitex_native_helper_init_list() -> FfiBibliographyArray {
-    state::list_bibliographies_ffi()
+pub unsafe extern "C" fn bibcitex_native_helper_init_list(out: *mut FfiBibliographyArray) -> c_int {
+    if out.is_null() {
+        return bool_to_c_int(false);
+    }
+
+    unsafe {
+        out.write(state::list_bibliographies_ffi());
+    }
+    bool_to_c_int(true)
 }
 
 #[unsafe(no_mangle)]
@@ -76,8 +83,14 @@ pub unsafe extern "C" fn bibcitex_native_helper_set_current_bibliography(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_native_helper_current_bibliography() -> FfiBibliography {
-    match state::current_bibliography() {
+pub unsafe extern "C" fn bibcitex_native_helper_current_bibliography(
+    out: *mut FfiBibliography,
+) -> c_int {
+    if out.is_null() {
+        return bool_to_c_int(false);
+    }
+
+    let bibliography = match state::current_bibliography() {
         Some((name, path)) => {
             let mut updated_at = String::new();
             let mut description = None;
@@ -102,24 +115,45 @@ pub unsafe extern "C" fn bibcitex_native_helper_current_bibliography() -> FfiBib
             description: ffi::FfiString::null(),
             has_description: false,
         },
+    };
+
+    unsafe {
+        out.write(bibliography);
     }
+    bool_to_c_int(true)
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bibcitex_native_helper_search_references(
     query: *const c_char,
-) -> FfiReferenceArray {
+    out: *mut FfiReferenceArray,
+) -> c_int {
+    if out.is_null() {
+        return bool_to_c_int(false);
+    }
+
     let query = cstring_to_str(query).unwrap_or_default();
     let references = state::search_references(&query);
-    ffi::references_to_ffi_array(references)
+    unsafe {
+        out.write(ffi::references_to_ffi_array(references));
+    }
+    bool_to_c_int(true)
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bibcitex_native_helper_last_error() -> ffi::FfiString {
-    match state::get_last_error() {
+pub unsafe extern "C" fn bibcitex_native_helper_last_error(out: *mut ffi::FfiString) -> c_int {
+    if out.is_null() {
+        return bool_to_c_int(false);
+    }
+
+    let value = match state::get_last_error() {
         Some(error) => ffi::to_ffi_string(Some(error)),
         None => ffi::to_ffi_string(None),
+    };
+    unsafe {
+        out.write(value);
     }
+    bool_to_c_int(true)
 }
 
 #[unsafe(no_mangle)]

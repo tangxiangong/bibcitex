@@ -149,7 +149,7 @@ final class NativeHelperPanelController: NSObject {
         guard let panel else { return }
 
         let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 960, height: 760)
-        let width = max(640, min(960, 760))
+        let width: CGFloat = max(640, min(960, 760))
         let clampedHeight = min(max(height, 160), visibleFrame.height - 120)
 
         let x = visibleFrame.minX + (visibleFrame.width - width) / 2

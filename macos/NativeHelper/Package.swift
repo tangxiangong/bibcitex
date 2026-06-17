@@ -24,10 +24,6 @@ let package = Package(
             name: "NativeHelper",
             dependencies: ["LaTeXSwiftUI"],
             path: "Sources/NativeHelper",
-            linkerSettings: [
-                .linkedFramework("AppKit"),
-                .linkedFramework("SwiftUI"),
-            ],
         ),
     ],
 )

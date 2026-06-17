@@ -9,13 +9,19 @@ public func bibcitex_native_helper_show() {
 
 @_cdecl("bibcitex_native_helper_is_visible")
 public func bibcitex_native_helper_is_visible() -> Int32 {
+    let readVisibility = {
+        MainActor.assumeIsolated {
+            NativeHelperPanelController.shared.isPanelVisible()
+        }
+    }
+
     if Thread.isMainThread {
-        return NativeHelperPanelController.shared.isPanelVisible() ? 1 : 0
+        return readVisibility() ? 1 : 0
     }
 
     var isVisible = false
     DispatchQueue.main.sync {
-        isVisible = NativeHelperPanelController.shared.isPanelVisible()
+        isVisible = readVisibility()
     }
     return isVisible ? 1 : 0
 }

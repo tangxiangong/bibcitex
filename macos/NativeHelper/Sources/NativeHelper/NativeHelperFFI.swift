@@ -3,6 +3,10 @@ import Foundation
 struct FfiString {
     let ptr: UnsafeMutablePointer<CChar>?
     let len: Int
+
+    static var empty: FfiString {
+        FfiString(ptr: nil, len: 0)
+    }
 }
 
 struct FfiStringArray {
@@ -88,6 +92,10 @@ struct FfiReferenceArray {
     let hasValue: UInt8
     let ptr: UnsafeMutablePointer<FfiReference>?
     let len: Int
+
+    static var empty: FfiReferenceArray {
+        FfiReferenceArray(hasValue: 0, ptr: nil, len: 0)
+    }
 }
 
 struct FfiBibliography {
@@ -96,12 +104,26 @@ struct FfiBibliography {
     let updatedAt: FfiString
     let description: FfiString
     let hasDescription: UInt8
+
+    static var empty: FfiBibliography {
+        FfiBibliography(
+            name: .empty,
+            path: .empty,
+            updatedAt: .empty,
+            description: .empty,
+            hasDescription: 0,
+        )
+    }
 }
 
 struct FfiBibliographyArray {
     let hasValue: UInt8
     let ptr: UnsafeMutablePointer<FfiBibliography>?
     let len: Int
+
+    static var empty: FfiBibliographyArray {
+        FfiBibliographyArray(hasValue: 0, ptr: nil, len: 0)
+    }
 }
 
 func boolValue(_ value: UInt8) -> Bool {
@@ -112,7 +134,8 @@ func stringFromFfi(_ source: FfiString) -> String {
     guard source.len > 0, let ptr = source.ptr else {
         return ""
     }
-    return String(decoding: UnsafeBufferPointer(start: ptr, count: source.len), as: UTF8.self)
+    let bytes = UnsafeRawBufferPointer(start: ptr, count: source.len)
+    return String(decoding: bytes, as: UTF8.self)
 }
 
 func stringArrayFromFfi(_ source: FfiStringArray) -> [String] {
@@ -148,43 +171,43 @@ func editorTupleArrayFromFfi(_ source: FfiEditorArray) -> [(String, String)] {
 }
 
 @_silgen_name("bibcitex_native_helper_init_list")
-func bibcitex_native_helper_init_list() -> FfiBibliographyArray
+func bibcitex_native_helper_init_list(_ out: UnsafeMutablePointer<FfiBibliographyArray>?) -> Int32
 
 @_silgen_name("bibcitex_native_helper_set_current_bibliography")
 func bibcitex_native_helper_set_current_bibliography(_ name: UnsafePointer<CChar>?, _ path: UnsafePointer<CChar>?) -> Int32
 
 @_silgen_name("bibcitex_native_helper_current_bibliography")
-func bibcitex_native_helper_current_bibliography() -> FfiBibliography
+func bibcitex_native_helper_current_bibliography(_ out: UnsafeMutablePointer<FfiBibliography>?) -> Int32
 
 @_silgen_name("bibcitex_native_helper_search_references")
-func bibcitex_native_helper_search_references(_ query: UnsafePointer<CChar>?) -> FfiReferenceArray
+func bibcitex_native_helper_search_references(_ query: UnsafePointer<CChar>?, _ out: UnsafeMutablePointer<FfiReferenceArray>?) -> Int32
 
 @_silgen_name("bibcitex_native_helper_copy_and_paste")
 func bibcitex_native_helper_copy_and_paste(_ citeKey: UnsafePointer<CChar>?) -> Int32
 
 @_silgen_name("bibcitex_native_helper_last_error")
-func bibcitex_native_helper_last_error() -> FfiString
+func bibcitex_native_helper_last_error(_ out: UnsafeMutablePointer<FfiString>?) -> Int32
 
 @_silgen_name("bibcitex_free_bibliography_array")
-func bibcitex_free_bibliography_array(_ value: FfiBibliographyArray)
+func bibcitex_free_bibliography_array(_ value: UnsafePointer<FfiBibliographyArray>?)
 
 @_silgen_name("bibcitex_free_bibliography")
-func bibcitex_free_bibliography(_ value: FfiBibliography)
+func bibcitex_free_bibliography(_ value: UnsafePointer<FfiBibliography>?)
 
 @_silgen_name("bibcitex_free_reference_array")
-func bibcitex_free_reference_array(_ value: FfiReferenceArray)
+func bibcitex_free_reference_array(_ value: UnsafePointer<FfiReferenceArray>?)
 
 @_silgen_name("bibcitex_free_reference")
-func bibcitex_free_reference(_ value: FfiReference)
+func bibcitex_free_reference(_ value: UnsafePointer<FfiReference>?)
 
 @_silgen_name("bibcitex_free_string")
-func bibcitex_free_string(_ value: FfiString)
+func bibcitex_free_string(_ value: UnsafePointer<FfiString>?)
 
 @_silgen_name("bibcitex_free_string_array")
-func bibcitex_free_string_array(_ value: FfiStringArray)
+func bibcitex_free_string_array(_ value: UnsafePointer<FfiStringArray>?)
 
 @_silgen_name("bibcitex_free_editor_array")
-func bibcitex_free_editor_array(_ value: FfiEditorArray)
+func bibcitex_free_editor_array(_ value: UnsafePointer<FfiEditorArray>?)
 
 @_silgen_name("bibcitex_free_chunk_array")
-func bibcitex_free_chunk_array(_ value: FfiChunkArray)
+func bibcitex_free_chunk_array(_ value: UnsafePointer<FfiChunkArray>?)

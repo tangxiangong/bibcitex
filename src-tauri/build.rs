@@ -20,6 +20,7 @@ fn compile_native_helper() {
         "cargo:rerun-if-changed={}",
         helper_dir.join("Sources/NativeHelper").display()
     );
+    println!("cargo:rerun-if-env-changed=DEVELOPER_DIR");
 
     let skip_on_failure = env::var("BIBCITEX_SKIP_NATIVE_HELPER_BUILD")
         .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "True"))
@@ -42,6 +43,33 @@ fn compile_native_helper() {
         }
     }
     rerun_if_changed_dir(&helper_dir.join("Sources"));
+
+    fn swift_runtime_library_dirs() -> Vec<PathBuf> {
+        let Ok(output) = Command::new("xcrun").arg("--find").arg("swiftc").output() else {
+            return Vec::new();
+        };
+        if !output.status.success() {
+            return Vec::new();
+        }
+
+        let swiftc = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if swiftc.is_empty() {
+            return Vec::new();
+        }
+
+        let Some(toolchain_usr_dir) = Path::new(&swiftc)
+            .parent()
+            .and_then(Path::parent)
+            .map(Path::to_path_buf)
+        else {
+            return Vec::new();
+        };
+
+        vec![
+            toolchain_usr_dir.join("lib/swift/macosx"),
+            PathBuf::from("/usr/lib/swift"),
+        ]
+    }
 
     let status = Command::new("swift")
         .arg("build")
@@ -118,4 +146,12 @@ fn compile_native_helper() {
     }
 
     println!("cargo:rustc-link-search=native={}", output_dir.display());
+    for swift_runtime_dir in swift_runtime_library_dirs() {
+        if swift_runtime_dir.exists() {
+            println!(
+                "cargo:rustc-link-search=native={}",
+                swift_runtime_dir.display()
+            );
+        }
+    }
 }

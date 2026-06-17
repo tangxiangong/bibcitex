@@ -115,7 +115,7 @@ final class HelperViewModel: ObservableObject {
             }
 
             do {
-                try await Task.sleep(for: .milliseconds(90))
+                try await Task.sleep(nanoseconds: 90_000_000)
             } catch {
                 return
             }
@@ -147,7 +147,10 @@ final class HelperViewModel: ObservableObject {
         selectBibliography(list[index])
     }
 
-    func selectBibliography(_ bibliography: NativeHelperBibliography) {
+    func selectBibliography(_ bibliography: NativeHelperBibliography, at index: Int? = nil) {
+        if let index {
+            selectedBibliographyIndex = index
+        }
         query = ""
         selectedReferenceIndex = nil
         failedPasteKey = nil
@@ -208,7 +211,10 @@ final class HelperViewModel: ObservableObject {
         copyAndPaste(reference, onSuccess: onSuccess)
     }
 
-    func copyAndPaste(_ reference: NativeHelperReference, onSuccess: (() -> Void)? = nil) {
+    func copyAndPaste(_ reference: NativeHelperReference, at index: Int? = nil, onSuccess: (() -> Void)? = nil) {
+        if let index {
+            selectedReferenceIndex = index
+        }
         let key = reference.citeKey
         failedPasteKey = nil
         errorMessage = nil
