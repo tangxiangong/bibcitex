@@ -5,7 +5,7 @@ description = "A BibTeX citation tool"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-
+ 
 [lib]
 name = "bibcitex_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
