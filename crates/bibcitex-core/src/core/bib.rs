@@ -317,18 +317,11 @@ pub(crate) fn parse_optional_field(entry: &biblatex::Entry, field: &str) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fs_err as fs;
-    use std::path::PathBuf;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::io::Write;
 
-    fn sample_bib_path() -> PathBuf {
-        let unique = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("bibcitex-bib-test-{unique}.bib"));
-        fs::write(
-            &path,
+    fn sample_bib_file() -> tempfile::NamedTempFile {
+        let mut file = tempfile::Builder::new().suffix(".bib").tempfile().unwrap();
+        file.write_all(
             r#"@article{smith2024,
   author = {John Smith and Jane Doe},
   title = {A Sample Article},
@@ -342,31 +335,56 @@ mod tests {
   journal = {Journal of Examples},
   year = {2023}
 }
-"#,
+"#
+            .as_bytes(),
         )
         .unwrap();
-        path
+        file
     }
 
     #[test]
     fn test_parse() {
-        let path = sample_bib_path();
-        let bib = parse(&path).unwrap();
+        let file = sample_bib_file();
+        let bib = parse(file.path()).unwrap();
         let entry = bib.get("smith2024").unwrap();
         let title = entry.title().unwrap();
         assert!(!title.is_empty());
         println!("{title:#?}");
-        fs::remove_file(path).unwrap();
     }
 
     #[test]
     fn test_show_article() {
-        let path = sample_bib_path();
-        let bib = parse(&path).unwrap();
+        let file = sample_bib_file();
+        let bib = parse(file.path()).unwrap();
         let entry = bib.get("doe2023").unwrap();
         let article = Reference::from(entry);
         assert_eq!(article.cite_key, "doe2023");
         println!("{article:#?}");
-        fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn concurrent_bibliography_fixtures_have_independent_lifetimes() {
+        let files = std::thread::scope(|scope| {
+            let workers = (0..32)
+                .map(|_| scope.spawn(sample_bib_file))
+                .collect::<Vec<_>>();
+            workers
+                .into_iter()
+                .map(|worker| worker.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        let paths = files
+            .iter()
+            .map(|file| file.path().to_owned())
+            .collect::<std::collections::HashSet<_>>();
+        assert_eq!(paths.len(), files.len());
+        let mut files = files;
+        while let Some(file) = files.pop() {
+            let removed = file.path().to_owned();
+            drop(file);
+            assert!(!removed.exists());
+            for remaining in &files {
+                assert_eq!(parse(remaining.path()).unwrap().len(), 2);
+            }
+        }
     }
 }
