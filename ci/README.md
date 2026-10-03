@@ -64,6 +64,7 @@ certificate requires explicit trust on each user machine; production releases sh
 use a certificate already trusted by Windows. The workflow validates Authenticode
 trust and cleans up the imported signing certificate/private key after use.
 
-These workflows have not been triggered by the coding agent. Local metadata tests
-can run with `python3 -m unittest discover -s ci -p 'test_*.py'`; actual notarization,
-MSIX signing and publication require the repository owner's configured credentials.
+Branch pushes run checks without publishing a release. Local metadata tests run
+with `python3 -m unittest discover -s ci -p 'test_*.py'`; actual notarization,
+MSIX signing and release publication require the repository owner's configured
+credentials and a separate release trigger.

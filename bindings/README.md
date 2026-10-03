@@ -15,9 +15,9 @@ Sources of truth:
 
 ## User-operated generation
 
-These scripts have not been executed by the coding agent. They require an already
-built platform binding library. Running them compiles the generators and
-creates bindings; the user controls when to do that.
+The platform build scripts invoke the generators. Swift generation requires an
+already built `bibcitex-ffi` dynamic library; C# generation reads its Interoptopus
+inventory. Generated bindings are verified by the platform integration tests.
 
 macOS: `bash bindings/generate-swift.sh /absolute/path/libbibcitex_ffi.dylib`.
 Output is under `bindings/generated/swift`. Both the runtime crate and generator
