@@ -1,0 +1,17 @@
+[package]
+name = "bibcitex-csharp"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Interoptopus bindings for the BibCiTeX WinUI application"
+
+[dependencies]
+bibcitex-service = { workspace = true, features = ["csharp"] }
+interoptopus = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+
+[lib]
+crate-type = ["lib", "cdylib"]

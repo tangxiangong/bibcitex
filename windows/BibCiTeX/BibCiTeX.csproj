@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>BibCiTeX</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\assets\app-icons\icon.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
+    <RustTarget Condition="'$(Platform)' == 'ARM64'">aarch64-pc-windows-msvc</RustTarget>
+    <RustTarget Condition="'$(RustTarget)' == ''">x86_64-pc-windows-msvc</RustTarget>
+    <RustConfiguration Condition="'$(Configuration)' == 'Release'">release</RustConfiguration>
+    <RustConfiguration Condition="'$(RustConfiguration)' == ''">debug</RustConfiguration>
+    <RustLibrary>$(MSBuildThisFileDirectory)..\..\target\$(RustTarget)\$(RustConfiguration)\bibcitex_csharp.dll</RustLibrary>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" />
+    <Content Include="..\..\public\icons\windows\*.svg" Link="Assets\Icons\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets\Icons\Dark\*.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\app-icons\icon.ico" Link="Assets\icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\assets\app-icons\*.png" Link="Assets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <GeneratedBindings Include="..\..\bindings\generated\csharp\*.cs" />
+    <Compile Include="@(GeneratedBindings)" Link="Generated\%(Filename)%(Extension)" />
+    <Content Include="$(RustLibrary)" Link="bibcitex_csharp.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\public\icons\windows\LICENSE" Link="Assets\Icons\LICENSE" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CheckRustLibrary" BeforeTargets="PrepareForBuild">
+    <Error Condition="'@(GeneratedBindings)' == ''" Text="Missing Interoptopus C# bindings. Run bindings/generate-csharp.ps1 first." />
+    <Error Condition="!Exists('$(RustLibrary)')" Text="Missing native Rust library: $(RustLibrary). Run windows/scripts/build.ps1 for this architecture first." />
+  </Target>
+</Project>

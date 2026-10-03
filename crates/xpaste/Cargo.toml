@@ -1,0 +1,21 @@
+[package]
+name = "xpaste"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "BibCiTeX clipboard and verified cross-application paste"
+
+[dependencies]
+arboard = { workspace = true }
+enigo = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { workspace = true }
+objc2-app-kit = { workspace = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }

@@ -1,0 +1,4 @@
+[bindings.swift]
+module_name = "BibCiTeXCore"
+ffi_module_name = "BibCiTeXCoreFFI"
+generate_module_map = true

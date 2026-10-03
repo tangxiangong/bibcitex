@@ -1,0 +1,42 @@
+[workspace]
+members = [
+    "bindings/csharp-generator",
+    "bindings/generator",
+    "crates/bibcitex-core",
+    "crates/bibcitex-csharp",
+    "crates/bibcitex-ffi",
+    "crates/bibcitex-service",
+    "crates/xpaste",
+]
+default-members = ["crates/bibcitex-core"]
+resolver = "3"
+
+[workspace.package]
+authors = ["tangxiangong <tangxiangong@gmail.com>"]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+version = "0.6.0"
+
+[workspace.dependencies]
+arboard = "3"
+bibcitex-core = { path = "crates/bibcitex-core" }
+bibcitex-csharp = { path = "crates/bibcitex-csharp" }
+bibcitex-service = { path = "crates/bibcitex-service" }
+biblatex = { version = "0.12", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.15"
+dirs = "7"
+enigo = "0.6"
+fs-err = "3"
+interoptopus = "0.16"
+interoptopus_csharp = "0.16"
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+uniffi = "0.32"
+windows = "0.62"
+xpaste = { path = "crates/xpaste" }

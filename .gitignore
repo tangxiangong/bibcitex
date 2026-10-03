@@ -8,15 +8,18 @@
 
 **/*.bib
 
-scripts/
+/scripts/
 
 node_modules/
 
-src-tauri/target/
-
 build/
-
-src-tauri/gen/
 
 dist/
 .superpowers/
+
+# Platform build outputs
+**/.build/
+windows/**/bin/
+windows/**/obj/
+windows/**/AppPackages/
+__pycache__/

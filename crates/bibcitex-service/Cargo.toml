@@ -1,0 +1,21 @@
+[package]
+name = "bibcitex-service"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared desktop operations for BibCiTeX"
+
+[dependencies]
+bibcitex-core = { workspace = true }
+biblatex = { workspace = true }
+chrono = { workspace = true }
+interoptopus = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+xpaste = { workspace = true }
+
+[features]
+csharp = ["dep:interoptopus"]
