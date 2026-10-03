@@ -68,7 +68,16 @@ internal sealed class MainWindow : Window
         Grid.SetRow(center, 1); Grid.SetColumn(center, 1); root.Children.Add(center);
         var inspector = new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(inspector, 2); Grid.SetRow(inspector, 1); root.Children.Add(inspector);
         Content = root; ShowDetail(null);
-        libraries.SelectionChanged += (_, _) => { current = (libraries.SelectedItem as ListViewItem)?.Tag as Library; heading.Text = current?.Name ?? "文献工作台"; ShowDetail(null); _ = Search(); };
+        libraries.SelectionChanged += (_, _) =>
+        {
+            current = (libraries.SelectedItem as ListViewItem)?.Tag as Library;
+            heading.Text = current?.Name ?? "文献工作台";
+            references.Items.Clear();
+            count.Text = "0 条文献";
+            empty.Visibility = Visibility.Visible;
+            ShowDetail(null);
+            _ = Search();
+        };
         references.SelectionChanged += (_, _) => ShowDetail((references.SelectedItem as ListViewItem)?.Tag as Reference);
         search.TextChanged += (_, _) => _ = Search(true); type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
         root.Loaded += async (_, _) => { SetMinimumSize(); root.XamlRoot.Changed += (_, _) => SetMinimumSize(); if (!initialized) { initialized = true; await ReloadLibraries(); } };
