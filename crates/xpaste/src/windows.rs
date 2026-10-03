@@ -24,10 +24,12 @@ fn process(hwnd: HWND) -> u32 {
 pub fn observe_foreground() {
     let hwnd = unsafe { GetForegroundWindow() };
     let pid = process(hwnd);
-    if !hwnd.0.is_null() && pid != 0 && pid != std::process::id() {
-        if let Ok(mut recent) = RECENT.lock() {
-            *recent = Some((hwnd.0 as isize, pid));
-        }
+    if !hwnd.0.is_null()
+        && pid != 0
+        && pid != std::process::id()
+        && let Ok(mut recent) = RECENT.lock()
+    {
+        *recent = Some((hwnd.0 as isize, pid));
     }
 }
 pub fn capture_paste_target() -> Result<(), String> {
