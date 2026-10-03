@@ -8,6 +8,9 @@
     <ApplicationIcon>..\..\assets\app-icons\icon.ico</ApplicationIcon>
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>MSIX</WindowsPackageType>
@@ -18,11 +21,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
-    <RustTarget Condition="'$(Platform)' == 'ARM64'">aarch64-pc-windows-msvc</RustTarget>
-    <RustTarget Condition="'$(RustTarget)' == ''">x86_64-pc-windows-msvc</RustTarget>
-    <RustConfiguration Condition="'$(Configuration)' == 'Release'">release</RustConfiguration>
-    <RustConfiguration Condition="'$(RustConfiguration)' == ''">debug</RustConfiguration>
-    <RustLibrary>$(MSBuildThisFileDirectory)..\..\target\$(RustTarget)\$(RustConfiguration)\bibcitex_csharp.dll</RustLibrary>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
@@ -34,13 +32,10 @@
     <Content Include="Assets\Icons\Dark\*.svg" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\assets\app-icons\icon.ico" Link="Assets\icon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\assets\app-icons\*.png" Link="Assets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <GeneratedBindings Include="..\..\bindings\generated\csharp\*.cs" />
-    <Compile Include="@(GeneratedBindings)" Link="Generated\%(Filename)%(Extension)" />
-    <Content Include="$(RustLibrary)" Link="bibcitex_csharp.dll" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\public\icons\windows\LICENSE" Link="Assets\Icons\LICENSE" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-  <Target Name="CheckRustLibrary" BeforeTargets="PrepareForBuild">
-    <Error Condition="'@(GeneratedBindings)' == ''" Text="Missing Interoptopus C# bindings. Run bindings/generate-csharp.ps1 first." />
-    <Error Condition="!Exists('$(RustLibrary)')" Text="Missing native Rust library: $(RustLibrary). Run windows/scripts/build.ps1 for this architecture first." />
-  </Target>
+  <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)' != 'true' and '$(EnableMsixTooling)' == 'true'">
+    <ProjectCapability Include="Msix" />
+  </ItemGroup>
+  <Import Project="Build/Rust.targets" />
 </Project>

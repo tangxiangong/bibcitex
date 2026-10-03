@@ -2,18 +2,22 @@
 
 C# / WinUI 3（Windows App SDK 2.5.1 稳定版）主窗口与 Spotlight helper；共享 Rust Core、XPaste、原生 Helper 状态。主窗使用系统 Mica（不支持时使用 Desktop Acrylic），helper 使用系统 Desktop Acrylic。快捷键 `Win+Shift+K`，空闲搜索栏高 56 DIP。公式由 CSharpMath + SkiaSharp 在原生控件内渲染，无 WebView。
 
-## 用户执行的构建
+## Visual Studio
 
-已使用真实生成绑定与 Rust 动态库运行跨语言集成测试；没有启动应用或 GUI。WinUI 完整构建需要 Windows XAML 编译器，macOS 上尝试构建会在该编译器处失败；不能将共享核心测试当作 Windows 应用构建通过。
+安装 Visual Studio 2026 的 Windows 应用开发、C++ 桌面开发工具和对应 Windows SDK，.NET 10 LTS、Rust MSVC 工具链。首次选择架构时，有 rustup 则自动补齐所选目标和生成器宿主目标。直接打开 `windows/BibCiTeX.sln`，选择 `Debug` / `Release` 和 `x64` / `ARM64`，执行“生成解决方案”即可。
 
-安装 Visual Studio 2026 的 Windows 应用开发工具、Windows SDK、.NET 10 LTS、Rust MSVC 工具链和对应 target 后，手动运行：
+MSBuild 会自动构建 Rust DLL、运行 Interoptopus 生成器，再编译 WinUI；干净检出不需要预先执行脚本、Just 或手工生成绑定。Rust 源码变化会触发构建检查，设计时 IntelliSense 不启动 Cargo。找不到 Cargo 时检查 PATH，再检查 `%USERPROFILE%/.cargo/bin/cargo.exe`，缺失时输出明确错误。工具链沿用当前 rustup / `RUSTUP_TOOLCHAIN`，不固定版本；没有 rustup 则使用已安装目标。显式设置 `CargoExecutable` 时不会自动改用其他工具链，除非同时指定匹配的 `RustupExecutable`。
+
+项目配置了 `BibCiTeX (Package)` 启动项，Visual Studio F5 使用 MSIX 包身份。运行由用户操作；本次没有启动应用或 GUI。macOS 已验证共享动态库和 C# 语义，完整 Windows XAML 编译及部署须在 Windows 验证。
+
+CLI 和 IDE 使用同一构建链：
 
 ```powershell
-./windows/scripts/build.ps1 -Architecture x64 -Configuration Debug
-./windows/scripts/build.ps1 -Architecture ARM64 -Configuration Release
+dotnet build windows/BibCiTeX.sln -c Debug -p:Platform=x64
+dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 ```
 
-脚本按目标构建 Rust、调用锁定版本的 Interoptopus C# 生成器，再构建 WinUI。生成的绑定来自 `bindings/generated/csharp`；不提交人工编写的生成文件。日常编辑不需要执行脚本。两个架构均使用对应架构的 `bibcitex_csharp.dll`。
+`windows/scripts/build.ps1` 只是上述解决方案构建的参数入口，不重复构建 Rust。生成的绑定位于 `bindings/generated/csharp`，Rust DLL 位于 `target/<目标三元组>/<debug或release>/bibcitex_csharp.dll`。
 
 ## 原生更新发布
 

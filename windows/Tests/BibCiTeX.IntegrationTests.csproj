@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratedBindingsDirectory Condition="'$(GeneratedBindingsDirectory)' == ''">$(MSBuildThisFileDirectory)../../bindings/generated/csharp</GeneratedBindingsDirectory>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
@@ -16,7 +17,7 @@
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.9" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-    <Compile Include="../../bindings/generated/csharp/*.cs" Link="Generated/%(Filename)%(Extension)" />
+    <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="../BibCiTeX/RustCore.cs" Link="RustCore.cs" />
   </ItemGroup>
 </Project>

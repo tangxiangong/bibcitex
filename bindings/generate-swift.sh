@@ -3,6 +3,7 @@
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 library="${1:-$repo/target/release/libbibcitex_ffi.dylib}"
+output="${2:-$repo/bindings/generated/swift}"
 if [[ ! -f "$library" ]]; then
     echo "Missing Rust library: $library. Build bibcitex-ffi first." >&2
     exit 1
@@ -10,4 +11,4 @@ fi
 cd "$repo"
 cargo run --locked --release -p bibcitex-bindgen -- generate \
     "$library" --language swift --no-format \
-    --out-dir "$repo/bindings/generated/swift"
+    --out-dir "$output"

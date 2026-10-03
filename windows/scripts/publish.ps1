@@ -24,8 +24,7 @@ try {
     $Manifest.Package.Identity.SetAttribute('Publisher', $Publisher)
     $Manifest.Package.Identity.SetAttribute('Version', $Version)
     $Manifest.Save($ManifestPath)
-    & (Join-Path $PSScriptRoot 'build.ps1') -Architecture $Architecture -Configuration Release
-    $Project = Join-Path $Repo 'windows/BibCiTeX/BibCiTeX.csproj'
+    $Project = Join-Path $Repo 'windows/BibCiTeX.sln'
     & dotnet build $Project -c Release "-p:Platform=$Architecture" "-p:RuntimeIdentifier=win-$($Architecture.ToLowerInvariant())" '-p:GenerateAppxPackageOnBuild=true' '-p:AppxBundle=Never' '-p:UapAppxPackageBuildMode=SideloadOnly' '-p:AppxPackageSigningEnabled=true' "-p:PackageCertificateThumbprint=$CertificateThumbprint" "-p:AppxPackageSigningTimestampServerUrl=$($TimestampServer.AbsoluteUri)" "-p:AppxPackageDir=$OutputDirectory/"
     if ($LASTEXITCODE -ne 0) { throw 'MSIX packaging failed.' }
     $Packages = @(Get-ChildItem $OutputDirectory -Recurse -Filter '*.msix' | Where-Object { $_.Name -match [regex]::Escape($Version) -and $_.Name -notmatch 'Dependencies' })

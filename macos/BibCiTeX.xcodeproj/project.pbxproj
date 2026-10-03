@@ -1,0 +1,833 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		66D5D6D1FA57AA1821D7CF86 /* RustBindings */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 3F2D1874A31A20F8A6681100 /* Build configuration list for PBXAggregateTarget "RustBindings" */;
+			buildPhases = (
+				62E7EC0B6C1E05BB3847305C /* Build Rust and generate Swift bindings */,
+			);
+			dependencies = (
+			);
+			name = RustBindings;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */ = {isa = PBXBuildFile; fileRef = 18D1244D5E41DA43FACF65D8 /* refresh.svg */; };
+		0DB711FF0A699B56A62641E7 /* check.svg in Resources */ = {isa = PBXBuildFile; fileRef = D318D2E31242780F2128FA79 /* check.svg */; };
+		1635A09A854275CD51FD19C9 /* libBibCiTeXCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */; };
+		17FF96B8295FA3F86DC304B5 /* chevronRight.svg in Resources */ = {isa = PBXBuildFile; fileRef = 20A8CCD92B6053AB065871E0 /* chevronRight.svg */; };
+		1878789D5023C6B1D8F7CFB2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 038019CE5A12DC6539F82108 /* Foundation.framework */; };
+		1E3676817B2B06C8AE30864D /* tag.svg in Resources */ = {isa = PBXBuildFile; fileRef = BE9B80270A55A6BC104D8237 /* tag.svg */; };
+		2137D6CD83DFE8EBF65013AB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C688CF78E1730A823A796F8F /* Sparkle */; };
+		244DD91090476012FA772244 /* clipboard.svg in Resources */ = {isa = PBXBuildFile; fileRef = BB2435A0F4F2B46818093652 /* clipboard.svg */; };
+		278EF7733A78C68EAD3C44D5 /* moon.svg in Resources */ = {isa = PBXBuildFile; fileRef = F05E64D75C1320EF8CC4A45D /* moon.svg */; };
+		2AEA716CA81746C3A01199A4 /* link.svg in Resources */ = {isa = PBXBuildFile; fileRef = 95C70158D9993BDB4C203879 /* link.svg */; };
+		2B5603948BD543CF6D639A8A /* RustCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E458D60B8FDDC97D5B48DCA /* RustCore.swift */; };
+		3023A5807339A00C715C026F /* library.svg in Resources */ = {isa = PBXBuildFile; fileRef = 4092D03202B5381411098A7B /* library.svg */; };
+		30A86772A4F59C8720455067 /* AppResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4AE55941866C34949D675B /* AppResources.swift */; };
+		362AC9BD6C1F6DD5E060EAFE /* info.svg in Resources */ = {isa = PBXBuildFile; fileRef = BA4860C8547C16762913B7B1 /* info.svg */; };
+		36C34A7EE98EE0FE330D6A87 /* icon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6C06F02CE6E49ED6A759478C /* icon.icns */; };
+		3A85E58E4056FF3618733592 /* externalLink.svg in Resources */ = {isa = PBXBuildFile; fileRef = FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */; };
+		3BED296EB5CB22F95C2D2A64 /* WorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */; };
+		41303FCE78232CDB53AF2714 /* HelperPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3427E0196B1D54D70378C9D /* HelperPanelController.swift */; };
+		472F1164A90E45CE5A68A356 /* add.svg in Resources */ = {isa = PBXBuildFile; fileRef = B175C23E24258D56DD93E5F2 /* add.svg */; };
+		4755010CCC63100950BD005F /* copy.svg in Resources */ = {isa = PBXBuildFile; fileRef = B68F9A470891876822BCE79B /* copy.svg */; };
+		4ADCD8505F6C18A51CD7A3EC /* x.svg in Resources */ = {isa = PBXBuildFile; fileRef = DA6B319820DB14704DA10575 /* x.svg */; };
+		4CA60BFABB0992265824695A /* folderOpen.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3A019FFBF06D1C9B8033B2F1 /* folderOpen.svg */; };
+		53BBDDB78C17CB8E868FDB2B /* user.svg in Resources */ = {isa = PBXBuildFile; fileRef = D1C28BE4719539DB7AF9BFA2 /* user.svg */; };
+		54EB8E20C98FC88AF7374428 /* HelperTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22666F6B8718AD1E87409835 /* HelperTheme.swift */; };
+		5A0BA666A6844175FE0375D6 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50246B511084B357B60B89C3 /* Cocoa.framework */; };
+		5AC4D6F1DDFC7BC7737CE6A7 /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */; };
+		5BACE2D96EBFF781C1A3E52A /* panelRightClose.svg in Resources */ = {isa = PBXBuildFile; fileRef = F5A73E973D985370D4F1BBDA /* panelRightClose.svg */; };
+		5C6A0A65D233C9DE5914BE5D /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C83C8CD0D32FADF3D4CC6434 /* ApplicationServices.framework */; };
+		5C700A4AF9AE3DB19B15B59B /* book.svg in Resources */ = {isa = PBXBuildFile; fileRef = 98E303A1B30F0855A78C6CFB /* book.svg */; };
+		638EE8A833C14779A2E2685B /* panelLeftOpen.svg in Resources */ = {isa = PBXBuildFile; fileRef = BD05EC281D1AC92B51A21A8A /* panelLeftOpen.svg */; };
+		663694040B80AAA638F09B54 /* panelRightOpen.svg in Resources */ = {isa = PBXBuildFile; fileRef = 75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */; };
+		67C14C8CC52C46DE68F0C482 /* LaTeXSwiftUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5CBBD8369E7177396845BD89 /* LaTeXSwiftUI */; };
+		69F3C736783CD2D04127FDC4 /* HelperModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3549826455F426169DFEA202 /* HelperModels.swift */; };
+		771E1CC6B441A5095E5EC864 /* chevronDown.svg in Resources */ = {isa = PBXBuildFile; fileRef = E3D66F68B99DD86C169AEBC2 /* chevronDown.svg */; };
+		846FC375E2D5E95DE88F03E6 /* SVGIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A31659CFF4595616CF1DAA /* SVGIcon.swift */; };
+		96F29BF96E613696D6D6D1AD /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CABBFC1BC8B4EE6B27DB98D1 /* Carbon.framework */; };
+		9742EFE8546C9F6928A87BE5 /* settings.svg in Resources */ = {isa = PBXBuildFile; fileRef = D445A11BACFA9BA9B887CF8F /* settings.svg */; };
+		97D8F4724316C7D386D0D8A3 /* BibCiTeXCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97288C473DE3FA8783A4E20C /* BibCiTeXCore.swift */; };
+		9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */; };
+		A1017E6C56AFA62048689647 /* folderAdd.svg in Resources */ = {isa = PBXBuildFile; fileRef = D3CD787C2C1A7587729003E2 /* folderAdd.svg */; };
+		B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */; };
+		B53283C7D509A479590CD4BF /* WorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */; };
+		B58EE2C0B3F5293B39E5D01E /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91C61546766387505A3A82CF /* AppKit.framework */; };
+		BAD242C16742F68FC1084513 /* download.svg in Resources */ = {isa = PBXBuildFile; fileRef = AAC02E7B140A57A506B77D0F /* download.svg */; };
+		C128DB9AEF436BF75B760DEE /* trash.svg in Resources */ = {isa = PBXBuildFile; fileRef = E542E1AA8194BEA29C5E3FBF /* trash.svg */; };
+		C6B6006A9859E3A015F3926F /* search.svg in Resources */ = {isa = PBXBuildFile; fileRef = A215042B0D3A54ECF909194F /* search.svg */; };
+		D1450695B078879CC130A04D /* fileText.svg in Resources */ = {isa = PBXBuildFile; fileRef = E44BC379693A707896831D73 /* fileText.svg */; };
+		E018475A0AA187EF6E80FDFF /* sun.svg in Resources */ = {isa = PBXBuildFile; fileRef = E82B8F0012C02D1E197E1206 /* sun.svg */; };
+		E33EC01EA6A84481C9002771 /* panelLeftClose.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */; };
+		E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A761A35383E18EC4F83041CE /* HelperView.swift */; };
+		E67055DBC62D6DA2924B6D73 /* calendar.svg in Resources */ = {isa = PBXBuildFile; fileRef = C6C134C8DA9637AE5D05DBF2 /* calendar.svg */; };
+		F3C75D9E0DB47EA0B20ABF5D /* alert.svg in Resources */ = {isa = PBXBuildFile; fileRef = 4D982CA22F7E43B0327660E0 /* alert.svg */; };
+		F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */; };
+		FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7B2DE7B37539C688F176DE6F /* chevronLeft.svg */; };
+		FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */ = {isa = PBXBuildFile; productRef = FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		839E732B1D40634E9686B22E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 618120EC9796CF576C6B776F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 66D5D6D1FA57AA1821D7CF86;
+			remoteInfo = RustBindings;
+		};
+		892BEF4F8388E34B6C01C228 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 618120EC9796CF576C6B776F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6082860DFBF933B10D3596D2;
+			remoteInfo = BibCiTeXCore;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = refresh.svg; sourceTree = "<group>"; };
+		20A8CCD92B6053AB065871E0 /* chevronRight.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronRight.svg; sourceTree = "<group>"; };
+		22666F6B8718AD1E87409835 /* HelperTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperTheme.swift; sourceTree = "<group>"; };
+		325AEE0308FECAEE4CF1C08D /* build-bindings.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "build-bindings.sh"; sourceTree = "<group>"; };
+		3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelLeftClose.svg; sourceTree = "<group>"; };
+		3549826455F426169DFEA202 /* HelperModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperModels.swift; sourceTree = "<group>"; };
+		3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchModel.swift; sourceTree = "<group>"; };
+		3A019FFBF06D1C9B8033B2F1 /* folderOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = folderOpen.svg; sourceTree = "<group>"; };
+		4092D03202B5381411098A7B /* library.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = library.svg; sourceTree = "<group>"; };
+		41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
+		4D982CA22F7E43B0327660E0 /* alert.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = alert.svg; sourceTree = "<group>"; };
+		50246B511084B357B60B89C3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchView.swift; sourceTree = "<group>"; };
+		6C06F02CE6E49ED6A759478C /* icon.icns */ = {isa = PBXFileReference; includeInIndex = 1; name = icon.icns; path = "../assets/app-icons/icon.icns"; sourceTree = "<group>"; };
+		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelRightOpen.svg; sourceTree = "<group>"; };
+		7B2DE7B37539C688F176DE6F /* chevronLeft.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronLeft.svg; sourceTree = "<group>"; };
+		91C61546766387505A3A82CF /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		95C70158D9993BDB4C203879 /* link.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = link.svg; sourceTree = "<group>"; };
+		97288C473DE3FA8783A4E20C /* BibCiTeXCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BibCiTeXCore.swift; sourceTree = BIBCITEX_BINDINGS_DIR; };
+		98E303A1B30F0855A78C6CFB /* book.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = book.svg; sourceTree = "<group>"; };
+		9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperViewModel.swift; sourceTree = "<group>"; };
+		9E458D60B8FDDC97D5B48DCA /* RustCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RustCore.swift; sourceTree = "<group>"; };
+		A215042B0D3A54ECF909194F /* search.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = search.svg; sourceTree = "<group>"; };
+		A761A35383E18EC4F83041CE /* HelperView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperView.swift; sourceTree = "<group>"; };
+		A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BibCiTeXApp.swift; sourceTree = "<group>"; };
+		AA4AE55941866C34949D675B /* AppResources.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppResources.swift; sourceTree = "<group>"; };
+		AAC02E7B140A57A506B77D0F /* download.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = download.svg; sourceTree = "<group>"; };
+		B175C23E24258D56DD93E5F2 /* add.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = add.svg; sourceTree = "<group>"; };
+		B3427E0196B1D54D70378C9D /* HelperPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperPanelController.swift; sourceTree = "<group>"; };
+		B68F9A470891876822BCE79B /* copy.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = copy.svg; sourceTree = "<group>"; };
+		BA4860C8547C16762913B7B1 /* info.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = info.svg; sourceTree = "<group>"; };
+		BB2435A0F4F2B46818093652 /* clipboard.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = clipboard.svg; sourceTree = "<group>"; };
+		BD05EC281D1AC92B51A21A8A /* panelLeftOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelLeftOpen.svg; sourceTree = "<group>"; };
+		BE9B80270A55A6BC104D8237 /* tag.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = tag.svg; sourceTree = "<group>"; };
+		BFAC2DF31B1149570D6A46C8 /* BibCiTeX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BibCiTeX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C27143BFBB0B42FCF0444691 /* build.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
+		C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libBibCiTeXCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		C6C134C8DA9637AE5D05DBF2 /* calendar.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = calendar.svg; sourceTree = "<group>"; };
+		C83C8CD0D32FADF3D4CC6434 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
+		CABBFC1BC8B4EE6B27DB98D1 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		CD5DCEE73EDEF47834E5635F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D1C28BE4719539DB7AF9BFA2 /* user.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = user.svg; sourceTree = "<group>"; };
+		D318D2E31242780F2128FA79 /* check.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = check.svg; sourceTree = "<group>"; };
+		D3CD787C2C1A7587729003E2 /* folderAdd.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = folderAdd.svg; sourceTree = "<group>"; };
+		D445A11BACFA9BA9B887CF8F /* settings.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = settings.svg; sourceTree = "<group>"; };
+		DA6B319820DB14704DA10575 /* x.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = x.svg; sourceTree = "<group>"; };
+		E3D66F68B99DD86C169AEBC2 /* chevronDown.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronDown.svg; sourceTree = "<group>"; };
+		E44BC379693A707896831D73 /* fileText.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = fileText.svg; sourceTree = "<group>"; };
+		E542E1AA8194BEA29C5E3FBF /* trash.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = trash.svg; sourceTree = "<group>"; };
+		E82B8F0012C02D1E197E1206 /* sun.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = sun.svg; sourceTree = "<group>"; };
+		F05E64D75C1320EF8CC4A45D /* moon.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = moon.svg; sourceTree = "<group>"; };
+		F3A31659CFF4595616CF1DAA /* SVGIcon.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SVGIcon.swift; sourceTree = "<group>"; };
+		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelRightClose.svg; sourceTree = "<group>"; };
+		F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = externalLink.svg; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		05CA481B820A03A990EA4CEE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		49A953C4B6C1454A14F96F2A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A0BA666A6844175FE0375D6 /* Cocoa.framework in Frameworks */,
+				1635A09A854275CD51FD19C9 /* libBibCiTeXCore.a in Frameworks */,
+				96F29BF96E613696D6D6D1AD /* Carbon.framework in Frameworks */,
+				B58EE2C0B3F5293B39E5D01E /* AppKit.framework in Frameworks */,
+				5C6A0A65D233C9DE5914BE5D /* ApplicationServices.framework in Frameworks */,
+				F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */,
+				1878789D5023C6B1D8F7CFB2 /* Foundation.framework in Frameworks */,
+				FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */,
+				67C14C8CC52C46DE68F0C482 /* LaTeXSwiftUI in Frameworks */,
+				2137D6CD83DFE8EBF65013AB /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		03E8962D61DD5F15A3160620 /* BibCiTeX */ = {
+			isa = PBXGroup;
+			children = (
+				AA4AE55941866C34949D675B /* AppResources.swift */,
+				A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */,
+				3549826455F426169DFEA202 /* HelperModels.swift */,
+				B3427E0196B1D54D70378C9D /* HelperPanelController.swift */,
+				22666F6B8718AD1E87409835 /* HelperTheme.swift */,
+				A761A35383E18EC4F83041CE /* HelperView.swift */,
+				9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */,
+				9E458D60B8FDDC97D5B48DCA /* RustCore.swift */,
+				F3A31659CFF4595616CF1DAA /* SVGIcon.swift */,
+				41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */,
+				3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */,
+				5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */,
+				0538E9411F89DBF71C818C3E /* Icons */,
+			);
+			name = BibCiTeX;
+			path = BibCiTeX/Sources/BibCiTeX;
+			sourceTree = "<group>";
+		};
+		0538E9411F89DBF71C818C3E /* Icons */ = {
+			isa = PBXGroup;
+			children = (
+				B175C23E24258D56DD93E5F2 /* add.svg */,
+				4D982CA22F7E43B0327660E0 /* alert.svg */,
+				98E303A1B30F0855A78C6CFB /* book.svg */,
+				C6C134C8DA9637AE5D05DBF2 /* calendar.svg */,
+				D318D2E31242780F2128FA79 /* check.svg */,
+				E3D66F68B99DD86C169AEBC2 /* chevronDown.svg */,
+				7B2DE7B37539C688F176DE6F /* chevronLeft.svg */,
+				20A8CCD92B6053AB065871E0 /* chevronRight.svg */,
+				BB2435A0F4F2B46818093652 /* clipboard.svg */,
+				B68F9A470891876822BCE79B /* copy.svg */,
+				AAC02E7B140A57A506B77D0F /* download.svg */,
+				FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */,
+				E44BC379693A707896831D73 /* fileText.svg */,
+				D3CD787C2C1A7587729003E2 /* folderAdd.svg */,
+				3A019FFBF06D1C9B8033B2F1 /* folderOpen.svg */,
+				BA4860C8547C16762913B7B1 /* info.svg */,
+				4092D03202B5381411098A7B /* library.svg */,
+				95C70158D9993BDB4C203879 /* link.svg */,
+				F05E64D75C1320EF8CC4A45D /* moon.svg */,
+				3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */,
+				BD05EC281D1AC92B51A21A8A /* panelLeftOpen.svg */,
+				F5A73E973D985370D4F1BBDA /* panelRightClose.svg */,
+				75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */,
+				18D1244D5E41DA43FACF65D8 /* refresh.svg */,
+				A215042B0D3A54ECF909194F /* search.svg */,
+				D445A11BACFA9BA9B887CF8F /* settings.svg */,
+				E82B8F0012C02D1E197E1206 /* sun.svg */,
+				BE9B80270A55A6BC104D8237 /* tag.svg */,
+				E542E1AA8194BEA29C5E3FBF /* trash.svg */,
+				D1C28BE4719539DB7AF9BFA2 /* user.svg */,
+				DA6B319820DB14704DA10575 /* x.svg */,
+			);
+			name = Icons;
+			path = Resources/Icons;
+			sourceTree = "<group>";
+		};
+		089A6C0AF2FEEBBD65DE3290 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6DEB97E8384E66F75FB60886 /* OS X */,
+				CABBFC1BC8B4EE6B27DB98D1 /* Carbon.framework */,
+				91C61546766387505A3A82CF /* AppKit.framework */,
+				C83C8CD0D32FADF3D4CC6434 /* ApplicationServices.framework */,
+				F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */,
+				038019CE5A12DC6539F82108 /* Foundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		39654625D322553780512534 = {
+			isa = PBXGroup;
+			children = (
+				66FFAFE0C6CA0DC78091E274 /* Products */,
+				089A6C0AF2FEEBBD65DE3290 /* Frameworks */,
+				D654D83B1077E0EB054AFA31 /* Generated bindings */,
+				03E8962D61DD5F15A3160620 /* BibCiTeX */,
+				6C06F02CE6E49ED6A759478C /* icon.icns */,
+				CD5DCEE73EDEF47834E5635F /* Info.plist */,
+				325AEE0308FECAEE4CF1C08D /* build-bindings.sh */,
+				C27143BFBB0B42FCF0444691 /* build.sh */,
+			);
+			sourceTree = "<group>";
+		};
+		66FFAFE0C6CA0DC78091E274 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */,
+				BFAC2DF31B1149570D6A46C8 /* BibCiTeX.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6DEB97E8384E66F75FB60886 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				50246B511084B357B60B89C3 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		D654D83B1077E0EB054AFA31 /* Generated bindings */ = {
+			isa = PBXGroup;
+			children = (
+				97288C473DE3FA8783A4E20C /* BibCiTeXCore.swift */,
+			);
+			name = "Generated bindings";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		4EAEFA8D20D686B02D9563A8 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		3FA253DB711D927E0B1D150D /* BibCiTeX */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02D7CA3E79C00F5DEAD7E00E /* Build configuration list for PBXNativeTarget "BibCiTeX" */;
+			buildPhases = (
+				923A68AFC12E27809ED00F6D /* Sources */,
+				49A953C4B6C1454A14F96F2A /* Frameworks */,
+				F253C67B3943CCB73CEDF6CA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F85BF2847B256F0BFFCF9749 /* PBXTargetDependency */,
+			);
+			name = BibCiTeX;
+			packageProductDependencies = (
+				FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */,
+				5CBBD8369E7177396845BD89 /* LaTeXSwiftUI */,
+				C688CF78E1730A823A796F8F /* Sparkle */,
+			);
+			productName = BibCiTeX;
+			productReference = BFAC2DF31B1149570D6A46C8 /* BibCiTeX.app */;
+			productType = "com.apple.product-type.application";
+		};
+		6082860DFBF933B10D3596D2 /* BibCiTeXCore */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E2D8FFB423658076EFEAF22F /* Build configuration list for PBXNativeTarget "BibCiTeXCore" */;
+			buildPhases = (
+				4EAEFA8D20D686B02D9563A8 /* Headers */,
+				9A728539FA3754483F06A94B /* Sources */,
+				05CA481B820A03A990EA4CEE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E0D707ED4BCB14AFAA228206 /* PBXTargetDependency */,
+			);
+			name = BibCiTeXCore;
+			productName = BibCiTeXCore;
+			productReference = C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		618120EC9796CF576C6B776F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = 470E2BA6D7005513DC3BA6E8 /* Build configuration list for PBXProject "BibCiTeX" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 39654625D322553780512534;
+			minimizedProjectReferenceProxies = 0;
+			packageReferences = (
+				A70CDCA275241A66C3F1DB07 /* XCRemoteSwiftPackageReference "SwiftDraw" */,
+				25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */,
+				6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			preferredProjectObjectVersion = 100;
+			productRefGroup = 66FFAFE0C6CA0DC78091E274 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				66D5D6D1FA57AA1821D7CF86 /* RustBindings */,
+				6082860DFBF933B10D3596D2 /* BibCiTeXCore */,
+				3FA253DB711D927E0B1D150D /* BibCiTeX */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F253C67B3943CCB73CEDF6CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				472F1164A90E45CE5A68A356 /* add.svg in Resources */,
+				F3C75D9E0DB47EA0B20ABF5D /* alert.svg in Resources */,
+				5C700A4AF9AE3DB19B15B59B /* book.svg in Resources */,
+				E67055DBC62D6DA2924B6D73 /* calendar.svg in Resources */,
+				0DB711FF0A699B56A62641E7 /* check.svg in Resources */,
+				771E1CC6B441A5095E5EC864 /* chevronDown.svg in Resources */,
+				FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */,
+				17FF96B8295FA3F86DC304B5 /* chevronRight.svg in Resources */,
+				244DD91090476012FA772244 /* clipboard.svg in Resources */,
+				4755010CCC63100950BD005F /* copy.svg in Resources */,
+				BAD242C16742F68FC1084513 /* download.svg in Resources */,
+				3A85E58E4056FF3618733592 /* externalLink.svg in Resources */,
+				D1450695B078879CC130A04D /* fileText.svg in Resources */,
+				A1017E6C56AFA62048689647 /* folderAdd.svg in Resources */,
+				4CA60BFABB0992265824695A /* folderOpen.svg in Resources */,
+				362AC9BD6C1F6DD5E060EAFE /* info.svg in Resources */,
+				3023A5807339A00C715C026F /* library.svg in Resources */,
+				2AEA716CA81746C3A01199A4 /* link.svg in Resources */,
+				278EF7733A78C68EAD3C44D5 /* moon.svg in Resources */,
+				E33EC01EA6A84481C9002771 /* panelLeftClose.svg in Resources */,
+				638EE8A833C14779A2E2685B /* panelLeftOpen.svg in Resources */,
+				5BACE2D96EBFF781C1A3E52A /* panelRightClose.svg in Resources */,
+				663694040B80AAA638F09B54 /* panelRightOpen.svg in Resources */,
+				012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */,
+				C6B6006A9859E3A015F3926F /* search.svg in Resources */,
+				9742EFE8546C9F6928A87BE5 /* settings.svg in Resources */,
+				E018475A0AA187EF6E80FDFF /* sun.svg in Resources */,
+				1E3676817B2B06C8AE30864D /* tag.svg in Resources */,
+				C128DB9AEF436BF75B760DEE /* trash.svg in Resources */,
+				53BBDDB78C17CB8E868FDB2B /* user.svg in Resources */,
+				4ADCD8505F6C18A51CD7A3EC /* x.svg in Resources */,
+				36C34A7EE98EE0FE330D6A87 /* icon.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		62E7EC0B6C1E05BB3847305C /* Build Rust and generate Swift bindings */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			dependencyFile = "$(BIBCITEX_BINDINGS_DIR)/rust-bindings.d";
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/build-bindings.sh",
+				"$(SRCROOT)/../Cargo.toml",
+				"$(SRCROOT)/../Cargo.lock",
+				"$(SRCROOT)/../bindings/generate-swift.sh",
+				"$(SRCROOT)/../crates/bibcitex-ffi/uniffi.toml",
+			);
+			name = "Build Rust and generate Swift bindings";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BIBCITEX_BINDINGS_DIR)/BibCiTeXCore.swift",
+				"$(BIBCITEX_BINDINGS_DIR)/include/BibCiTeXCoreFFI.h",
+				"$(BIBCITEX_BINDINGS_DIR)/include/module.modulemap",
+				"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "bash \"$SRCROOT/build-bindings.sh\"";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		923A68AFC12E27809ED00F6D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				30A86772A4F59C8720455067 /* AppResources.swift in Sources */,
+				9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */,
+				69F3C736783CD2D04127FDC4 /* HelperModels.swift in Sources */,
+				41303FCE78232CDB53AF2714 /* HelperPanelController.swift in Sources */,
+				54EB8E20C98FC88AF7374428 /* HelperTheme.swift in Sources */,
+				E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */,
+				B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */,
+				2B5603948BD543CF6D639A8A /* RustCore.swift in Sources */,
+				846FC375E2D5E95DE88F03E6 /* SVGIcon.swift in Sources */,
+				5AC4D6F1DDFC7BC7737CE6A7 /* Updater.swift in Sources */,
+				B53283C7D509A479590CD4BF /* WorkbenchModel.swift in Sources */,
+				3BED296EB5CB22F95C2D2A64 /* WorkbenchView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9A728539FA3754483F06A94B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97D8F4724316C7D386D0D8A3 /* BibCiTeXCore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E0D707ED4BCB14AFAA228206 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = RustBindings;
+			target = 66D5D6D1FA57AA1821D7CF86 /* RustBindings */;
+			targetProxy = 839E732B1D40634E9686B22E /* PBXContainerItemProxy */;
+		};
+		F85BF2847B256F0BFFCF9749 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BibCiTeXCore;
+			target = 6082860DFBF933B10D3596D2 /* BibCiTeXCore */;
+			targetProxy = 892BEF4F8388E34B6C01C228 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		202FE6CE7A4AEAC0EC4D695F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 600;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.6.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bibcitex.app;
+				PRODUCT_NAME = BibCiTeX;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		3BD8181C7A04D54792D0AF7F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		5A5DFD32AB8CBF2AA217324E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BIBCITEX_BINDINGS_DIR = "$(BUILD_DIR)/BibCiTeXBindings/$(CONFIGURATION)";
+				BIBCITEX_RUST_TARGET_DIR = "$(PROJECT_TEMP_DIR)/RustTarget";
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		64BC644733D4C884F54F5BB4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				EXECUTABLE_PREFIX = lib;
+				GENERATE_MASTER_OBJECT_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_MODULE_NAME = BibCiTeXCore;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CE3773369B57E2555A55ACB2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 600;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 0.6.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bibcitex.app;
+				PRODUCT_NAME = BibCiTeX;
+				SDKROOT = macosx;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E8A431AEB01670441265093B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		F1473D1D153DBFE4B0BA9926 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BIBCITEX_BINDINGS_DIR = "$(BUILD_DIR)/BibCiTeXBindings/$(CONFIGURATION)";
+				BIBCITEX_RUST_TARGET_DIR = "$(PROJECT_TEMP_DIR)/RustTarget";
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		F59E32F782DDD6F0D118E0B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				EXECUTABLE_PREFIX = lib;
+				GENERATE_MASTER_OBJECT_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_MODULE_NAME = BibCiTeXCore;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		02D7CA3E79C00F5DEAD7E00E /* Build configuration list for PBXNativeTarget "BibCiTeX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				202FE6CE7A4AEAC0EC4D695F /* Release */,
+				CE3773369B57E2555A55ACB2 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		3F2D1874A31A20F8A6681100 /* Build configuration list for PBXAggregateTarget "RustBindings" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3BD8181C7A04D54792D0AF7F /* Release */,
+				E8A431AEB01670441265093B /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		470E2BA6D7005513DC3BA6E8 /* Build configuration list for PBXProject "BibCiTeX" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A5DFD32AB8CBF2AA217324E /* Debug */,
+				F1473D1D153DBFE4B0BA9926 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E2D8FFB423658076EFEAF22F /* Build configuration list for PBXNativeTarget "BibCiTeXCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				64BC644733D4C884F54F5BB4 /* Release */,
+				F59E32F782DDD6F0D118E0B5 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/colinc86/LaTeXSwiftUI";
+			requirement = {
+				kind = exactVersion;
+				version = 1.5.0;
+			};
+		};
+		6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.0;
+			};
+		};
+		A70CDCA275241A66C3F1DB07 /* XCRemoteSwiftPackageReference "SwiftDraw" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swhitty/SwiftDraw";
+			requirement = {
+				kind = exactVersion;
+				version = 0.27.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5CBBD8369E7177396845BD89 /* LaTeXSwiftUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */;
+			productName = LaTeXSwiftUI;
+		};
+		C688CF78E1730A823A796F8F /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70CDCA275241A66C3F1DB07 /* XCRemoteSwiftPackageReference "SwiftDraw" */;
+			productName = SwiftDraw;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 618120EC9796CF576C6B776F /* Project object */;
+}

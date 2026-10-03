@@ -19,7 +19,7 @@ try {
     $Packages = @(Get-ChildItem $Out -File -Filter '*.msix')
     if ($Packages.Count -ne 1) { throw 'Expected one root MSIX release asset.' }
     if ((Get-AuthenticodeSignature $Packages[0].FullName).Status -ne 'Valid') { throw 'MSIX signature is not trusted or invalid.' }
-    & python (Join-Path $Repo 'ci/verify_release.py') windows $Out $env:WINDOWS_VERSION $env:GITHUB_REPOSITORY $env:RELEASE_TAG
+    & just --justfile (Join-Path $Repo 'Justfile') ci-verify-release windows $Out $env:WINDOWS_VERSION $env:GITHUB_REPOSITORY $env:RELEASE_TAG
     if ($LASTEXITCODE -ne 0) { throw 'App Installer metadata verification failed.' }
 } finally {
     if ($null -ne $Certificate) {

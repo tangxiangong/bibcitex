@@ -25,11 +25,13 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: extractions/setup-just@v4
       - id: metadata
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          python3 ci/release_metadata.py
+          just ci-release-metadata
           git show-ref --verify "refs/tags/$RELEASE_TAG"
           printf 'tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
   checks:
@@ -67,8 +69,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - uses: extractions/setup-just@v4
       - name: Sign, notarize and generate Sparkle feed
-        run: bash ci/release-macos.sh
+        run: just ci-release-macos
         env:
           ARCH: ${{ matrix.arch }}
           APP_VERSION: ${{ needs.prepare.outputs.version }}
@@ -114,9 +117,10 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+      - uses: extractions/setup-just@v4
       - name: Sign MSIX and generate App Installer feed
         shell: pwsh
-        run: ./ci/release-windows.ps1
+        run: just ci-release-windows
         env:
           ARCH: ${{ matrix.arch }}
           WINDOWS_VERSION: ${{ needs.prepare.outputs.windows_version }}
@@ -148,8 +152,10 @@ jobs:
           pattern: release-*
           path: release-assets
           merge-multiple: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: extractions/setup-just@v4
       - name: Publish complete release and advance stable feeds
-        run: python3 ci/publish_release.py
+        run: just ci-publish-release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}

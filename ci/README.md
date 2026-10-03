@@ -7,6 +7,12 @@ generated UniFFI/Interoptopus bindings. Swift helper regressions and C#–Rust i
 regressions run without launching the applications. Pull requests receive no signing
 secrets and only a read-only repository token.
 
+Workflows install the current `just` release with `extractions/setup-just@v4` and
+use the same Justfile recipes as local development. Shared release validation,
+publication and regression tests are implemented in the Rust `xtask` workspace
+crate. macOS scripts use Bash; only Windows signing uses PowerShell. No extra
+scripting runtime is required by the shared release tools or macOS builds.
+
 The macOS jobs use GitHub's `xcode-27` arm64 image and explicitly select
 `latest-stable` through `maxim-lobanov/setup-xcode`; they report Xcode, SDK and Swift
 versions in the job log. The [runner software manifest](https://github.com/actions/runner-images/blob/main/images/macos/xcode-27-arm64-Readme.md)
@@ -65,6 +71,6 @@ use a certificate already trusted by Windows. The workflow validates Authenticod
 trust and cleans up the imported signing certificate/private key after use.
 
 Branch pushes run checks without publishing a release. Local metadata tests run
-with `python3 -m unittest discover -s ci -p 'test_*.py'`; actual notarization,
+with `just test-ci` (`cargo test --locked -p xtask`); actual notarization,
 MSIX signing and release publication require the repository owner's configured
 credentials and a separate release trigger.

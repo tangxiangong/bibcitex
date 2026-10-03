@@ -47,4 +47,4 @@ tar -xf "$work/Sparkle.tar.xz" -C "$work/sparkle"
 "$work/sparkle/bin/generate_appcast" --ed-key-file "$work/sparkle.key" --maximum-deltas 0 \
     --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" \
     -o "$out/appcast-$ARCH.xml" "$out"
-python3 "$root/ci/verify_release.py" macos "$out" "$APP_VERSION" "$GITHUB_REPOSITORY" "$RELEASE_TAG"
+just --justfile "$root/Justfile" ci-verify-release macos "$out" "$APP_VERSION" "$GITHUB_REPOSITORY" "$RELEASE_TAG"

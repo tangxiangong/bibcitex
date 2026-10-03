@@ -28,7 +28,7 @@ enum SVGImages {
     static let images: [String: NSImage] = {
         var result: [String: NSImage] = [:]
         for name in ["search", "user", "alert", "library", "tag", "chevronDown", "x", "fileText", "clipboard", "link", "panelRightClose", "settings", "download", "externalLink", "book", "check", "panelLeftOpen", "chevronRight", "info", "add", "copy", "refresh", "folderOpen", "trash", "sun", "folderAdd", "panelRightOpen", "panelLeftClose", "calendar", "chevronLeft", "moon"] {
-            result[name] = NSImage(svgNamed: name + ".svg", in: .module)
+            result[name] = NSImage(svgNamed: name + ".svg", in: .appResources)
         }
         return result
     }()

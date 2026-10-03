@@ -21,7 +21,12 @@ tests from GUI acceptance and signed update deployment.
   Do not restore a shared Rust updater or invent publishing credentials.
 - `macos/BibCiTeX/`: SwiftUI workbench, helper, models, and SVGs.
 - `windows/BibCiTeX/`: WinUI workbench, helper, and platform services.
-- `bindings/`: separate Swift and C# generators, invoked by user-operated scripts.
+- `bindings/`: separate Swift and C# generators, invoked by the platform build graph.
+- `macos/BibCiTeX.xcodeproj`: Xcode owns the app, resources and Rust/Swift target dependencies.
+- `windows/BibCiTeX.sln`: Visual Studio/MSBuild owns Rust and C# code generation.
+- `Justfile`: command aliases only; IDE builds must not require a prior Just invocation.
+- `xtask/`: shared CI metadata and publication logic written in Rust, without Python.
+- IDE builds must work from a clean checkout. Do not add Python or PowerShell to macOS build paths.
 - `public/icons/`: external SVG icon assets, including Windows variants.
 - `assets/app-icons/`: preserved app bundle assets.
 - Root `Cargo.toml`: Rust workspace. Platform scripts are for the user to run.
@@ -48,9 +53,9 @@ tests from GUI acceptance and signed update deployment.
 ## Checks
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
+just check-rust
+just test-ci
+just --fmt --check
 git diff --check
 ```
 

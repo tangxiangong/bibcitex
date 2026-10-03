@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GeneratedBindingsDirectory Condition="'$(GeneratedBindingsDirectory)' == ''">$(MSBuildThisFileDirectory)../../../bindings/generated/csharp</GeneratedBindingsDirectory>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
@@ -13,7 +14,7 @@
     <PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <Compile Include="../../BibCiTeX/*.cs" Link="Application/%(Filename)%(Extension)" />
-    <Compile Include="../../../bindings/generated/csharp/*.cs" Link="Generated/%(Filename)%(Extension)" />
+    <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="XamlCompilationBoundary.cs" />
   </ItemGroup>
 </Project>

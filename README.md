@@ -40,7 +40,7 @@
 
 `native` 分支使用 macOS **SwiftUI（Xcode 27 SDK）** 与 Windows **WinUI 3（Windows App SDK 2.5.1）**。Swift 使用 **UniFFI 0.32.2**，C# 使用 **Interoptopus 0.16.5**，分别生成绑定调用共享 Rust 核心，`xpaste` 保留独立模块；更新分别由 Sparkle 与 MSIX/App Installer 处理。下面的安装包与截图对应历史版本。
 
-构建说明：[macOS](macos/README.md)、[Windows](windows/README.md)、[绑定生成](bindings/README.md)。验证包括 Rust 测试与 clippy、绑定生成和平台编译；GUI 验收由用户进行。
+直接用 Xcode 打开 [BibCiTeX.xcodeproj](macos/BibCiTeX.xcodeproj)，或用 Visual Studio 打开 [BibCiTeX.sln](windows/BibCiTeX.sln) 后构建。工程会自动编译 Rust 并生成绑定，无需预运行脚本。命令行统一使用 `just build`，详细参数见 [macOS](macos/README.md)、[Windows](windows/README.md) 和 [Justfile](Justfile)。构建不依赖 Python；GUI 验收由用户进行。
 
 ### 核心特性
 

@@ -13,14 +13,15 @@ Sources of truth:
 - `crates/bibcitex-csharp/src/`: thin Interoptopus exports and typed Wire requests/responses.
 - `crates/xpaste`: clipboard, previous foreground tracking and verified paste.
 
-## User-operated generation
+## Build integration
 
-The platform build scripts invoke the generators. Swift generation requires an
-already built `bibcitex-ffi` dynamic library; C# generation reads its Interoptopus
-inventory. Generated bindings are verified by the platform integration tests.
+Xcode's `RustBindings` target and Visual Studio's `Build/Rust.targets` own Rust
+compilation and binding generation. Open the platform project and build directly;
+neither IDE needs a prior script or Just invocation. Generated bindings are verified
+by the platform integration tests.
 
-macOS: `bash bindings/generate-swift.sh /absolute/path/libbibcitex_ffi.dylib`.
-Output is under `bindings/generated/swift`. Both the runtime crate and generator
+The Xcode target invokes `bindings/generate-swift.sh` with its built Rust library
+and an output directory in DerivedData. Both the runtime crate and generator
 use `uniffi = "0.32"`; Cargo.lock currently resolves both to 0.32.2. Generation
 disables formatting and retains UniFFI checksums
 to detect mismatches. Generated files are consumed unchanged by the Swift host.
@@ -29,12 +30,11 @@ Swift imports `BibCiTeXCore`; its generated Clang module is `BibCiTeXCoreFFI`.
 Swift functions/fields are lowerCamelCase: `helper_current` becomes
 `helperCurrent()`, and `entry_type` becomes `entryType`.
 
-Windows: `pwsh -File bindings/generate-csharp.ps1 -Library C:\path\bibcitex_csharp.dll`.
-Its checked-in generator uses the same Rust inventory as the Windows DLL. Output
+MSBuild invokes the checked-in C# generator using the same Rust inventory as the Windows DLL. Output
 is under `bindings/generated/csharp` in namespace `BibCiTeX.Core`, loading
 `bibcitex_csharp.dll`. Interoptopus generates the C# interop and typed Wire transport;
 application code does not supply a C/JSON protocol. The `0.16` dependency constraints
-resolve to 0.16.5 in Cargo.lock. Both generation scripts use `--locked`.
+resolve to 0.16.5 in Cargo.lock. Both platform builds use `--locked` for Rust.
 
 ## Host contract
 
