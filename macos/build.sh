@@ -16,7 +16,19 @@ esac
 derived="${DERIVED_DATA_PATH:-$root/target/xcode/$architecture}"
 build_args=(-project "$root/macos/BibCiTeX.xcodeproj" -scheme BibCiTeX -configuration "$configuration"
     -derivedDataPath "$derived" -destination 'generic/platform=macOS'
-    "ARCHS=$architectures" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO)
+    "ARCHS=$architectures" ONLY_ACTIVE_ARCH=NO)
+# Keep certificate-free CI builds available, but honor requested signing for
+# local runs: linkd validates the app's signed team identity.
+identity="${CODE_SIGN_IDENTITY:--}"
+if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
+    identity="${CODE_SIGN_IDENTITY:-Apple Development}"
+    build_args+=(CODE_SIGNING_ALLOWED=YES "DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM"
+        "CODE_SIGN_IDENTITY=$identity" "CODE_SIGN_STYLE=${CODE_SIGN_STYLE:-Automatic}")
+elif [[ "$identity" != - ]]; then
+    build_args+=(CODE_SIGNING_ALLOWED=YES "CODE_SIGN_IDENTITY=$identity" CODE_SIGN_STYLE=Manual)
+else
+    build_args+=(CODE_SIGNING_ALLOWED=NO)
+fi
 if [[ -n "${APP_VERSION:-}" ]]; then
     [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "APP_VERSION must have three numeric components" >&2; exit 1; }
     build_args+=("MARKETING_VERSION=$APP_VERSION")
@@ -44,7 +56,6 @@ if [[ -n "${SPARKLE_FEED_URL:-}" && -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $SPARKLE_FEED_URL" "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" "$app/Contents/Info.plist"
 fi
-identity="${CODE_SIGN_IDENTITY:--}"
 # Sparkle's nested code is signed inside-out, preserving Downloader entitlements.
 find "$app/Contents/Frameworks/Sparkle.framework" -type f -name Autoupdate -print0 | while IFS= read -r -d '' tool; do
     codesign --force --options runtime --sign "$identity" "$tool"

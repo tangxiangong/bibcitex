@@ -20,6 +20,10 @@ The root Justfile invokes the same Xcode project:
 - `just bundle [arch] [profile]` exports and signs `dist/macos/<architecture>/BibCiTeX.app`, without launching it.
 - `just test-macos` runs helper and generated Swift/Rust integration tests.
 
+For a locally signed build, use `DEVELOPMENT_TEAM=YOUR_TEAM_ID just build arm64 debug` with an installed Apple Development certificate and its private key. Alternatively, pass `CODE_SIGN_IDENTITY` to use a specific installed identity. The wrapper enables signing when either is supplied; a requested signing failure is not retried unsigned. Without either, command-line builds remain unsigned for CI. In the Xcode app target, select your Team and Apple Development identity instead of the default ad-hoc identity (`-`).
+
+On systems where `linkd` requires a validated bundle, unsigned/ad-hoc apps can log `com.apple.linkd.autoShortcut` error 4097 with `Unable to get teamId`. Setting a team string alone does not supply a certificate or establish a valid signature. This is separate from SwiftUI state-publication diagnostics.
+
 Architectures are `arm64`, `x86_64`, or `universal`; profiles are `debug` and `release`. The `RustBindings` target builds the requested architectures and combines Rust static libraries with `lipo` for a universal build. Direct Xcode Release builds also support both standard architectures. The Bash wrapper accepts `DERIVED_DATA_PATH`; otherwise it uses `target/xcode/<architecture>`. CI can supply a three-component `APP_VERSION` and numeric `BUILD_NUMBER`. These scripts do not require Python, Ruby, XcodeGen, or another project generator.
 
 Equivalent build command:

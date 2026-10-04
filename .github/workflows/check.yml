@@ -109,3 +109,6 @@ jobs:
       - name: C# and Rust integration tests
         shell: pwsh
         run: just test-windows "${{ github.workspace }}/target/${{ matrix.target }}/debug/bibcitex_csharp.dll"
+      - name: Legacy installer migration regression tests
+        shell: pwsh
+        run: just test-migration

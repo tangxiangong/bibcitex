@@ -1,4 +1,5 @@
 use quick_xml::{XmlVersion, events::Event, name::ResolveResult, reader::NsReader};
+pub mod legacy;
 use serde::Deserialize;
 use std::{
     collections::BTreeMap,
@@ -213,10 +214,23 @@ pub fn verify_release(
     repository: &str,
     tag: &str,
 ) -> Result<()> {
+    verify_feed(platform, directory, version, repository, tag, None).map(|_| ())
+}
+
+fn verify_feed(
+    platform: &str,
+    directory: &Path,
+    version: &str,
+    repository: &str,
+    tag: &str,
+    feed_name: Option<&str>,
+) -> Result<PathBuf> {
     match platform {
         "macos" => {
             let feeds = matching_files(directory, |name| {
-                name.starts_with("appcast-") && name.ends_with(".xml")
+                name.starts_with("appcast-")
+                    && name.ends_with(".xml")
+                    && feed_name.is_none_or(|feed| feed == name)
             })?;
             ensure(
                 feeds.len() == 1,
@@ -244,11 +258,26 @@ pub fn verify_release(
             )?;
             let base = format!("https://github.com/{repository}/releases/download/{tag}/");
             let asset = asset_from_url(directory, enclosure.attr("", "url"), &base)?;
+            let architecture = match feeds[0].file_name().and_then(|name| name.to_str()) {
+                Some("appcast-arm64.xml") => "arm64",
+                Some("appcast-x86_64.xml") => "x86_64",
+                _ => return Err("Unexpected macOS feed architecture".into()),
+            };
+            let expected = format!("BibCiTeX-{version}-macos-{architecture}.zip");
+            ensure(
+                asset
+                    .file_name()
+                    .is_some_and(|name| name == expected.as_str()),
+                "Sparkle payload architecture mismatch",
+            )?;
             let size: u64 = enclosure.attr("", "length").parse()?;
-            ensure(fs::metadata(asset)?.len() == size, "Archive size mismatch")
+            ensure(fs::metadata(&asset)?.len() == size, "Archive size mismatch")?;
+            Ok(asset)
         }
         "windows" => {
-            let feeds = matching_files(directory, |name| name.ends_with(".appinstaller"))?;
+            let feeds = matching_files(directory, |name| {
+                name.ends_with(".appinstaller") && feed_name.is_none_or(|feed| feed == name)
+            })?;
             ensure(feeds.len() == 1, "Expected one App Installer file")?;
             let root = parse_xml(&fs::read_to_string(&feeds[0])?)?;
             ensure(
@@ -265,17 +294,34 @@ pub fn verify_release(
                 .file_name()
                 .ok_or("Missing feed filename")?
                 .to_string_lossy();
+            let architecture = match feed_name.as_ref() {
+                "BibCiTeX-arm64.appinstaller" => "arm64",
+                "BibCiTeX-x64.appinstaller" => "x64",
+                _ => return Err("Unexpected Windows feed architecture".into()),
+            };
+            ensure(
+                package.attr("", "ProcessorArchitecture") == architecture,
+                "MSIX processor architecture mismatch",
+            )?;
+            ensure(
+                package.attr("", "Name") == "BibCiTeX"
+                    && !package.attr("", "Publisher").trim().is_empty(),
+                "Missing or unexpected MSIX package identity",
+            )?;
             ensure(
                 root.attr("", "Uri") == format!("{base}{feed_name}"),
                 "Unexpected App Installer URL",
             )?;
-            let asset = asset_from_url(directory, package.attr("", "Uri"), &base)?;
+            let payload_base = format!("https://github.com/{repository}/releases/download/{tag}/");
+            let asset = asset_from_url(directory, package.attr("", "Uri"), &payload_base)?;
+            let expected = format!("BibCiTeX-{version}-{architecture}.msix");
             ensure(
                 asset
-                    .extension()
-                    .is_some_and(|extension| extension == "msix"),
-                "Missing MSIX payload",
-            )
+                    .file_name()
+                    .is_some_and(|name| name == expected.as_str()),
+                "MSIX payload version or architecture mismatch",
+            )?;
+            Ok(asset)
         }
         _ => Err("Unknown release platform".into()),
     }
@@ -318,25 +364,41 @@ pub fn publish_release(
     tag: &str,
     directory: &Path,
     repository: &str,
+    gh: impl FnMut(&[String]) -> Result<CommandResult>,
+) -> Result<()> {
+    publish_release_with_key(tag, directory, repository, gh, &legacy::public_key()?)
+}
+
+fn publish_release_with_key(
+    tag: &str,
+    directory: &Path,
+    repository: &str,
     mut gh: impl FnMut(&[String]) -> Result<CommandResult>,
+    key: &minisign::PublicKey,
 ) -> Result<()> {
     let version = versions(tag)?;
+    legacy::validate(directory, repository, tag, key)?;
     let assets = matching_files(directory, |_| true)?;
     let names = assets
         .iter()
         .filter_map(|p| p.file_name())
         .map(|s| s.to_string_lossy())
         .collect::<Vec<_>>();
-    let expected = [
+    let mut expected = vec![
         format!("BibCiTeX-{}-macos-arm64.zip", version.version),
         format!("BibCiTeX-{}-macos-x86_64.zip", version.version),
         "appcast-arm64.xml".into(),
         "appcast-x86_64.xml".into(),
         "BibCiTeX-x64.appinstaller".into(),
         "BibCiTeX-arm64.appinstaller".into(),
+        "latest.json".into(),
     ];
+    for (_, name) in legacy::PAYLOADS {
+        expected.push(name.into());
+        expected.push(format!("{name}.sig"));
+    }
     ensure(
-        assets.len() == 8
+        assets.len() == 17
             && expected.iter().all(|name| names.iter().any(|n| n == name))
             && names.iter().filter(|n| n.ends_with(".msix")).count() == 2,
         "Missing or unexpected release artifacts",
@@ -344,6 +406,31 @@ pub fn publish_release(
     for asset in &assets {
         ensure(fs::metadata(asset)?.len() > 0, "Empty release artifact")?;
     }
+    for arch in ["arm64", "x86_64"] {
+        verify_feed(
+            "macos",
+            directory,
+            &version.version,
+            repository,
+            tag,
+            Some(&format!("appcast-{arch}.xml")),
+        )?;
+    }
+    let mut windows_payloads = Vec::new();
+    for arch in ["arm64", "x64"] {
+        windows_payloads.push(verify_feed(
+            "windows",
+            directory,
+            &version.windows,
+            repository,
+            tag,
+            Some(&format!("BibCiTeX-{arch}.appinstaller")),
+        )?);
+    }
+    ensure(
+        windows_payloads[0] != windows_payloads[1],
+        "Windows architectures reference the same MSIX payload",
+    )?;
     let latest = gh(&arguments(&[
         "api",
         &format!("repos/{repository}/releases/latest"),

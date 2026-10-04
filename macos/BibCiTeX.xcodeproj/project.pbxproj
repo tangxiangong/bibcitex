@@ -524,7 +524,7 @@
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.bibcitex.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tangxiangong.bibcitex;
 				PRODUCT_NAME = BibCiTeX;
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";
@@ -647,7 +647,7 @@
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.bibcitex.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tangxiangong.bibcitex;
 				PRODUCT_NAME = BibCiTeX;
 				SDKROOT = macosx;
 				SWIFT_INCLUDE_PATHS = "$(inherited) $(BIBCITEX_BINDINGS_DIR)/include";

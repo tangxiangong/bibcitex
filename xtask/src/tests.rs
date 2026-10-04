@@ -3,8 +3,8 @@ use tempfile::{TempDir, tempdir};
 
 fn mac_feed(signature: &str, size: u64, version: &str) -> TempDir {
     let dir = tempdir().unwrap();
-    fs::write(dir.path().join("BibCiTeX.zip"), b"zip").unwrap();
-    fs::write(dir.path().join("appcast-arm64.xml"), format!(r#"<rss xmlns:sparkle="{SPARKLE}"><channel><item><sparkle:shortVersionString>{version}</sparkle:shortVersionString><enclosure url="https://github.com/owner/repo/releases/download/v0.6.0/BibCiTeX.zip" length="{size}" sparkle:edSignature="{signature}" /></item></channel></rss>"#)).unwrap();
+    fs::write(dir.path().join("BibCiTeX-0.6.0-macos-arm64.zip"), b"zip").unwrap();
+    fs::write(dir.path().join("appcast-arm64.xml"), format!(r#"<rss xmlns:sparkle="{SPARKLE}"><channel><item><sparkle:shortVersionString>{version}</sparkle:shortVersionString><enclosure url="https://github.com/owner/repo/releases/download/v0.6.0/BibCiTeX-0.6.0-macos-arm64.zip" length="{size}" sparkle:edSignature="{signature}" /></item></channel></rss>"#)).unwrap();
     dir
 }
 fn check_mac(dir: &Path) -> Result<()> {
@@ -12,46 +12,54 @@ fn check_mac(dir: &Path) -> Result<()> {
 }
 fn windows_feed() -> TempDir {
     let dir = tempdir().unwrap();
-    fs::write(dir.path().join("BibCiTeX-x64.msix"), b"msix").unwrap();
-    fs::write(dir.path().join("BibCiTeX-x64.appinstaller"), format!(r#"<AppInstaller xmlns="{INSTALLER}" Uri="https://github.com/owner/repo/releases/latest/download/BibCiTeX-x64.appinstaller"><MainPackage Version="0.6.0.0" Uri="https://github.com/owner/repo/releases/latest/download/BibCiTeX-x64.msix" /></AppInstaller>"#)).unwrap();
+    fs::write(dir.path().join("BibCiTeX-0.6.0.0-x64.msix"), b"msix").unwrap();
+    fs::write(dir.path().join("BibCiTeX-x64.appinstaller"), format!(r#"<AppInstaller xmlns="{INSTALLER}" Uri="https://github.com/owner/repo/releases/latest/download/BibCiTeX-x64.appinstaller"><MainPackage Name="BibCiTeX" Publisher="CN=Test" ProcessorArchitecture="x64" Version="0.6.0.0" Uri="https://github.com/owner/repo/releases/download/v0.6.0/BibCiTeX-0.6.0.0-x64.msix" /></AppInstaller>"#)).unwrap();
     dir
 }
 fn check_windows(dir: &Path) -> Result<()> {
     verify_release("windows", dir, "0.6.0.0", "owner/repo", "v0.6.0")
 }
-fn publish_assets() -> TempDir {
+fn publish_assets() -> (TempDir, minisign::PublicKey) {
     let dir = tempdir().unwrap();
-    for name in [
-        "BibCiTeX-0.6.0-macos-arm64.zip",
-        "BibCiTeX-0.6.0-macos-x86_64.zip",
-        "appcast-arm64.xml",
-        "appcast-x86_64.xml",
-        "BibCiTeX-x64.appinstaller",
-        "BibCiTeX-arm64.appinstaller",
-        "BibCiTeX-x64.msix",
-        "BibCiTeX-arm64.msix",
-    ] {
-        fs::write(dir.path().join(name), b"asset").unwrap();
+    for arch in ["arm64", "x86_64"] {
+        let name = format!("BibCiTeX-0.6.1-macos-{arch}.zip");
+        fs::write(dir.path().join(&name), b"zip").unwrap();
+        fs::write(dir.path().join(format!("appcast-{arch}.xml")), format!(r#"<rss xmlns:sparkle="{SPARKLE}"><channel><item><sparkle:shortVersionString>0.6.1</sparkle:shortVersionString><enclosure url="https://github.com/owner/repo/releases/download/v0.6.1/{name}" length="3" sparkle:edSignature="signed" /></item></channel></rss>"#)).unwrap();
     }
-    dir
+    for arch in ["arm64", "x64"] {
+        fs::write(
+            dir.path().join(format!("BibCiTeX-0.6.1.0-{arch}.msix")),
+            b"msix",
+        )
+        .unwrap();
+        fs::write(dir.path().join(format!("BibCiTeX-{arch}.appinstaller")), format!(r#"<AppInstaller xmlns="{INSTALLER}" Uri="https://github.com/owner/repo/releases/latest/download/BibCiTeX-{arch}.appinstaller"><MainPackage Name="BibCiTeX" Publisher="CN=Test" ProcessorArchitecture="{arch}" Version="0.6.1.0" Uri="https://github.com/owner/repo/releases/download/v0.6.1/BibCiTeX-0.6.1.0-{arch}.msix" /></AppInstaller>"#)).unwrap();
+    }
+    let key = legacy::tests::fixtures(dir.path(), "v0.6.1");
+    (dir, key)
 }
 fn mock_publish(latest: &str, draft: bool, fail_upload: bool) -> (Result<()>, Vec<String>) {
-    let dir = publish_assets();
+    let (dir, key) = publish_assets();
     let mut calls = Vec::new();
-    let result = publish_release("v0.6.0", dir.path(), "owner/repo", |args| {
-        let verb = if args[0] == "api" { "latest" } else { &args[1] };
-        calls.push(verb.to_owned());
-        let output = match verb {
-            "latest" => serde_json::json!({"tag_name": latest}).to_string(),
-            "view" => serde_json::json!({"isDraft": draft, "isPrerelease": false}).to_string(),
-            _ => String::new(),
-        };
-        Ok(CommandResult {
-            success: !(verb == "upload" && fail_upload),
-            output,
-            error: "upload failed".into(),
-        })
-    });
+    let result = publish_release_with_key(
+        "v0.6.1",
+        dir.path(),
+        "owner/repo",
+        |args| {
+            let verb = if args[0] == "api" { "latest" } else { &args[1] };
+            calls.push(verb.to_owned());
+            let output = match verb {
+                "latest" => serde_json::json!({"tag_name": latest}).to_string(),
+                "view" => serde_json::json!({"isDraft": draft, "isPrerelease": false}).to_string(),
+                _ => String::new(),
+            };
+            Ok(CommandResult {
+                success: !(verb == "upload" && fail_upload),
+                output,
+                error: "upload failed".into(),
+            })
+        },
+        &key,
+    );
     (result, calls)
 }
 
@@ -128,7 +136,7 @@ fn app_installer_resolves_payload() {
 #[test]
 fn missing_msix_rejected() {
     let dir = windows_feed();
-    fs::remove_file(dir.path().join("BibCiTeX-x64.msix")).unwrap();
+    fs::remove_file(dir.path().join("BibCiTeX-0.6.0.0-x64.msix")).unwrap();
     assert!(
         check_windows(dir.path())
             .unwrap_err()
@@ -211,18 +219,128 @@ fn xml_resolves_namespace_instead_of_trusting_prefix() {
 }
 #[test]
 fn malformed_github_json_stops_before_mutation() {
-    let dir = publish_assets();
+    let (dir, key) = publish_assets();
     let mut calls = 0;
     assert!(
-        publish_release("v0.6.0", dir.path(), "owner/repo", |_| {
-            calls += 1;
-            Ok(CommandResult {
-                success: true,
-                output: "{}".into(),
-                error: String::new(),
-            })
-        })
+        publish_release_with_key(
+            "v0.6.1",
+            dir.path(),
+            "owner/repo",
+            |_| {
+                calls += 1;
+                Ok(CommandResult {
+                    success: true,
+                    output: "{}".into(),
+                    error: String::new(),
+                })
+            },
+            &key
+        )
         .is_err()
     );
     assert_eq!(calls, 1);
+}
+
+#[test]
+fn missing_legacy_asset_stops_before_github() {
+    let (dir, key) = publish_assets();
+    fs::remove_file(dir.path().join("BibCiTeX_x64-setup.exe")).unwrap();
+    let result = publish_release_with_key(
+        "v0.6.1",
+        dir.path(),
+        "owner/repo",
+        |_| panic!("No GitHub calls allowed for invalid assets"),
+        &key,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
+fn invalid_native_feed_stops_before_github() {
+    let (dir, key) = publish_assets();
+    fs::write(dir.path().join("appcast-arm64.xml"), "invalid").unwrap();
+    let result = publish_release_with_key(
+        "v0.6.1",
+        dir.path(),
+        "owner/repo",
+        |_| panic!("No GitHub calls allowed for invalid feeds"),
+        &key,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
+fn wrong_architecture_or_identity_stops_before_github() {
+    for (feed, from, to, expected) in [
+        (
+            "appcast-arm64.xml",
+            "BibCiTeX-0.6.1-macos-arm64.zip",
+            "BibCiTeX-0.6.1-macos-x86_64.zip",
+            "Sparkle payload architecture mismatch",
+        ),
+        (
+            "BibCiTeX-arm64.appinstaller",
+            "ProcessorArchitecture=\"arm64\"",
+            "ProcessorArchitecture=\"x64\"",
+            "MSIX processor architecture mismatch",
+        ),
+        (
+            "BibCiTeX-arm64.appinstaller",
+            "BibCiTeX-0.6.1.0-arm64.msix",
+            "BibCiTeX-0.6.1.0-x64.msix",
+            "MSIX payload version or architecture mismatch",
+        ),
+        (
+            "BibCiTeX-x64.appinstaller",
+            "Name=\"BibCiTeX\"",
+            "Name=\"AnotherApp\"",
+            "Missing or unexpected MSIX package identity",
+        ),
+        (
+            "BibCiTeX-x64.appinstaller",
+            "Publisher=\"CN=Test\"",
+            "Publisher=\"\"",
+            "Missing or unexpected MSIX package identity",
+        ),
+    ] {
+        let (dir, key) = publish_assets();
+        let path = dir.path().join(feed);
+        let original = fs::read_to_string(&path).unwrap();
+        assert!(original.contains(from));
+        fs::write(path, original.replace(from, to)).unwrap();
+        let error = publish_release_with_key(
+            "v0.6.1",
+            dir.path(),
+            "owner/repo",
+            |_| panic!("No GitHub calls allowed for invalid architecture or identity"),
+            &key,
+        )
+        .unwrap_err();
+        assert_eq!(error.to_string(), expected);
+    }
+}
+
+#[test]
+fn swapped_windows_payloads_stop_before_github() {
+    let (dir, key) = publish_assets();
+    for (arch, other) in [("arm64", "x64"), ("x64", "arm64")] {
+        let path = dir.path().join(format!("BibCiTeX-{arch}.appinstaller"));
+        let xml = fs::read_to_string(&path).unwrap().replace(
+            &format!("BibCiTeX-0.6.1.0-{arch}.msix"),
+            &format!("BibCiTeX-0.6.1.0-{other}.msix"),
+        );
+        fs::write(path, xml).unwrap();
+    }
+    let error = publish_release_with_key(
+        "v0.6.1",
+        dir.path(),
+        "owner/repo",
+        |_| panic!("No GitHub calls allowed for swapped MSIX payloads"),
+        &key,
+    )
+    .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "MSIX payload version or architecture mismatch"
+    );
 }

@@ -85,12 +85,16 @@ jobs:
           APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
           SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - uses: actions/upload-artifact@v7
         with:
           name: release-macos-${{ matrix.arch }}
           path: |
             dist/release/macos-${{ matrix.arch }}/*.zip
             dist/release/macos-${{ matrix.arch }}/appcast-*.xml
+            dist/release/macos-${{ matrix.arch }}/*.app.tar.gz
+            dist/release/macos-${{ matrix.arch }}/*.sig
           if-no-files-found: error
   windows:
     needs: [prepare, checks]
@@ -118,6 +122,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - uses: extractions/setup-just@v4
+      - name: Install legacy migration installer compiler
+        shell: pwsh
+        run: |
+          choco install nsis --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS installation failed.' }
       - name: Sign MSIX and generate App Installer feed
         shell: pwsh
         run: just ci-release-windows
@@ -129,12 +138,16 @@ jobs:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
           WINDOWS_PUBLISHER: ${{ vars.WINDOWS_PUBLISHER }}
           WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows-${{ matrix.arch }}
           path: |
             dist/release/windows-*/*.msix
             dist/release/windows-*/*.appinstaller
+            dist/release/windows-*/*.exe
+            dist/release/windows-*/*.sig
           if-no-files-found: error
   publish:
     needs: [prepare, macos, windows]
@@ -155,7 +168,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: extractions/setup-just@v4
       - name: Publish complete release and advance stable feeds
-        run: just ci-publish-release
+        run: |
+          just ci-legacy-manifest
+          just ci-publish-release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}

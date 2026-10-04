@@ -56,6 +56,11 @@ test-macos architecture=host_arch: test-helper test-workbench
 test-windows library:
     dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Debug -- '{{ replace(library, "'", "''") }}'
 
+# Validate legacy installer failure/success paths without modifying Windows.
+[windows]
+test-migration:
+    & ./windows/Tests/Migration.Tests.ps1
+
 # Test update metadata and publication rules without publishing.
 test-ci:
     cargo test --locked -p xtask
@@ -82,3 +87,8 @@ ci-release-windows:
 
 ci-publish-release:
     cargo run --locked -p xtask -- publish-release
+
+# Keep the existing Tauri clients on their original latest.json endpoint.
+[unix]
+ci-legacy-manifest:
+    cargo run --locked -p xtask -- legacy-manifest "$RELEASE_ASSETS" "$GITHUB_REPOSITORY" "$RELEASE_TAG"

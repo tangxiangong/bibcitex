@@ -11,8 +11,10 @@ fn run() -> Result<()> {
             Ok(())
         }
         ["verify-release", platform, directory, version, repository, tag] => verify_release(platform, Path::new(directory), version, repository, tag),
+        ["legacy-sign", path] => xtask::legacy::sign(Path::new(path)),
+        ["legacy-manifest", directory, repository, tag] => xtask::legacy::write_manifest(Path::new(directory), repository, tag),
         ["publish-release"] => publish_release(&env::var("RELEASE_TAG")?, Path::new(&env::var("RELEASE_ASSETS")?), &env::var("GITHUB_REPOSITORY")?, github),
-        _ => Err("Usage: xtask release-metadata | verify-release <platform> <directory> <version> <repository> <tag> | publish-release".into()),
+        _ => Err("Usage: xtask release-metadata | verify-release <platform> <directory> <version> <repository> <tag> | legacy-sign <path> | legacy-manifest <directory> <repository> <tag> | publish-release".into()),
     }
 }
 

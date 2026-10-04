@@ -1,7 +1,7 @@
 #!/bin/bash
 # Only the release workflow invokes this; never launches the application.
 set -euo pipefail
-required=(MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD CODE_SIGN_IDENTITY APPLE_API_PRIVATE_KEY APPLE_API_KEY_ID APPLE_API_ISSUER SPARKLE_PRIVATE_ED_KEY SPARKLE_PUBLIC_ED_KEY APP_VERSION BUILD_NUMBER ARCH RELEASE_TAG GITHUB_REPOSITORY RUNNER_TEMP)
+required=(MACOS_CERTIFICATE_P12 MACOS_CERTIFICATE_PASSWORD CODE_SIGN_IDENTITY APPLE_API_PRIVATE_KEY APPLE_API_KEY_ID APPLE_API_ISSUER SPARKLE_PRIVATE_ED_KEY SPARKLE_PUBLIC_ED_KEY TAURI_SIGNING_PRIVATE_KEY APP_VERSION BUILD_NUMBER ARCH RELEASE_TAG GITHUB_REPOSITORY RUNNER_TEMP)
 for name in "${required[@]}"; do
     [[ -n "${!name:-}" ]] || { echo "::error::Missing release configuration: $name" >&2; exit 1; }
 done
@@ -47,4 +47,14 @@ tar -xf "$work/Sparkle.tar.xz" -C "$work/sparkle"
 "$work/sparkle/bin/generate_appcast" --ed-key-file "$work/sparkle.key" --maximum-deltas 0 \
     --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" \
     -o "$out/appcast-$ARCH.xml" "$out"
+# Existing Tauri clients replace their installed .app from this tarball. Keep
+# their update format and signing key while shipping the same SwiftUI app.
+case "$ARCH" in
+    arm64) legacy_arch=aarch64;;
+    x86_64) legacy_arch=x64;;
+    *) echo "Unsupported legacy update architecture: $ARCH" >&2; exit 1;;
+esac
+legacy_archive="$out/BibCiTeX_$legacy_arch.app.tar.gz"
+COPYFILE_DISABLE=1 tar -czf "$legacy_archive" -C "$(dirname "$app")" BibCiTeX.app
+cargo run --locked --manifest-path "$root/Cargo.toml" -p xtask -- legacy-sign "$legacy_archive"
 just --justfile "$root/Justfile" ci-verify-release macos "$out" "$APP_VERSION" "$GITHUB_REPOSITORY" "$RELEASE_TAG"

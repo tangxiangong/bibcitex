@@ -52,3 +52,11 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 该集成测试只访问临时 BibTeX 文件，验证 Unicode、完整字段、数学块、错误、并发、Wire 内存所有权以及文件缓存更新；另外直接在内存调用 Skia 渲染分数、积分、矩阵、希腊字母和长公式，检查 DPI、颜色和边界像素，不调用文献库配置、剪贴板、粘贴或界面，不保存图片。
 
 `windows/Tests/UiSemantics/BibCiTeX.UiSemantics.csproj` 是不可运行的 C# 语义检查项目，引用真实 WinUI 程序集并编译全部界面 C# 源文件。它明确替换 Windows XAML 编译器生成的 `InitializeComponent` 边界为抛异常声明，不生成 XAML 资源，也不证明应用构建通过；Windows CI 仍须构建真正的 `BibCiTeX.csproj`。
+
+## 从旧 Tauri 版本升级
+
+发布任务还使用 NSIS 构建 `BibCiTeX_x64-setup.exe` / `BibCiTeX_arm64-setup.exe`。它们嵌入迁移脚本和 App Installer 元数据，经 Authenticode 和旧 Tauri 更新密钥双重签名，供原 `latest.json` 更新渠道使用。迁移器调用系统 `Add-AppxPackage -AppInstallerFile`，安装 WinUI 包并登记后续更新源；部署或身份校验失败不会卸载旧应用。
+
+只有安装路径注册信息和卸载注册信息完全匹配的当前用户 NSIS 安装（包括自定义目录），才会在成功部署后以 `/S /UPDATE` 卸载，保留文献配置。旧 MSI 通过 Tauri 的确定 UpgradeCode 枚举并核对产品名与发布者。旧 MSI 是所有用户安装，因此不会为当前用户迁移而卸载共享程序；安装日志明确说明保留旧 MSI。无法验证身份或版本的安装会保留，避免执行不确定的卸载命令；新程序安装成功后通过包身份启动；旧安装清理失败会明确报错，但不阻止新程序启动。更新签名私钥必须与旧客户端内置公钥匹配。构建迁移器需要 NSIS 和 Windows SDK `signtool.exe`，不需要恢复 Tauri UI 或运行时。
+
+`windows/Tests/Migration.Tests.ps1` 使用替身验证成功部署、部署失败、发布者不符及元数据不符的路径，不安装程序。完整旧版本到 MSIX 的端到端升级仍需要 Windows、受信任发布证书以及真实发布资产验证。
