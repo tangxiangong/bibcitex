@@ -77,7 +77,6 @@ final class HelperPanelController: NSObject {
     func setTheme(_ rawMode: Int32) {
         model.setTheme(rawMode)
         panel?.appearance = NSAppearance(named: model.theme.isDark ? .darkAqua : .aqua)
-        positionPanel(accordingTo: model.preferredHeight)
     }
 
     private func ensurePanel() {
@@ -157,9 +156,13 @@ final class HelperPanelController: NSObject {
         self.panel = panel
         self.hostingController = host
 
-        cancellable = model.$preferredHeight.sink { [weak self] height in
-            self?.positionPanel(accordingTo: height)
-        }
+        cancellable = model.$preferredHeight
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] height in
+                guard let self, isVisible, height == model.preferredHeight else { return }
+                positionPanel(accordingTo: height)
+            }
     }
 
     private func installKeyMonitor() {
@@ -233,7 +236,9 @@ final class HelperPanelController: NSObject {
         var frame = panel.frame
         frame.size = CGSize(width: width, height: clampedHeight)
         frame.origin = CGPoint(x: x, y: y)
-        panel.setFrame(frame, display: true, animate: false)
+        if panel.frame != frame {
+            panel.setFrame(frame, display: true, animate: false)
+        }
     }
 }
 

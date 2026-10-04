@@ -39,7 +39,7 @@ struct WorkbenchView: View {
             if model.libraries.isEmpty {
                 Text("暂无文献库").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(selection: $model.selectedLibrary) {
+                List(selection: Binding(get: { model.selectedLibrary }, set: model.selectLibrary)) {
                     ForEach(model.libraries) { library in
                         HStack(spacing: 9) {
                             SVGIcon("library")
@@ -61,7 +61,8 @@ struct WorkbenchView: View {
         }
     }
     private var references: some View {
-        VStack(spacing: 0) {
+        let selectionContext = model.referenceSelectionContext
+        return VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text(model.library?.name ?? "文献工作台").font(.title3.weight(.semibold))
@@ -71,18 +72,18 @@ struct WorkbenchView: View {
                 }
                 HStack {
                     SVGIcon("search", size: 15).foregroundStyle(.secondary)
-                    TextField("搜索文献", text: $model.query).textFieldStyle(.plain)
+                    TextField("搜索文献", text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
                 }.padding(8).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
                 HStack {
-                    Picker("全部类型", selection: $model.type) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                    Picker("全部字段", selection: $model.field) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                    Picker("全部类型", selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                    Picker("全部字段", selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
                 }.controlSize(.small)
             }.padding(16)
             Divider()
             if model.references.isEmpty && !model.loading {
                 Text("暂无可显示的文献").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(selection: $model.selectedReference) {
+                List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
                     ForEach(model.references) { reference in
                         VStack(alignment: .leading, spacing: 7) {
                             MathChunkText(chunks: reference.title).lineLimit(2)
@@ -109,7 +110,7 @@ struct WorkbenchView: View {
             Text("文献详情").font(.headline).padding(16)
             Divider()
             if let reference = model.reference {
-                ReferenceInspector(reference: reference, model: model)
+                ReferenceInspector(reference: reference, context: model.referenceSelectionContext, model: model)
             } else {
                 Text("选择一条文献查看字段和操作").foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -119,6 +120,7 @@ struct WorkbenchView: View {
 
 struct ReferenceInspector: View {
     let reference: Reference
+    let context: WorkbenchModel.ReferenceSelectionContext
     @ObservedObject var model: WorkbenchModel
     var body: some View {
         ScrollView {
@@ -127,7 +129,7 @@ struct ReferenceInspector: View {
                 HStack {
                     Button { model.copy(reference.citeKey) } label: { SVGIcon("copy") }.help("复制引用键").accessibilityLabel("复制引用键")
                     Button { model.copy(reference.source) } label: { SVGIcon("clipboard") }.help("复制 BibTeX").accessibilityLabel("复制 BibTeX")
-                    if !reference.file.isEmpty { Button { model.openFile(reference) } label: { SVGIcon("folderOpen") }.help("打开文件").accessibilityLabel("打开文件") }
+                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { SVGIcon("folderOpen") }.help("打开文件").accessibilityLabel("打开文件") }
                     if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { SVGIcon("externalLink") }.help("打开 URL").accessibilityLabel("打开 URL") }
                     if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { SVGIcon("link") }.help("打开 DOI").accessibilityLabel("打开 DOI") }
                 }.buttonStyle(.bordered)
@@ -212,7 +214,7 @@ struct AddLibrarySheet: View {
             do {
                 try await RustCore.shared.addLibrary(name: trimmed, path: path, description: description)
                 await model.reload()
-                model.selectedLibrary = trimmed
+                model.selectLibrary(trimmed)
                 dismiss()
             } catch { self.error = error.localizedDescription; saving = false }
         }

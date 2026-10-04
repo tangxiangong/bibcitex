@@ -1,6 +1,6 @@
 import Foundation
 
-enum ThemeStyle {
+enum ThemeStyle: Equatable {
     case latte
     case mocha
 

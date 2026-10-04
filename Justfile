@@ -41,9 +41,14 @@ test-rust:
 test-helper:
     bash macos/BibCiTeX/Tests/run-regressions.sh
 
-# Run helper and Swift/Rust integration tests after a debug build.
+# Run workbench binding and search state tests without launching the app.
 [macos]
-test-macos architecture=host_arch: test-helper
+test-workbench:
+    bash macos/BibCiTeX/Tests/run-workbench-tests.sh
+
+# Run model and Swift/Rust integration tests after a debug build.
+[macos]
+test-macos architecture=host_arch: test-helper test-workbench
     bash macos/BibCiTeX/Tests/run-interop-tests.sh --products {{ quote(env("DERIVED_DATA_PATH", "target/xcode/" + architecture) + "/Build/Products/Debug") }}
 
 # Run the C#/Rust and formula tests using a built platform library.

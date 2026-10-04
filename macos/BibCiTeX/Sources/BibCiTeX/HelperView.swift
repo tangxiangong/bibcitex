@@ -15,7 +15,7 @@ struct HelperView: View {
                     .font(.system(size: 22, weight: .regular))
                     .foregroundStyle(.secondary)
                 TextField(model.isSelectingBibliography ? "搜索或选择文献库" : "搜索文献、作者、标题",
-                    text: Binding(get: { model.query }, set: { model.updateQuery($0) }))
+                    text: Binding(get: { model.query }, set: { model.requestQuery($0) }))
                     .font(.system(size: 22))
                     .textFieldStyle(.plain)
                     .focused($searchFocused)
@@ -66,8 +66,7 @@ struct HelperView: View {
 
         }
         .ignoresSafeArea()
-        .onAppear { searchFocused = true; model.setTheme(colorScheme == .dark ? 1 : 0) }
-        .onChange(of: colorScheme) { mode in model.setTheme(mode == .dark ? 1 : 0) }
+        .onAppear { searchFocused = true }
         .onChange(of: model.focusRequest) { _ in searchFocused = true }
     }
 
@@ -166,7 +165,7 @@ struct HelperView: View {
 
     private func selection(_ selected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 9)
-            .fill(selected ? Color.accentColor.opacity(model.theme.isDark ? 0.25 : 0.13) : .clear)
+            .fill(selected ? Color.accentColor.opacity(colorScheme == .dark ? 0.25 : 0.13) : .clear)
     }
 
     private func emptyState(_ text: String, symbol: String) -> some View {

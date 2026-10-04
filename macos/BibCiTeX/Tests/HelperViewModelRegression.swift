@@ -102,6 +102,36 @@ private actor TestService: HelperServing {
         precondition(model.preferredHeight == 56, "Empty search must use the compact panel")
         print("PASS filtered-library reopen and compact panel height")
 
+        let editModel = HelperViewModel(service: TestService())
+        var editPublications = 0
+        let editObserver = editModel.objectWillChange.sink { editPublications += 1 }
+        editModel.requestQuery("first")
+        editModel.requestQuery("latest")
+        precondition(editPublications == 0 && editModel.query.isEmpty,
+            "A SwiftUI binding setter must not synchronously publish model changes")
+        await wait { editModel.query == "latest" }
+        let settledPublications = editPublications
+        editModel.requestQuery("latest")
+        precondition(editPublications == settledPublications, "An equal binding value must be ignored")
+        editModel.requestQuery("obsolete library edit")
+        editModel.startSelectMode()
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        precondition(editModel.query.isEmpty, "Queued text must not escape a library/mode change")
+        editModel.requestQuery("obsolete session edit")
+        editModel.invalidateSession()
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        precondition(editModel.query.isEmpty, "Queued text must not escape a dismissed session")
+        editModel.recalcHeight()
+        var sizePublications = 0
+        let sizeObserver = editModel.$preferredHeight.dropFirst().sink { _ in sizePublications += 1 }
+        editModel.setTheme(1)
+        editModel.setTheme(1)
+        editModel.recalcHeight()
+        precondition(sizePublications == 0, "Theme changes and equal geometry must not publish height")
+        editObserver.cancel()
+        sizeObserver.cancel()
+        print("PASS deferred/coalesced query bindings, stale edit rejection and idempotent geometry")
+
         let reference = Reference(
             citeKey: "key_raw", source: "", typeKind: .article, typeUnknown: nil,
             author: [], title: [], journal: "", year: nil, fullJournal: "", volume: nil,

@@ -32,12 +32,15 @@ final class HelperViewModel: ObservableObject {
 
     private let service: any HelperServing
     private var searchTask: Task<Void, Never>?
+    private var queryEditTask: Task<Void, Never>?
+    private var queryEditVersion = 0
     private var searchVersion = 0
     private var stateVersion = 0
     private(set) var sessionGeneration = 0
 
     /// Invalidates UI completions; an already-started OS paste cannot be cancelled here.
     func invalidateSession() {
+        invalidateQueryEdit()
         sessionGeneration += 1
         isPasting = false
         invalidateSearch()
@@ -74,8 +77,7 @@ final class HelperViewModel: ObservableObject {
     }
 
     func setTheme(_ themeMode: Int32) {
-        theme = ThemeStyle(mode: themeMode)
-        recalcHeight()
+        updateTheme(ThemeStyle(mode: themeMode))
     }
 
     func loadState() {
@@ -118,10 +120,34 @@ final class HelperViewModel: ObservableObject {
     }
 
     func updateTheme(_ style: ThemeStyle) {
+        guard theme != style else { return }
         theme = style
     }
 
+    /// A TextField may call its binding setter while SwiftUI reconciles the view.
+    /// Coalesce edits outside that call stack, and discard edits from an old session/library.
+    func requestQuery(_ value: String) {
+        invalidateQueryEdit()
+        guard value != query else { return }
+        let edit = queryEditVersion
+        let session = sessionGeneration
+        let state = stateVersion
+        queryEditTask = Task { @MainActor [weak self] in
+            guard let self, !Task.isCancelled,
+                edit == queryEditVersion, session == sessionGeneration, state == stateVersion else { return }
+            queryEditTask = nil
+            updateQuery(value)
+        }
+    }
+
+    private func invalidateQueryEdit() {
+        queryEditVersion += 1
+        queryEditTask?.cancel()
+        queryEditTask = nil
+    }
+
     func updateQuery(_ nextQuery: String) {
+        invalidateQueryEdit()
         query = nextQuery
         failedPasteKey = nil
         errorMessage = nil
@@ -348,6 +374,7 @@ final class HelperViewModel: ObservableObject {
 
         let errorHeight = (errorMessage == nil ? 0 : 40)
         let fallbackHeight = (failedPasteKey == nil ? 0 : 34)
-        preferredHeight = max(minHeight, headerHeight + listHeight + Double(errorHeight) + Double(fallbackHeight))
+        let height = max(minHeight, headerHeight + listHeight + Double(errorHeight) + Double(fallbackHeight))
+        if preferredHeight != height { preferredHeight = height }
     }
 }
