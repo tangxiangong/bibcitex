@@ -23,6 +23,8 @@ internal sealed class MainWindow : Window
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
     private Library? current;
     private int searchVersion;
+    private int resultsVersion;
+    private bool searchComposing;
     private GlobalShortcut? shortcut;
     private TrayIcon? tray;
     private bool quitting;
@@ -82,11 +84,28 @@ internal sealed class MainWindow : Window
             _ = Search();
         };
         references.SelectionChanged += (_, _) => ShowDetail((references.SelectedItem as ListViewItem)?.Tag as Reference);
+        search.TextCompositionStarted += (_, _) => searchComposing = true;
+        search.TextCompositionEnded += (_, _) => searchComposing = false;
+        search.PreviewKeyDown += SearchKeyDown;
         search.TextChanged += (_, _) => _ = Search(true); type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
         root.Loaded += async (_, _) => { SetMinimumSize(); root.XamlRoot.Changed += (_, _) => SetMinimumSize(); if (!initialized) { initialized = true; await ReloadLibraries(); } };
         AppWindow.Closing += (_, args) => { if (!quitting && tray is not null) { args.Cancel = true; AppWindow.Hide(); } };
         Closed += (_, _) => { shortcut?.Dispose(); tray?.Dispose(); };
         root.SizeChanged += (_, e) => { root.ColumnDefinitions[0].Width = new GridLength(e.NewSize.Width < 1050 ? 190 : 230); root.ColumnDefinitions[2].Width = new GridLength(e.NewSize.Width < 1050 ? 280 : 340); };
+    }
+
+    private void SearchKeyDown(object sender, Microsoft.UI.Xaml.Input.KeyRoutedEventArgs args)
+    {
+        if (searchComposing || args.Key is not (VirtualKey.Up or VirtualKey.Down)) return;
+        foreach (var key in new[] { VirtualKey.Control, VirtualKey.Menu, VirtualKey.Shift, VirtualKey.LeftWindows, VirtualKey.RightWindows })
+            if ((Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0) return;
+        args.Handled = true;
+        if (resultsVersion != searchVersion || references.Items.Count == 0) return;
+        var direction = args.Key == VirtualKey.Down ? 1 : -1;
+        references.SelectedIndex = references.SelectedIndex < 0
+            ? (direction > 0 ? 0 : references.Items.Count - 1)
+            : Math.Clamp(references.SelectedIndex + direction, 0, references.Items.Count - 1);
+        references.ScrollIntoView(references.SelectedItem);
     }
 
     private void SetMinimumSize()
@@ -147,6 +166,7 @@ internal sealed class MainWindow : Window
             var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
+            resultsVersion = version;
             count.Text = $"{rows.Count} 条文献"; empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) await Report(error); }

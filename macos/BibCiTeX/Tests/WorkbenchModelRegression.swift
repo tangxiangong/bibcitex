@@ -58,10 +58,21 @@ private actor WorkbenchTestService: WorkbenchServing {
         let service = WorkbenchTestService()
         let model = WorkbenchModel(service: service, preferences: preferences)
         let a = "/tmp/a/references.bib", b = "/tmp/b/references.bib"
+        model.moveReference(1)
+        model.moveReference(-1)
+        precondition(model.selectedReference == nil, "Empty lists ignore navigation")
         await model.reload()
         await service.waitForSearch(path: a, query: "")
         await service.complete(path: a, query: "", references: [reference("shared"), reference("a-second")])
         await wait { !model.loading && model.references.count == 2 }
+        model.moveReference(-1)
+        precondition(model.selectedReference == "shared")
+        model.moveReference(1)
+        precondition(model.selectedReference == "a-second")
+        model.moveReference(1)
+        precondition(model.selectedReference == "a-second", "Navigation clamps at the last row")
+        model.moveReference(-1)
+        precondition(model.selectedReference == "shared")
         let aContext = model.referenceSelectionContext
         precondition(model.attachmentURL(for: reference("shared"), context: aContext)?.path == "/tmp/a/paper.pdf")
 
@@ -71,7 +82,8 @@ private actor WorkbenchTestService: WorkbenchServing {
         model.selectReference("a-second", context: aContext)
         model.setQuery("slow")
         precondition(publications == baseline, "Binding setters must not synchronously publish")
-        precondition(model.query.isEmpty && model.selectedReference == "shared")
+        model.moveReference(1)
+        precondition(model.query.isEmpty && model.selectedReference == "shared", "Pending search blocks stale navigation")
         await service.waitForSearch(path: a, query: "slow")
 
         let beforeSwitch = publications
@@ -113,6 +125,15 @@ private actor WorkbenchTestService: WorkbenchServing {
         model.setType("Article")
         await Task.yield()
         precondition(publications == beforeNoOp, "Equal binding values must not restart work or publish")
+        model.selectReference(nil, context: bContext)
+        await wait { model.selectedReference == nil }
+        model.moveReference(-1)
+        precondition(model.selectedReference == "shared", "Up without selection starts at the last row")
+        model.selectReference(nil, context: bContext)
+        await wait { model.selectedReference == nil }
+        model.moveReference(1)
+        precondition(model.selectedReference == "b-first", "Down without selection starts at the first row")
+        print("PASS keyboard navigation, boundaries, empty lists and pending-search protection")
         withExtendedLifetime(observation) {}
         print("PASS library-scoped row selection, attachment context and equal-value suppression")
     }

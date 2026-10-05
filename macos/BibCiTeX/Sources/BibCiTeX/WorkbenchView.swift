@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct WorkbenchView: View {
     @ObservedObject var model: WorkbenchModel
+    @FocusState private var searchFocused: Bool
     private let types = [("all", "全部类型"), ("Article", "期刊论文"), ("Book", "图书"), ("Thesis", "学位论文"), ("TechReport", "技术报告"), ("Misc", "其他"), ("Booklet", "小册子"), ("InBook", "书籍章节"), ("InCollection", "文集章节"), ("InProceedings", "会议论文")]
     private let fields = [("all", "全部字段"), ("author", "作者"), ("title", "标题"), ("journal", "期刊"), ("year", "年份")]
 
@@ -73,6 +74,10 @@ struct WorkbenchView: View {
                 HStack(spacing: 8) {
                     SVGIcon("search", size: 15).foregroundStyle(.secondary)
                     TextField("搜索文献", text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
+                        .focused($searchFocused)
+                        .background {
+                            WorkbenchSearchNavigation(enabled: searchFocused, move: model.moveReference)
+                        }
                 }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
                 HStack(spacing: 8) {
                     Picker("类型筛选", selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
@@ -85,35 +90,40 @@ struct WorkbenchView: View {
             if model.references.isEmpty && !model.loading {
                 Text("暂无可显示的文献").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
-                    ForEach(model.references) { reference in
-                        // The cite key is the value users retype and paste, so it sits on
-                        // its own line at the top right and copies on click — off the
-                        // metadata lines, where it competed with the title for width.
-                        HStack(alignment: .top, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                MathChunkText(chunks: reference.title).lineLimit(2)
-                                if !reference.author.isEmpty {
-                                    Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                                HStack(spacing: 6) {
-                                    Text(reference.displayType)
-                                    if let year = reference.year { Text("·"); Text(String(year)) }
-                                    if !reference.venueText.isEmpty {
-                                        Text("·")
-                                        Text(reference.venueText).lineLimit(1)
+                ScrollViewReader { proxy in
+                    List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
+                        ForEach(model.references) { reference in
+                            // The cite key is the value users retype and paste, so it sits on
+                            // its own line at the top right and copies on click — off the
+                            // metadata lines, where it competed with the title for width.
+                            HStack(alignment: .top, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    MathChunkText(chunks: reference.title).lineLimit(2)
+                                    if !reference.author.isEmpty {
+                                        Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                                     }
-                                }.font(.caption).foregroundStyle(.secondary)
+                                    HStack(spacing: 6) {
+                                        Text(reference.displayType)
+                                        if let year = reference.year { Text("·"); Text(String(year)) }
+                                        if !reference.venueText.isEmpty {
+                                            Text("·")
+                                            Text(reference.venueText).lineLimit(1)
+                                        }
+                                    }.font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 8)
+                                ListCiteKey(reference: reference, model: model)
+                            }.padding(.vertical, 8).tag(reference.citeKey).id(reference.citeKey)
+                            .contextMenu {
+                                Button("复制引用键") { model.copy(reference.citeKey) }
+                                Button("复制 BibTeX") { model.copy(reference.source) }
                             }
-                            Spacer(minLength: 8)
-                            ListCiteKey(reference: reference, model: model)
-                        }.padding(.vertical, 8).tag(reference.citeKey)
-                        .contextMenu {
-                            Button("复制引用键") { model.copy(reference.citeKey) }
-                            Button("复制 BibTeX") { model.copy(reference.source) }
                         }
+                    }.listStyle(.inset).scrollContentBackground(.hidden)
+                    .onChange(of: model.selectedReference) { key in
+                        if let key { proxy.scrollTo(key) }
                     }
-                }.listStyle(.inset).scrollContentBackground(.hidden)
+                }
             }
         }
     }
@@ -127,6 +137,51 @@ struct WorkbenchView: View {
                 Text("选择一条文献查看字段和操作").foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+}
+
+/// Observe keys without replacing the SwiftUI field or changing its layout.
+private struct WorkbenchSearchNavigation: NSViewRepresentable {
+    let enabled: Bool
+    let move: (Int) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.install(on: view)
+        return view
+    }
+    func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.parent = self
+    }
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        coordinator.removeMonitor()
+    }
+    final class Coordinator {
+        var parent: WorkbenchSearchNavigation
+        private var monitor: Any?
+        init(_ parent: WorkbenchSearchNavigation) { self.parent = parent }
+        func install(on view: NSView) {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak view] event in
+                guard let self, let window = view?.window,
+                      parent.enabled, window.isKeyWindow, event.window === window,
+                      let editor = window.firstResponder as? NSTextView,
+                      editor.isFieldEditor, !editor.hasMarkedText(),
+                      event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+                else { return event }
+                switch event.keyCode {
+                case 126: parent.move(-1)
+                case 125: parent.move(1)
+                default: return event
+                }
+                return nil
+            }
+        }
+        func removeMonitor() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+        deinit { removeMonitor() }
     }
 }
 

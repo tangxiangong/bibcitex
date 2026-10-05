@@ -97,6 +97,17 @@ final class WorkbenchModel: ObservableObject {
         }
     }
 
+    func moveReference(_ delta: Int) {
+        guard !loading, requested.library == selectedLibrary,
+              requested.query == query, requested.field == field, requested.type == type,
+              !references.isEmpty else { return }
+        let index = references.firstIndex { $0.citeKey == selectedReference }
+        let next = index.map { min(max($0 + delta, 0), references.count - 1) }
+            ?? (delta < 0 ? references.count - 1 : 0)
+        rowCommit?.cancel()
+        selectedReference = references[next].citeKey
+    }
+
     func reload() async {
         registryGeneration += 1
         let version = registryGeneration
