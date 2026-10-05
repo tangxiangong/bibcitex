@@ -21,7 +21,8 @@ trap 'exit 143' TERM
     cat "$source_dir/HelperViewModel.swift"
     cat "$package/Tests/HelperViewModelRegression.swift"
 } > "$work/Regression.swift"
-swiftc -parse-as-library -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
+swiftc -parse-as-library -target "$(uname -m)-apple-macosx14.0" \
+    -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
 "$work/regressions" &
 test_pid=$!
 (

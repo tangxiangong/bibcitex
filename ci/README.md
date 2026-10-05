@@ -103,9 +103,11 @@ user does not authorize removing the application used by other Windows accounts.
 The first migration release must be newer than `0.6.0`; rebuilding the same version
 does not trigger an old client's update comparison. `publish-release` requires the
 legacy manifest and signed payloads alongside native feeds before advancing latest.
-The SwiftUI app requires macOS 13 or later. The old static Tauri manifest cannot
+The SwiftUI app requires macOS 14 (Sonoma) or later. The old static Tauri manifest cannot
 filter updates by macOS version, so this does not establish upgrade support for
-older systems; they must be accounted for before publishing a migration release.
+macOS 13 or older. Do not publish a migration release to that endpoint until there
+is a safe update path for those unsupported systems; otherwise an old client could
+replace its working app with one that cannot launch.
 The live legacy endpoint currently has no manifest; this code prepares the next
 release and does not publish one. End-to-end installed-app migration still requires
 the original updater key, platform signing credentials and actual Windows/macOS

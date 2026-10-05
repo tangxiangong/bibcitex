@@ -36,7 +36,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-swiftc -parse-as-library -target "$architecture-apple-macosx13.0" \
+swiftc -parse-as-library -target "$architecture-apple-macosx14.0" \
     -module-cache-path "$work/modules" \
     -I "$products" -I "$bindings/include" \
     "$package/Tests/RustInteropTests.swift" "$products/libBibCiTeXCore.a" "$rust_library" \

@@ -11,5 +11,6 @@ trap 'rm -rf "$work"' EXIT
     cat "$source_dir/TrayWorkbenchModel.swift"
     cat "$package/Tests/TrayWorkbenchRegression.swift"
 } > "$work/Regression.swift"
-swiftc -parse-as-library -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
+swiftc -parse-as-library -target "$(uname -m)-apple-macosx14.0" \
+    -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
 "$work/regressions"

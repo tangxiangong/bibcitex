@@ -10,5 +10,6 @@ trap 'rm -rf "$work"' EXIT
     sed '/^actor RustWorkbenchService:/,$d' "$source_dir/WorkbenchModel.swift"
     cat "$package/Tests/WorkbenchModelRegression.swift"
 } > "$work/Regression.swift"
-swiftc -parse-as-library -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
+swiftc -parse-as-library -target "$(uname -m)-apple-macosx14.0" \
+    -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
 "$work/regressions"

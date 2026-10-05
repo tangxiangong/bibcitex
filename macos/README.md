@@ -1,12 +1,14 @@
 # macOS
 
-Open **`macos/BibCiTeX.xcodeproj`**, select the shared **BibCiTeX** scheme, and build. No `just` command, generated Swift file, C header, or prebuilt Rust library is required beforehand. Xcode 26+ and Rust installed through rustup are required; the deployment target remains macOS 13. The Xcode script discovers Cargo in the GUI's PATH or `$HOME/.cargo/bin` and installs a missing Apple target through rustup when needed.
+Open **`macos/BibCiTeX.xcodeproj`**, select the shared **BibCiTeX** scheme, and build. No `just` command, generated Swift file, C header, or prebuilt Rust library is required beforehand. Xcode 26+ and Rust installed through rustup are required; the app requires macOS 14 (Sonoma) or later. The Xcode script discovers Cargo in the GUI's PATH or `$HOME/.cargo/bin` and installs a missing Apple target through rustup when needed.
 
 The checked-in project has three real targets:
 
 1. `RustBindings` builds `bibcitex-ffi` and runs the official UniFFI 0.32.2 generator.
 2. `BibCiTeXCore` compiles the generated Swift interface into a static Swift library.
 3. `BibCiTeX` compiles the SwiftUI/AppKit app and links both static libraries.
+
+Debug and Release explicitly target macOS 14.0 for the project, app (including the helper), generated Swift core and Rust bindings. `LSMinimumSystemVersion` inherits that deployment target; it does not follow Xcode's recommended minimum. The Cargo default in `.cargo/config.toml` and all standalone Swift test executables also target macOS 14.0.
 
 Target dependencies, declared script inputs/outputs and a discovered Rust dependency file control ordering and incremental rebuilds. All generated files and Rust compilation outputs live in DerivedData. The project resolves SwiftDraw, LaTeXSwiftUI and Sparkle through Xcode's Swift Package support; its shared `Package.resolved` pins transitive dependencies. SVG icons are app resources, MathJax resources are copied by Xcode's package integration, and Sparkle is embedded as a package framework. There is no second SwiftPM application build definition.
 
