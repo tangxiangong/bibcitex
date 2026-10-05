@@ -1,6 +1,18 @@
 import ApplicationServices
 import Foundation
 
+/// One source of truth for the helper surface metrics: the view draws these
+/// heights and `HelperViewModel` sizes the panel from them.
+enum HelperMetrics {
+    static let header: CGFloat = 56
+    /// Title (two lines), authors and the metadata line, plus the row padding.
+    static let referenceRow: CGFloat = 80
+    static let libraryRow: CGFloat = 56
+    static let listPadding: CGFloat = 16
+    static let emptyRow: CGFloat = 112
+    static let errorBar: CGFloat = 40
+}
+
 enum TextChunkKind: Int32, Sendable {
     case normal = 0
     case verbatim = 1
@@ -14,17 +26,6 @@ enum ThemeMode: Int32, Sendable {
     var isDark: Bool {
         self == .dark
     }
-}
-
-/// What activating a reference row does, which is the one thing the two helper
-/// surfaces do not agree on.
-enum HelperMode {
-    /// The Cmd+Shift+K panel: hand the cite key to the app that was frontmost.
-    /// Needs the accessibility permission, because it drives that app's keyboard.
-    case paste
-    /// The tray window: put the cite key on the clipboard and stay open, so
-    /// several records can be collected without the panel closing each time.
-    case copy
 }
 
 /// The accessibility permission that cross-app paste depends on. `xpaste` still

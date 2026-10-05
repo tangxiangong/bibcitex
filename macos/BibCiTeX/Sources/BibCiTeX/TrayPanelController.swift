@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Combine
 
 @MainActor
 private final class TrayPanel: NSPanel {
@@ -8,167 +7,73 @@ private final class TrayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-/// The status-item window: the workbench collapsed to menu-bar scale — one
-/// search field over the reference list — hanging under the menu-bar button.
-///
-/// This is a second *presentation* of the shared helper, not a second
-/// implementation: the same `HelperViewModel`, `HelperServing`, Rust paste path
-/// and `HelperView` that Cmd+Shift+K shows. Search, DTO and FFI code stay where
-/// they already live; this file owns the window and nothing else.
-///
-/// Left-clicking the status item toggles the panel; right-clicking or
-/// Control-clicking shows the menu. The panel is presented only after the Rust
-/// core snapshots the paste target, so the app that receives the paste is never
-/// the one that was just clicked.
+/// Owns the independent tray workbench, anchored to the status item.
 @MainActor
-final class TrayPanelController: NSObject {
+final class TrayPanelController: NSObject, NSWindowDelegate {
     static let shared = TrayPanelController()
-
-    private var model: HelperViewModel { HelperPanelController.shared.model }
-
-    /// The status-item button the panel hangs from, installed by `AppDelegate`.
+    private let model = TrayWorkbenchModel(service: RustWorkbenchService())
     private weak var anchor: NSStatusBarButton?
-
     private var panel: NSPanel?
-    private var hostingController: NSHostingController<HelperView>?
+    private var host: NSHostingController<TrayWorkbenchView>?
     private var keyMonitor: Any?
     private var outsideMonitor: Any?
-    private var heightCancellable: AnyCancellable?
     private var isVisible = false
-    private var opening = false
+    private var presentation = 0
+    var showMain: (() -> Void)?
 
-    /// A cite key plus its venue on one line, and no wider: the tray window has
-    /// to read as a panel attached to the menu bar, not as a second main window.
-    private static let width: CGFloat = 460
-    /// Rounds the surrounding material without clipping a row corner.
-    private static let cornerRadius: CGFloat = 12
-
-    /// Anchors the tray window to a status-item button.
-    func attach(to button: NSStatusBarButton) {
-        anchor = button
-    }
-
-    func toggle() {
-        if isVisible || opening { dismiss() } else { show() }
-    }
-
-    /// True while the tray window owns the shared model.
+    func attach(to button: NSStatusBarButton) { anchor = button }
     func isPanelVisible() -> Bool { isVisible }
-
+    func toggle() { if isVisible { dismiss() } else { show() } }
     func show() {
-        // One shared model drives one visible surface at a time.
         HelperPanelController.shared.hidePanel()
-        // Do not replace the target snapshot while a prior OS paste is queued or running.
-        guard !model.isPasteOperationPending else { return }
-        let session = model.beginSession()
-        opening = true
-        Task { @MainActor in
-            do {
-                try await RustCore.pasteboard.capturePasteTarget()
-                guard model.sessionGeneration == session else { return }
-                opening = false
-                present()
-            } catch {
-                guard model.sessionGeneration == session else { return }
-                opening = false
-                NSAlert(error: error).runModal()
-            }
-        }
-    }
-
-    func setTheme(_ rawMode: Int32) {
-        model.setTheme(rawMode)
-        panel?.appearance = NSAppearance(named: model.theme.isDark ? .darkAqua : .aqua)
-    }
-
-    func dismiss() {
-        guard isVisible || opening else { return }
-        model.invalidateSession()
-        opening = false
-        isVisible = false
-        panel?.orderOut(nil)
-        removeKeyMonitor()
-        removeOutsideMonitor()
-    }
-
-    private func present() {
         ensurePanel()
-        // This surface collects cite keys: activating a row copies and leaves the
-        // window open, so several records can be taken in one visit.
-        model.mode = .copy
-        // This surface owns paste-failure restore while it is the visible one.
-        model.onPasteFailure = { [weak self] in
-            guard let self else { return }
-            self.isVisible = true
-            self.position(accordingTo: self.model.preferredHeight)
-            self.panel?.makeKeyAndOrderFront(nil)
-            self.installKeyMonitor()
-        }
-        model.loadState()
-        model.recalcHeight()
-
-        guard let panel else { return }
+        position()
         isVisible = true
-        position(accordingTo: model.preferredHeight)
-        // A nonactivating panel becomes key without activating the app, so the
-        // previously focused app keeps the pending paste target.
-        panel.makeKeyAndOrderFront(nil)
-        panel.orderFrontRegardless()
-        model.focusRequest += 1
-        installKeyMonitor()
-        installOutsideMonitor()
+        presentation += 1
+        let current = presentation
+        panel?.makeKeyAndOrderFront(nil)
+        panel?.orderFrontRegardless()
+        installMonitors()
+        Task {
+            guard isVisible, presentation == current else { return }
+            await model.reload()
+        }
     }
-
+    func dismiss() {
+        guard isVisible else { return }
+        isVisible = false
+        presentation += 1
+        model.suspend()
+        panel?.orderOut(nil)
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor) }
+        keyMonitor = nil; outsideMonitor = nil
+    }
     private func ensurePanel() {
-        if panel != nil { return }
-
-        let frame = NSRect(x: 0, y: 0, width: Self.width, height: model.preferredHeight)
-        let panel = TrayPanel(
-            contentRect: frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true,
-        )
+        guard panel == nil else { return }
+        let panel = TrayPanel(contentRect: NSRect(x: 0, y: 0, width: 680, height: 580),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isFloatingPanel = true
         panel.level = .floating
-        // Transient keeps it out of the window list and the Cmd+Tab switcher.
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
-        panel.isOpaque = false
-        panel.hasShadow = true
-        panel.isReleasedWhenClosed = false
-        panel.backgroundColor = .clear
-        panel.appearance = nil
-        panel.animationBehavior = .utilityWindow
-        panel.minSize = NSSize(width: 0, height: HelperMetrics.header)
-        panel.delegate = self
-
-        let content = HelperView(model: model, onHidePanel: { [weak self] in self?.dismiss() })
-        let host = NSHostingController(rootView: content)
-        if #available(macOS 13.0, *) {
-            // The model owns the panel height; SwiftUI must not add its own size.
-            host.sizingOptions = []
-        }
+        panel.isOpaque = false; panel.hasShadow = true
+        panel.isReleasedWhenClosed = false; panel.backgroundColor = .clear
+        panel.animationBehavior = .utilityWindow; panel.delegate = self
+        let host = NSHostingController(rootView: TrayWorkbenchView(model: model,
+            showMain: { [weak self] in self?.dismiss(); self?.showMain?() },
+            dismiss: { [weak self] in self?.dismiss() }))
+        host.sizingOptions = []
         host.view.translatesAutoresizingMaskIntoConstraints = false
-
         let surface: NSView
         if #available(macOS 26.0, *) {
             let glass = NSGlassEffectView()
-            glass.style = .regular
-            glass.cornerRadius = Self.cornerRadius
-            glass.contentView = host.view
+            glass.style = .regular; glass.cornerRadius = 12; glass.contentView = host.view
             surface = glass
         } else {
             let material = NSVisualEffectView()
-            material.material = .hudWindow
-            material.blendingMode = .behindWindow
-            // Forced active: a nonactivating panel is never the app's active
-            // window, so followsWindowActiveState would wash the panel out.
-            material.state = .active
-            material.wantsLayer = true
-            material.layer?.cornerRadius = Self.cornerRadius
-            material.layer?.masksToBounds = true
-            material.addSubview(host.view)
-            surface = material
+            material.material = .popover; material.blendingMode = .behindWindow; material.state = .active
+            material.wantsLayer = true; material.layer?.cornerRadius = 12; material.layer?.masksToBounds = true
+            material.addSubview(host.view); surface = material
         }
         panel.contentView = surface
         NSLayoutConstraint.activate([
@@ -177,93 +82,40 @@ final class TrayPanelController: NSObject {
             host.view.topAnchor.constraint(equalTo: surface.topAnchor),
             host.view.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
         ])
-
-        self.panel = panel
-        self.hostingController = host
-
-        heightCancellable = model.$preferredHeight
-            .removeDuplicates()
-            .receive(on: RunLoop.main)
-            .sink { [weak self] height in
-                guard let self, self.isVisible, height == self.model.preferredHeight else { return }
-                self.position(accordingTo: height)
-            }
+        self.panel = panel; self.host = host
     }
-
-    private func installKeyMonitor() {
-        if keyMonitor != nil { return }
+    private func installMonitors() {
+        guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self else { return event }
-            if event.window !== self.panel || self.panel?.isKeyWindow != true {
-                return event
+            guard let self, event.window === panel, panel?.isKeyWindow == true else { return event }
+            if let editor = panel?.firstResponder as? NSTextView, editor.hasMarkedText() { return event }
+            guard event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
+            if event.keyCode == 53 { dismiss(); return nil }
+            // Only the search field redirects arrows; lists and pickers keep native navigation.
+            if let editor = panel?.firstResponder as? NSTextView, editor.isFieldEditor {
+                if event.keyCode == 125 { model.move(1); return nil }
+                if event.keyCode == 126 { model.move(-1); return nil }
             }
-            return HelperKeyHandling.handle(event, model: self.model, dismiss: self.dismiss)
+            return event
         }
-    }
-
-    private func removeKeyMonitor() {
-        if let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
-        }
-    }
-
-    private func installOutsideMonitor() {
-        if outsideMonitor != nil { return }
-        // A nonactivating panel does not resign key on a click that lands in
-        // another app, so watch global clicks to dismiss on an outside click.
-        outsideMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
-        ) { [weak self] _ in
+        outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.isVisible, let panel = self.panel else { return }
-                if panel.frame.contains(NSEvent.mouseLocation) { return }
+                guard let self, self.isVisible, let panel = self.panel, !panel.frame.contains(NSEvent.mouseLocation) else { return }
                 self.dismiss()
             }
         }
     }
-
-    private func removeOutsideMonitor() {
-        if let outsideMonitor {
-            NSEvent.removeMonitor(outsideMonitor)
-            self.outsideMonitor = nil
-        }
-    }
-
-    /// Hang the panel just below the status-item button, clamped to its screen.
-    private func position(accordingTo height: CGFloat) {
+    private func position() {
         guard let panel else { return }
-
-        let visibleFrame = (anchor?.window?.screen ?? NSScreen.main)?.visibleFrame
-            ?? NSRect(x: 0, y: 0, width: 1440, height: 760)
-        let width = min(Self.width, visibleFrame.width - 32)
-        let clampedHeight = min(max(height, HelperMetrics.header), visibleFrame.height - 96)
-
-        // Centre on the status-item button so the panel points at the icon the
-        // user clicked, then keep it fully on screen.
-        var x = visibleFrame.maxX - width
-        if let button = anchor, let buttonWindow = button.window {
-            let buttonFrame = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
-            x = buttonFrame.midX - width / 2
+        let screen = (anchor?.window?.screen ?? NSScreen.main)?.visibleFrame
+            ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let width = min(680, screen.width - 16), height = min(580, screen.height - 16)
+        var x = screen.maxX - width - 8
+        if let button = anchor, let window = button.window {
+            x = window.convertToScreen(button.convert(button.bounds, to: nil)).midX - width / 2
         }
-        x = min(max(x, visibleFrame.minX + 8), visibleFrame.maxX - width - 8)
-
-        // The menu bar owns the top of the visible frame, so the panel hangs
-        // from it with the same gap the system's own menu-bar extras use.
-        let y = visibleFrame.maxY - clampedHeight - 6
-
-        var frame = panel.frame
-        frame.size = CGSize(width: width, height: clampedHeight)
-        frame.origin = CGPoint(x: x, y: y)
-        if panel.frame != frame {
-            panel.setFrame(frame, display: true, animate: false)
-        }
+        x = min(max(x, screen.minX + 8), screen.maxX - width - 8)
+        panel.setFrame(NSRect(x: x, y: screen.maxY - height - 6, width: width, height: height), display: true)
     }
-}
-
-extension TrayPanelController: NSWindowDelegate {
-    func windowDidResignKey(_ notification: Notification) {
-        guard isVisible, !model.isPasting else { return }
-        dismiss()
-    }
+    func windowDidResignKey(_ notification: Notification) { dismiss() }
 }

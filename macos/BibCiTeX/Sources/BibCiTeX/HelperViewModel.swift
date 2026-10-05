@@ -30,10 +30,6 @@ final class HelperViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var theme: ThemeStyle = .latte
 
-    /// Which action a row's Return key and a click on the row body perform. The
-    /// tray window copies and stays open; the Cmd+Shift+K panel pastes into the
-    /// app that was frontmost when it opened.
-    @Published var mode: HelperMode = .paste
     /// The cite key most recently copied, so that row can confirm the copy in
     /// place. Cleared whenever the rows change, since the confirmation belongs to
     /// a row that will no longer be there.
@@ -43,6 +39,7 @@ final class HelperViewModel: ObservableObject {
     @Published private(set) var failedPasteKey: String?
 
     private let service: any HelperServing
+    private let requestPastePermission: @MainActor () -> Bool
     private var searchTask: Task<Void, Never>?
     private var queryEditTask: Task<Void, Never>?
     private var copyConfirmation: Task<Void, Never>?
@@ -87,8 +84,9 @@ final class HelperViewModel: ObservableObject {
         }
     }
 
-    init(service: any HelperServing) {
+    init(service: any HelperServing, requestPastePermission: @escaping @MainActor () -> Bool = { AccessibilityPermission.ensureTrusted() }) {
         self.service = service
+        self.requestPastePermission = requestPastePermission
     }
 
     func setTheme(_ themeMode: Int32) {
@@ -283,17 +281,12 @@ final class HelperViewModel: ObservableObject {
         selectedReferenceIndex = next
     }
 
-    /// Return and a click on a row body run the surface's own action: the tray
-    /// window copies so several keys can be collected, the Cmd+Shift+K panel
-    /// pastes into the app that was frontmost when it opened.
+    /// Return and row activation paste into the previously focused application.
     func activate(_ reference: Reference, at index: Int? = nil, onSuccess: @escaping () -> Void = {}) {
         if let index {
             selectedReferenceIndex = index
         }
-        switch mode {
-        case .copy: copy(reference)
-        case .paste: paste(reference, onSuccess: onSuccess)
-        }
+        paste(reference, onSuccess: onSuccess)
     }
 
     func activateSelection(onSuccess: @escaping () -> Void) {
@@ -307,32 +300,13 @@ final class HelperViewModel: ObservableObject {
         activate(searchResults[index], onSuccess: onSuccess)
     }
 
-    /// The row's own copy button. It always copies, on both surfaces, so a cite
-    /// key can be taken without committing to the paste the panel would perform.
-    func copy(_ reference: Reference) {
-        let key = reference.citeKey
-        guard !key.isEmpty else { return }
-        let session = sessionGeneration
-        Task { @MainActor in
-            do {
-                try await service.copy(citeKey: key)
-                guard session == sessionGeneration else { return }
-                confirmCopy(of: key)
-            } catch {
-                guard session == sessionGeneration else { return }
-                errorMessage = "复制失败：\(error.localizedDescription)"
-                recalcHeight()
-            }
-        }
-    }
-
     private func paste(_ reference: Reference, onSuccess: @escaping () -> Void) {
         guard !isPasteOperationPending else { return }
         // Injecting keystrokes into another app is what the accessibility
         // permission gates, so ask before writing the pasteboard. The system's own
         // dialog names the permission and offers Settings; an in-app error cannot,
         // and it would have to be dismissed before the user could act on it.
-        guard AccessibilityPermission.ensureTrusted() else { return }
+        guard requestPastePermission() else { return }
         let key = reference.citeKey
         let session = sessionGeneration
         isPasting = true

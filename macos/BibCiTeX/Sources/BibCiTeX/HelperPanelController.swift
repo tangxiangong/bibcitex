@@ -8,9 +8,7 @@ private final class HelperPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-/// Shared Return/selection contract for every helper surface, so the tray
-/// popover and the floating panel cannot drift apart. Cmd+Shift+K and the
-/// status item must keep behaving identically.
+/// Keyboard contract for the global-hotkey search-and-paste panel.
 @MainActor
 enum HelperKeyHandling {
     /// Returns nil to consume the event, or the event to let AppKit handle it.
@@ -56,7 +54,7 @@ enum HelperKeyHandling {
 final class HelperPanelController: NSObject {
     static let shared = HelperPanelController()
 
-    /// Shared with the tray popover: one model, one search/paste path.
+    /// State belongs only to the global-hotkey helper.
     let service = HelperService()
     lazy var model = HelperViewModel(service: service)
 
@@ -74,7 +72,7 @@ final class HelperPanelController: NSObject {
 
     func showPanel() {
         if isVisible || opening { hidePanel(); return }
-        // One shared model drives one visible surface at a time.
+        // Dismiss the independent tray browser before showing the helper.
         TrayPanelController.shared.dismiss()
         // Do not replace the target snapshot while a prior OS paste is queued/running.
         guard !model.isPasteOperationPending else { return }
@@ -98,7 +96,6 @@ final class HelperPanelController: NSObject {
         ensurePanel()
         // The hotkey panel is the cross-app one: activating a row hands its cite
         // key to the app that was frontmost when the panel opened.
-        model.mode = .paste
         // This surface owns paste-failure restore while it is the visible one.
         model.onPasteFailure = { [weak self] in
             guard let self else { return }

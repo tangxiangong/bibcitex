@@ -2,16 +2,7 @@ import SwiftUI
 import AppKit
 import LaTeXSwiftUI
 
-/// The helper surface, hosted by both the tray window and the Cmd+Shift+K panel:
-/// the workbench's centre column — active library, search field, reference rows —
-/// compressed to menu-bar scale. Rows carry the same fields as `WorkbenchView`'s
-/// list, and the inspector is deliberately left out: finding a record and taking
-/// its cite key is the whole job here.
-///
-/// The two surfaces differ only in what activating a row does, which the model
-/// holds as `mode`: the panel pastes into the app that was frontmost, the tray
-/// window copies and stays open. Every row also carries its own copy button, so a
-/// cite key is one click away on either surface regardless of that mode.
+/// The independent global-hotkey search-and-paste surface.
 struct HelperView: View {
     @ObservedObject var model: HelperViewModel
     var onHidePanel: () -> Void = {}
@@ -92,7 +83,7 @@ struct HelperView: View {
             Spacer(minLength: 0)
             // A failed paste is the one case where the key must still be reachable:
             // the paste surface shows its keys as labels, so nothing else can hand
-            // it over. The tray window's rows are already clickable, so it skips this.
+            // it over.
             if let key = model.failedPasteKey {
                 Button("复制引用键") { model.copyKey(key) }
                     .buttonStyle(.plain)
@@ -208,15 +199,7 @@ struct HelperView: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 6)
-            // Only the tray window's cite key is a control: that surface exists to
-            // collect keys, so clicking one copies it. The hotkey panel pastes the
-            // whole row into another app, where a second click target would only
-            // compete with the paste the row already performs.
-            if model.mode == .copy {
-                citeKeyButton(reference)
-            } else {
-                citeKeyLabel(reference)
-            }
+            citeKeyLabel(reference)
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
         .frame(height: HelperMetrics.referenceRow, alignment: .top)
@@ -232,30 +215,6 @@ struct HelperView: View {
             .lineLimit(1)
     }
 
-    /// The row's own copy action, pinned to the top right. It confirms in place —
-    /// a check and 已复制 for a moment — so the copy is answered without an alert,
-    /// and it never invokes the paste path the row body may run.
-    private func citeKeyButton(_ reference: Reference) -> some View {
-        let copied = model.copiedKey == reference.citeKey
-        return Button {
-            model.copy(reference)
-        } label: {
-            HStack(spacing: 4) {
-                SVGIcon(copied ? "check" : "copy", size: 10)
-                Text(copied ? "已复制" : reference.citeKey)
-                    .font(.system(size: 11, design: copied ? .default : .monospaced))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(copied ? Color.green : Color.accentColor)
-            .padding(.horizontal, 7).padding(.vertical, 4)
-            .background(.primary.opacity(0.06), in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .help("复制引用键")
-        .accessibilityLabel("复制引用键 \(reference.citeKey)")
-        .frame(maxWidth: 150)
-    }
-
     private func selection(_ selected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 7)
             .fill(selected ? Color.accentColor.opacity(colorScheme == .dark ? 0.25 : 0.13) : .clear)
@@ -267,18 +226,6 @@ struct HelperView: View {
             Text(text).font(.system(size: 12))
         }.foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: HelperMetrics.emptyRow)
     }
-}
-
-/// One source of truth for the helper surface metrics: the view draws these
-/// heights and `HelperViewModel` sizes the panel from them.
-enum HelperMetrics {
-    static let header: CGFloat = 56
-    /// Title (two lines), authors and the metadata line, plus the row padding.
-    static let referenceRow: CGFloat = 80
-    static let libraryRow: CGFloat = 56
-    static let listPadding: CGFloat = 16
-    static let emptyRow: CGFloat = 112
-    static let errorBar: CGFloat = 40
 }
 
 struct MathChunkText: View {

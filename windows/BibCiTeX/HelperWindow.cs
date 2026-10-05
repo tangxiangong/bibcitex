@@ -8,16 +8,7 @@ using Windows.System;
 
 namespace BibCiTeX;
 
-/// <summary>
-/// The workbench collapsed to panel scale: a search field over the reference
-/// list, with the active library on the header. It is the second presentation of
-/// the same application state as <see cref="MainWindow"/> — the same Rust search
-/// and paste path — and deliberately has no detail inspector.
-///
-/// Two entry points share this one window, model and paste path: the global
-/// hotkey shows it centred, and the notification-area icon shows it as the tray
-/// window, hanging above the taskbar on the primary work area.
-/// </summary>
+/// <summary>The independent global-hotkey search-and-paste panel.</summary>
 internal sealed class HelperWindow : Window, IDisposable
 {
     // Kept in step with the macOS helper metrics so both platforms read the same.
@@ -28,7 +19,6 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double StatusRow = 40;
     private const double FallbackRow = 40;
     private const double MaxList = 460;
-    private const double TrayWidth = 460;
     private const double PanelWidth = 720;
 
     private readonly Grid root = new();
@@ -48,7 +38,6 @@ internal sealed class HelperWindow : Window, IDisposable
     private bool pasting;
     private bool disposed;
     private bool busy;
-    private bool trayAnchored;
     private int version;
     private int lifecycle;
     private string? failedKey;
@@ -89,17 +78,12 @@ internal sealed class HelperWindow : Window, IDisposable
         Resize(Header);
     }
 
-    /// <summary>
-    /// Shows the search-and-paste surface. <paramref name="tray"/> anchors it above
-    /// the notification area (the tray window); otherwise it is centred, as the
-    /// global hotkey presents it. Both share this one window, model and paste path.
-    /// </summary>
-    internal async Task Toggle(bool tray = false)
+    internal async Task Toggle()
     {
         if (pasting) return;
         if (visible) { Hide(); return; }
         if (opening || disposed || busy) return;
-        trayAnchored = tray;
+        App.Tray?.Hide();
         opening = true;
         busy = true;
         var showVersion = ++lifecycle;
@@ -126,9 +110,9 @@ internal sealed class HelperWindow : Window, IDisposable
         }
         finally { opening = false; busy = false; if (visible && !active) Hide(); }
     }
-    private void Hide()
+    internal void Hide()
     {
-        visible = false; version++; lifecycle++; composing = false; trayAnchored = false; AppWindow.Hide();
+        visible = false; version++; lifecycle++; composing = false; AppWindow.Hide();
     }
     private async Task Refresh(bool debounce = false)
     {
@@ -153,10 +137,7 @@ internal sealed class HelperWindow : Window, IDisposable
                 progress.Visibility = Visibility.Visible; progress.IsActive = true;
                 var references = await RustCore.Search(selectedPath, query);
                 if (request != version) return;
-                // The hotkey panel pastes the row, so a second copy target there
-                // would only compete with it; the tray window collects keys, so its
-                // rows make the key itself clickable.
-                foreach (var reference in references) results.Items.Add(Views.ReferenceItem(reference, citeKeyCopies: trayAnchored));
+                foreach (var reference in references) results.Items.Add(Views.ReferenceItem(reference));
                 if (references.Count == 0) SetStatus("未找到匹配的文献");
             }
             if (results.Items.Count > 0) results.SelectedIndex = 0;
@@ -203,29 +184,15 @@ internal sealed class HelperWindow : Window, IDisposable
             }
             else if (item.Tag is Reference reference)
             {
-                if (trayAnchored)
-                {
-                    // Collecting keys: copy and stay open, so several records can be
-                    // taken in one visit without the window closing each time. A
-                    // failure still has to be visible, or the click looks ignored.
-                    pasting = true;
-                    // A failure has to be visible and the window has to grow to show
-                    // it, or the click looks ignored.
-                    if (!await Views.CopyKey(reference.Key)) { SetStatus("复制引用键失败"); ResizeContent(); }
-                    pasting = false;
-                }
-                else
-                {
-                    pasting = true;
-                    await RustCore.Paste(reference.Key);
-                    if (session == lifecycle) Hide();
-                }
+                pasting = true;
+                await RustCore.Paste(reference.Key);
+                if (session == lifecycle) Hide();
             }
         }
         catch (Exception error)
         {
             if (request != version) return;
-            if (item.Tag is Reference reference && !trayAnchored) { failedKey = reference.Key; fallback.Visibility = Visibility.Visible; }
+            if (item.Tag is Reference reference) { failedKey = reference.Key; fallback.Visibility = Visibility.Visible; }
             Activate(); search.Focus(FocusState.Programmatic); SetStatus(error.Message); ResizeContent();
         }
         finally { pasting = false; busy = false; }
@@ -241,18 +208,12 @@ internal sealed class HelperWindow : Window, IDisposable
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this); var scale = WindowInterop.GetDpiForWindow(hwnd) / 96.0;
         var area = Area();
-        // The tray window stays panel-width and bottom-anchored; the hotkey panel
-        // gets the workbench's centre-column width.
-        var width = Math.Min((trayAnchored ? TrayWidth : PanelWidth) * scale, area.Width - 40 * scale);
+        var width = Math.Min(PanelWidth * scale, area.Width - 40 * scale);
         AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)Math.Max(320, width), (int)Math.Min(height * scale, area.Height - 80 * scale)));
-        // Anchored, so it must be re-placed after every height change to grow upward.
+        // Keep the helper centred on its display after its content height changes.
         Place(area);
     }
-    // The tray window hangs from the notification area on the primary work area;
-    // the hotkey panel follows the display the pointer is on, like the workbench.
-    private Windows.Graphics.RectInt32 Area() => trayAnchored
-        ? DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea
-        : DisplayArea.GetFromPoint(Cursor(), DisplayAreaFallback.Primary).WorkArea;
+    private Windows.Graphics.RectInt32 Area() => DisplayArea.GetFromPoint(Cursor(), DisplayAreaFallback.Primary).WorkArea;
     private static Windows.Graphics.PointInt32 Cursor()
     {
         WindowInterop.GetCursorPos(out var point); return new Windows.Graphics.PointInt32(point.X, point.Y);
@@ -260,8 +221,8 @@ internal sealed class HelperWindow : Window, IDisposable
     private void Place(Windows.Graphics.RectInt32 area)
     {
         var size = AppWindow.Size;
-        var x = trayAnchored ? area.X + area.Width - size.Width - 12 : area.X + (area.Width - size.Width) / 2;
-        var y = trayAnchored ? area.Y + area.Height - size.Height - 12 : area.Y + area.Height / 6;
+        var x = area.X + (area.Width - size.Width) / 2;
+        var y = area.Y + area.Height / 6;
         AppWindow.Move(new Windows.Graphics.PointInt32(x, y));
     }
     private void Position()

@@ -46,9 +46,14 @@ test-helper:
 test-workbench:
     bash macos/BibCiTeX/Tests/run-workbench-tests.sh
 
+# Test the independent tray browser without launching a GUI.
+[macos]
+test-tray:
+    bash macos/BibCiTeX/Tests/run-tray-tests.sh
+
 # Run model and Swift/Rust integration tests after a debug build.
 [macos]
-test-macos architecture=host_arch: test-helper test-workbench
+test-macos architecture=host_arch: test-helper test-workbench test-tray
     bash macos/BibCiTeX/Tests/run-interop-tests.sh --products {{ quote(env("DERIVED_DATA_PATH", "target/xcode/" + architecture) + "/Build/Products/Debug") }}
 
 # Run the C#/Rust and formula tests using a built platform library.

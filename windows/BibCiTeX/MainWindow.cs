@@ -121,7 +121,7 @@ internal sealed class MainWindow : Window
     {
         try { shortcut = new GlobalShortcut(this, () => _ = App.Helper!.Toggle()); }
         catch (Exception error) { _ = Report(error); }
-        try { tray = new TrayIcon(this, Activate, () => _ = App.Helper!.Toggle(tray: true), () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); }); }
+        try { tray = new TrayIcon(this, Activate, () => App.Tray!.Toggle(), () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); }); }
         catch (Exception error) { _ = Report(error); }
     }
     private async Task Report(Exception error)

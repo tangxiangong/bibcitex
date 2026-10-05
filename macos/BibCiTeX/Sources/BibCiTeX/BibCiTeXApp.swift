@@ -61,8 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.setActivationPolicy(.regular)
         configureMainWindow()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let image = SVGImages.images["library"]?.copy() as? NSImage {
-            image.isTemplate = true; image.size = NSSize(width: 18, height: 18); item.button?.image = image
+        if let url = Bundle.appResources.url(forResource: "icon", withExtension: "icns"),
+           let image = NSImage(contentsOf: url) {
+            image.isTemplate = false; image.size = NSSize(width: 18, height: 18); item.button?.image = image
         }
         item.button?.toolTip = "BibCiTeX"
         let menu = NSMenu()
@@ -80,6 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         // Left-click opens the tray window; right/Control-click shows the menu.
         if let button = item.button {
             TrayPanelController.shared.attach(to: button)
+            TrayPanelController.shared.showMain = { [weak self] in self?.showMainWindow() }
             button.target = self
             button.action = #selector(handleStatusItemClick(_:))
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])

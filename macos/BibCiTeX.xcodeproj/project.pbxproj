@@ -76,6 +76,8 @@
 		F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */; };
 		FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7B2DE7B37539C688F176DE6F /* chevronLeft.svg */; };
 		FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */ = {isa = PBXBuildFile; productRef = FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */; };
+		DEADBEEF0000000000000000 /* TrayWorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */; };
+		DEADBEEF0000000000000001 /* TrayWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000001 /* TrayWorkbenchView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -153,6 +155,8 @@
 		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelRightClose.svg; sourceTree = "<group>"; };
 		F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = externalLink.svg; sourceTree = "<group>"; };
+		FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchModel.swift; sourceTree = "<group>"; };
+		FACEFEED0000000000000001 /* TrayWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +199,8 @@
 				9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */,
 				9E458D60B8FDDC97D5B48DCA /* RustCore.swift */,
 				B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */,
+				FACEFEED0000000000000001 /* TrayWorkbenchView.swift */,
+				FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */,
 				F3A31659CFF4595616CF1DAA /* SVGIcon.swift */,
 				41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */,
 				3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */,
@@ -473,6 +479,8 @@
 				E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */,
 				B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* TrayPanelController.swift in Sources */,
+				DEADBEEF0000000000000001 /* TrayWorkbenchView.swift in Sources */,
+				DEADBEEF0000000000000000 /* TrayWorkbenchModel.swift in Sources */,
 				2B5603948BD543CF6D639A8A /* RustCore.swift in Sources */,
 				846FC375E2D5E95DE88F03E6 /* SVGIcon.swift in Sources */,
 				5AC4D6F1DDFC7BC7737CE6A7 /* Updater.swift in Sources */,

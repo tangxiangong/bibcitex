@@ -9,6 +9,8 @@ private actor TestService: HelperServing {
     private var delayPaste = false
     private var pendingPastes: [CheckedContinuation<Void, Error>] = []
     private(set) var pastedKeys: [String] = []
+    private(set) var copiedKeys: [String] = []
+    func copy(citeKey: String) { copiedKeys.append(citeKey) }
     var bibliography: Bibliography {
         Bibliography(name: "Research", path: "/tmp/research.bib", updatedAt: "2026-10-03", descriptionText: nil)
     }
@@ -63,7 +65,7 @@ private actor TestService: HelperServing {
     }
     @MainActor static func main() async {
         let service = TestService()
-        let model = HelperViewModel(service: service)
+        let model = HelperViewModel(service: service, requestPastePermission: { true })
         let first = await service.bibliography
         let second = await service.bibliography
         precondition(first.id == second.id, "Library identity must survive reload")
@@ -144,17 +146,21 @@ private actor TestService: HelperServing {
         var didHide = false
         var restoredFailures = 0
         model.onPasteFailure = { restoredFailures += 1 }
-        model.copyAndPaste(reference, onSuccess: { didHide = true })
+        model.activate(reference, onSuccess: { didHide = true })
         precondition(model.isPasting)
-        model.copyAndPaste(reference, onSuccess: { didHide = true })
+        model.activate(reference, onSuccess: { didHide = true })
         await wait { !model.isPasting }
         precondition(!didHide && restoredFailures == 1)
         precondition(model.failedPasteKey == "key_raw")
         precondition(model.errorMessage?.contains("test paste failure") == true)
         let failedKeys = await service.pastedKeys
         precondition(failedKeys == ["key_raw"], "Concurrent activation must not paste twice")
+        model.copyKey(reference.citeKey)
+        await wait { model.copiedKey == reference.citeKey }
+        let copiedKeys = await service.copiedKeys
+        precondition(copiedKeys == ["key_raw"], "Paste failure retains its independent copy fallback")
         await service.setPasteFailure(false)
-        model.copyAndPaste(reference, onSuccess: { didHide = true })
+        model.activate(reference, onSuccess: { didHide = true })
         await wait { !model.isPasting }
         precondition(didHide && model.failedPasteKey == nil && model.errorMessage == nil)
         let keys = await service.pastedKeys
@@ -167,14 +173,14 @@ private actor TestService: HelperServing {
             var oldDidHide = false
             var newDidHide = false
             let failuresBefore = restoredFailures
-            model.copyAndPaste(reference, onSuccess: { oldDidHide = true })
+            model.activate(reference, onSuccess: { oldDidHide = true })
             await service.waitForPendingPastes(1)
             model.invalidateSession() // Escape closes the old helper session.
             model.beginSession() // Reopening creates a distinct visible session.
             model.loadState()
             await wait { !model.isLoading }
             precondition(model.isPasteOperationPending, "Hiding must not pretend the OS operation was cancelled")
-            model.copyAndPaste(reference, onSuccess: { newDidHide = true })
+            model.activate(reference, onSuccess: { newDidHide = true })
             await service.waitForPendingPastes(1)
             await service.completeOldestPaste(fails: oldFails)
             await wait { !model.isPasteOperationPending }
@@ -182,7 +188,7 @@ private actor TestService: HelperServing {
             precondition(restoredFailures == failuresBefore, "Old failure must not restore/focus a new session")
             precondition(!model.isPasting, "New paste must wait for the old OS operation to finish")
             precondition(model.failedPasteKey == nil && model.errorMessage == nil)
-            model.copyAndPaste(reference, onSuccess: { newDidHide = true })
+            model.activate(reference, onSuccess: { newDidHide = true })
             await service.waitForPendingPastes(1)
             await service.completeOldestPaste(fails: false)
             await wait { !model.isPasting }
@@ -190,7 +196,7 @@ private actor TestService: HelperServing {
         }
         let failuresBeforeClose = restoredFailures
         model.beginSession()
-        model.copyAndPaste(reference, onSuccess: { preconditionFailure("Closed session must stay hidden") })
+        model.activate(reference, onSuccess: { preconditionFailure("Closed session must stay hidden") })
         await service.waitForPendingPastes(1)
         model.invalidateSession()
         await service.completeOldestPaste(fails: true)
