@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXAggregateTarget section */
@@ -16,6 +16,7 @@
 			dependencies = (
 			);
 			name = RustBindings;
+			productName = RustBindings;
 		};
 /* End PBXAggregateTarget section */
 
@@ -68,6 +69,8 @@
 		C128DB9AEF436BF75B760DEE /* trash.svg in Resources */ = {isa = PBXBuildFile; fileRef = E542E1AA8194BEA29C5E3FBF /* trash.svg */; };
 		C6B6006A9859E3A015F3926F /* search.svg in Resources */ = {isa = PBXBuildFile; fileRef = A215042B0D3A54ECF909194F /* search.svg */; };
 		D1450695B078879CC130A04D /* fileText.svg in Resources */ = {isa = PBXBuildFile; fileRef = E44BC379693A707896831D73 /* fileText.svg */; };
+		DEADBEEF0000000000000000 /* TrayWorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */; };
+		DEADBEEF0000000000000001 /* TrayWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000001 /* TrayWorkbenchView.swift */; };
 		E018475A0AA187EF6E80FDFF /* sun.svg in Resources */ = {isa = PBXBuildFile; fileRef = E82B8F0012C02D1E197E1206 /* sun.svg */; };
 		E33EC01EA6A84481C9002771 /* panelLeftClose.svg in Resources */ = {isa = PBXBuildFile; fileRef = 3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */; };
 		E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A761A35383E18EC4F83041CE /* HelperView.swift */; };
@@ -76,8 +79,6 @@
 		F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */; };
 		FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7B2DE7B37539C688F176DE6F /* chevronLeft.svg */; };
 		FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */ = {isa = PBXBuildFile; productRef = FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */; };
-		DEADBEEF0000000000000000 /* TrayWorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */; };
-		DEADBEEF0000000000000001 /* TrayWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACEFEED0000000000000001 /* TrayWorkbenchView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,64 +100,64 @@
 
 /* Begin PBXFileReference section */
 		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = refresh.svg; sourceTree = "<group>"; };
-		20A8CCD92B6053AB065871E0 /* chevronRight.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronRight.svg; sourceTree = "<group>"; };
+		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = refresh.svg; sourceTree = "<group>"; };
+		20A8CCD92B6053AB065871E0 /* chevronRight.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronRight.svg; sourceTree = "<group>"; };
 		22666F6B8718AD1E87409835 /* HelperTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperTheme.swift; sourceTree = "<group>"; };
 		325AEE0308FECAEE4CF1C08D /* build-bindings.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "build-bindings.sh"; sourceTree = "<group>"; };
-		3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelLeftClose.svg; sourceTree = "<group>"; };
+		3444ABD35199F043A1FD93E4 /* panelLeftClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelLeftClose.svg; sourceTree = "<group>"; };
 		3549826455F426169DFEA202 /* HelperModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperModels.swift; sourceTree = "<group>"; };
 		3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchModel.swift; sourceTree = "<group>"; };
-		3A019FFBF06D1C9B8033B2F1 /* folderOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = folderOpen.svg; sourceTree = "<group>"; };
-		4092D03202B5381411098A7B /* library.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = library.svg; sourceTree = "<group>"; };
+		3A019FFBF06D1C9B8033B2F1 /* folderOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = folderOpen.svg; sourceTree = "<group>"; };
+		4092D03202B5381411098A7B /* library.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = library.svg; sourceTree = "<group>"; };
 		41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
-		4D982CA22F7E43B0327660E0 /* alert.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = alert.svg; sourceTree = "<group>"; };
+		4D982CA22F7E43B0327660E0 /* alert.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = alert.svg; sourceTree = "<group>"; };
 		50246B511084B357B60B89C3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchView.swift; sourceTree = "<group>"; };
-		6C06F02CE6E49ED6A759478C /* icon.icns */ = {isa = PBXFileReference; includeInIndex = 1; name = icon.icns; path = "../assets/app-icons/icon.icns"; sourceTree = "<group>"; };
-		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelRightOpen.svg; sourceTree = "<group>"; };
-		7B2DE7B37539C688F176DE6F /* chevronLeft.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronLeft.svg; sourceTree = "<group>"; };
+		6C06F02CE6E49ED6A759478C /* icon.icns */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.icns; name = icon.icns; path = "../assets/app-icons/icon.icns"; sourceTree = "<group>"; };
+		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightOpen.svg; sourceTree = "<group>"; };
+		7B2DE7B37539C688F176DE6F /* chevronLeft.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronLeft.svg; sourceTree = "<group>"; };
 		91C61546766387505A3A82CF /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
-		95C70158D9993BDB4C203879 /* link.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = link.svg; sourceTree = "<group>"; };
+		95C70158D9993BDB4C203879 /* link.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = link.svg; sourceTree = "<group>"; };
 		97288C473DE3FA8783A4E20C /* BibCiTeXCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BibCiTeXCore.swift; sourceTree = BIBCITEX_BINDINGS_DIR; };
-		98E303A1B30F0855A78C6CFB /* book.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = book.svg; sourceTree = "<group>"; };
+		98E303A1B30F0855A78C6CFB /* book.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = book.svg; sourceTree = "<group>"; };
 		9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperViewModel.swift; sourceTree = "<group>"; };
 		9E458D60B8FDDC97D5B48DCA /* RustCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RustCore.swift; sourceTree = "<group>"; };
-		A215042B0D3A54ECF909194F /* search.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = search.svg; sourceTree = "<group>"; };
+		A215042B0D3A54ECF909194F /* search.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = search.svg; sourceTree = "<group>"; };
 		A761A35383E18EC4F83041CE /* HelperView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperView.swift; sourceTree = "<group>"; };
 		A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BibCiTeXApp.swift; sourceTree = "<group>"; };
 		AA4AE55941866C34949D675B /* AppResources.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppResources.swift; sourceTree = "<group>"; };
-		AAC02E7B140A57A506B77D0F /* download.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = download.svg; sourceTree = "<group>"; };
-		B175C23E24258D56DD93E5F2 /* add.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = add.svg; sourceTree = "<group>"; };
-		B3427E0196B1D54D70378C9D /* HelperPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperPanelController.swift; sourceTree = "<group>"; };
+		AAC02E7B140A57A506B77D0F /* download.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = download.svg; sourceTree = "<group>"; };
+		B175C23E24258D56DD93E5F2 /* add.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = add.svg; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrayPanelController.swift; sourceTree = "<group>"; };
-		B68F9A470891876822BCE79B /* copy.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = copy.svg; sourceTree = "<group>"; };
-		BA4860C8547C16762913B7B1 /* info.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = info.svg; sourceTree = "<group>"; };
-		BB2435A0F4F2B46818093652 /* clipboard.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = clipboard.svg; sourceTree = "<group>"; };
-		BD05EC281D1AC92B51A21A8A /* panelLeftOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelLeftOpen.svg; sourceTree = "<group>"; };
-		BE9B80270A55A6BC104D8237 /* tag.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = tag.svg; sourceTree = "<group>"; };
+		B3427E0196B1D54D70378C9D /* HelperPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperPanelController.swift; sourceTree = "<group>"; };
+		B68F9A470891876822BCE79B /* copy.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = copy.svg; sourceTree = "<group>"; };
+		BA4860C8547C16762913B7B1 /* info.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = info.svg; sourceTree = "<group>"; };
+		BB2435A0F4F2B46818093652 /* clipboard.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = clipboard.svg; sourceTree = "<group>"; };
+		BD05EC281D1AC92B51A21A8A /* panelLeftOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelLeftOpen.svg; sourceTree = "<group>"; };
+		BE9B80270A55A6BC104D8237 /* tag.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = tag.svg; sourceTree = "<group>"; };
 		BFAC2DF31B1149570D6A46C8 /* BibCiTeX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BibCiTeX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C27143BFBB0B42FCF0444691 /* build.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = build.sh; sourceTree = "<group>"; };
 		C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libBibCiTeXCore.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		C6C134C8DA9637AE5D05DBF2 /* calendar.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = calendar.svg; sourceTree = "<group>"; };
+		C6C134C8DA9637AE5D05DBF2 /* calendar.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = calendar.svg; sourceTree = "<group>"; };
 		C83C8CD0D32FADF3D4CC6434 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		CABBFC1BC8B4EE6B27DB98D1 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		CD5DCEE73EDEF47834E5635F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		D1C28BE4719539DB7AF9BFA2 /* user.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = user.svg; sourceTree = "<group>"; };
-		D318D2E31242780F2128FA79 /* check.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = check.svg; sourceTree = "<group>"; };
-		D3CD787C2C1A7587729003E2 /* folderAdd.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = folderAdd.svg; sourceTree = "<group>"; };
-		D445A11BACFA9BA9B887CF8F /* settings.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = settings.svg; sourceTree = "<group>"; };
-		DA6B319820DB14704DA10575 /* x.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = x.svg; sourceTree = "<group>"; };
-		E3D66F68B99DD86C169AEBC2 /* chevronDown.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = chevronDown.svg; sourceTree = "<group>"; };
-		E44BC379693A707896831D73 /* fileText.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = fileText.svg; sourceTree = "<group>"; };
-		E542E1AA8194BEA29C5E3FBF /* trash.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = trash.svg; sourceTree = "<group>"; };
-		E82B8F0012C02D1E197E1206 /* sun.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = sun.svg; sourceTree = "<group>"; };
-		F05E64D75C1320EF8CC4A45D /* moon.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = moon.svg; sourceTree = "<group>"; };
+		D1C28BE4719539DB7AF9BFA2 /* user.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = user.svg; sourceTree = "<group>"; };
+		D318D2E31242780F2128FA79 /* check.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = check.svg; sourceTree = "<group>"; };
+		D3CD787C2C1A7587729003E2 /* folderAdd.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = folderAdd.svg; sourceTree = "<group>"; };
+		D445A11BACFA9BA9B887CF8F /* settings.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = settings.svg; sourceTree = "<group>"; };
+		DA6B319820DB14704DA10575 /* x.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = x.svg; sourceTree = "<group>"; };
+		E3D66F68B99DD86C169AEBC2 /* chevronDown.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronDown.svg; sourceTree = "<group>"; };
+		E44BC379693A707896831D73 /* fileText.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = fileText.svg; sourceTree = "<group>"; };
+		E542E1AA8194BEA29C5E3FBF /* trash.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = trash.svg; sourceTree = "<group>"; };
+		E82B8F0012C02D1E197E1206 /* sun.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = sun.svg; sourceTree = "<group>"; };
+		F05E64D75C1320EF8CC4A45D /* moon.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = moon.svg; sourceTree = "<group>"; };
 		F3A31659CFF4595616CF1DAA /* SVGIcon.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SVGIcon.swift; sourceTree = "<group>"; };
-		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = panelRightClose.svg; sourceTree = "<group>"; };
+		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightClose.svg; sourceTree = "<group>"; };
 		F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
-		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; path = externalLink.svg; sourceTree = "<group>"; };
 		FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchModel.swift; sourceTree = "<group>"; };
 		FACEFEED0000000000000001 /* TrayWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchView.swift; sourceTree = "<group>"; };
+		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = externalLink.svg; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -362,6 +363,7 @@
 		618120EC9796CF576C6B776F /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 			};
@@ -374,13 +376,11 @@
 				Base,
 			);
 			mainGroup = 39654625D322553780512534;
-			minimizedProjectReferenceProxies = 0;
 			packageReferences = (
 				A70CDCA275241A66C3F1DB07 /* XCRemoteSwiftPackageReference "SwiftDraw" */,
 				25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */,
 				6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
-			preferredProjectObjectVersion = 100;
 			productRefGroup = 66FFAFE0C6CA0DC78091E274 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -524,12 +524,16 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 600;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 0.6.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -550,8 +554,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				DEAD_CODE_STRIPPING = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -592,6 +600,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -616,6 +625,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -626,10 +636,13 @@
 		64BC644733D4C884F54F5BB4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEFINES_MODULE = YES;
+				ENABLE_MODULE_VERIFIER = YES;
 				EXECUTABLE_PREFIX = lib;
 				GENERATE_MASTER_OBJECT_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_MODULE_NAME = BibCiTeXCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
@@ -647,12 +660,16 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 600;
+				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				MARKETING_VERSION = 0.6.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -673,8 +690,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				DEAD_CODE_STRIPPING = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -715,6 +736,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -733,6 +755,7 @@
 				ONLY_ACTIVE_ARCH = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -743,10 +766,13 @@
 		F59E32F782DDD6F0D118E0B5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEFINES_MODULE = YES;
+				ENABLE_MODULE_VERIFIER = YES;
 				EXECUTABLE_PREFIX = lib;
 				GENERATE_MASTER_OBJECT_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_MODULE_NAME = BibCiTeXCore;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;

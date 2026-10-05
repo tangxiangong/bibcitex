@@ -19,7 +19,7 @@ struct BibCiTeXApp: App {
                     delegate.updates = updates
                     delegate.configureMainWindow()
                 }
-                .onChange(of: appearance) { _ in applyAppearance() }
+                .onChange(of: appearance) { applyAppearance() }
         }
         .defaultSize(width: 1200, height: 800)
         .commands {

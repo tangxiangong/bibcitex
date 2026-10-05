@@ -107,7 +107,7 @@ struct TrayWorkbenchView: View {
                         Text("暂无可显示的文献").font(.callout).foregroundStyle(.secondary)
                     }
                 }
-                .onChange(of: model.selection) { key in if let key { proxy.scrollTo(key) } }
+                .onChange(of: model.selection) { _, key in if let key { proxy.scrollTo(key) } }
         }
     }
     @ViewBuilder private var detail: some View {

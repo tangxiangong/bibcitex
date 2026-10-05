@@ -120,7 +120,7 @@ struct WorkbenchView: View {
                             }
                         }
                     }.listStyle(.inset).scrollContentBackground(.hidden)
-                    .onChange(of: model.selectedReference) { key in
+                    .onChange(of: model.selectedReference) { _, key in
                         if let key { proxy.scrollTo(key) }
                     }
                 }
