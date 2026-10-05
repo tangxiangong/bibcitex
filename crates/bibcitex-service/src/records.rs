@@ -9,6 +9,7 @@ pub struct LibraryRecord {
     pub created_at: String,
     pub updated_at: String,
     pub description: Option<String>,
+    pub pinned: bool,
 }
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug)]

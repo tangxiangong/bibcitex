@@ -13,6 +13,7 @@ pub struct LibraryRecord {
     pub created_at: String,
     pub updated_at: String,
     pub description: Option<String>,
+    pub pinned: bool,
 }
 #[uniffi::remote(Enum)]
 pub enum ChunkKind {

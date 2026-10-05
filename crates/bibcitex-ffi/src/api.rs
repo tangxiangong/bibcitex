@@ -16,6 +16,19 @@ pub fn add_library(
     bibcitex_service::add_library(name, path, description)
 }
 #[uniffi::export]
+pub fn update_library(
+    name: String,
+    new_name: String,
+    path: Option<String>,
+    description: Option<String>,
+) -> Result<LibraryRecord, CoreError> {
+    bibcitex_service::update_library(name, new_name, path, description)
+}
+#[uniffi::export]
+pub fn set_library_pinned(name: String, pinned: bool) -> Result<(), CoreError> {
+    bibcitex_service::set_library_pinned(name, pinned)
+}
+#[uniffi::export]
 pub fn remove_library(name: String) -> Result<(), CoreError> {
     bibcitex_service::remove_library(name)
 }

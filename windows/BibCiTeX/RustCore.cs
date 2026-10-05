@@ -35,6 +35,19 @@ internal static class RustCore
         using var wire = Interop.add_library(request).AsOk();
         Check(wire.Unwire().error);
     });
+    internal static Task<Library> UpdateLibrary(string name, string newName, string? path, string? description) => Task.Run(() =>
+    {
+        using var request = new UpdateLibraryRequest { name = name, new_name = newName, path = path, description = description }.Wire();
+        using var wire = Interop.update_library(request).AsOk();
+        var response = wire.Unwire(); Check(response.error);
+        return Library.From(response.payload ?? throw new InvalidOperationException("Bibliography not found"));
+    });
+    internal static Task SetLibraryPinned(string name, bool pinned) => Task.Run(() =>
+    {
+        using var request = new PinLibraryRequest { name = name, pinned = pinned }.Wire();
+        using var wire = Interop.set_library_pinned(request).AsOk();
+        Check(wire.Unwire().error);
+    });
     internal static Task RemoveLibrary(string name) => Task.Run(() =>
     {
         using var request = new NameRequest { name = name }.Wire();
@@ -72,9 +85,9 @@ internal static class RustCore
         Check(wire.Unwire().error);
     });
 }
-internal sealed record Library(string Name, string Path, string Description, string CreatedAt, string UpdatedAt)
+internal sealed record Library(string Name, string Path, string Description, string CreatedAt, string UpdatedAt, bool Pinned = false)
 {
-    internal static Library From(LibraryRecord x) => new(x.name, x.path, x.description ?? "", x.created_at, x.updated_at);
+    internal static Library From(LibraryRecord x) => new(x.name, x.path, x.description ?? "", x.created_at, x.updated_at, x.pinned);
     public override string ToString() => Name;
 }
 internal sealed record Chunk(string Kind, string Text);

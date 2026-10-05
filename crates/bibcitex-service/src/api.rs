@@ -130,6 +130,24 @@ pub fn add_library(
     serde_json::from_value(registry::add(&name, &path, description)?)
         .map_err(|e| CoreError::from(e.to_string()))
 }
+pub fn update_library(
+    name: String,
+    new_name: String,
+    path: Option<String>,
+    description: Option<String>,
+) -> Result<LibraryRecord, CoreError> {
+    serde_json::from_value(registry::update(
+        &name,
+        &new_name,
+        path.as_deref(),
+        description,
+    )?)
+    .map_err(|e| CoreError::from(e.to_string()))
+}
+pub fn set_library_pinned(name: String, pinned: bool) -> Result<(), CoreError> {
+    registry::set_pinned(&name, pinned)?;
+    Ok(())
+}
 pub fn remove_library(name: String) -> Result<(), CoreError> {
     registry::remove(&name)?;
     Ok(())

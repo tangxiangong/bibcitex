@@ -80,19 +80,21 @@ fn info(name: &str, value: &Value) -> Result<Value> {
         serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
     Ok(
         json!({"name": name, "path": parsed.path, "created_at": parsed.created_at,
-        "updated_at": parsed.updated_at, "description": parsed.description}),
+        "updated_at": parsed.updated_at, "description": parsed.description,
+        "pinned": value["pinned"].as_bool().unwrap_or(false)}),
     )
 }
 pub fn libraries() -> Result<Value> {
     let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
     let document = read()?;
-    document["bibliographies"]
+    let mut rows = document["bibliographies"]
         .as_object()
         .ok_or("Invalid settings")?
         .iter()
         .map(|(name, value)| info(name, value))
-        .collect::<Result<Vec<_>>>()
-        .map(Value::Array)
+        .collect::<Result<Vec<_>>>()?;
+    rows.sort_by_key(|row| !row["pinned"].as_bool().unwrap_or(false));
+    Ok(Value::Array(rows))
 }
 pub fn add(name: &str, path: &str, description: Option<String>) -> Result<Value> {
     if name.trim().is_empty() {
@@ -113,6 +115,60 @@ pub fn add(name: &str, path: &str, description: Option<String>) -> Result<Value>
         "updated_at": now, "description": description});
     write(&document)?;
     info(name, &document["bibliographies"][name])
+}
+pub fn update(
+    name: &str,
+    new_name: &str,
+    path: Option<&str>,
+    description: Option<String>,
+) -> Result<Value> {
+    let new_name = new_name.trim();
+    if new_name.is_empty() {
+        return Err("文献库名称不能为空".into());
+    }
+    let canonical = path
+        .map(|path| {
+            let canonical = fs::canonicalize(path).map_err(|e| e.to_string())?;
+            if !canonical.is_file() {
+                return Err("Bibliography path is not a file".to_string());
+            }
+            Ok(canonical)
+        })
+        .transpose()?;
+    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
+    let _file_guard = mutation_lock()?;
+    let mut document = read()?;
+    let entries = document["bibliographies"]
+        .as_object_mut()
+        .ok_or("Invalid settings")?;
+    if new_name != name && entries.contains_key(new_name) {
+        return Err("该名称已存在，请换一个".into());
+    }
+    let mut value = entries.remove(name).ok_or("Bibliography not found")?;
+    if let Some(path) = canonical {
+        value["path"] = json!(path);
+    }
+    if let Some(description) = description {
+        value["description"] = json!(description);
+    }
+    value["updated_at"] = json!(Local::now());
+    let library = info(new_name, &value)?;
+    entries.insert(new_name.to_string(), value);
+    if document["helper_current"]["name"].as_str() == Some(name) {
+        document["helper_current"] = json!({"name": new_name, "path": library["path"]});
+    }
+    write(&document)?;
+    Ok(library)
+}
+pub fn set_pinned(name: &str, pinned: bool) -> Result<()> {
+    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
+    let _file_guard = mutation_lock()?;
+    let mut document = read()?;
+    let value = document["bibliographies"]
+        .get_mut(name)
+        .ok_or("Bibliography not found")?;
+    value["pinned"] = json!(pinned);
+    write(&document)
 }
 pub fn remove(name: &str) -> Result<Value> {
     let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
@@ -180,6 +236,72 @@ mod tests {
         assert!(current().unwrap().is_null());
         assert!(libraries().unwrap().as_array().unwrap().is_empty());
         assert!(file.path().exists());
+    }
+    #[test]
+    fn editing_preserves_metadata_and_tracks_helper_selection() {
+        let file = bibliography();
+        let replacement = bibliography();
+        let old = add(
+            "Original",
+            file.path().to_str().unwrap(),
+            Some("old".into()),
+        )
+        .unwrap();
+        select("Original", old["path"].as_str().unwrap()).unwrap();
+        set_pinned("Original", true).unwrap();
+        let mut document = read().unwrap();
+        document["bibliographies"]["Original"]["future"] = json!({"keep": true});
+        write(&document).unwrap();
+        let edited = update(
+            "Original",
+            "Renamed",
+            replacement.path().to_str(),
+            Some("new".into()),
+        )
+        .unwrap();
+        assert_eq!(edited["created_at"], old["created_at"]);
+        assert_eq!(edited["pinned"], true);
+        assert_eq!(edited["description"], "new");
+        assert_eq!(current().unwrap(), edited);
+        let document = read().unwrap();
+        assert!(document["bibliographies"].get("Original").is_none());
+        assert_eq!(
+            document["bibliographies"]["Renamed"]["future"]["keep"],
+            true
+        );
+        assert!(file.path().exists());
+        remove("Renamed").unwrap();
+        assert!(replacement.path().exists());
+    }
+    #[test]
+    fn invalid_edits_are_atomic_and_rename_does_not_require_a_present_file() {
+        let file = bibliography();
+        let path = file.path().to_str().unwrap();
+        add("Alpha", path, None).unwrap();
+        add("Beta", path, None).unwrap();
+        let before = fs::read(settings_path()).unwrap();
+        assert!(update("Alpha", "Beta", None, None).is_err());
+        assert!(update("Alpha", "  ", None, None).is_err());
+        assert!(update("Missing", "New", None, None).is_err());
+        assert!(update("Alpha", "New", Some("/missing/library.bib"), None).is_err());
+        assert!(set_pinned("Missing", true).is_err());
+        assert_eq!(fs::read(settings_path()).unwrap(), before);
+        drop(file);
+        let renamed = update("Alpha", "Offline", None, None).unwrap();
+        assert_eq!(renamed["name"], "Offline");
+    }
+    #[test]
+    fn pinning_persists_and_unpinning_restores_name_order() {
+        let file = bibliography();
+        let path = file.path().to_str().unwrap();
+        add("Alpha", path, None).unwrap();
+        add("Zulu", path, None).unwrap();
+        assert_eq!(libraries().unwrap()[0]["name"], "Alpha");
+        set_pinned("Zulu", true).unwrap();
+        assert_eq!(read().unwrap()["bibliographies"]["Zulu"]["pinned"], true);
+        assert_eq!(libraries().unwrap()[0]["name"], "Zulu");
+        set_pinned("Zulu", false).unwrap();
+        assert_eq!(libraries().unwrap()[0]["name"], "Alpha");
     }
     #[test]
     fn invalid_json_and_invalid_schema_are_not_overwritten() {

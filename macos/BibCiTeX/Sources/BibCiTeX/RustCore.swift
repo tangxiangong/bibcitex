@@ -16,6 +16,12 @@ actor RustCore {
     func addLibrary(name: String, path: String, description: String) throws {
         _ = try translated { try BibCiTeXCore.addLibrary(name: name, path: path, description: description.isEmpty ? nil : description) }
     }
+    func updateLibrary(name: String, newName: String, path: String?, description: String?) throws {
+        _ = try translated { try BibCiTeXCore.updateLibrary(name: name, newName: newName, path: path, description: description) }
+    }
+    func setLibraryPinned(name: String, pinned: Bool) throws {
+        try translated { try BibCiTeXCore.setLibraryPinned(name: name, pinned: pinned) }
+    }
     func removeLibrary(name: String) throws { try translated { try BibCiTeXCore.removeLibrary(name: name) } }
     func capturePasteTarget() throws { try translated { try BibCiTeXCore.capturePasteTarget() } }
     func copy(_ text: String) throws { try translated { try BibCiTeXCore.copy(text: text) } }
@@ -30,7 +36,7 @@ actor RustCore {
         }
     }
     private func library(_ record: LibraryRecord) -> Bibliography {
-        Bibliography(name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description)
+        Bibliography(name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description, pinned: record.pinned)
     }
     private func chunks(_ records: [ChunkRecord]) -> [TextChunk] {
         records.map {

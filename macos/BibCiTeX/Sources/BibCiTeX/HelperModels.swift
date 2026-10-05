@@ -257,4 +257,5 @@ struct Bibliography: Identifiable, Equatable, Sendable {
     let path: String
     let updatedAt: String
     let descriptionText: String?
+    var pinned: Bool = false
 }

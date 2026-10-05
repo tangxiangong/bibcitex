@@ -21,6 +21,18 @@ pub struct AddLibraryRequest {
 }
 
 #[ffi]
+pub struct UpdateLibraryRequest {
+    pub name: String,
+    pub new_name: String,
+    pub path: Option<String>,
+    pub description: Option<String>,
+}
+#[ffi]
+pub struct PinLibraryRequest {
+    pub name: String,
+    pub pinned: bool,
+}
+#[ffi]
 pub struct NameRequest {
     pub name: String,
 }
@@ -138,6 +150,35 @@ pub fn add_library(
 }
 
 #[ffi]
+pub fn update_library(
+    input: Wire<UpdateLibraryRequest>,
+) -> ffi::Result<Wire<LibraryResponse>, BridgeError> {
+    invoke(|| {
+        let input = request(input)?;
+        Ok(library(
+            bibcitex_service::update_library(
+                input.name,
+                input.new_name,
+                input.path,
+                input.description,
+            )
+            .map(Some),
+        ))
+    })
+}
+#[ffi]
+pub fn set_library_pinned(
+    input: Wire<PinLibraryRequest>,
+) -> ffi::Result<Wire<StatusResponse>, BridgeError> {
+    invoke(|| {
+        let input = request(input)?;
+        Ok(status(bibcitex_service::set_library_pinned(
+            input.name,
+            input.pinned,
+        )))
+    })
+}
+#[ffi]
 pub fn remove_library(input: Wire<NameRequest>) -> ffi::Result<Wire<StatusResponse>, BridgeError> {
     invoke(|| {
         Ok(status(bibcitex_service::remove_library(
@@ -209,6 +250,8 @@ pub fn inventory() -> RustInventory {
         .register(function!(libraries))
         .register(function!(add_library))
         .register(function!(remove_library))
+        .register(function!(update_library))
+        .register(function!(set_library_pinned))
         .register(function!(search))
         .register(function!(helper_current))
         .register(function!(helper_select))
