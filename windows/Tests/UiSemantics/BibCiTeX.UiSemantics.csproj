@@ -12,7 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" ExcludeAssets="build;buildTransitive;runtime;native" />
     <PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
-    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp" Version="4.153.1" />
     <Compile Include="../../BibCiTeX/*.cs" Link="Application/%(Filename)%(Extension)" />
     <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="XamlCompilationBoundary.cs" />
