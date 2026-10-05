@@ -53,6 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     var reopenMain: (() -> Void)?
     var updates: Updater?
     private var statusItem: NSStatusItem?
+    private var statusMenu: NSMenu?
     private var hotKey: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     func applicationWillFinishLaunching(_ notification: Notification) { BibCiTeXCore.initialize() }
@@ -73,9 +74,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         update.target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "退出 BibCiTeX", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        item.menu = menu
+        // Do not assign `item.menu`, or every click would pop the menu and the
+        // button action below would never run. Keep the menu and show it manually.
+        statusMenu = menu
+        // Left-click opens the tray window; right/Control-click shows the menu.
+        if let button = item.button {
+            TrayPanelController.shared.attach(to: button)
+            button.target = self
+            button.action = #selector(handleStatusItemClick(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
         statusItem = item
         registerShortcut()
+    }
+
+    @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        let isSecondary = event?.type == .rightMouseUp
+            || event?.modifierFlags.contains(.control) == true
+        if isSecondary {
+            if TrayPanelController.shared.isPanelVisible() { TrayPanelController.shared.dismiss() }
+            guard let menu = statusMenu else { return }
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height), in: sender)
+        } else {
+            TrayPanelController.shared.toggle()
+        }
     }
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         menuItem.action != #selector(checkUpdates) || updates?.canCheck == true

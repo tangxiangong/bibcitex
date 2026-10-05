@@ -1,3 +1,4 @@
+import ApplicationServices
 import Foundation
 
 enum TextChunkKind: Int32, Sendable {
@@ -12,6 +13,41 @@ enum ThemeMode: Int32, Sendable {
 
     var isDark: Bool {
         self == .dark
+    }
+}
+
+/// What activating a reference row does, which is the one thing the two helper
+/// surfaces do not agree on.
+enum HelperMode {
+    /// The Cmd+Shift+K panel: hand the cite key to the app that was frontmost.
+    /// Needs the accessibility permission, because it drives that app's keyboard.
+    case paste
+    /// The tray window: put the cite key on the clipboard and stay open, so
+    /// several records can be collected without the panel closing each time.
+    case copy
+}
+
+/// The accessibility permission that cross-app paste depends on. `xpaste` still
+/// enforces it at the point of injection; this only decides when the system is
+/// allowed to explain itself, and does so with the OS dialog rather than an
+/// error in our own UI.
+@MainActor
+enum AccessibilityPermission {
+    private static var prompted = false
+
+    static var isTrusted: Bool { AXIsProcessTrusted() }
+
+    /// Returns whether a paste may proceed. On the first attempt without the
+    /// permission it opens the system prompt instead, and reports failure so the
+    /// caller skips the doomed paste; every later attempt stays quiet until the
+    /// user changes the setting.
+    static func ensureTrusted() -> Bool {
+        if isTrusted { return true }
+        guard !prompted else { return false }
+        prompted = true
+        let promptKey = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        _ = AXIsProcessTrustedWithOptions([promptKey: true] as CFDictionary)
+        return false
     }
 }
 

@@ -7,6 +7,7 @@ protocol HelperServing: Sendable {
     func setCurrentBibliography(name: String, path: String) async throws -> Bibliography
     func searchReferences(query: String) async throws -> [Reference]
     func copyAndPaste(citeKey: String) async throws
+    func copy(citeKey: String) async throws
 }
 
 @MainActor
@@ -27,12 +28,24 @@ final class HelperViewModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var query = ""
     @Published var errorMessage: String?
-    @Published var failedPasteKey: String?
     @Published var theme: ThemeStyle = .latte
+
+    /// Which action a row's Return key and a click on the row body perform. The
+    /// tray window copies and stays open; the Cmd+Shift+K panel pastes into the
+    /// app that was frontmost when it opened.
+    @Published var mode: HelperMode = .paste
+    /// The cite key most recently copied, so that row can confirm the copy in
+    /// place. Cleared whenever the rows change, since the confirmation belongs to
+    /// a row that will no longer be there.
+    @Published private(set) var copiedKey: String?
+    /// The key whose paste failed. Only the paste surface sets it, and the error
+    /// bar offers it for copying, since that surface's rows do not.
+    @Published private(set) var failedPasteKey: String?
 
     private let service: any HelperServing
     private var searchTask: Task<Void, Never>?
     private var queryEditTask: Task<Void, Never>?
+    private var copyConfirmation: Task<Void, Never>?
     private var queryEditVersion = 0
     private var searchVersion = 0
     private var stateVersion = 0
@@ -54,11 +67,13 @@ final class HelperViewModel: ObservableObject {
         return sessionGeneration
     }
 
-    private let rowHeightBib = 64.0
-    private let rowHeightSearch = 92.0
-    private let headerHeight = 56.0
-    private let minHeight = 56.0
-    private let maxListHeight = 540.0
+    // Row heights come from `HelperMetrics`, which the view also draws from, so
+    // the panel never clips a row or leaves dead space under the last one.
+    private let rowHeightBib = HelperMetrics.libraryRow
+    private let rowHeightSearch = HelperMetrics.referenceRow
+    private let headerHeight = HelperMetrics.header
+    private let minHeight = HelperMetrics.header
+    private let maxListHeight = 460.0
 
     var filteredBibliographies: [Bibliography] {
         guard query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
@@ -149,8 +164,8 @@ final class HelperViewModel: ObservableObject {
     func updateQuery(_ nextQuery: String) {
         invalidateQueryEdit()
         query = nextQuery
-        failedPasteKey = nil
         errorMessage = nil
+        failedPasteKey = nil
 
         invalidateSearch()
         searchResults = []
@@ -219,8 +234,8 @@ final class HelperViewModel: ObservableObject {
         }
         query = ""
         selectedReferenceIndex = nil
-        failedPasteKey = nil
         errorMessage = nil
+        failedPasteKey = nil
 
         Task { @MainActor in
             do {
@@ -268,29 +283,60 @@ final class HelperViewModel: ObservableObject {
         selectedReferenceIndex = next
     }
 
+    /// Return and a click on a row body run the surface's own action: the tray
+    /// window copies so several keys can be collected, the Cmd+Shift+K panel
+    /// pastes into the app that was frontmost when it opened.
+    func activate(_ reference: Reference, at index: Int? = nil, onSuccess: @escaping () -> Void = {}) {
+        if let index {
+            selectedReferenceIndex = index
+        }
+        switch mode {
+        case .copy: copy(reference)
+        case .paste: paste(reference, onSuccess: onSuccess)
+        }
+    }
+
     func activateSelection(onSuccess: @escaping () -> Void) {
         if isSelectingBibliography {
             chooseCurrentBibliography()
             return
         }
-
         guard let index = selectedReferenceIndex, searchResults.indices.contains(index) else {
             return
         }
-        let reference = searchResults[index]
-        copyAndPaste(reference, onSuccess: onSuccess)
+        activate(searchResults[index], onSuccess: onSuccess)
     }
 
-    func copyAndPaste(_ reference: Reference, at index: Int? = nil, onSuccess: (() -> Void)? = nil) {
-        if let index {
-            selectedReferenceIndex = index
+    /// The row's own copy button. It always copies, on both surfaces, so a cite
+    /// key can be taken without committing to the paste the panel would perform.
+    func copy(_ reference: Reference) {
+        let key = reference.citeKey
+        guard !key.isEmpty else { return }
+        let session = sessionGeneration
+        Task { @MainActor in
+            do {
+                try await service.copy(citeKey: key)
+                guard session == sessionGeneration else { return }
+                confirmCopy(of: key)
+            } catch {
+                guard session == sessionGeneration else { return }
+                errorMessage = "复制失败：\(error.localizedDescription)"
+                recalcHeight()
+            }
         }
+    }
+
+    private func paste(_ reference: Reference, onSuccess: @escaping () -> Void) {
         guard !isPasteOperationPending else { return }
+        // Injecting keystrokes into another app is what the accessibility
+        // permission gates, so ask before writing the pasteboard. The system's own
+        // dialog names the permission and offers Settings; an in-app error cannot,
+        // and it would have to be dismissed before the user could act on it.
+        guard AccessibilityPermission.ensureTrusted() else { return }
         let key = reference.citeKey
         let session = sessionGeneration
         isPasting = true
         isPasteOperationPending = true
-        failedPasteKey = nil
         errorMessage = nil
 
         Task { @MainActor in
@@ -300,29 +346,47 @@ final class HelperViewModel: ObservableObject {
                 try await service.copyAndPaste(citeKey: key)
                 guard session == sessionGeneration else { return }
                 isPasting = false
-                onSuccess?()
+                onSuccess()
             } catch {
                 guard session == sessionGeneration else { return }
                 isPasting = false
                 failedPasteKey = key
-                errorMessage = "粘贴失败，可复制重试: \(error.localizedDescription)"
+                errorMessage = "粘贴失败：\(error.localizedDescription)"
                 recalcHeight()
                 onPasteFailure?()
             }
         }
     }
 
-    func copyFailedKeyAgain() {
-        guard let key = failedPasteKey else {
-            return
+    /// Copies an explicit key, for the paste surface's failure bar, where there is
+    /// no row control to press.
+    func copyKey(_ key: String) {
+        guard !key.isEmpty else { return }
+        let session = sessionGeneration
+        Task { @MainActor in
+            do {
+                try await service.copy(citeKey: key)
+                guard session == sessionGeneration else { return }
+                confirmCopy(of: key)
+                if failedPasteKey == key { failedPasteKey = nil; recalcHeight() }
+            } catch {
+                guard session == sessionGeneration else { return }
+                errorMessage = "复制失败：\(error.localizedDescription)"
+                recalcHeight()
+            }
         }
-        copyAndPasteKeyToClipboard(key)
     }
 
-    private func copyAndPasteKeyToClipboard(_ key: String) {
-        guard !key.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(key, forType: .string)
+    /// A brief in-place confirmation: a click on a cite key is answered on the row
+    /// itself, without an alert or a message the user has to dismiss.
+    private func confirmCopy(of key: String) {
+        copiedKey = key
+        copyConfirmation?.cancel()
+        copyConfirmation = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            guard let self, !Task.isCancelled else { return }
+            if self.copiedKey == key { self.copiedKey = nil }
+        }
     }
 
     private func performSearch(_ queryText: String, version: Int) async {
@@ -356,25 +420,26 @@ final class HelperViewModel: ObservableObject {
         let listHeight: CGFloat
 
         if isLoading {
-            listHeight = 112
+            listHeight = HelperMetrics.emptyRow
         } else if isSelectingBibliography && filteredBibliographies.isEmpty {
-            listHeight = 112
+            listHeight = HelperMetrics.emptyRow
         } else if isSelectingBibliography {
             let count = filteredBibliographies.count
-            listHeight = min(CGFloat(count) * (rowHeightBib + 2) + 16, maxListHeight)
+            listHeight = min(CGFloat(count) * (rowHeightBib + 2) + HelperMetrics.listPadding, maxListHeight)
         } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             listHeight = 0
         } else {
             if searchResults.isEmpty {
-                listHeight = 128
+                listHeight = HelperMetrics.emptyRow
             } else {
-                listHeight = min(CGFloat(searchResults.count) * (rowHeightSearch + 2) + 16, maxListHeight)
+                listHeight = min(CGFloat(searchResults.count) * (rowHeightSearch + 2) + HelperMetrics.listPadding, maxListHeight)
             }
         }
 
-        let errorHeight = (errorMessage == nil ? 0 : 40)
-        let fallbackHeight = (failedPasteKey == nil ? 0 : 34)
-        let height = max(minHeight, headerHeight + listHeight + Double(errorHeight) + Double(fallbackHeight))
+        // The error bar is self-contained: any copy affordance lives on the row,
+        // not in a second bar under the message.
+        let errorHeight = (errorMessage == nil ? 0 : HelperMetrics.errorBar)
+        let height = max(minHeight, headerHeight + listHeight + errorHeight)
         if preferredHeight != height { preferredHeight = height }
     }
 }

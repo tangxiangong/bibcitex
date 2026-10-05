@@ -30,6 +30,10 @@ final class WorkbenchModel: ObservableObject {
     @Published private(set) var type = "all"
     @Published private(set) var loading = false
     @Published var error: String?
+    /// The text most recently copied, so the control that copied it can confirm
+    /// in place. Both the cite key and the BibTeX source copy through `copy`, and
+    /// this is what tells them apart.
+    @Published private(set) var copied: String?
     @Published var adding = false
     @Published var showSidebar = true
     @Published var showInspector = true
@@ -40,6 +44,7 @@ final class WorkbenchModel: ObservableObject {
     private var inputCommit: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
     private var rowCommit: Task<Void, Never>?
+    private var copyConfirmation: Task<Void, Never>?
     private var generation = 0
     private var registryGeneration = 0
     private var referencesRevision = 0
@@ -173,7 +178,24 @@ final class WorkbenchModel: ObservableObject {
         }
     }
     func copy(_ text: String) {
-        Task { do { try await service.copy(text) } catch { self.error = error.localizedDescription } }
+        Task {
+            do {
+                try await service.copy(text)
+                confirmCopy(of: text)
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+    /// The copied text itself identifies which button was pressed, so the inspector
+    /// can answer on that button instead of raising an alert for a copy that needs
+    /// no acknowledgement beyond "it worked".
+    private func confirmCopy(of text: String) {
+        copied = text
+        copyConfirmation?.cancel()
+        copyConfirmation = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            guard let self, !Task.isCancelled else { return }
+            if self.copied == text { self.copied = nil }
+        }
     }
     func openURL(_ string: String) {
         guard let url = URL(string: string), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }

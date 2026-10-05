@@ -102,7 +102,7 @@ internal sealed class MainWindow : Window
     {
         try { shortcut = new GlobalShortcut(this, () => _ = App.Helper!.Toggle()); }
         catch (Exception error) { _ = Report(error); }
-        try { tray = new TrayIcon(this, Activate, () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); }); }
+        try { tray = new TrayIcon(this, Activate, () => _ = App.Helper!.Toggle(tray: true), () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); }); }
         catch (Exception error) { _ = Report(error); }
     }
     private async Task Report(Exception error)
@@ -146,7 +146,7 @@ internal sealed class MainWindow : Window
             if (version != searchVersion) return;
             var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
             references.Items.Clear();
-            foreach (var reference in rows) { var item = Views.ReferenceItem(reference); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
+            foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
             count.Text = $"{rows.Count} 条文献"; empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) await Report(error); }
@@ -208,7 +208,7 @@ internal sealed class MainWindow : Window
         detail.Children.Add(new ChunkText(reference.Chunks("title"), 20, reference.Title));
         detail.Children.Add(new TextBlock { Text = reference.TypeLabel, FontSize = 12, Opacity = .6 });
         detail.Children.Add(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), IsTextSelectionEnabled = true });
-        var actions = Views.Row(Views.Button("copy", "复制引用键", () => _ = Copy(reference.Key)));
+        var actions = Views.Row(Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key)));
         if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("externalLink", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || doi.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
         if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("link", "打开 URL", () => _ = OpenUrl(url)));
         if (reference.Text("file") is { Length: > 0 } file) actions.Children.Add(Views.Button("folderOpen", "打开文件", () => _ = OpenFile(file)));
@@ -233,7 +233,11 @@ internal sealed class MainWindow : Window
         ("url", "URL"), ("file", "文件"), ("eprint", "Eprint"), ("archive_prefix", "Archive Prefix"),
         ("arxiv_primary_class", "arXiv 分类"), ("how_published", "发表方式"), ("abstract_", "摘要"),
         ("book_title", "书名"), ("issue", "期号"), ("note", "备注"), ("source", "BibTeX") ];
-    private async Task Copy(string text) { try { await RustCore.Copy(text); } catch (Exception error) { await Report(error); } }
+    private async Task<bool> Copy(string text)
+    {
+        try { await RustCore.Copy(text); return true; }
+        catch (Exception error) { await Report(error); return false; }
+    }
     private async Task OpenUrl(string value)
     {
         try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new InvalidOperationException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }

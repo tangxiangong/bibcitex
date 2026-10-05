@@ -87,25 +87,26 @@ struct WorkbenchView: View {
             } else {
                 List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
                     ForEach(model.references) { reference in
-                        VStack(alignment: .leading, spacing: 5) {
-                            MathChunkText(chunks: reference.title).lineLimit(2)
-                            if !reference.author.isEmpty {
-                                Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                            }
-                            // The cite key is the value users retype and paste; keep it legible and
-                            // visually distinct from the descriptive metadata around it.
-                            Text(reference.citeKey)
-                                .font(.system(.caption, design: .monospaced))
-                                .foregroundStyle(Color.accentColor)
-                                .lineLimit(1)
-                            HStack(spacing: 6) {
-                                Text(reference.displayType)
-                                if let year = reference.year { Text("·"); Text(String(year)) }
-                                if !reference.venueText.isEmpty {
-                                    Text("·")
-                                    Text(reference.venueText).lineLimit(1)
+                        // The cite key is the value users retype and paste, so it sits on
+                        // its own line at the top right and copies on click — off the
+                        // metadata lines, where it competed with the title for width.
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 5) {
+                                MathChunkText(chunks: reference.title).lineLimit(2)
+                                if !reference.author.isEmpty {
+                                    Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                                 }
-                            }.font(.caption).foregroundStyle(.secondary)
+                                HStack(spacing: 6) {
+                                    Text(reference.displayType)
+                                    if let year = reference.year { Text("·"); Text(String(year)) }
+                                    if !reference.venueText.isEmpty {
+                                        Text("·")
+                                        Text(reference.venueText).lineLimit(1)
+                                    }
+                                }.font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            ListCiteKey(reference: reference, model: model)
                         }.padding(.vertical, 8).tag(reference.citeKey)
                         .contextMenu {
                             Button("复制引用键") { model.copy(reference.citeKey) }
@@ -129,6 +130,34 @@ struct WorkbenchView: View {
     }
 }
 
+/// The cite key on a workbench list row, pinned to the right of the title. It
+/// copies on click and confirms on itself for a moment, so taking a key out of a
+/// long result list never opens an alert or moves the selection.
+private struct ListCiteKey: View {
+    let reference: Reference
+    @ObservedObject var model: WorkbenchModel
+
+    var body: some View {
+        let copied = model.copied == reference.citeKey
+        Button {
+            model.copy(reference.citeKey)
+        } label: {
+            HStack(spacing: 4) {
+                SVGIcon(copied ? "check" : "copy", size: 10)
+                Text(copied ? "已复制" : reference.citeKey)
+                    .font(.system(.caption, design: copied ? .default : .monospaced))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(copied ? Color.green : Color.accentColor)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(.primary.opacity(0.06), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help("复制引用键")
+        .accessibilityLabel("复制引用键 \(reference.citeKey)")
+    }
+}
+
 struct ReferenceInspector: View {
     let reference: Reference
     let context: WorkbenchModel.ReferenceSelectionContext
@@ -138,8 +167,8 @@ struct ReferenceInspector: View {
             VStack(alignment: .leading, spacing: 16) {
                 MathChunkText(chunks: reference.title).font(.title3)
                 HStack {
-                    Button { model.copy(reference.citeKey) } label: { SVGIcon("copy") }.help("复制引用键").accessibilityLabel("复制引用键")
-                    Button { model.copy(reference.source) } label: { SVGIcon("clipboard") }.help("复制 BibTeX").accessibilityLabel("复制 BibTeX")
+                    copyButton(reference.citeKey, icon: "copy", label: "复制引用键")
+                    copyButton(reference.source, icon: "clipboard", label: "复制 BibTeX")
                     if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { SVGIcon("folderOpen") }.help("打开文件").accessibilityLabel("打开文件") }
                     if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { SVGIcon("externalLink") }.help("打开 URL").accessibilityLabel("打开 URL") }
                     if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { SVGIcon("link") }.help("打开 DOI").accessibilityLabel("打开 DOI") }
@@ -162,6 +191,26 @@ struct ReferenceInspector: View {
             }.padding(16)
         }
     }
+    /// Both copy actions answer on the button itself: the icon becomes a check for
+    /// a moment, so a copy that succeeded says so without an alert to dismiss.
+    private func copyButton(_ text: String, icon: String, label: String) -> some View {
+        let copied = model.copied == text
+        return Button {
+            model.copy(text)
+        } label: {
+            if copied {
+                HStack(spacing: 4) {
+                    SVGIcon("check", size: 14)
+                    Text("已复制").font(.caption)
+                }
+            } else {
+                SVGIcon(icon)
+            }
+        }
+        .help(label)
+        .accessibilityLabel(label)
+    }
+
     @ViewBuilder private func rich(_ label: String, _ chunks: [TextChunk]) -> some View {
         if !chunks.isEmpty {
             VStack(alignment: .leading, spacing: 4) {

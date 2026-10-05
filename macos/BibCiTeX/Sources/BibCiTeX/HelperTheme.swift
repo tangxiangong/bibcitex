@@ -48,4 +48,8 @@ actor HelperService: HelperServing {
         guard !citeKey.isEmpty else { throw HelperError.emptyCiteKey }
         try await RustCore.pasteboard.paste(citeKey)
     }
+    func copy(citeKey: String) async throws {
+        guard !citeKey.isEmpty else { throw HelperError.emptyCiteKey }
+        try await RustCore.pasteboard.copy(citeKey)
+    }
 }

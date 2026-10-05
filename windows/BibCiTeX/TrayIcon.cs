@@ -36,7 +36,7 @@ internal sealed class TrayIcon : IDisposable
     [DllImport("user32.dll")] private static extern bool PostMessageW(nint hwnd, uint message, nuint wparam, nint lparam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern uint RegisterWindowMessageW(string name);
 
-    internal TrayIcon(Window window, Action show, Action helper, Action update, Action quit)
+    internal TrayIcon(Window window, Action show, Action tray, Action helper, Action update, Action quit)
     {
         hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         icon = LoadImageW(0, Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico"), 1, 16, 16, 0x10);
@@ -48,7 +48,10 @@ internal sealed class TrayIcon : IDisposable
             if (message == taskbarCreated) Shell_NotifyIconW(0, ref data);
             if (message == Message)
             {
-                if ((uint)lparam == 0x0203) { show(); return 0; }
+                // Left-click opens the tray window; the right-click menu keeps
+                // 显示窗口 / 快捷助手 / 检查更新 / 退出 reachable. A double-click
+                // still arrives as up/dblclk/up, so it must not toggle twice.
+                if ((uint)lparam is 0x0202 or 0x0203 or 0x0400 or 0x0401) { tray(); return 0; }
                 if ((uint)lparam == 0x0205)
                 {
                     var menu = CreatePopupMenu();
