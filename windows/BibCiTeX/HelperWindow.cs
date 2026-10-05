@@ -1,5 +1,6 @@
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
@@ -40,6 +41,7 @@ internal sealed class HelperWindow : Window, IDisposable
         var header = new Grid { Padding = new Thickness(20, 0, 16, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         header.Children.Add(new SvgIcon("search", 24)); Grid.SetColumn(search, 1); header.Children.Add(search);
+        AutomationProperties.SetName(search, "搜索");
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
         chooseLibrary = Views.Button("library", "文献库", () => { if (busy) return; selecting = !selecting; search.Text = ""; _ = Refresh(); }); Grid.SetColumn(chooseLibrary, 3); header.Children.Add(chooseLibrary); root.Children.Add(header);
         status.Margin = new Thickness(20, 8, 20, 8); status.Visibility = Visibility.Collapsed; Grid.SetRow(status, 1); root.Children.Add(status);

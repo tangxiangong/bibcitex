@@ -13,7 +13,7 @@ struct WorkbenchView: View {
             references.frame(minWidth: 330, maxWidth: .infinity)
             if model.showInspector { inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520) }
         }
-        .background(WindowMaterial())
+        .background { WindowMaterial().ignoresSafeArea() }
         .frame(minWidth: 800, minHeight: 520)
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -70,13 +70,15 @@ struct WorkbenchView: View {
                     Text("\(model.references.count) 条文献").font(.caption).foregroundStyle(.secondary)
                     if model.loading { ProgressView().controlSize(.small) }
                 }
-                HStack {
+                HStack(spacing: 8) {
                     SVGIcon("search", size: 15).foregroundStyle(.secondary)
                     TextField("搜索文献", text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
-                }.padding(8).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
-                HStack {
-                    Picker("全部类型", selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                    Picker("全部字段", selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
+                HStack(spacing: 8) {
+                    Picker("类型筛选", selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                        .accessibilityLabel("类型筛选")
+                    Picker("字段筛选", selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                        .accessibilityLabel("字段筛选")
                 }.controlSize(.small)
             }.padding(16)
             Divider()
@@ -85,16 +87,25 @@ struct WorkbenchView: View {
             } else {
                 List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
                     ForEach(model.references) { reference in
-                        VStack(alignment: .leading, spacing: 7) {
+                        VStack(alignment: .leading, spacing: 5) {
                             MathChunkText(chunks: reference.title).lineLimit(2)
-                            Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
-                            HStack {
+                            if !reference.author.isEmpty {
+                                Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            // The cite key is the value users retype and paste; keep it legible and
+                            // visually distinct from the descriptive metadata around it.
+                            Text(reference.citeKey)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(Color.accentColor)
+                                .lineLimit(1)
+                            HStack(spacing: 6) {
                                 Text(reference.displayType)
-                                Text(reference.citeKey).foregroundStyle(Color.accentColor)
-                                Spacer()
-                                if let year = reference.year { Text(String(year)) }
+                                if let year = reference.year { Text("·"); Text(String(year)) }
+                                if !reference.venueText.isEmpty {
+                                    Text("·")
+                                    Text(reference.venueText).lineLimit(1)
+                                }
                             }.font(.caption).foregroundStyle(.secondary)
-                            if !reference.venueText.isEmpty { Text(reference.venueText).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
                         }.padding(.vertical, 8).tag(reference.citeKey)
                         .contextMenu {
                             Button("复制引用键") { model.copy(reference.citeKey) }

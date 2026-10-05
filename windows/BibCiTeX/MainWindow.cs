@@ -20,7 +20,7 @@ internal sealed class MainWindow : Window
     private readonly TextBox search = new() { PlaceholderText = "搜索文献", MinWidth = 160 };
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ComboBox type = new() { MinWidth = 110 };
-    private readonly ProgressBar progress = new() { IsIndeterminate = true, Height = 2, Visibility = Visibility.Collapsed };
+    private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
     private Library? current;
     private int searchVersion;
     private GlobalShortcut? shortcut;
@@ -44,7 +44,7 @@ internal sealed class MainWindow : Window
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()),
             Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("download", "检查更新", () => _ = CheckUpdates()),
-            Views.Button("sun", "切换主题", () => App.SetTheme(root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark)));
+            Views.ThemedButton(() => root.ActualTheme == ElementTheme.Dark ? "moon" : "sun", "切换主题", () => App.SetTheme(root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark)));
         toolbar.Padding = new Thickness(12, 8, 12, 8); Grid.SetColumnSpan(toolbar, 3); root.Children.Add(toolbar);
         var sidebar = new Grid { Padding = new Thickness(10, 12, 10, 8) };
         sidebar.RowDefinitions.Add(new() { Height = GridLength.Auto }); sidebar.RowDefinitions.Add(new());
@@ -54,7 +54,11 @@ internal sealed class MainWindow : Window
         Grid.SetRow(sidebar, 1); root.Children.Add(sidebar);
         var center = new Grid { Padding = new Thickness(16, 12, 16, 8), RowSpacing = 12 };
         center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new());
-        var titleRow = new StackPanel { Spacing = 5 }; titleRow.Children.Add(heading); titleRow.Children.Add(count); center.Children.Add(titleRow);
+        var titleRow = new Grid { ColumnSpacing = 8 }; titleRow.ColumnDefinitions.Add(new()); titleRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        titleRow.Children.Add(heading);
+        var countRow = Views.Row(count, progress); countRow.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(countRow, 1); titleRow.Children.Add(countRow);
+        Grid.SetRow(titleRow, 0); center.Children.Add(titleRow);
         foreach (var (label, value) in Reference.Types) type.Items.Add(new ComboBoxItem { Content = label, Tag = value });
         foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(new ComboBoxItem { Content = label, Tag = value });
         type.SelectedIndex = field.SelectedIndex = 0;
@@ -64,7 +68,6 @@ internal sealed class MainWindow : Window
         Grid.SetRow(filters, 1); center.Children.Add(filters);
         Grid.SetRow(references, 2); center.Children.Add(references);
         empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; empty.Opacity = .65; Grid.SetRow(empty, 2); center.Children.Add(empty);
-        Grid.SetRow(progress, 2); progress.VerticalAlignment = VerticalAlignment.Top; center.Children.Add(progress);
         Grid.SetRow(center, 1); Grid.SetColumn(center, 1); root.Children.Add(center);
         var inspector = new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(inspector, 2); Grid.SetRow(inspector, 1); root.Children.Add(inspector);
         Content = root; ShowDetail(null);
@@ -106,6 +109,8 @@ internal sealed class MainWindow : Window
     {
         await dialogs.WaitAsync(); try { await Views.Error(root, error); } finally { dialogs.Release(); }
     }
+    // ProgressRing only spins while IsActive; keep visibility and activity in step.
+    private void SetBusy(bool busy) { progress.IsActive = busy; progress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed; }
     private async Task ReloadLibraries()
     {
         try
@@ -130,13 +135,13 @@ internal sealed class MainWindow : Window
     private async Task Search(bool debounce = false)
     {
         var version = ++searchVersion; var library = current;
-        if (library is null) { references.Items.Clear(); count.Text = "0 条文献"; empty.Visibility = Visibility.Visible; progress.Visibility = Visibility.Collapsed; return; }
+        if (library is null) { references.Items.Clear(); count.Text = "0 条文献"; empty.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         try
         {
             if (debounce) await Task.Delay(100);
             if (version != searchVersion) return;
-            progress.Visibility = Visibility.Visible;
+            SetBusy(true);
             var rows = await RustCore.Search(library.Path, query, searchField, searchType);
             if (version != searchVersion) return;
             var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
@@ -145,7 +150,7 @@ internal sealed class MainWindow : Window
             count.Text = $"{rows.Count} 条文献"; empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) await Report(error); }
-        finally { if (version == searchVersion) progress.Visibility = Visibility.Collapsed; }
+        finally { if (version == searchVersion) SetBusy(false); }
     }
     private async Task AddLibrary()
     {
@@ -201,7 +206,8 @@ internal sealed class MainWindow : Window
         detail.Children.Clear(); detail.Children.Add(Views.Text("文献详情", 18));
         if (reference is null) { detail.Children.Add(Views.Text("选择一条文献查看字段和操作")); return; }
         detail.Children.Add(new ChunkText(reference.Chunks("title"), 20, reference.Title));
-        detail.Children.Add(Views.Text(reference.TypeLabel + " · " + reference.Key, 12));
+        detail.Children.Add(new TextBlock { Text = reference.TypeLabel, FontSize = 12, Opacity = .6 });
+        detail.Children.Add(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), IsTextSelectionEnabled = true });
         var actions = Views.Row(Views.Button("copy", "复制引用键", () => _ = Copy(reference.Key)));
         if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("externalLink", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || doi.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
         if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("link", "打开 URL", () => _ = OpenUrl(url)));
@@ -217,8 +223,16 @@ internal sealed class MainWindow : Window
             detail.Children.Add(section);
         }
     }
+    // Mirrors the macOS inspector: same labels, same order. Backslash-free keys are
+    // Rust field names; the label column is the macOS wording and must not drift.
     private static readonly (string Key, string Label)[] Metadata = [
-        ("author", "作者"), ("year", "年份"), ("journal", "期刊"), ("full_journal", "期刊全名"), ("volume", "卷"), ("number", "期"), ("pages", "页码"), ("publisher", "出版方"), ("editor", "编辑"), ("book_title", "书名"), ("book_pages", "总页数"), ("edition", "版次"), ("issue", "期号"), ("series", "丛书"), ("school", "学校"), ("institution", "机构"), ("organization", "组织"), ("address", "地址"), ("month", "月份"), ("isbn", "ISBN"), ("doi", "DOI"), ("url", "URL"), ("file", "文件"), ("mrclass", "MR 分类"), ("eprint", "Eprint"), ("archive_prefix", "Archive Prefix"), ("arxiv_primary_class", "arXiv 分类"), ("how_published", "发布方式"), ("abstract_", "摘要"), ("note", "备注"), ("source", "BibTeX") ];
+        ("author", "作者"), ("year", "年份"), ("month", "月份"), ("journal", "期刊"), ("full_journal", "期刊全称"),
+        ("volume", "卷号"), ("number", "编号"), ("pages", "页码"), ("book_pages", "总页数"), ("publisher", "出版社"),
+        ("edition", "版本"), ("series", "丛书"), ("editor", "编辑"), ("school", "学校"), ("address", "地址"),
+        ("organization", "组织"), ("institution", "机构"), ("doi", "DOI"), ("isbn", "ISBN"), ("mrclass", "MR 分类"),
+        ("url", "URL"), ("file", "文件"), ("eprint", "Eprint"), ("archive_prefix", "Archive Prefix"),
+        ("arxiv_primary_class", "arXiv 分类"), ("how_published", "发表方式"), ("abstract_", "摘要"),
+        ("book_title", "书名"), ("issue", "期号"), ("note", "备注"), ("source", "BibTeX") ];
     private async Task Copy(string text) { try { await RustCore.Copy(text); } catch (Exception error) { await Report(error); } }
     private async Task OpenUrl(string value)
     {

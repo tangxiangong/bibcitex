@@ -11,8 +11,7 @@ struct HelperView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                SVGIcon("search", size: 23)
-                    .font(.system(size: 22, weight: .regular))
+                SVGIcon("search", size: 22)
                     .foregroundStyle(.secondary)
                 TextField(model.isSelectingBibliography ? "搜索或选择文献库" : "搜索文献、作者、标题",
                     text: Binding(get: { model.query }, set: { model.requestQuery($0) }))
@@ -21,7 +20,7 @@ struct HelperView: View {
                     .focused($searchFocused)
                     .accessibilityLabel("搜索")
                 if model.isSearching || model.isLoading {
-                    ProgressView().controlSize(.small)
+                    ProgressView().controlSize(.small).accessibilityLabel("正在搜索")
                 }
                 if !model.isSelectingBibliography, let bib = model.currentBibliography {
                     Button {
@@ -29,9 +28,9 @@ struct HelperView: View {
                         searchFocused = true
                     } label: {
                         HStack(spacing: 5) {
-                            SVGIcon("library", size: 20)
+                            SVGIcon("library", size: 14)
                             Text(bib.name).lineLimit(1)
-                            SVGIcon("chevronDown", size: 10).font(.system(size: 9, weight: .semibold))
+                            SVGIcon("chevronDown", size: 9)
                         }
                         .font(.system(size: 11, weight: .medium))
                         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -87,8 +86,8 @@ struct HelperView: View {
                                 } label: {
                                     HStack(spacing: 14) {
                                         SVGIcon("library", size: 20)
-                                            .font(.system(size: 23)).foregroundStyle(.secondary)
-                                            .frame(width: 32)
+                                            .foregroundStyle(.secondary)
+                                            .frame(width: 28)
                                         VStack(alignment: .leading, spacing: 5) {
                                             Text(bib.name).font(.system(size: 14, weight: .semibold)).lineLimit(1)
                                             Text(bib.path).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
@@ -129,8 +128,8 @@ struct HelperView: View {
                                 model.copyAndPaste(reference, at: index, onSuccess: onHidePanel)
                             } label: {
                                 HStack(alignment: .center, spacing: 14) {
-                                    SVGIcon("fileText", size: 24)
-                                        .font(.system(size: 23)).foregroundStyle(.secondary).frame(width: 32)
+                                    SVGIcon("fileText", size: 20)
+                                        .foregroundStyle(.secondary).frame(width: 28)
                                     VStack(alignment: .leading, spacing: 5) {
                                         MathChunkText(chunks: reference.title)
                                             .font(.system(size: 14, weight: .medium)).lineLimit(2)

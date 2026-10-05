@@ -11,7 +11,7 @@ namespace BibCiTeX;
 
 internal sealed class SvgIcon : UserControl
 {
-    private readonly string name;
+    private string name;
     private readonly Image image = new() { Stretch = Stretch.Uniform };
     internal SvgIcon(string name, double size = 20)
     {
@@ -19,6 +19,11 @@ internal sealed class SvgIcon : UserControl
         Content = image;
         Loaded += (_, _) => Reload(); ActualThemeChanged += (_, _) => Reload();
         AutomationProperties.SetAccessibilityView(this, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
+    }
+    internal string Icon
+    {
+        get => name;
+        set { if (name == value) return; name = value; Reload(); }
     }
     private void Reload() => image.Source = new SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{(ActualTheme == ElementTheme.Dark ? "Dark/" : "")}{name}.svg"));
 }
@@ -30,6 +35,16 @@ internal static class Views
     {
         var button = new Button { Content = new SvgIcon(icon), Padding = new Thickness(8), MinWidth = 32, MinHeight = 32 };
         ToolTipService.SetToolTip(button, name); AutomationProperties.SetName(button, name);
+        button.Click += (_, _) => action(); return button;
+    }
+    // For icons that depend on the active theme: re-resolved whenever the button's
+    // theme changes, so the glyph never contradicts the palette it is rendered in.
+    internal static Button ThemedButton(Func<string> icon, string name, Action action)
+    {
+        var glyph = new SvgIcon(icon());
+        var button = new Button { Content = glyph, Padding = new Thickness(8), MinWidth = 32, MinHeight = 32 };
+        ToolTipService.SetToolTip(button, name); AutomationProperties.SetName(button, name);
+        button.ActualThemeChanged += (_, _) => glyph.Icon = icon();
         button.Click += (_, _) => action(); return button;
     }
     internal static StackPanel Row(params UIElement[] children)
@@ -49,8 +64,10 @@ internal static class Views
     {
         var row = new StackPanel { Spacing = 4, Padding = new Thickness(4, 8, 4, 8) };
         row.Children.Add(new ChunkText(reference.Chunks("title"), 15, reference.Title, false));
-        row.Children.Add(new TextBlock { Text = reference.Authors, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .75 });
-        row.Children.Add(new TextBlock { Text = string.Join(" · ", new[] { reference.TypeLabel, reference.Key, reference.Venue, reference.Text("year") }.Where(x => x.Length > 0)), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .6 });
+        if (reference.Authors.Length > 0) row.Children.Add(new TextBlock { Text = reference.Authors, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .75 });
+        row.Children.Add(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), TextTrimming = TextTrimming.CharacterEllipsis });
+        var meta = string.Join(" · ", new[] { reference.TypeLabel, reference.Venue, reference.Text("year") }.Where(x => x.Length > 0));
+        if (meta.Length > 0) row.Children.Add(new TextBlock { Text = meta, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .6 });
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetName(item, reference.Title + " " + reference.Authors); return item;
     }
