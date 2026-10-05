@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct WorkbenchView: View {
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
+    @State private var editingLibrary: Bibliography?
     private let types = [("all", "全部类型"), ("Article", "期刊论文"), ("Book", "图书"), ("Thesis", "学位论文"), ("TechReport", "技术报告"), ("Misc", "其他"), ("Booklet", "小册子"), ("InBook", "书籍章节"), ("InCollection", "文集章节"), ("InProceedings", "会议论文")]
     private let fields = [("all", "全部字段"), ("author", "作者"), ("title", "标题"), ("journal", "期刊"), ("year", "年份")]
 
@@ -20,42 +21,51 @@ struct WorkbenchView: View {
             ToolbarItem(placement: .navigation) {
                 Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help("文献库").accessibilityLabel("文献库")
             }
+            if #available(macOS 26.0, *) {
+                ToolbarItem(placement: .navigation) { toolbarLogo }
+                    .sharedBackgroundVisibility(.hidden)
+                ToolbarSpacer(.flexible, placement: .primaryAction)
+            } else {
+                ToolbarItem(placement: .navigation) { toolbarLogo }
+                ToolbarItem(placement: .principal) { Spacer() }
+            }
             ToolbarItemGroup(placement: .primaryAction) {
-                Button { model.adding = true } label: { SVGIcon("folderAdd") }.help("新增文献库").accessibilityLabel("新增文献库")
                 Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help("快捷助手").accessibilityLabel("快捷助手")
                 Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help("刷新").accessibilityLabel("刷新")
                 Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help("文献详情").accessibilityLabel("文献详情")
             }
         }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
+        .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
         .alert("错误", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("确定") { model.error = nil }
         } message: { Text(model.error ?? "") }
         .task { await model.reload() }
     }
 
+    @ViewBuilder private var toolbarLogo: some View {
+        if let logo = AppImages.logo {
+            Image(nsImage: logo).resizable().scaledToFit()
+                .frame(width: 48, height: 48).accessibilityLabel("BibCiTeX")
+        }
+    }
+
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("文献库").font(.headline).padding(16)
+            HStack {
+                Text("文献库").font(.headline)
+                Spacer()
+                Button { model.adding = true } label: { SVGIcon("folderAdd", size: 18).frame(width: 28, height: 28) }
+                    .buttonStyle(.borderless).help("新增文献库").accessibilityLabel("新增文献库")
+            }.padding(.horizontal, 16).padding(.vertical, 12)
             if model.libraries.isEmpty {
                 Text("暂无文献库").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: Binding(get: { model.selectedLibrary }, set: model.selectLibrary)) {
                     ForEach(model.libraries) { library in
-                        HStack(spacing: 9) {
-                            SVGIcon("library")
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(library.name).lineLimit(1)
-                                if let description = library.descriptionText, !description.isEmpty {
-                                    Text(description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 5).tag(library.name)
-                        .contextMenu {
-                            Button("打开文件") { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
-                            Button("删除", role: .destructive) { model.remove(library) }
-                        }
+                        LibrarySidebarRow(model: model, library: library) {
+                            editingLibrary = library
+                        }.tag(library.name)
                     }
                 }.listStyle(.sidebar).scrollContentBackground(.hidden)
             }
@@ -88,7 +98,16 @@ struct WorkbenchView: View {
             }.padding(16)
             Divider()
             if model.references.isEmpty && !model.loading {
-                Text("暂无可显示的文献").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 16) {
+                    if model.libraries.isEmpty, let logo = AppImages.logo {
+                        Image(nsImage: logo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 96, height: 96)
+                            .accessibilityLabel("BibCiTeX")
+                    }
+                    Text("暂无可显示的文献").foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
                     List(selection: Binding(get: { model.selectedReference }, set: { model.selectReference($0, context: selectionContext) })) {
@@ -286,6 +305,89 @@ struct ReferenceInspector: View {
     }
 }
 
+private struct LibrarySidebarRow: View {
+    @ObservedObject var model: WorkbenchModel
+    let library: Bibliography
+    let edit: () -> Void
+    @State private var hovered = false
+    @FocusState private var menuFocused: Bool
+    @FocusState private var renameFocused: Bool
+    @State private var renaming = false
+    @State private var draftName = ""
+    @State private var renameError: String?
+    @State private var savingName = false
+
+    var body: some View {
+        HStack(spacing: 9) {
+            SVGIcon("library")
+            VStack(alignment: .leading, spacing: 4) {
+                if renaming {
+                    TextField("文献库名称", text: $draftName)
+                        .textFieldStyle(.roundedBorder).focused($renameFocused)
+                        .disabled(savingName).onSubmit(saveName)
+                        .onExitCommand { if !savingName { renaming = false; renameFocused = false } }
+                        .onChange(of: renameFocused) { _, focused in if !focused { saveName() } }
+                        .task { renameFocused = true }
+                    if let renameError { Text(renameError).font(.caption).foregroundStyle(.red) }
+                } else {
+                    Text(library.name).lineLimit(1)
+                }
+                if let description = library.descriptionText, !description.isEmpty {
+                    Text(description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            if library.pinned { SVGIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel("已置顶") }
+            Menu { actions } label: { SVGIcon("more", size: 16).frame(width: 24, height: 24) }
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .focused($menuFocused)
+                .opacity(!renaming && (hovered || menuFocused) ? 1 : 0)
+                .disabled(renaming)
+                .help("文献库操作").accessibilityLabel("\(library.name)的操作")
+        }
+        .padding(.vertical, 5).contentShape(Rectangle())
+        .onHover { hovered = $0 }
+        .contextMenu { actions }
+    }
+
+    private func saveName() {
+        guard renaming, !savingName else { return }
+        let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { renameError = "文献库名称不能为空"; renameFocused = true; return }
+        guard name != library.name else { renaming = false; return }
+        savingName = true
+        Task {
+            do {
+                let wasSelected = model.selectedLibrary == library.name
+                try await RustCore.shared.updateLibrary(name: library.name, newName: name, path: nil, description: nil)
+                renaming = false
+                await model.reload()
+                if wasSelected { model.selectLibrary(name) }
+            } catch {
+                renameError = error.localizedDescription
+                renameFocused = true
+            }
+            savingName = false
+        }
+    }
+
+    @ViewBuilder private var actions: some View {
+        Button(action: edit) { Label { Text("编辑") } icon: { if let image = SVGImages.images["settings"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button { draftName = library.name; renameError = nil; renaming = true } label: { Label { Text("重命名") } icon: { if let image = SVGImages.images["rename"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button {
+            Task {
+                do {
+                    try await RustCore.shared.setLibraryPinned(name: library.name, pinned: !library.pinned)
+                    await model.reload()
+                } catch { model.error = error.localizedDescription }
+            }
+        } label: { Label { Text(library.pinned ? "取消置顶" : "置顶") } icon: { if let image = SVGImages.images["pin"] { Image(nsImage: image).renderingMode(.template) } } }
+        Divider()
+        Button("打开文件") { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
+        Button(role: .destructive) { model.remove(library) } label: { Label { Text("移除") } icon: { if let image = SVGImages.images["x"] { Image(nsImage: image).renderingMode(.template) } } }
+    }
+}
+
 struct AddLibrarySheet: View {
     @ObservedObject var model: WorkbenchModel
     @Environment(\.dismiss) private var dismiss
@@ -294,26 +396,68 @@ struct AddLibrarySheet: View {
     @State private var description = ""
     @State private var error: String?
     @State private var saving = false
-    var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("新增文献库").font(.title2.weight(.semibold))
-            Text("添加一个 .bib 文件到你的工作空间").foregroundStyle(.secondary)
-            Form {
-                TextField("文献库名称", text: $name, prompt: Text("为文献库起一个名字"))
-                LabeledContent("文件路径") {
-                    Text(path.isEmpty ? "尚未选择文件" : path).lineLimit(1).truncationMode(.middle)
-                    Button("选择文件", action: selectFile)
-                }
-                TextField("描述", text: $description, prompt: Text("简单描述一下这个文献库..."))
-            }
-            if let error { Text(error).foregroundStyle(.red).font(.callout) }
-            HStack {
-                Spacer()
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("保存", action: save).keyboardShortcut(.defaultAction).disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || path.isEmpty || saving)
-            }
-        }.padding(24).frame(width: 480).interactiveDismissDisabled(saving)
+    private let library: Bibliography?
+
+    init(model: WorkbenchModel, library: Bibliography? = nil) {
+        self.model = model
+        self.library = library
+        _name = State(initialValue: library?.name ?? "")
+        _path = State(initialValue: library?.path ?? "")
+        _description = State(initialValue: library?.descriptionText ?? "")
     }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 14) {
+                SVGIcon("folderAdd", size: 24)
+                    .foregroundStyle(Color.accentColor)
+                    .frame(width: 48, height: 48)
+                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(library == nil ? "新增文献库" : "编辑文献库").font(.title2.weight(.semibold))
+                    if library == nil { Text("添加一个 .bib 文件到你的工作空间").font(.callout).foregroundStyle(.secondary) }
+                }.padding(.top, 3)
+            }.padding(.bottom, 24)
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("文献库名称").font(.callout.weight(.medium))
+                    TextField("文献库名称", text: $name, prompt: Text("为文献库起一个名字"))
+                        .labelsHidden().textFieldStyle(.roundedBorder).controlSize(.large)
+                }
+                Group {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("文件路径").font(.callout.weight(.medium))
+                        HStack(spacing: 12) {
+                            SVGIcon("fileText", size: 24).foregroundStyle(.secondary)
+                            Text(path.isEmpty ? "尚未选择文件" : path)
+                                .font(.callout).foregroundStyle(path.isEmpty ? .secondary : .primary)
+                                .lineLimit(2).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)
+                                .help(path)
+                            Button("选择文件", action: selectFile).controlSize(.large)
+                        }
+                        .padding(16).frame(maxWidth: .infinity)
+                        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator.opacity(0.5)))
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("描述").font(.callout.weight(.medium))
+                        TextField("描述", text: $description, prompt: Text("简单描述一下这个文献库..."), axis: .vertical)
+                            .labelsHidden().lineLimit(3...5).textFieldStyle(.roundedBorder).controlSize(.large)
+                    }
+                }
+                if let error { Text(error).foregroundStyle(.red).font(.callout).textSelection(.enabled) }
+            }.disabled(saving)
+            Divider().padding(.top, 24).padding(.bottom, 16)
+            HStack(spacing: 12) {
+                if saving { ProgressView().controlSize(.small) }
+                Spacer()
+                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction).disabled(saving)
+                Button("保存", action: save).keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || path.isEmpty || saving)
+            }.controlSize(.large)
+        }.padding(28).frame(width: 520).interactiveDismissDisabled(saving)
+    }
+
     private func selectFile() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "bib") ?? .plainText]
@@ -323,13 +467,18 @@ struct AddLibrarySheet: View {
     }
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !model.libraries.contains(where: { $0.name == trimmed }) else { error = "该名称已存在，请换一个"; return }
+        guard !model.libraries.contains(where: { $0.name == trimmed && $0.name != library?.name }) else { error = "该名称已存在，请换一个"; return }
         saving = true
         Task {
             do {
-                try await RustCore.shared.addLibrary(name: trimmed, path: path, description: description)
+                let wasSelected = library == nil || model.selectedLibrary == library?.name
+                if let library {
+                    try await RustCore.shared.updateLibrary(name: library.name, newName: trimmed, path: path == library.path ? nil : path, description: description)
+                } else {
+                    try await RustCore.shared.addLibrary(name: trimmed, path: path, description: description)
+                }
                 await model.reload()
-                model.selectLibrary(trimmed)
+                if wasSelected { model.selectLibrary(trimmed) }
                 dismiss()
             } catch { self.error = error.localizedDescription; saving = false }
         }

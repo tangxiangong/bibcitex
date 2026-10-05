@@ -16,6 +16,12 @@ internal sealed class MainWindow : Window
     private readonly TextBlock heading = Views.Text("文献工作台", 20);
     private readonly TextBlock count = Views.Text("0 条文献", 12);
     private readonly TextBlock empty = Views.Text("暂无可显示的文献");
+    private readonly StackPanel emptyState = new() { Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Image brand = new()
+    {
+        Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/favicon.png")),
+        Width = 96, Height = 96, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed
+    };
     private readonly TextBlock librariesEmpty = Views.Text("暂无文献库");
     private readonly TextBox search = new() { PlaceholderText = "搜索文献", MinWidth = 160 };
     private readonly ComboBox field = new() { MinWidth = 110 };
@@ -42,15 +48,22 @@ internal sealed class MainWindow : Window
         root.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(340) });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new());
-        var toolbar = Views.Row(Views.Button("add", "新增文献库", () => _ = AddLibrary()),
-            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()),
+        var toolbar = Views.Row(BrandImage(24), Views.Button("refresh", "刷新", () => _ = ReloadLibraries()),
             Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("download", "检查更新", () => _ = CheckUpdates()),
+            Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()),
             Views.ThemedButton(() => root.ActualTheme == ElementTheme.Dark ? "moon" : "sun", "切换主题", () => App.SetTheme(root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark)));
         toolbar.Padding = new Thickness(12, 8, 12, 8); Grid.SetColumnSpan(toolbar, 3); root.Children.Add(toolbar);
         var sidebar = new Grid { Padding = new Thickness(10, 12, 10, 8) };
         sidebar.RowDefinitions.Add(new() { Height = GridLength.Auto }); sidebar.RowDefinitions.Add(new());
-        sidebar.Children.Add(Views.Text("文献库", 18));
+        var sidebarHeading = new StackPanel { Spacing = 16 };
+        var libraryHeader = new Grid { Margin = new Thickness(4, 0, 4, 8) };
+        libraryHeader.ColumnDefinitions.Add(new()); libraryHeader.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var libraryTitle = Views.Text("文献库", 18); libraryTitle.VerticalAlignment = VerticalAlignment.Center;
+        libraryHeader.Children.Add(libraryTitle);
+        var addLibrary = Views.Button("folderAdd", "新增文献库", () => _ = AddLibrary());
+        Grid.SetColumn(addLibrary, 1); libraryHeader.Children.Add(addLibrary); sidebarHeading.Children.Add(libraryHeader);
+        sidebar.Children.Add(sidebarHeading);
         Grid.SetRow(libraries, 1); sidebar.Children.Add(libraries);
         librariesEmpty.Margin = new Thickness(8, 32, 8, 8); Grid.SetRow(librariesEmpty, 1); sidebar.Children.Add(librariesEmpty);
         Grid.SetRow(sidebar, 1); root.Children.Add(sidebar);
@@ -69,7 +82,10 @@ internal sealed class MainWindow : Window
         filters.Children.Add(search); Grid.SetColumn(field, 1); filters.Children.Add(field); Grid.SetColumn(type, 2); filters.Children.Add(type);
         Grid.SetRow(filters, 1); center.Children.Add(filters);
         Grid.SetRow(references, 2); center.Children.Add(references);
-        empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; empty.Opacity = .65; Grid.SetRow(empty, 2); center.Children.Add(empty);
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(brand, "BibCiTeX");
+        empty.HorizontalAlignment = HorizontalAlignment.Center; empty.Opacity = .65;
+        emptyState.Children.Add(brand); emptyState.Children.Add(empty);
+        Grid.SetRow(emptyState, 2); center.Children.Add(emptyState);
         Grid.SetRow(center, 1); Grid.SetColumn(center, 1); root.Children.Add(center);
         var inspector = new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(inspector, 2); Grid.SetRow(inspector, 1); root.Children.Add(inspector);
         Content = root; ShowDetail(null);
@@ -79,7 +95,7 @@ internal sealed class MainWindow : Window
             heading.Text = current?.Name ?? "文献工作台";
             references.Items.Clear();
             count.Text = "0 条文献";
-            empty.Visibility = Visibility.Visible;
+            emptyState.Visibility = Visibility.Visible;
             ShowDetail(null);
             _ = Search();
         };
@@ -139,13 +155,28 @@ internal sealed class MainWindow : Window
             foreach (var library in rows)
             {
                 var item = Views.LibraryItem(library);
-                var menu = new MenuFlyout();
-                var open = new MenuFlyoutItem { Text = "打开文件" }; open.Click += async (_, _) => await OpenFile(library.Path);
-                var remove = new MenuFlyoutItem { Text = "删除" }; remove.Click += async (_, _) => await RemoveLibrary(library);
-                menu.Items.Add(open); menu.Items.Add(remove); item.ContextFlyout = menu; libraries.Items.Add(item);
+                var more = Views.Button("more", "文献库操作", () => { });
+                more.Opacity = 0;
+                var row = new Grid { ColumnSpacing = 4 };
+                row.ColumnDefinitions.Add(new()); row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+                var content = (UIElement)item.Content; item.Content = null;
+                row.Children.Add(content); Grid.SetColumn(more, 1); row.Children.Add(more); item.Content = row;
+                more.VerticalAlignment = VerticalAlignment.Center;
+                void Rename() => BeginLibraryRename(library, row, content, more);
+                var menu = LibraryMenu(library, Rename); more.Flyout = menu;
+                bool hovered = false, focused = false, opened = false;
+                void UpdateMore() => more.Opacity = hovered || focused || opened ? 1 : 0;
+                item.PointerEntered += (_, _) => { hovered = true; UpdateMore(); };
+                item.PointerExited += (_, _) => { hovered = false; UpdateMore(); };
+                more.GotFocus += (_, _) => { focused = true; UpdateMore(); };
+                more.LostFocus += (_, _) => { focused = false; UpdateMore(); };
+                menu.Opened += (_, _) => { opened = true; UpdateMore(); };
+                menu.Closed += (_, _) => { opened = false; UpdateMore(); };
+                item.ContextFlyout = LibraryMenu(library, Rename); libraries.Items.Add(item);
                 if (library.Name == name) libraries.SelectedItem = item;
             }
             librariesEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            brand.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (libraries.SelectedItem is null && libraries.Items.Count > 0) libraries.SelectedIndex = 0;
             if (libraries.Items.Count == 0) { current = null; await Search(); }
         }
@@ -154,7 +185,7 @@ internal sealed class MainWindow : Window
     private async Task Search(bool debounce = false)
     {
         var version = ++searchVersion; var library = current;
-        if (library is null) { references.Items.Clear(); count.Text = "0 条文献"; empty.Visibility = Visibility.Visible; SetBusy(false); return; }
+        if (library is null) { references.Items.Clear(); count.Text = "0 条文献"; emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         try
         {
@@ -167,12 +198,73 @@ internal sealed class MainWindow : Window
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
             resultsVersion = version;
-            count.Text = $"{rows.Count} 条文献"; empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            count.Text = $"{rows.Count} 条文献"; emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) await Report(error); }
         finally { if (version == searchVersion) SetBusy(false); }
     }
-    private async Task AddLibrary()
+    private void BeginLibraryRename(Library library, Grid row, UIElement content, Button more)
+    {
+        if (!row.Children.Contains(content)) return;
+        var name = new TextBox { Text = library.Name, VerticalAlignment = VerticalAlignment.Center };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(name, "文献库名称");
+        var error = Views.Text("", 11); error.Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
+        error.Visibility = Visibility.Collapsed;
+        var editor = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        editor.Children.Add(name); editor.Children.Add(error);
+        bool editing = true, saving = false;
+        void Cancel()
+        {
+            if (!editing || saving) return;
+            editing = false; row.Children.Remove(editor); row.Children.Add(content); more.IsEnabled = true;
+        }
+        async Task Save()
+        {
+            if (!editing || saving) return;
+            var value = name.Text.Trim();
+            if (value.Length == 0) { error.Text = "文献库名称不能为空"; error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); return; }
+            if (value == library.Name) { Cancel(); return; }
+            saving = true; name.IsReadOnly = true;
+            try
+            {
+                var updated = await RustCore.UpdateLibrary(library.Name, value, null, null);
+                if (current?.Name == library.Name) current = updated;
+                editing = false;
+                await ReloadLibraries();
+            }
+            catch (Exception ex) { error.Text = ex.Message; error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); }
+            finally { saving = false; name.IsReadOnly = false; }
+        }
+        name.KeyDown += async (_, args) =>
+        {
+            if (args.Key == VirtualKey.Escape) { args.Handled = true; Cancel(); }
+            else if (args.Key == VirtualKey.Enter) { args.Handled = true; await Save(); }
+        };
+        name.LostFocus += async (_, _) => await Save();
+        name.Loaded += (_, _) => { name.Focus(FocusState.Programmatic); name.SelectAll(); };
+        row.Children.Remove(content); row.Children.Add(editor); more.IsEnabled = false;
+    }
+    private MenuFlyout LibraryMenu(Library library, Action rename)
+    {
+        var menu = new MenuFlyout();
+        void Add(string title, string icon, Func<Task> action)
+        {
+            var item = new MenuFlyoutItem { Text = title, Icon = new ImageIcon { Source = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{(root.ActualTheme == ElementTheme.Dark ? "Dark/" : "")}{icon}.svg")) } };
+            item.Click += async (_, _) => await action(); menu.Items.Add(item);
+        }
+        Add("编辑", "settings", () => AddLibrary(library));
+        Add("重命名", "rename", () => { rename(); return Task.CompletedTask; });
+        Add(library.Pinned ? "取消置顶" : "置顶", "pin", async () =>
+        {
+            try { await RustCore.SetLibraryPinned(library.Name, !library.Pinned); await ReloadLibraries(); }
+            catch (Exception error) { await Report(error); }
+        });
+        menu.Items.Add(new MenuFlyoutSeparator());
+        Add("打开文件", "folderOpen", () => OpenFile(library.Path));
+        Add("移除", "x", () => RemoveLibrary(library));
+        return menu;
+    }
+    private async Task AddLibrary(Library? library = null)
     {
         await dialogs.WaitAsync();
         try
@@ -180,6 +272,7 @@ internal sealed class MainWindow : Window
             var name = new TextBox { Header = "文献库名称", PlaceholderText = "为文献库起一个名字" };
             var path = new TextBox { Header = "文件路径", PlaceholderText = "尚未选择文件", IsReadOnly = true };
             var description = new TextBox { Header = "描述", PlaceholderText = "简单描述一下这个文献库...", AcceptsReturn = true, MinHeight = 80 };
+            name.Text = library?.Name ?? ""; path.Text = library?.Path ?? ""; description.Text = library?.Description ?? "";
             var error = Views.Text(""); error.Visibility = Visibility.Collapsed;
             var choose = new Button { Content = "选择文件" };
             choose.Click += async (_, _) =>
@@ -192,15 +285,30 @@ internal sealed class MainWindow : Window
                 }
                 catch (Exception ex) { error.Text = ex.Message; error.Visibility = Visibility.Visible; }
             };
-            var form = new StackPanel { Spacing = 12, MinWidth = 400 };
-            form.Children.Add(Views.Text("添加一个 .bib 文件到你的工作空间")); form.Children.Add(name); form.Children.Add(path); form.Children.Add(choose); form.Children.Add(description); form.Children.Add(error);
-            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = "新增文献库", Content = form, PrimaryButtonText = "保存", CloseButtonText = "取消", IsPrimaryButtonEnabled = false };
+            var form = new StackPanel { Spacing = 20, MinWidth = 400, Margin = new Thickness(0, 8, 0, 8) };
+            if (library is null) { var subtitle = Views.Text("添加一个 .bib 文件到你的工作空间"); subtitle.Opacity = .65; form.Children.Add(subtitle); }
+            form.Children.Add(name);
+            {
+                var fileSection = new StackPanel { Spacing = 12 }; fileSection.Children.Add(path); fileSection.Children.Add(choose);
+                form.Children.Add(new Border { Child = fileSection, Padding = new Thickness(16), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"] });
+                form.Children.Add(description);
+            }
+            form.Children.Add(error);
+            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = library is null ? "新增文献库" : "编辑文献库", Content = form, PrimaryButtonText = "保存", CloseButtonText = "取消", IsPrimaryButtonEnabled = false };
             void Validate() => dialog.IsPrimaryButtonEnabled = name.Text.Trim().Length > 0 && path.Text.Length > 0;
-            name.TextChanged += (_, _) => Validate(); path.TextChanged += (_, _) => Validate();
+            name.TextChanged += (_, _) => Validate(); path.TextChanged += (_, _) => Validate(); Validate();
             dialog.PrimaryButtonClick += async (_, args) =>
             {
                 var deferral = args.GetDeferral();
-                try { await RustCore.AddLibrary(name.Text.Trim(), path.Text, description.Text); }
+                try
+                {
+                    if (library is null) await RustCore.AddLibrary(name.Text.Trim(), path.Text, description.Text);
+                    else
+                    {
+                        var updated = await RustCore.UpdateLibrary(library.Name, name.Text.Trim(), path.Text == library.Path ? null : path.Text, description.Text);
+                        if (current?.Name == library.Name) current = updated;
+                    }
+                }
                 catch (Exception ex) { args.Cancel = true; error.Text = ex.Message; error.Visibility = Visibility.Visible; }
                 finally { deferral.Complete(); }
             };
@@ -214,7 +322,7 @@ internal sealed class MainWindow : Window
         await dialogs.WaitAsync();
         try
         {
-            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = "删除", Content = library.Name, PrimaryButtonText = "删除", CloseButtonText = "取消" };
+            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = "移除", Content = library.Name, PrimaryButtonText = "移除", CloseButtonText = "取消" };
             if (await dialog.ShowAsync() == ContentDialogResult.Primary) await RustCore.RemoveLibrary(library.Name);
         }
         catch (Exception error) { await Views.Error(root, error); }
@@ -281,6 +389,34 @@ internal sealed class MainWindow : Window
         }
         catch (Exception error) { await Report(error); }
     }
+    private static Image BrandImage(double size)
+    {
+        var image = new Image
+        {
+            Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/favicon.png")),
+            Width = size, Height = size, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Left
+        };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(image, "BibCiTeX");
+        return image;
+    }
+
+    private async Task ShowAbout()
+    {
+        await dialogs.WaitAsync();
+        try
+        {
+            var image = BrandImage(128);
+            image.HorizontalAlignment = HorizontalAlignment.Center;
+            await new ContentDialog
+            {
+                XamlRoot = root.XamlRoot, RequestedTheme = root.ActualTheme,
+                Title = "关于 BibCiTeX", Content = image, CloseButtonText = "关闭"
+            }.ShowAsync();
+        }
+        catch (Exception error) { await Views.Error(root, error); }
+        finally { dialogs.Release(); }
+    }
+
     private async Task CheckUpdates()
     {
         await dialogs.WaitAsync();

@@ -56,6 +56,7 @@ internal static class Views
     {
         var stack = new StackPanel { Spacing = 4, Padding = new Thickness(4, 8, 4, 8) };
         var title = Views.Row(Text(library.Name));
+        if (library.Pinned) title.Children.Add(new SvgIcon("pin", 13) { VerticalAlignment = VerticalAlignment.Center });
         if (current) title.Children.Add(new SvgIcon("check", 13) { VerticalAlignment = VerticalAlignment.Center });
         stack.Children.Add(title);
         stack.Children.Add(new TextBlock { Text = library.Path, Opacity = .6, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis });

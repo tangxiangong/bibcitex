@@ -21,7 +21,9 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		F8A1C329EA194045A74376C3 /* tray-template.svg in Resources */ = {isa = PBXBuildFile; fileRef = F8A1C329EA194045A74376C4 /* tray-template.svg */; };
 		012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */ = {isa = PBXBuildFile; fileRef = 18D1244D5E41DA43FACF65D8 /* refresh.svg */; };
+		0259FFCAC0274ED41C46DFBF /* rename.svg in Resources */ = {isa = PBXBuildFile; fileRef = 54D1A490BCC9B75E7CF23CD4 /* rename.svg */; };
 		0DB711FF0A699B56A62641E7 /* check.svg in Resources */ = {isa = PBXBuildFile; fileRef = D318D2E31242780F2128FA79 /* check.svg */; };
 		1635A09A854275CD51FD19C9 /* libBibCiTeXCore.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3A83F0B79337DB4D2D000EE /* libBibCiTeXCore.a */; };
 		17FF96B8295FA3F86DC304B5 /* chevronRight.svg in Resources */ = {isa = PBXBuildFile; fileRef = 20A8CCD92B6053AB065871E0 /* chevronRight.svg */; };
@@ -29,6 +31,7 @@
 		1E3676817B2B06C8AE30864D /* tag.svg in Resources */ = {isa = PBXBuildFile; fileRef = BE9B80270A55A6BC104D8237 /* tag.svg */; };
 		2137D6CD83DFE8EBF65013AB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = C688CF78E1730A823A796F8F /* Sparkle */; };
 		244DD91090476012FA772244 /* clipboard.svg in Resources */ = {isa = PBXBuildFile; fileRef = BB2435A0F4F2B46818093652 /* clipboard.svg */; };
+		27534A3A59CF518266AC2A8E /* more.svg in Resources */ = {isa = PBXBuildFile; fileRef = CB3BC0F35B70DC2B9891DF83 /* more.svg */; };
 		278EF7733A78C68EAD3C44D5 /* moon.svg in Resources */ = {isa = PBXBuildFile; fileRef = F05E64D75C1320EF8CC4A45D /* moon.svg */; };
 		2AEA716CA81746C3A01199A4 /* link.svg in Resources */ = {isa = PBXBuildFile; fileRef = 95C70158D9993BDB4C203879 /* link.svg */; };
 		2B5603948BD543CF6D639A8A /* RustCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E458D60B8FDDC97D5B48DCA /* RustCore.swift */; };
@@ -76,9 +79,11 @@
 		E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A761A35383E18EC4F83041CE /* HelperView.swift */; };
 		E67055DBC62D6DA2924B6D73 /* calendar.svg in Resources */ = {isa = PBXBuildFile; fileRef = C6C134C8DA9637AE5D05DBF2 /* calendar.svg */; };
 		F3C75D9E0DB47EA0B20ABF5D /* alert.svg in Resources */ = {isa = PBXBuildFile; fileRef = 4D982CA22F7E43B0327660E0 /* alert.svg */; };
+		F8A1C329EA194045A74376C1 /* favicon.png in Resources */ = {isa = PBXBuildFile; fileRef = F8A1C329EA194045A74376C2 /* favicon.png */; };
 		F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */; };
 		FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7B2DE7B37539C688F176DE6F /* chevronLeft.svg */; };
 		FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */ = {isa = PBXBuildFile; productRef = FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */; };
+		FE47B842645AE986AE7D1A6B /* pin.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6817A3BFC571F02A645A3A88 /* pin.svg */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +104,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F8A1C329EA194045A74376C4 /* tray-template.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "tray-template.svg"; path = "../assets/app-icons/tray-template.svg"; sourceTree = "<group>"; };
 		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = refresh.svg; sourceTree = "<group>"; };
 		20A8CCD92B6053AB065871E0 /* chevronRight.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronRight.svg; sourceTree = "<group>"; };
@@ -112,7 +118,9 @@
 		41B8C9ABCB319AF97A0B4CC4 /* Updater.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Updater.swift; sourceTree = "<group>"; };
 		4D982CA22F7E43B0327660E0 /* alert.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = alert.svg; sourceTree = "<group>"; };
 		50246B511084B357B60B89C3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		54D1A490BCC9B75E7CF23CD4 /* rename.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = rename.svg; sourceTree = "<group>"; };
 		5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchView.swift; sourceTree = "<group>"; };
+		6817A3BFC571F02A645A3A88 /* pin.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = pin.svg; sourceTree = "<group>"; };
 		6C06F02CE6E49ED6A759478C /* icon.icns */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.icns; name = icon.icns; path = "../assets/app-icons/icon.icns"; sourceTree = "<group>"; };
 		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightOpen.svg; sourceTree = "<group>"; };
 		7B2DE7B37539C688F176DE6F /* chevronLeft.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronLeft.svg; sourceTree = "<group>"; };
@@ -141,6 +149,7 @@
 		C6C134C8DA9637AE5D05DBF2 /* calendar.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = calendar.svg; sourceTree = "<group>"; };
 		C83C8CD0D32FADF3D4CC6434 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		CABBFC1BC8B4EE6B27DB98D1 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		CB3BC0F35B70DC2B9891DF83 /* more.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = more.svg; sourceTree = "<group>"; };
 		CD5DCEE73EDEF47834E5635F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D1C28BE4719539DB7AF9BFA2 /* user.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = user.svg; sourceTree = "<group>"; };
 		D318D2E31242780F2128FA79 /* check.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = check.svg; sourceTree = "<group>"; };
@@ -155,6 +164,7 @@
 		F3A31659CFF4595616CF1DAA /* SVGIcon.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SVGIcon.swift; sourceTree = "<group>"; };
 		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightClose.svg; sourceTree = "<group>"; };
 		F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		F8A1C329EA194045A74376C2 /* favicon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = favicon.png; path = ../public/favicon.png; sourceTree = "<group>"; };
 		FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchModel.swift; sourceTree = "<group>"; };
 		FACEFEED0000000000000001 /* TrayWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchView.swift; sourceTree = "<group>"; };
 		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = externalLink.svg; sourceTree = "<group>"; };
@@ -216,6 +226,9 @@
 			isa = PBXGroup;
 			children = (
 				B175C23E24258D56DD93E5F2 /* add.svg */,
+				54D1A490BCC9B75E7CF23CD4 /* rename.svg */,
+				6817A3BFC571F02A645A3A88 /* pin.svg */,
+				CB3BC0F35B70DC2B9891DF83 /* more.svg */,
 				4D982CA22F7E43B0327660E0 /* alert.svg */,
 				98E303A1B30F0855A78C6CFB /* book.svg */,
 				C6C134C8DA9637AE5D05DBF2 /* calendar.svg */,
@@ -272,6 +285,8 @@
 				D654D83B1077E0EB054AFA31 /* Generated bindings */,
 				03E8962D61DD5F15A3160620 /* BibCiTeX */,
 				6C06F02CE6E49ED6A759478C /* icon.icns */,
+				F8A1C329EA194045A74376C2 /* favicon.png */,
+				F8A1C329EA194045A74376C4 /* tray-template.svg */,
 				CD5DCEE73EDEF47834E5635F /* Info.plist */,
 				325AEE0308FECAEE4CF1C08D /* build-bindings.sh */,
 				C27143BFBB0B42FCF0444691 /* build.sh */,
@@ -398,6 +413,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				472F1164A90E45CE5A68A356 /* add.svg in Resources */,
+				0259FFCAC0274ED41C46DFBF /* rename.svg in Resources */,
+				FE47B842645AE986AE7D1A6B /* pin.svg in Resources */,
+				27534A3A59CF518266AC2A8E /* more.svg in Resources */,
 				F3C75D9E0DB47EA0B20ABF5D /* alert.svg in Resources */,
 				5C700A4AF9AE3DB19B15B59B /* book.svg in Resources */,
 				E67055DBC62D6DA2924B6D73 /* calendar.svg in Resources */,
@@ -429,6 +447,8 @@
 				53BBDDB78C17CB8E868FDB2B /* user.svg in Resources */,
 				4ADCD8505F6C18A51CD7A3EC /* x.svg in Resources */,
 				36C34A7EE98EE0FE330D6A87 /* icon.icns in Resources */,
+				F8A1C329EA194045A74376C1 /* favicon.png in Resources */,
+				F8A1C329EA194045A74376C3 /* tray-template.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

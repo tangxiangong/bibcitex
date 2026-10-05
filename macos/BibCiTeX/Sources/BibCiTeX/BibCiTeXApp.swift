@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import SwiftDraw
 import Carbon
 import BibCiTeXCore
 
@@ -23,6 +24,15 @@ struct BibCiTeXApp: App {
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("关于 BibCiTeX") {
+                    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+                    if let image = AppImages.logo {
+                        options[.applicationIcon] = image
+                    }
+                    NSApp.orderFrontStandardAboutPanel(options: options)
+                }
+            }
             CommandGroup(after: .appInfo) {
                 Button("检查更新") { updates.check() }.disabled(!updates.canCheck)
             }
@@ -61,9 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.setActivationPolicy(.regular)
         configureMainWindow()
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let url = Bundle.appResources.url(forResource: "icon", withExtension: "icns"),
-           let image = NSImage(contentsOf: url) {
-            image.isTemplate = false; image.size = NSSize(width: 18, height: 18); item.button?.image = image
+        if let image = NSImage(svgNamed: "tray-template.svg", in: .appResources) {
+            image.isTemplate = true; image.size = NSSize(width: 18, height: 18); item.button?.image = image
         }
         item.button?.toolTip = "BibCiTeX"
         let menu = NSMenu()
@@ -135,6 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 window.isOpaque = false
                 window.backgroundColor = .clear
                 window.titlebarAppearsTransparent = true
+                window.titleVisibility = .hidden
             }
         }
     }

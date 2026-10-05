@@ -39,7 +39,8 @@ internal sealed class TrayIcon : IDisposable
     internal TrayIcon(Window window, Action show, Action tray, Action helper, Action update, Action quit)
     {
         hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
-        icon = LoadImageW(0, Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico"), 1, 16, 16, 0x10);
+        var iconSize = (int)Math.Round(16 * WindowInterop.GetDpiForWindow(hwnd) / 96.0);
+        icon = LoadImageW(0, Path.Combine(AppContext.BaseDirectory, "Assets", "tray.ico"), 1, iconSize, iconSize, 0x10);
         if (icon == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
         data = new Data { Size = (uint)Marshal.SizeOf<Data>(), Window = hwnd, Id = 1, Flags = 1 | 2 | 4, CallbackMessage = Message, Icon = icon, Tip = "BibCiTeX", Info = "", InfoTitle = "" };
         var taskbarCreated = RegisterWindowMessageW("TaskbarCreated");

@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 
 extension Bundle {
     static var appResources: Bundle {
@@ -8,4 +8,9 @@ extension Bundle {
         return .main
         #endif
     }
+}
+
+enum AppImages {
+    static let logo: NSImage? = Bundle.appResources.url(forResource: "favicon", withExtension: "png")
+        .flatMap { NSImage(contentsOf: $0) }
 }
