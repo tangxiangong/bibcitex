@@ -5,15 +5,21 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace BibCiTeX;
 
-// Runs in a separately compiled test application, without opening a window,
-// touching preferences, registering a hotkey or starting the updater.
+// Runs in a separately compiled test application with a temporary visual host.
+// It does not touch preferences, register a hotkey or start the updater.
 internal static class NativeLocalizationTests
 {
     internal static async Task Run()
     {
         L10n.Select("en");
         var root = CreateControls();
-        await CheckSelectedFilters();
+        // SelectionBoxItem is populated only after the ComboBox joins a live visual tree.
+        var window = new Window { Content = root };
+        var loaded = new TaskCompletionSource();
+        root.Loaded += (_, _) => loaded.TrySetResult();
+        window.Activate();
+        await loaded.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await CheckSelectedFilters(root);
         var markdown = UpdateMarkdown.Render("# Notes\n\nText\n\n```\ncode\n```");
         await Task.Delay(50);
         Assert(root, "File", "References", "All types", "0 references", "Journal article");
@@ -33,6 +39,7 @@ internal static class NativeLocalizationTests
         L10n.Select("en"); await Task.Delay(50);
         if (count.Text != "1 reference") throw new Exception("Replaced count binding retained old state");
         GC.KeepAlive(root);
+        GC.KeepAlive(window);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -81,7 +88,7 @@ internal static class NativeLocalizationTests
         if (Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(item) != expectedTitle) throw new Exception("Untitled accessible name did not update");
     }
 
-    private static async Task CheckSelectedFilters()
+    private static async Task CheckSelectedFilters(StackPanel host)
     {
         foreach (var (key, alternate, tag, english, alternateEnglish) in new[]
         {
@@ -92,11 +99,13 @@ internal static class NativeLocalizationTests
             var filter = new ComboBox();
             filter.Items.Add(Localized.ComboItem(key, "all"));
             filter.Items.Add(Localized.ComboItem(alternate, tag));
+            host.Children.Add(filter);
             foreach (var index in new[] { 0, 1 })
             {
                 L10n.Select("en");
                 filter.SelectedIndex = index;
                 filter.ApplyTemplate();
+                host.UpdateLayout();
                 await Task.Delay(50);
                 var selected = (ComboBoxItem)filter.SelectedItem;
                 if (filter.SelectionBoxItem is not LocalizationValue selectedLabel
@@ -127,6 +136,7 @@ internal static class NativeLocalizationTests
                 }
                 filter.SelectionChanged -= Changed;
             }
+            host.Children.Remove(filter);
         }
         L10n.Select("en");
     }
