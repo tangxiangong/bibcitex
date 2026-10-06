@@ -1,7 +1,7 @@
 name: Release
 on:
-  push:
-    tags: ['v*']
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -15,24 +15,27 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     outputs:
+      revision: ${{ steps.metadata.outputs.revision }}
       tag: ${{ steps.metadata.outputs.tag }}
       version: ${{ steps.metadata.outputs.version }}
       channel: ${{ steps.metadata.outputs.channel }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: refs/tags/${{ inputs.tag || github.event.release.tag_name }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - id: metadata
         env:
-          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           cargo run --locked -p xtask -- release-metadata
           git show-ref --verify "refs/tags/$RELEASE_TAG"
           printf 'tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          printf 'revision=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Require bilingual release notes
         env:
           VERSION: ${{ steps.metadata.outputs.version }}
@@ -43,7 +46,7 @@ jobs:
     needs: prepare
     uses: ./.github/workflows/check.yml
     with:
-      revision: ${{ needs.prepare.outputs.tag }}
+      revision: ${{ needs.prepare.outputs.revision }}
   macos:
     needs: [prepare, checks]
     environment: release
@@ -59,7 +62,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.revision }}
           persist-credentials: false
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -89,15 +92,17 @@ jobs:
         include:
           - os: windows-2025
             arch: x64
+            artifact_arch: x64
             target: x86_64-pc-windows-msvc
           - os: windows-11-arm
             arch: ARM64
+            artifact_arch: arm64
             target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.revision }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -116,7 +121,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows-${{ matrix.arch }}
-          path: dist/release/windows-*/*
+          path: dist/release/windows-${{ matrix.artifact_arch }}/*
           if-no-files-found: error
   publish:
     needs: [prepare, macos, windows]
@@ -127,7 +132,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.tag }}
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      # Use the selected workflow's tooling even when repairing an older tag.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: automation
           persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
@@ -135,14 +146,16 @@ jobs:
           path: release-assets
           merge-multiple: true
       - uses: dtolnay/rust-toolchain@stable
-      - name: Verify complete release, publish, then advance channel feeds
+      - name: Verify complete release, upload missing assets, then advance channel feeds
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_ASSETS: release-assets
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
           VERSION: ${{ needs.prepare.outputs.version }}
+          RELEASE_REVISION: ${{ needs.prepare.outputs.revision }}
         run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_REVISION"
           cp "release-notes/$VERSION/zh-Hans.md" release-assets/notes-zh-Hans.md
           cp "release-notes/$VERSION/en.md" release-assets/notes-en.md
-          cargo run --locked -p xtask -- publish-release
+          cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-release

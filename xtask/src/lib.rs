@@ -74,7 +74,7 @@ fn safe_file(directory: &Path, name: &str) -> Result<std::path::PathBuf> {
     let path = directory.join(name);
     ensure(
         path.is_file() && !path.is_symlink(),
-        "Missing or linked release asset",
+        &format!("Missing or linked release asset: {}", path.display()),
     )?;
     Ok(path)
 }
@@ -423,111 +423,53 @@ pub fn publish_release(
     mut gh: impl FnMut(&[String]) -> Result<CommandResult>,
 ) -> Result<()> {
     let manifest = prepare(directory, tag, repository, public_key)?;
-    let make_latest = if manifest.channel == "stable" {
-        let latest = gh(&args(&[
-            "api",
-            &format!("repos/{repository}/releases/latest"),
-        ]))?;
-        if latest.success {
-            let value: serde_json::Value = serde_json::from_str(&latest.output)?;
-            let previous = versions(
-                value["tag_name"]
-                    .as_str()
-                    .ok_or("Invalid latest release response")?,
-            )?;
-            Version::parse(&manifest.version)? > Version::parse(&previous.version)?
-        } else {
-            ensure(latest.error.contains("404"), &latest.error)?;
-            true
-        }
-    } else {
-        false
-    };
-    let recovery = tempfile::tempdir()?;
-    let mut published = false;
+    // The version release is published by the maintainer before this workflow runs.
+    // Never delete or replace public assets: retry only the missing files.
     let existing = gh(&args(&[
-        "release", "view", tag, "--repo", repository, "--json", "isDraft",
+        "api",
+        &format!("repos/{repository}/releases/tags/{tag}"),
     ]))?;
-    if existing.success {
-        let value: serde_json::Value = serde_json::from_str(&existing.output)?;
-        ensure(value["isDraft"].is_boolean(), "Invalid release response")?;
-        published = value["isDraft"] == false;
-        if published {
-            successful(gh(&args(&[
-                "release",
-                "download",
-                tag,
-                "--repo",
-                repository,
-                "--pattern",
-                "release.json",
-                "--dir",
-                recovery.path().to_str().ok_or("Invalid path")?,
-            ]))?)?;
-            let remote: Manifest =
-                serde_json::from_slice(&fs::read(recovery.path().join("release.json"))?)?;
+    ensure(existing.success, &existing.error)?;
+    let value: serde_json::Value = serde_json::from_str(&existing.output)?;
+    ensure(value["tag_name"] == tag, "Release tag mismatch")?;
+    ensure(
+        value["draft"] == false,
+        "Publish the release before uploading assets",
+    )?;
+    ensure(
+        value["prerelease"] == (manifest.channel != "stable"),
+        "Release prerelease flag does not match tag",
+    )?;
+    let remote = value["assets"].as_array().ok_or("Invalid release assets")?;
+    let mut missing = Vec::new();
+    // Validate every existing file before mutating anything. Upload the inventory last.
+    for name in manifest
+        .assets
+        .keys()
+        .map(String::as_str)
+        .chain(["SHA256SUMS", "release.json"])
+    {
+        let path = safe_file(directory, name)?;
+        if let Some(asset) = remote.iter().find(|asset| asset["name"] == name) {
             ensure(
-                remote == manifest,
-                "Published artifacts differ; refusing overwrite",
+                asset["size"].as_u64() == Some(fs::metadata(&path)?.len())
+                    && asset["digest"] == format!("sha256:{}", hash(&path)?),
+                &format!(
+                    "Existing release asset differs or has no digest: {name}; refusing overwrite"
+                ),
             )?;
+        } else {
+            missing.push(path);
         }
-    } else {
-        ensure(
-            existing.error.contains("404")
-                || existing.error.to_lowercase().contains("release not found"),
-            &existing.error,
-        )?;
-        successful(gh(&args(&[
-            "release",
-            "create",
-            tag,
-            "--repo",
-            repository,
-            "--verify-tag",
-            "--draft",
-            "--title",
-            tag,
-        ]))?)?;
     }
-    if !published {
-        let body = format!(
-            "## 中文\n\n{}\n\n## English\n\n{}",
-            fs::read_to_string(directory.join("notes-zh-Hans.md"))?,
-            fs::read_to_string(directory.join("notes-en.md"))?
-        );
-        fs::write(directory.join("release-body.md"), body)?;
-        let mut upload = args(&["release", "upload", tag, "--repo", repository, "--clobber"]);
-        for name in manifest
-            .assets
-            .keys()
-            .map(String::as_str)
-            .chain(["SHA256SUMS", "release.json"])
-        {
-            upload.push(directory.join(name).to_string_lossy().into_owned());
-        }
-        successful(gh(&upload)?)?;
+    for path in missing {
         successful(gh(&args(&[
             "release",
-            "edit",
+            "upload",
             tag,
             "--repo",
             repository,
-            "--draft=false",
-            if manifest.channel == "stable" {
-                "--prerelease=false"
-            } else {
-                "--prerelease=true"
-            },
-            if make_latest {
-                "--latest"
-            } else {
-                "--latest=false"
-            },
-            "--notes-file",
-            directory
-                .join("release-body.md")
-                .to_str()
-                .ok_or("Invalid path")?,
+            path.to_str().ok_or("Invalid path")?,
         ]))?)?;
     }
     let work = tempfile::tempdir()?;

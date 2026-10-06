@@ -165,39 +165,6 @@ fn beta_does_not_touch_stable_and_numeric_precedence_is_respected() {
     assert_eq!(channels.versions["beta"], "1.0.0-beta.10");
 }
 #[test]
-fn upload_failure_leaves_draft_and_never_advances_feeds() {
-    let (dir, key) = fixture("v1.0.0");
-    let mut calls = Vec::new();
-    let result = publish_release("v1.0.0", dir.path(), "owner/repo", &key, |args| {
-        calls.push(args.to_vec());
-        Ok(if args[0] == "api" || args[1] == "view" {
-            CommandResult {
-                success: false,
-                output: String::new(),
-                error: "404".into(),
-            }
-        } else if args[1] == "upload" {
-            CommandResult {
-                success: false,
-                output: String::new(),
-                error: "upload failed".into(),
-            }
-        } else {
-            CommandResult {
-                success: true,
-                output: String::new(),
-                error: String::new(),
-            }
-        })
-    });
-    assert!(result.is_err());
-    assert!(
-        !calls
-            .iter()
-            .any(|a| a[1] == "edit" || a.iter().any(|x| x == HUB))
-    );
-}
-#[test]
 fn untrusted_paths_and_xml_are_rejected() {
     let dir = tempfile::tempdir().unwrap();
     assert!(safe_file(dir.path(), "../secret").is_err());
@@ -206,137 +173,134 @@ fn untrusted_paths_and_xml_are_rejected() {
     assert!(parse_xml("<rss>").is_err());
 }
 
-#[test]
-fn publish_orders_payloads_before_feeds_and_catalog_last() {
-    let (dir, key) = fixture("v1.0.0-beta.2");
-    let mut calls = Vec::new();
-    publish_release("v1.0.0-beta.2", dir.path(), "owner/repo", &key, |args| {
-        calls.push(args.to_vec());
-        Ok(if args[0] == "api" || args[1] == "view" {
-            CommandResult {
-                success: false,
-                output: String::new(),
-                error: "404".into(),
-            }
-        } else {
-            CommandResult {
-                success: true,
-                output: String::new(),
-                error: String::new(),
-            }
-        })
-    })
-    .unwrap();
-    let full_upload = calls
-        .iter()
-        .position(|a| a.get(2).is_some_and(|x| x == HUB) && a.iter().any(|x| x.ends_with(".nupkg")))
-        .unwrap();
-    let first_feed = calls
-        .iter()
-        .position(|a| a.get(2).is_some_and(|x| x == HUB) && a.iter().any(|x| x.ends_with(".xml")))
-        .unwrap();
-    assert!(full_upload < first_feed);
-    assert!(
-        calls
-            .last()
-            .unwrap()
-            .last()
-            .unwrap()
-            .ends_with("channels.json")
-    );
-    assert!(
-        calls.iter().any(
-            |a| a.contains(&"--prerelease=true".into()) && a.contains(&"--latest=false".into())
-        )
-    );
-    assert!(!calls.iter().flatten().any(|a| a.contains("-stable")));
-}
-
-#[test]
-fn retry_of_published_release_never_overwrites_versioned_assets() {
+// Stateful fake GitHub: exercise interruption and retry against a public release.
+fn simulate_upload(fail_after: Option<usize>, conflict: bool) {
     let (dir, key) = fixture("v1.0.0");
+    let mut remote = Vec::<serde_json::Value>::new();
+    if conflict {
+        remote.push(json!({"name":"notes-en.md","size":1,"digest":"sha256:wrong"}));
+    }
+    let mut version_uploads = Vec::new();
     let mut calls = Vec::new();
-    publish_release("v1.0.0", dir.path(), "owner/repo", &key, |args| {
-        calls.push(args.to_vec());
-        if args[1] == "view" {
-            return Ok(CommandResult {
+    let mut attempts = 0;
+    for attempt in 0..2 {
+        let result = publish_release("v1.0.0", dir.path(), "owner/repo", &key, |a| {
+            calls.push(a.to_vec());
+            let mut response = CommandResult {
                 success: true,
-                output: r#"{"isDraft":false}"#.into(),
+                output: String::new(),
                 error: String::new(),
-            });
+            };
+            if a[0] == "api" && a[1].ends_with("/tags/v1.0.0") {
+                response.output =
+                    json!({"tag_name":"v1.0.0","draft":false,"prerelease":false,"assets":remote})
+                        .to_string();
+            } else if a[0] == "api" {
+                response.success = false;
+                response.error = "404".into();
+            } else if a[1] == "upload" && a[2] == "v1.0.0" {
+                assert!(!a.iter().any(|x| x == "--clobber"));
+                if attempt == 0 && fail_after == Some(attempts) {
+                    response.success = false;
+                    response.error = "network interrupted".into();
+                    return Ok(response);
+                }
+                attempts += 1;
+                let path = Path::new(a.last().unwrap());
+                let name = path.file_name().unwrap().to_str().unwrap();
+                assert!(
+                    !version_uploads.contains(&name.to_owned()),
+                    "duplicate upload"
+                );
+                version_uploads.push(name.to_owned());
+                remote.push(json!({"name":name,"size":fs::metadata(path)?.len(),"digest":format!("sha256:{}",hash(path)?)}));
+            }
+            Ok(response)
+        });
+        if conflict || (attempt == 0 && fail_after.is_some()) {
+            assert!(result.is_err());
+            assert!(!calls.iter().any(|a| a.iter().any(|s| s == HUB)));
+        } else {
+            result.unwrap();
         }
-        if args[1] == "download" {
-            let destination = &args[args.iter().position(|x| x == "--dir").unwrap() + 1];
-            fs::copy(
-                dir.path().join("release.json"),
-                Path::new(destination).join("release.json"),
-            )?;
+        if conflict {
+            assert!(version_uploads.is_empty());
+            break;
         }
-        Ok(if args[0] == "api" {
-            CommandResult {
-                success: false,
-                output: String::new(),
-                error: "404".into(),
-            }
-        } else {
-            CommandResult {
-                success: true,
-                output: String::new(),
-                error: String::new(),
-            }
-        })
-    })
-    .unwrap();
-    assert!(!calls.iter().any(|a| a[1] == "upload" && a[2] == "v1.0.0"));
+    }
+    if !conflict {
+        assert_eq!(version_uploads.last().unwrap(), "release.json");
+        let payload = calls
+            .iter()
+            .position(|a| {
+                a.get(2).is_some_and(|x| x == HUB) && a.iter().any(|x| x.ends_with(".nupkg"))
+            })
+            .unwrap();
+        let feed = calls
+            .iter()
+            .position(|a| {
+                a.get(2).is_some_and(|x| x == HUB) && a.iter().any(|x| x.ends_with(".xml"))
+            })
+            .unwrap();
+        assert!(payload < feed);
+        assert!(
+            calls
+                .last()
+                .unwrap()
+                .last()
+                .unwrap()
+                .ends_with("channels.json")
+        );
+        assert!(
+            !calls
+                .iter()
+                .any(|a| a[1] == "edit" || a[1] == "create" && a[2] == "v1.0.0")
+        );
+    }
 }
 
 #[test]
-fn an_older_stable_release_cannot_replace_github_latest() {
-    let (dir, key) = fixture("v1.0.0");
-    let mut calls = Vec::new();
-    publish_release("v1.0.0", dir.path(), "owner/repo", &key, |args| {
-        calls.push(args.to_vec());
-        Ok(if args[0] == "api" && args[1].ends_with("/latest") {
-            CommandResult {
-                success: true,
-                output: r#"{"tag_name":"v1.1.0"}"#.into(),
-                error: String::new(),
-            }
-        } else if args[0] == "api" || args[1] == "view" {
-            CommandResult {
-                success: false,
-                output: String::new(),
-                error: "404".into(),
-            }
-        } else {
-            CommandResult {
-                success: true,
-                output: String::new(),
-                error: String::new(),
-            }
-        })
-    })
-    .unwrap();
-    let edit = calls
-        .iter()
-        .find(|args| args[1] == "edit" && args[2] == "v1.0.0")
-        .unwrap();
-    assert!(edit.contains(&"--latest=false".into()));
+fn published_empty_release_accepts_assets_and_identical_retry_skips_them() {
+    simulate_upload(None, false);
 }
-
 #[test]
-fn latest_lookup_failure_cannot_start_publication() {
+fn interrupted_upload_resumes_missing_assets_before_advancing_feeds() {
+    simulate_upload(Some(3), false);
+}
+#[test]
+fn different_public_asset_is_never_overwritten() {
+    simulate_upload(None, true);
+}
+#[test]
+fn incorrect_release_identity_or_state_blocks_upload() {
     let (dir, key) = fixture("v1.0.0");
-    let mut calls = Vec::new();
-    let result = publish_release("v1.0.0", dir.path(), "owner/repo", &key, |args| {
-        calls.push(args.to_vec());
-        Ok(CommandResult {
-            success: false,
-            output: String::new(),
-            error: "403 rate limited".into(),
-        })
-    });
-    assert!(result.is_err());
-    assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0][0], "api");
+    for state in [
+        json!({"tag_name":"v1.1.0","draft":false,"prerelease":false,"assets":[]}),
+        json!({"tag_name":"v1.0.0","draft":true,"prerelease":false,"assets":[]}),
+        json!({"tag_name":"v1.0.0","draft":false,"prerelease":true,"assets":[]}),
+    ] {
+        let mut calls = 0;
+        assert!(
+            publish_release("v1.0.0", dir.path(), "owner/repo", &key, |_| {
+                calls += 1;
+                Ok(CommandResult {
+                    success: true,
+                    output: state.to_string(),
+                    error: String::new(),
+                })
+            })
+            .is_err()
+        );
+        assert_eq!(calls, 1);
+    }
+}
+#[test]
+fn missing_asset_error_names_the_file() {
+    let dir = tempfile::tempdir().unwrap();
+    assert!(
+        safe_file(dir.path(), "missing.exe")
+            .unwrap_err()
+            .to_string()
+            .contains("missing.exe")
+    );
 }
