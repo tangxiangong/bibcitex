@@ -39,8 +39,12 @@ final class WorkbenchModel: ObservableObject {
     /// this is what tells them apart.
     @Published private(set) var copied: String?
     @Published var adding = false
-    @Published var showSidebar = true
-    @Published var showInspector = true
+    @Published var showSidebar = true {
+        didSet { preferences.set(showSidebar, forKey: "mainShowSidebar") }
+    }
+    @Published var showInspector = false {
+        didSet { preferences.set(showInspector, forKey: "mainShowInspector") }
+    }
 
     func reportError(_ error: any Error) { errorDetails = LocalizedMessage(error: error) }
 
@@ -59,6 +63,8 @@ final class WorkbenchModel: ObservableObject {
     init(service: any WorkbenchServing, preferences: UserDefaults = .standard) {
         self.service = service
         self.preferences = preferences
+        showSidebar = preferences.object(forKey: "mainShowSidebar") as? Bool ?? true
+        showInspector = preferences.object(forKey: "mainShowInspector") as? Bool ?? false
     }
     var library: Bibliography? { libraries.first { $0.name == selectedLibrary } }
     var reference: Reference? { references.first { $0.citeKey == selectedReference } }

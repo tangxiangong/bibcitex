@@ -57,6 +57,15 @@ private actor WorkbenchTestService: WorkbenchServing {
         defer { preferences.removePersistentDomain(forName: suite) }
         let service = WorkbenchTestService()
         let model = WorkbenchModel(service: service, preferences: preferences)
+        precondition(model.showSidebar && !model.showInspector, "Fresh workbench opens only the left pane")
+        model.showSidebar = false
+        model.showInspector = true
+        let restored = WorkbenchModel(service: service, preferences: preferences)
+        precondition(!restored.showSidebar && restored.showInspector, "Both pane choices survive model recreation")
+        restored.showSidebar = true
+        restored.showInspector = false
+        let restoredAgain = WorkbenchModel(service: service, preferences: preferences)
+        precondition(restoredAgain.showSidebar && !restoredAgain.showInspector, "Saved false is distinct from an absent preference")
         let a = "/tmp/a/references.bib", b = "/tmp/b/references.bib"
         model.moveReference(1)
         model.moveReference(-1)

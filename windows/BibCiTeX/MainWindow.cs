@@ -32,7 +32,10 @@ internal sealed class MainWindow : Window
     private readonly Grid sidebar = new() { Padding = new Thickness(10, 12, 10, 8) };
     private readonly Grid inspector = new();
     private readonly TextBlock detailEmpty = Views.LocalizedText("选择一条文献查看字段和操作");
-    private bool showSidebar = true, showInspector = true, loading, reloading;
+    private bool showSidebar = bool.TryParse(NativeSettings.Values["mainShowSidebar"] as string, out var left) ? left : true;
+    private bool showInspector = bool.TryParse(NativeSettings.Values["mainShowInspector"] as string, out var right) && right;
+    private bool loading, reloading;
+    private readonly StackPanel referenceHeader = new() { Spacing = 12, Visibility = Visibility.Collapsed };
     private double sidebarWidth = 220, inspectorWidth = 350;
     private ToggleButton sidebarToggle = null!, inspectorToggle = null!;
     private PaneThumb leftDivider = null!, rightDivider = null!;
@@ -66,8 +69,8 @@ internal sealed class MainWindow : Window
         var chrome = new StackPanel(); chrome.Children.Add(BuildMenu());
         var toolbar = new Grid { Padding = new Thickness(12, 4, 12, 8) };
         toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); toolbar.ColumnDefinitions.Add(new()); toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        sidebarToggle = PaneToggle("panelLeftClose", "文献库", () => { showSidebar = sidebarToggle.IsChecked == true; LayoutPanes(); });
-        inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { showInspector = inspectorToggle.IsChecked == true; LayoutPanes(); });
+        sidebarToggle = PaneToggle("panelLeftClose", "文献库", () => { SetPaneVisibility(true, sidebarToggle.IsChecked == true); });
+        inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var primary = Views.Row(Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle);
@@ -89,26 +92,28 @@ internal sealed class MainWindow : Window
         Grid.SetRow(libraries, 1); sidebar.Children.Add(libraries);
         librariesEmpty.Margin = new Thickness(8, 32, 8, 8); Grid.SetRow(librariesEmpty, 1); sidebar.Children.Add(librariesEmpty);
         Grid.SetRow(sidebar, 1); root.Children.Add(sidebar);
-        var center = new Grid { Padding = new Thickness(16), RowSpacing = 12 };
-        for (var i = 0; i < 3; i++) center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new());
+        var center = new Grid { Padding = new Thickness(16) };
+        center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new());
+        referenceHeader.Margin = new Thickness(0, 0, 0, 12);
+        center.Children.Add(referenceHeader);
         var titleRow = new Grid { ColumnSpacing = 8 }; titleRow.ColumnDefinitions.Add(new()); titleRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         titleRow.Children.Add(heading);
         var countRow = Views.Row(count, progress); countRow.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(countRow, 1); titleRow.Children.Add(countRow);
-        Grid.SetRow(titleRow, 0); center.Children.Add(titleRow);
+        referenceHeader.Children.Add(titleRow);
         foreach (var (label, value) in Reference.Types) type.Items.Add(Localized.ComboItem(label, value));
         foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(Localized.ComboItem(label, value));
         type.SelectedIndex = field.SelectedIndex = 0;
         var searchRow = new Grid { ColumnSpacing = 8 };
         searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); searchRow.ColumnDefinitions.Add(new());
         searchRow.Children.Add(new SvgIcon("search", 15) { VerticalAlignment = VerticalAlignment.Center });
-        Grid.SetColumn(search, 1); searchRow.Children.Add(search); Grid.SetRow(searchRow, 1); center.Children.Add(searchRow);
-        var filters = Views.Row(type, field); Grid.SetRow(filters, 2); center.Children.Add(filters);
-        Grid.SetRow(references, 3); center.Children.Add(references);
+        Grid.SetColumn(search, 1); searchRow.Children.Add(search); referenceHeader.Children.Add(searchRow);
+        var filters = Views.Row(type, field); referenceHeader.Children.Add(filters);
+        Grid.SetRow(references, 1); center.Children.Add(references);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(brand, "BibCiTeX");
         empty.HorizontalAlignment = HorizontalAlignment.Center; empty.Opacity = .65;
         emptyState.Children.Add(brand); emptyState.Children.Add(empty);
-        Grid.SetRow(emptyState, 3); center.Children.Add(emptyState);
+        Grid.SetRow(emptyState, 1); center.Children.Add(emptyState);
         Grid.SetRow(center, 1); Grid.SetColumn(center, 2); root.Children.Add(center);
         inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new());
         var detailHeading = Views.LocalizedText("文献详情", 16); detailHeading.Margin = new Thickness(16); inspector.Children.Add(detailHeading);
@@ -144,6 +149,7 @@ internal sealed class MainWindow : Window
         AppWindow.Closing += (_, args) => { if (!quitting && tray is not null) { args.Cancel = true; AppWindow.Hide(); } };
         Closed += (_, _) => { aboutWindow?.Close(); shortcut?.Dispose(); tray?.Dispose(); };
         root.SizeChanged += (_, _) => LayoutPanes();
+        LayoutPanes();
     }
 
     private MenuBar BuildMenu()
@@ -174,8 +180,8 @@ internal sealed class MainWindow : Window
         copy.IsEnabled = false; references.SelectionChanged += (_, _) => copy.IsEnabled = references.SelectedItem is not null;
         Add(reference, "刷新", () => _ = ReloadLibraries(), VirtualKey.R);
         var view = Group("menu.view");
-        Add(view, "文献库", () => { showSidebar = !showSidebar; LayoutPanes(); });
-        Add(view, "文献详情", () => { showInspector = !showInspector; LayoutPanes(); });
+        Add(view, "文献库", () => { SetPaneVisibility(true, !showSidebar); });
+        Add(view, "文献详情", () => { SetPaneVisibility(false, !showInspector); });
         var languages = new MenuFlyoutSubItem(); Localized.Bind(languages, MenuFlyoutSubItem.TextProperty, "语言");
         foreach (var code in L10n.Languages)
         {
@@ -194,8 +200,34 @@ internal sealed class MainWindow : Window
     }
     private static ToggleButton PaneToggle(string icon, string label, Action action)
     {
-        var button = new ToggleButton { Content = new SvgIcon(icon), Padding = new Thickness(8), MinWidth = 32, MinHeight = 32, IsChecked = true };
+        var button = (ToggleButton)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <ToggleButton xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Padding="8" MinWidth="32" MinHeight="32">
+                <ToggleButton.Resources>
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="{ThemeResource SubtleFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="{ThemeResource SubtleFillColorTertiary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="{ThemeResource SubtleFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedDisabled" Color="{ThemeResource ControlFillColorDisabled}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="{ThemeResource TextFillColorPrimary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="{ThemeResource TextFillColorPrimary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="{ThemeResource TextFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedDisabled" Color="{ThemeResource TextFillColorDisabled}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedDisabled" Color="{ThemeResource ControlStrokeColorDefault}" />
+                </ToggleButton.Resources>
+            </ToggleButton>
+            """);
+        button.Content = new SvgIcon(icon);
         Localized.Name(button, label); Localized.Tooltip(button, label); button.Click += (_, _) => action(); return button;
+    }
+    private void SetPaneVisibility(bool left, bool visible)
+    {
+        if (left) showSidebar = visible; else showInspector = visible;
+        LayoutPanes();
+        try { NativeSettings.Values[left ? "mainShowSidebar" : "mainShowInspector"] = visible; }
+        catch (Exception error) { _ = Report(error); }
     }
     private PaneThumb PaneDivider(bool left)
     {
@@ -299,6 +331,7 @@ internal sealed class MainWindow : Window
                 item.ContextFlyout = LibraryMenu(library, Rename); libraries.Items.Add(item);
                 if (library.Name == name) libraries.SelectedItem = item;
             }
+            referenceHeader.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
             librariesEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             brand.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (libraries.SelectedItem is null && libraries.Items.Count > 0) libraries.SelectedIndex = 0;

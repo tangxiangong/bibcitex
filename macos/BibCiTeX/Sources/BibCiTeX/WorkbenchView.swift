@@ -75,29 +75,31 @@ struct WorkbenchView: View {
     private var references: some View {
         let selectionContext = model.referenceSelectionContext
         return VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text(model.library?.name ?? L10n.text("文献工作台")).font(.title3.weight(.semibold))
-                    Spacer()
-                    Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)
-                    if model.loading { ProgressView().controlSize(.small) }
-                }
-                HStack(spacing: 8) {
-                    SVGIcon("search", size: 15).foregroundStyle(.secondary)
-                    TextField(L10n.text("搜索文献"), text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
-                        .focused($searchFocused)
-                        .background {
-                            WorkbenchSearchNavigation(enabled: searchFocused, move: model.moveReference)
-                        }
-                }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
-                HStack(spacing: 8) {
-                    Picker(L10n.text("类型筛选"), selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                        .accessibilityLabel(L10n.text("类型筛选"))
-                    Picker(L10n.text("字段筛选"), selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                        .accessibilityLabel(L10n.text("字段筛选"))
-                }.controlSize(.small)
-            }.padding(16)
-            Divider()
+            if !model.libraries.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text(model.library?.name ?? L10n.text("文献工作台")).font(.title3.weight(.semibold))
+                        Spacer()
+                        Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)
+                        if model.loading { ProgressView().controlSize(.small) }
+                    }
+                    HStack(spacing: 8) {
+                        SVGIcon("search", size: 15).foregroundStyle(.secondary)
+                        TextField(L10n.text("搜索文献"), text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
+                            .focused($searchFocused)
+                            .background {
+                                WorkbenchSearchNavigation(enabled: searchFocused, move: model.moveReference)
+                            }
+                    }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
+                    HStack(spacing: 8) {
+                        Picker(L10n.text("类型筛选"), selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                            .accessibilityLabel(L10n.text("类型筛选"))
+                        Picker(L10n.text("字段筛选"), selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                            .accessibilityLabel(L10n.text("字段筛选"))
+                    }.controlSize(.small)
+                }.padding(16)
+                Divider()
+            }
             if model.references.isEmpty && !model.loading {
                 VStack(spacing: 16) {
                     if model.libraries.isEmpty, let logo = AppImages.logo {
