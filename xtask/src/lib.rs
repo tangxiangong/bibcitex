@@ -512,6 +512,19 @@ pub fn publish_release(
             hub.error.contains("404") || hub.error.to_lowercase().contains("release not found"),
             &hub.error,
         )?;
+        // GitHub accepts a branch or commit SHA here, not a release tag.
+        let target = gh(&args(&[
+            "api",
+            &format!("repos/{repository}/commits/{tag}"),
+            "--jq",
+            ".sha",
+        ]))?;
+        ensure(target.success, &target.error)?;
+        let revision = target.output.trim();
+        ensure(
+            revision.len() == 40 && revision.bytes().all(|byte| byte.is_ascii_hexdigit()),
+            "Invalid release commit SHA",
+        )?;
         successful(gh(&args(&[
             "release",
             "create",
@@ -519,7 +532,7 @@ pub fn publish_release(
             "--repo",
             repository,
             "--target",
-            tag,
+            revision,
             "--prerelease",
             "--latest=false",
             "--title",

@@ -195,6 +195,11 @@ fn simulate_upload(fail_after: Option<usize>, conflict: bool) {
                 response.output =
                     json!({"tag_name":"v1.0.0","draft":false,"prerelease":false,"assets":remote})
                         .to_string();
+            } else if a[0] == "api" && a[1].ends_with("/commits/v1.0.0") {
+                response.output = "1234567890123456789012345678901234567890\n".into();
+            } else if a[1] == "create" && a[2] == HUB {
+                let target = a.iter().position(|arg| arg == "--target").unwrap() + 1;
+                assert_eq!(a[target], "1234567890123456789012345678901234567890");
             } else if a[0] == "api" {
                 response.success = false;
                 response.error = "404".into();
