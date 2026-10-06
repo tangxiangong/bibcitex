@@ -8,7 +8,7 @@ namespace BibCiTeX;
 
 internal static class Updater
 {
-    internal static string CurrentVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.6.0";
+    internal static string CurrentVersion => typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.7.0";
     internal static bool CanCheck => true;
     private static bool busy;
     private static long preferencesRevision;

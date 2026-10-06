@@ -24,7 +24,7 @@ dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 Windows uses unpackaged, self-contained WinUI 3 with Velopack 1.2.161. `Program.Main` handles installer hooks before starting XAML. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
 
 ```powershell
-./windows/scripts/publish.ps1 -Architecture x64 -Version 0.6.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
+./windows/scripts/publish.ps1 -Architecture x64 -Version 0.7.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
 Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow uploads all artifacts to GitHub Releases and advances `update-feed` channel pointers only after verification. It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.

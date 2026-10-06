@@ -19,16 +19,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_aarch64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.0/BibCiTeX-0.7.0-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_x64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.0/BibCiTeX-0.7.0-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_arm64-setup.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.0/BibCiTeX-0.7.0-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.6.0/BibCiTeX_0.6.0_x64-setup.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.0/BibCiTeX-0.7.0-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -38,9 +38,9 @@
 
 **BibCiTeX** 是一个以 **Rust** 为核心的 **BibTeX** 文献快捷引用工具。
 
-`native` 分支使用 macOS **SwiftUI（最低 macOS 14 Sonoma，Xcode 27 SDK）** 与 Windows **WinUI 3（Windows App SDK 2.5.1）**。Swift 使用 **UniFFI 0.32.2**，C# 使用 **Interoptopus 0.16.5**，分别生成绑定调用共享 Rust 核心，`xpaste` 保留独立模块；更新分别由 Sparkle 与 Velopack（EXE/MSI） 处理。下面的安装包与截图对应历史版本。
+支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
 
-直接用 Xcode 打开 [BibCiTeX.xcodeproj](macos/BibCiTeX.xcodeproj)，或用 Visual Studio 打开 [BibCiTeX.sln](windows/BibCiTeX.sln) 后构建。工程会自动编译 Rust 并生成绑定，无需预运行脚本。命令行统一使用 `just build`，详细参数见 [macOS](macos/README.md)、[Windows](windows/README.md) 和 [Justfile](Justfile)。构建不依赖 Python；GUI 验收由用户进行。
+v0.7.0 更新内容：[中文发布说明](release-notes/0.7.0/zh-Hans.md) · [English release notes](release-notes/0.7.0/en.md)。
 
 ### 核心特性
 
@@ -81,6 +81,8 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 > ✓ 已支持 &nbsp;&nbsp; 进行中 开发中
 
 ## 界面功能预览
+
+以下动图来自历史版本。
 
 <div align="center">
 

@@ -37,7 +37,7 @@
 		3023A5807339A00C715C026F /* library.svg in Resources */ = {isa = PBXBuildFile; fileRef = 4092D03202B5381411098A7B /* library.svg */; };
 		30A86772A4F59C8720455067 /* AppResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4AE55941866C34949D675B /* AppResources.swift */; };
 		362AC9BD6C1F6DD5E060EAFE /* info.svg in Resources */ = {isa = PBXBuildFile; fileRef = BA4860C8547C16762913B7B1 /* info.svg */; };
-		36C34A7EE98EE0FE330D6A87 /* icon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 6C06F02CE6E49ED6A759478C /* icon.icns */; };
+		36C34A7EE98EE0FE330D6A87 /* BibCiTeX.icon in Resources */ = {isa = PBXBuildFile; fileRef = 6C06F02CE6E49ED6A759478C /* BibCiTeX.icon */; };
 		3A85E58E4056FF3618733592 /* externalLink.svg in Resources */ = {isa = PBXBuildFile; fileRef = FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */; };
 		3BED296EB5CB22F95C2D2A64 /* WorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */; };
 		41303FCE78232CDB53AF2714 /* HelperPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3427E0196B1D54D70378C9D /* HelperPanelController.swift */; };
@@ -125,7 +125,7 @@
 		54D1A490BCC9B75E7CF23CD4 /* rename.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = rename.svg; sourceTree = "<group>"; };
 		5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchView.swift; sourceTree = "<group>"; };
 		6817A3BFC571F02A645A3A88 /* pin.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = pin.svg; sourceTree = "<group>"; };
-		6C06F02CE6E49ED6A759478C /* icon.icns */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.icns; name = icon.icns; path = "../assets/app-icons/icon.icns"; sourceTree = "<group>"; };
+		6C06F02CE6E49ED6A759478C /* BibCiTeX.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.icon; name = BibCiTeX.icon; path = "../assets/app-icons/BibCiTeX.icon"; sourceTree = "<group>"; };
 		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightOpen.svg; sourceTree = "<group>"; };
 		7B2DE7B37539C688F176DE6F /* chevronLeft.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronLeft.svg; sourceTree = "<group>"; };
 		91C61546766387505A3A82CF /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
@@ -297,7 +297,7 @@
 				089A6C0AF2FEEBBD65DE3290 /* Frameworks */,
 				D654D83B1077E0EB054AFA31 /* Generated bindings */,
 				03E8962D61DD5F15A3160620 /* BibCiTeX */,
-				6C06F02CE6E49ED6A759478C /* icon.icns */,
+				6C06F02CE6E49ED6A759478C /* BibCiTeX.icon */,
 				F8A1C329EA194045A74376C2 /* favicon.png */,
 				F8A1C329EA194045A74376C4 /* tray-template.svg */,
 				CD5DCEE73EDEF47834E5635F /* Info.plist */,
@@ -463,7 +463,7 @@
 				C128DB9AEF436BF75B760DEE /* trash.svg in Resources */,
 				53BBDDB78C17CB8E868FDB2B /* user.svg in Resources */,
 				4ADCD8505F6C18A51CD7A3EC /* x.svg in Resources */,
-				36C34A7EE98EE0FE330D6A87 /* icon.icns in Resources */,
+				36C34A7EE98EE0FE330D6A87 /* BibCiTeX.icon in Resources */,
 				AB10CA130000000000000000 /* InfoPlist.strings in Resources */,
 				AB10CA120000000000000002 /* ../localization/zh-Hans.json in Resources */,
 				AB10CA120000000000000001 /* ../localization/en.json in Resources */,
@@ -572,8 +572,7 @@
 		202FE6CE7A4AEAC0EC4D695F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = BibCiTeX;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -588,7 +587,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.7.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
@@ -606,7 +605,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -710,8 +708,7 @@
 		CE3773369B57E2555A55ACB2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = BibCiTeX;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -726,7 +723,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.6.0;
+				MARKETING_VERSION = 0.7.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
@@ -744,7 +741,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
