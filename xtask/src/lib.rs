@@ -1,59 +1,77 @@
+use base64::Engine;
+use ed25519_dalek::{Signature, VerifyingKey};
 use quick_xml::{XmlVersion, events::Event, name::ResolveResult, reader::NsReader};
-pub mod legacy;
-use serde::Deserialize;
-use std::{
-    collections::BTreeMap,
-    error::Error,
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
-
+use semver::Version;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{collections::BTreeMap, error::Error, fs, path::Path, process::Command};
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 const SPARKLE: &str = "http://www.andymatuschak.org/xml-namespaces/sparkle";
-const INSTALLER: &str = "http://schemas.microsoft.com/appx/appinstaller/2018";
+const HUB: &str = "update-feed";
+fn ensure(value: bool, message: &str) -> Result<()> {
+    if value { Ok(()) } else { Err(message.into()) }
+}
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 pub struct Versions {
     pub version: String,
-    pub windows: String,
-    parts: [u16; 3],
+    pub channel: String,
 }
-
 pub fn versions(tag: &str) -> Result<Versions> {
-    let version = tag.strip_prefix('v').ok_or("Expected vMAJOR.MINOR.PATCH")?;
-    let parts = version.split('.').collect::<Vec<_>>();
-    ensure(
-        parts.len() == 3,
-        "Expected stable vMAJOR.MINOR.PATCH; prereleases cannot replace stable feeds",
+    let version = Version::parse(
+        tag.strip_prefix('v')
+            .ok_or("Expected a v-prefixed SemVer tag")?,
     )?;
-    let mut numbers = [0; 3];
-    for (index, part) in parts.iter().enumerate() {
+    ensure(
+        version.build.is_empty(),
+        "Build metadata is not a release identity",
+    )?;
+    let channel = if version.pre.is_empty() {
+        "stable"
+    } else {
+        let (kind, number) = version
+            .pre
+            .as_str()
+            .split_once('.')
+            .ok_or("Use alpha.N or beta.N")?;
         ensure(
-            !part.is_empty()
-                && part.bytes().all(|b| b.is_ascii_digit())
-                && (part.len() == 1 || !part.starts_with('0')),
-            "Noncanonical stable version",
+            matches!(kind, "alpha" | "beta") && number.parse::<u32>().is_ok(),
+            "Use alpha.N or beta.N",
         )?;
-        numbers[index] = part
-            .parse()
-            .map_err(|_| "MSIX version components must be <= 65535")?;
-    }
+        kind
+    };
     Ok(Versions {
-        version: version.to_owned(),
-        windows: format!("{version}.0"),
-        parts: numbers,
+        version: version.to_string(),
+        channel: channel.into(),
     })
 }
-
-fn ensure(condition: bool, message: &str) -> Result<()> {
-    if condition {
-        Ok(())
-    } else {
-        Err(message.to_owned().into())
+pub fn audiences(channel: &str) -> &[&str] {
+    match channel {
+        "stable" => &["stable", "beta", "alpha"],
+        "beta" => &["beta", "alpha"],
+        _ => &["alpha"],
     }
 }
-
+fn hash(path: &Path) -> Result<String> {
+    Ok(format!("{:x}", Sha256::digest(fs::read(path)?)))
+}
+fn safe_file(directory: &Path, name: &str) -> Result<std::path::PathBuf> {
+    ensure(
+        !name.is_empty()
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+            && name != "."
+            && name != "..",
+        "Unsafe asset filename",
+    )?;
+    let path = directory.join(name);
+    ensure(
+        path.is_file() && !path.is_symlink(),
+        "Missing or linked release asset",
+    )?;
+    Ok(path)
+}
 #[derive(Default)]
 struct Element {
     namespace: String,
@@ -162,169 +180,213 @@ fn parse_xml(text: &str) -> Result<Element> {
         .remove(0))
 }
 
-fn matching_files(directory: &Path, matches: impl Fn(&str) -> bool) -> Result<Vec<PathBuf>> {
-    let mut found = Vec::new();
-    for entry in fs::read_dir(directory)? {
-        let entry = entry?;
-        if entry.file_type()?.is_file() && matches(&entry.file_name().to_string_lossy()) {
-            found.push(entry.path());
-        }
-    }
-    Ok(found)
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Asset {
+    pub size: u64,
+    pub sha256: String,
 }
-
-fn asset_from_url(directory: &Path, url: &str, base: &str) -> Result<PathBuf> {
-    let name = url
-        .strip_prefix(base)
-        .ok_or("Unexpected release asset URL")?;
-    let mut decoded = Vec::new();
-    let mut bytes = name.bytes();
-    while let Some(byte) = bytes.next() {
-        if byte == b'%' {
-            let high = bytes
-                .next()
-                .and_then(|b| char::from(b).to_digit(16))
-                .ok_or("Invalid URL escape")?;
-            let low = bytes
-                .next()
-                .and_then(|b| char::from(b).to_digit(16))
-                .ok_or("Invalid URL escape")?;
-            decoded.push((high * 16 + low) as u8);
-        } else {
-            decoded.push(byte);
-        }
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Manifest {
+    pub version: String,
+    pub channel: String,
+    pub assets: BTreeMap<String, Asset>,
+}
+/// Validate the complete four-target release before any network mutation.
+pub fn prepare(
+    directory: &Path,
+    tag: &str,
+    repository: &str,
+    public_key: &str,
+) -> Result<Manifest> {
+    let version = versions(tag)?;
+    let key: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(public_key.trim())?
+        .try_into()
+        .map_err(|_| "Invalid Sparkle public key")?;
+    let key = VerifyingKey::from_bytes(&key)?;
+    for arch in ["arm64", "x86_64"] {
+        let filename = format!("BibCiTeX-{}-macos-{arch}.app.zip", version.version);
+        let archive = safe_file(directory, &filename)?;
+        safe_file(
+            directory,
+            &format!("BibCiTeX-{}-macos-{arch}.dmg", version.version),
+        )?;
+        let feed = parse_xml(&fs::read_to_string(safe_file(
+            directory,
+            &format!("appcast-{arch}.xml"),
+        )?)?)?;
+        let item = feed.one("", "channel")?.one("", "item")?;
+        ensure(
+            item.one(SPARKLE, "shortVersionString")?.text == version.version,
+            "Sparkle version mismatch",
+        )?;
+        let enclosure = item.one("", "enclosure")?;
+        ensure(
+            enclosure.attr("", "url")
+                == format!("https://github.com/{repository}/releases/download/{tag}/{filename}"),
+            "Unexpected Sparkle payload URL",
+        )?;
+        ensure(
+            enclosure.attr("", "length").parse::<u64>()? == fs::metadata(&archive)?.len(),
+            "Sparkle size mismatch",
+        )?;
+        let signature = Signature::from_slice(
+            &base64::engine::general_purpose::STANDARD
+                .decode(enclosure.attr(SPARKLE, "edSignature"))?,
+        )?;
+        key.verify_strict(&fs::read(&archive)?, &signature)?;
     }
-    let name = String::from_utf8(decoded)?;
-    ensure(
-        !name.is_empty()
-            && name != "."
-            && name != ".."
-            && !name.contains(['/', '\\', '?', '#', '\0']),
-        "Invalid release asset name",
+    for arch in ["x64", "arm64"] {
+        for ext in ["exe", "msi"] {
+            safe_file(
+                directory,
+                &format!("BibCiTeX-{}-windows-{arch}.{ext}", version.version),
+            )?;
+        }
+        let filename = format!("releases.win-{arch}-{}.json", version.channel);
+        let feed: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(safe_file(directory, &filename)?)?)?;
+        let assets = feed["Assets"].as_array().ok_or("Invalid Velopack feed")?;
+        let full = assets
+            .iter()
+            .filter(|a| a["Type"] == "Full" || a["Type"] == 1)
+            .collect::<Vec<_>>();
+        ensure(
+            full.len() == 1,
+            "Expected one full update package per architecture",
+        )?;
+        let asset = full[0];
+        ensure(
+            asset["Version"] == version.version && asset["PackageId"] == "BibCiTeX",
+            "Velopack identity mismatch",
+        )?;
+        let name = asset["FileName"]
+            .as_str()
+            .ok_or("Missing package filename")?;
+        ensure(
+            name.contains(&format!("win-{arch}")),
+            "Velopack architecture missing from filename",
+        )?;
+        let payload = safe_file(directory, name)?;
+        ensure(
+            asset["Size"].as_u64() == Some(fs::metadata(&payload)?.len()),
+            "Velopack size mismatch",
+        )?;
+        let checksum = hash(&payload)?;
+        ensure(
+            asset["SHA256"]
+                .as_str()
+                .is_some_and(|value| value.eq_ignore_ascii_case(&checksum)),
+            "Velopack checksum mismatch",
+        )?;
+    }
+    for locale in ["zh-Hans", "en"] {
+        ensure(
+            !fs::read_to_string(safe_file(directory, &format!("notes-{locale}.md"))?)?
+                .trim()
+                .is_empty(),
+            "Missing localized release notes",
+        )?;
+    }
+    let mut assets = BTreeMap::new();
+    for file in fs::read_dir(directory)? {
+        let file = file?;
+        let name = file
+            .file_name()
+            .into_string()
+            .map_err(|_| "Invalid asset name")?;
+        if matches!(
+            name.as_str(),
+            "release.json" | "SHA256SUMS" | "release-body.md"
+        ) {
+            continue;
+        }
+        let path = safe_file(directory, &name)?;
+        let size = fs::metadata(&path)?.len();
+        ensure(size > 0, "Empty release asset")?;
+        assets.insert(
+            name,
+            Asset {
+                size,
+                sha256: hash(&path)?,
+            },
+        );
+    }
+    let manifest = Manifest {
+        version: version.version,
+        channel: version.channel,
+        assets,
+    };
+    fs::write(
+        directory.join("SHA256SUMS"),
+        manifest
+            .assets
+            .iter()
+            .map(|(name, a)| format!("{}  {name}\n", a.sha256))
+            .collect::<String>(),
     )?;
-    let path = directory.join(name);
-    ensure(path.is_file(), "Missing release payload")?;
-    Ok(path)
+    fs::write(
+        directory.join("release.json"),
+        serde_json::to_vec_pretty(&manifest)?,
+    )?;
+    Ok(manifest)
 }
 
-pub fn verify_release(
-    platform: &str,
-    directory: &Path,
-    version: &str,
-    repository: &str,
-    tag: &str,
-) -> Result<()> {
-    verify_feed(platform, directory, version, repository, tag, None).map(|_| ())
+#[derive(Default, Serialize, Deserialize)]
+pub struct Channels {
+    pub versions: BTreeMap<String, String>,
 }
-
-fn verify_feed(
-    platform: &str,
+/// Generate only forward-moving channel pointers. Package URLs remain version-specific.
+pub fn feeds(
     directory: &Path,
-    version: &str,
+    output: &Path,
     repository: &str,
-    tag: &str,
-    feed_name: Option<&str>,
-) -> Result<PathBuf> {
-    match platform {
-        "macos" => {
-            let feeds = matching_files(directory, |name| {
-                name.starts_with("appcast-")
-                    && name.ends_with(".xml")
-                    && feed_name.is_none_or(|feed| feed == name)
-            })?;
-            ensure(
-                feeds.len() == 1,
-                "Expected one architecture-specific appcast",
-            )?;
-            let root = parse_xml(&fs::read_to_string(&feeds[0])?)?;
-            ensure(
-                root.name == "rss" && root.namespace.is_empty(),
-                "Expected RSS feed",
-            )?;
-            let item = root.one("", "channel")?.one("", "item")?;
-            let enclosure = item.one("", "enclosure")?;
-            let item_version = item
-                .one(SPARKLE, "shortVersionString")
-                .ok()
-                .map(|n| n.text.as_str());
-            ensure(
-                item_version == Some(version)
-                    || enclosure.attr(SPARKLE, "shortVersionString") == version,
-                "App version mismatch",
-            )?;
-            ensure(
-                !enclosure.attr(SPARKLE, "edSignature").is_empty(),
-                "Unsigned Sparkle update",
-            )?;
-            let base = format!("https://github.com/{repository}/releases/download/{tag}/");
-            let asset = asset_from_url(directory, enclosure.attr("", "url"), &base)?;
-            let architecture = match feeds[0].file_name().and_then(|name| name.to_str()) {
-                Some("appcast-arm64.xml") => "arm64",
-                Some("appcast-x86_64.xml") => "x86_64",
-                _ => return Err("Unexpected macOS feed architecture".into()),
-            };
-            let expected = format!("BibCiTeX-{version}-macos-{architecture}.zip");
-            ensure(
-                asset
-                    .file_name()
-                    .is_some_and(|name| name == expected.as_str()),
-                "Sparkle payload architecture mismatch",
-            )?;
-            let size: u64 = enclosure.attr("", "length").parse()?;
-            ensure(fs::metadata(&asset)?.len() == size, "Archive size mismatch")?;
-            Ok(asset)
+    manifest: &Manifest,
+    channels: &mut Channels,
+) -> Result<Vec<String>> {
+    fs::create_dir_all(output)?;
+    let current = Version::parse(&manifest.version)?;
+    let mut result = Vec::new();
+    for audience in audiences(&manifest.channel) {
+        if let Some(previous) = channels.versions.get(*audience)
+            && Version::parse(previous)? >= current
+        {
+            continue;
         }
-        "windows" => {
-            let feeds = matching_files(directory, |name| {
-                name.ends_with(".appinstaller") && feed_name.is_none_or(|feed| feed == name)
-            })?;
-            ensure(feeds.len() == 1, "Expected one App Installer file")?;
-            let root = parse_xml(&fs::read_to_string(&feeds[0])?)?;
-            ensure(
-                root.name == "AppInstaller" && root.namespace == INSTALLER,
-                "Expected App Installer namespace",
-            )?;
-            let package = root.one(INSTALLER, "MainPackage")?;
-            ensure(
-                package.attr("", "Version") == version,
-                "MSIX version mismatch",
-            )?;
-            let base = format!("https://github.com/{repository}/releases/latest/download/");
-            let feed_name = feeds[0]
-                .file_name()
-                .ok_or("Missing feed filename")?
-                .to_string_lossy();
-            let architecture = match feed_name.as_ref() {
-                "BibCiTeX-arm64.appinstaller" => "arm64",
-                "BibCiTeX-x64.appinstaller" => "x64",
-                _ => return Err("Unexpected Windows feed architecture".into()),
-            };
-            ensure(
-                package.attr("", "ProcessorArchitecture") == architecture,
-                "MSIX processor architecture mismatch",
-            )?;
-            ensure(
-                package.attr("", "Name") == "BibCiTeX"
-                    && !package.attr("", "Publisher").trim().is_empty(),
-                "Missing or unexpected MSIX package identity",
-            )?;
-            ensure(
-                root.attr("", "Uri") == format!("{base}{feed_name}"),
-                "Unexpected App Installer URL",
-            )?;
-            let payload_base = format!("https://github.com/{repository}/releases/download/{tag}/");
-            let asset = asset_from_url(directory, package.attr("", "Uri"), &payload_base)?;
-            let expected = format!("BibCiTeX-{version}-{architecture}.msix");
-            ensure(
-                asset
-                    .file_name()
-                    .is_some_and(|name| name == expected.as_str()),
-                "MSIX payload version or architecture mismatch",
-            )?;
-            Ok(asset)
+        for arch in ["arm64", "x86_64"] {
+            let source = fs::read_to_string(directory.join(format!("appcast-{arch}.xml")))?;
+            let root = parse_xml(&source)?;
+            root.one("", "channel")?.one("", "item")?;
+            for locale in ["zh-Hans", "en"] {
+                let link = format!(
+                    "https://github.com/{repository}/releases/download/v{}/notes-{locale}.md",
+                    manifest.version
+                );
+                let xml = source.replace(
+                    "</item>",
+                    &format!("<sparkle:releaseNotesLink>{link}</sparkle:releaseNotesLink></item>"),
+                );
+                let name = format!("appcast-{arch}-{audience}-{locale}.xml");
+                fs::write(output.join(&name), xml)?;
+                result.push(name);
+            }
         }
-        _ => Err("Unknown release platform".into()),
+        for arch in ["x64", "arm64"] {
+            let name = format!("releases.win-{arch}-{audience}.json");
+            let source = directory.join(format!("releases.win-{arch}-{}.json", manifest.channel));
+            fs::copy(source, output.join(&name))?;
+            result.push(name);
+        }
+        channels
+            .versions
+            .insert((*audience).into(), manifest.version.clone());
     }
+    fs::write(
+        output.join("channels.json"),
+        serde_json::to_vec_pretty(channels)?,
+    )?;
+    result.push("channels.json".into());
+    Ok(result)
 }
 
 pub struct CommandResult {
@@ -332,7 +394,6 @@ pub struct CommandResult {
     pub output: String,
     pub error: String,
 }
-
 pub fn github(arguments: &[String]) -> Result<CommandResult> {
     let output = Command::new("gh").args(arguments).output()?;
     Ok(CommandResult {
@@ -341,157 +402,235 @@ pub fn github(arguments: &[String]) -> Result<CommandResult> {
         error: String::from_utf8_lossy(&output.stderr).into_owned(),
     })
 }
-
-fn arguments(args: &[&str]) -> Vec<String> {
-    args.iter().map(|arg| (*arg).to_owned()).collect()
+fn args(values: &[&str]) -> Vec<String> {
+    values.iter().map(|v| (*v).into()).collect()
 }
-fn command_ok(result: CommandResult) -> Result<()> {
-    ensure(result.success, &result.error)
+fn successful(value: CommandResult) -> Result<()> {
+    ensure(value.success, &value.error)
 }
-
-#[derive(Deserialize)]
-struct LatestRelease {
-    tag_name: String,
-}
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ExistingRelease {
-    is_draft: bool,
-    is_prerelease: bool,
-}
-
+/// Publish all immutable assets first, then advance the separate channel index release.
 pub fn publish_release(
     tag: &str,
     directory: &Path,
     repository: &str,
-    gh: impl FnMut(&[String]) -> Result<CommandResult>,
-) -> Result<()> {
-    publish_release_with_key(tag, directory, repository, gh, &legacy::public_key()?)
-}
-
-fn publish_release_with_key(
-    tag: &str,
-    directory: &Path,
-    repository: &str,
+    public_key: &str,
     mut gh: impl FnMut(&[String]) -> Result<CommandResult>,
-    key: &minisign::PublicKey,
 ) -> Result<()> {
-    let version = versions(tag)?;
-    legacy::validate(directory, repository, tag, key)?;
-    let assets = matching_files(directory, |_| true)?;
-    let names = assets
-        .iter()
-        .filter_map(|p| p.file_name())
-        .map(|s| s.to_string_lossy())
-        .collect::<Vec<_>>();
-    let mut expected = vec![
-        format!("BibCiTeX-{}-macos-arm64.zip", version.version),
-        format!("BibCiTeX-{}-macos-x86_64.zip", version.version),
-        "appcast-arm64.xml".into(),
-        "appcast-x86_64.xml".into(),
-        "BibCiTeX-x64.appinstaller".into(),
-        "BibCiTeX-arm64.appinstaller".into(),
-        "latest.json".into(),
-    ];
-    for (_, name) in legacy::PAYLOADS {
-        expected.push(name.into());
-        expected.push(format!("{name}.sig"));
-    }
-    ensure(
-        assets.len() == 17
-            && expected.iter().all(|name| names.iter().any(|n| n == name))
-            && names.iter().filter(|n| n.ends_with(".msix")).count() == 2,
-        "Missing or unexpected release artifacts",
-    )?;
-    for asset in &assets {
-        ensure(fs::metadata(asset)?.len() > 0, "Empty release artifact")?;
-    }
-    for arch in ["arm64", "x86_64"] {
-        verify_feed(
-            "macos",
-            directory,
-            &version.version,
-            repository,
-            tag,
-            Some(&format!("appcast-{arch}.xml")),
-        )?;
-    }
-    let mut windows_payloads = Vec::new();
-    for arch in ["arm64", "x64"] {
-        windows_payloads.push(verify_feed(
-            "windows",
-            directory,
-            &version.windows,
-            repository,
-            tag,
-            Some(&format!("BibCiTeX-{arch}.appinstaller")),
-        )?);
-    }
-    ensure(
-        windows_payloads[0] != windows_payloads[1],
-        "Windows architectures reference the same MSIX payload",
-    )?;
-    let latest = gh(&arguments(&[
-        "api",
-        &format!("repos/{repository}/releases/latest"),
+    let manifest = prepare(directory, tag, repository, public_key)?;
+    let make_latest = if manifest.channel == "stable" {
+        let latest = gh(&args(&[
+            "api",
+            &format!("repos/{repository}/releases/latest"),
+        ]))?;
+        if latest.success {
+            let value: serde_json::Value = serde_json::from_str(&latest.output)?;
+            let previous = versions(
+                value["tag_name"]
+                    .as_str()
+                    .ok_or("Invalid latest release response")?,
+            )?;
+            Version::parse(&manifest.version)? > Version::parse(&previous.version)?
+        } else {
+            ensure(latest.error.contains("404"), &latest.error)?;
+            true
+        }
+    } else {
+        false
+    };
+    let recovery = tempfile::tempdir()?;
+    let mut published = false;
+    let existing = gh(&args(&[
+        "release", "view", tag, "--repo", repository, "--json", "isDraft",
     ]))?;
-    if latest.success {
-        let latest: LatestRelease = serde_json::from_str(&latest.output)?;
-        if let Ok(previous) = versions(&latest.tag_name) {
+    if existing.success {
+        let value: serde_json::Value = serde_json::from_str(&existing.output)?;
+        ensure(value["isDraft"].is_boolean(), "Invalid release response")?;
+        published = value["isDraft"] == false;
+        if published {
+            successful(gh(&args(&[
+                "release",
+                "download",
+                tag,
+                "--repo",
+                repository,
+                "--pattern",
+                "release.json",
+                "--dir",
+                recovery.path().to_str().ok_or("Invalid path")?,
+            ]))?)?;
+            let remote: Manifest =
+                serde_json::from_slice(&fs::read(recovery.path().join("release.json"))?)?;
             ensure(
-                version.parts > previous.parts,
-                "The stable release must be newer than the currently published stable version",
+                remote == manifest,
+                "Published artifacts differ; refusing overwrite",
             )?;
         }
     } else {
-        ensure(latest.error.contains("404"), &latest.error)?;
-    }
-    let release = gh(&arguments(&[
-        "release",
-        "view",
-        tag,
-        "--json",
-        "isDraft,isPrerelease",
-    ]))?;
-    if release.success {
-        let release: ExistingRelease = serde_json::from_str(&release.output)?;
         ensure(
-            release.is_draft && !release.is_prerelease,
-            "Refusing to replace an already published or prerelease release",
+            existing.error.contains("404")
+                || existing.error.to_lowercase().contains("release not found"),
+            &existing.error,
         )?;
-    } else {
-        ensure(
-            release.error.contains("404")
-                || release.error.to_lowercase().contains("release not found"),
-            &release.error,
-        )?;
-        command_ok(gh(&arguments(&[
+        successful(gh(&args(&[
             "release",
             "create",
             tag,
+            "--repo",
+            repository,
             "--verify-tag",
             "--draft",
             "--title",
             tag,
-            "--generate-notes",
         ]))?)?;
     }
-    let mut upload = arguments(&["release", "upload", tag]);
-    for asset in &assets {
-        upload.push(asset.to_str().ok_or("Non-UTF-8 release path")?.to_owned());
+    if !published {
+        let body = format!(
+            "## 中文\n\n{}\n\n## English\n\n{}",
+            fs::read_to_string(directory.join("notes-zh-Hans.md"))?,
+            fs::read_to_string(directory.join("notes-en.md"))?
+        );
+        fs::write(directory.join("release-body.md"), body)?;
+        let mut upload = args(&["release", "upload", tag, "--repo", repository, "--clobber"]);
+        for name in manifest
+            .assets
+            .keys()
+            .map(String::as_str)
+            .chain(["SHA256SUMS", "release.json"])
+        {
+            upload.push(directory.join(name).to_string_lossy().into_owned());
+        }
+        successful(gh(&upload)?)?;
+        successful(gh(&args(&[
+            "release",
+            "edit",
+            tag,
+            "--repo",
+            repository,
+            "--draft=false",
+            if manifest.channel == "stable" {
+                "--prerelease=false"
+            } else {
+                "--prerelease=true"
+            },
+            if make_latest {
+                "--latest"
+            } else {
+                "--latest=false"
+            },
+            "--notes-file",
+            directory
+                .join("release-body.md")
+                .to_str()
+                .ok_or("Invalid path")?,
+        ]))?)?;
     }
-    upload.push("--clobber".into());
-    // A failed upload leaves a draft; all previously published feeds stay intact.
-    command_ok(gh(&upload)?)?;
-    command_ok(gh(&arguments(&[
-        "release",
-        "edit",
-        tag,
-        "--draft=false",
-        "--prerelease=false",
-        "--latest",
-    ]))?)
+    let work = tempfile::tempdir()?;
+    let hub = gh(&args(&[
+        "api",
+        &format!("repos/{repository}/releases/tags/{HUB}"),
+    ]))?;
+    let mut channels = Channels::default();
+    let mut remote_assets = BTreeMap::new();
+    if hub.success {
+        let value: serde_json::Value = serde_json::from_str(&hub.output)?;
+        for asset in value["assets"]
+            .as_array()
+            .ok_or("Invalid update release response")?
+        {
+            let name = asset["name"].as_str().ok_or("Invalid update asset")?;
+            remote_assets.insert(name.to_owned(), asset.clone());
+        }
+        if remote_assets.contains_key("channels.json") {
+            successful(gh(&args(&[
+                "release",
+                "download",
+                HUB,
+                "--repo",
+                repository,
+                "--pattern",
+                "channels.json",
+                "--dir",
+                work.path().to_str().ok_or("Invalid path")?,
+            ]))?)?;
+            channels = serde_json::from_slice(&fs::read(work.path().join("channels.json"))?)?;
+        } else {
+            ensure(
+                remote_assets.is_empty(),
+                "Update catalog is missing; refuse to reset existing feeds",
+            )?;
+        }
+    } else {
+        ensure(
+            hub.error.contains("404") || hub.error.to_lowercase().contains("release not found"),
+            &hub.error,
+        )?;
+        successful(gh(&args(&[
+            "release",
+            "create",
+            HUB,
+            "--repo",
+            repository,
+            "--target",
+            tag,
+            "--prerelease",
+            "--latest=false",
+            "--title",
+            "Update feeds",
+        ]))?)?;
+    }
+    if !remote_assets.contains_key("channels.json") {
+        fs::write(
+            work.path().join("channels.json"),
+            serde_json::to_vec_pretty(&channels)?,
+        )?;
+        successful(gh(&args(&[
+            "release",
+            "upload",
+            HUB,
+            "--repo",
+            repository,
+            "--clobber",
+            work.path()
+                .join("channels.json")
+                .to_str()
+                .ok_or("Invalid path")?,
+        ]))?)?;
+    }
+    let names = feeds(directory, work.path(), repository, &manifest, &mut channels)?;
+    // Full packages must be reachable at the feed base URL before a feed points at them.
+    let mut payloads = args(&["release", "upload", HUB, "--repo", repository]);
+    for name in manifest
+        .assets
+        .keys()
+        .filter(|name| name.ends_with(".nupkg"))
+    {
+        if let Some(remote) = remote_assets.get(name) {
+            let expected = &manifest.assets[name];
+            ensure(
+                remote["size"].as_u64() == Some(expected.size)
+                    && remote["digest"] == format!("sha256:{}", expected.sha256),
+                "Existing update package differs or has no digest",
+            )?;
+        } else {
+            payloads.push(directory.join(name).to_string_lossy().into_owned());
+        }
+    }
+    if payloads.len() > 5 {
+        successful(gh(&payloads)?)?;
+    }
+    // Publish the catalog last so failed runs can safely regenerate the same pointers.
+    for name in names {
+        successful(gh(&args(&[
+            "release",
+            "upload",
+            HUB,
+            "--repo",
+            repository,
+            "--clobber",
+            work.path().join(name).to_str().ok_or("Invalid path")?,
+        ]))?)?;
+    }
+    Ok(())
 }
-
 #[cfg(test)]
 mod tests;

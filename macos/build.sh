@@ -30,7 +30,7 @@ else
     build_args+=(CODE_SIGNING_ALLOWED=NO)
 fi
 if [[ -n "${APP_VERSION:-}" ]]; then
-    [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "APP_VERSION must have three numeric components" >&2; exit 1; }
+    [[ "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta)\.[0-9]+)?$ ]] || { echo "APP_VERSION must be SemVer with optional alpha.N or beta.N" >&2; exit 1; }
     build_args+=("MARKETING_VERSION=$APP_VERSION")
 fi
 if [[ -n "${BUILD_NUMBER:-}" ]]; then
@@ -52,21 +52,23 @@ mkdir -p "$(dirname "$app")"
 # This destination contains only the generated app, never source or user libraries.
 rm -rf "$app"
 ditto "$product" "$app"
-if [[ -n "${SPARKLE_FEED_URL:-}" && -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
-    /usr/libexec/PlistBuddy -c "Add :SUFeedURL string $SPARKLE_FEED_URL" "$app/Contents/Info.plist"
+if [[ -n "${UPDATE_BASE_URL:-}" && -n "${SPARKLE_PUBLIC_ED_KEY:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :UpdateBaseURL string $UPDATE_BASE_URL" "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" "$app/Contents/Info.plist"
 fi
+sign_options=(--force)
+if [[ "$identity" != - ]]; then sign_options+=(--options runtime); fi
 # Sparkle's nested code is signed inside-out, preserving Downloader entitlements.
 find "$app/Contents/Frameworks/Sparkle.framework" -type f -name Autoupdate -print0 | while IFS= read -r -d '' tool; do
-    codesign --force --options runtime --sign "$identity" "$tool"
+    codesign "${sign_options[@]}" --sign "$identity" "$tool"
 done
 find "$app/Contents/Frameworks/Sparkle.framework" -type d \( -name '*.xpc' -o -name '*.app' \) -depth -print0 | while IFS= read -r -d '' nested; do
     if [[ "$nested" == */Downloader.xpc ]]; then
-        codesign --force --options runtime --preserve-metadata=entitlements --sign "$identity" "$nested"
+        codesign "${sign_options[@]}" --preserve-metadata=entitlements --sign "$identity" "$nested"
     else
-        codesign --force --options runtime --sign "$identity" "$nested"
+        codesign "${sign_options[@]}" --sign "$identity" "$nested"
     fi
 done
-codesign --force --options runtime --sign "$identity" "$app/Contents/Frameworks/Sparkle.framework"
-codesign --force --options runtime --sign "$identity" "$app"
+codesign "${sign_options[@]}" --sign "$identity" "$app/Contents/Frameworks/Sparkle.framework"
+codesign "${sign_options[@]}" --sign "$identity" "$app"
 echo "$app"

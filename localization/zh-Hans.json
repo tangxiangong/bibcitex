@@ -351,5 +351,13 @@
   "windowsMenu.size": "大小(&S)",
   "windowsMenu.minimize": "最小化(&N)",
   "windowsMenu.maximize": "最大化(&X)",
-  "windowsMenu.close": "关闭(&C)"
+  "windowsMenu.close": "关闭(&C)",
+  "更新通道": "更新通道",
+  "正式版": "正式版",
+  "自动下载并安装更新": "自动下载并安装更新",
+  "下载并安装": "下载并安装",
+  "请先安装发布版本再检查更新": "请先安装发布版本再检查更新",
+  "Beta": "Beta",
+  "Alpha": "Alpha",
+  "更新设置已更改，请重新检查更新": "更新设置已更改，请重新检查更新"
 }

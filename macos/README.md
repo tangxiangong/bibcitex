@@ -39,9 +39,13 @@ xcodebuild -project macos/BibCiTeX.xcodeproj -scheme BibCiTeX \
 
 ## Updates
 
-[Sparkle 2.10.0](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.0) handles update discovery, its native dialog, EdDSA verification, installation and relaunch. `SUShowReleaseNotes=false` disables the HTML release-notes view. **检查更新 remains disabled until a real HTTPS appcast URL and Ed25519 public key are configured.** The bundle command accepts `SPARKLE_FEED_URL`, `SPARKLE_PUBLIC_ED_KEY` and `CODE_SIGN_IDENTITY`; ad-hoc signing is for local use. Distribution requires Developer ID signing, notarization, signed update archives and a publisher-operated HTTPS feed.
+Sparkle 2 owns archive verification, automatic download/install and relaunch. The app menu exposes stable, beta and alpha channels and automatic download/install. Announcement feeds follow the application language (`zh-Hans` or `en`) and the running binary architecture. Native Markdown release notes are enabled; no WebView is added.
 
-See [Sparkle's publishing instructions](https://sparkle-project.org/documentation/publishing/). The export script signs nested services before the app and preserves Downloader entitlements. Live update installation has not been tested.
+All update files are hosted in GitHub Releases. Versioned releases contain the DMG, `.app.zip`, localized notes and SHA256SUMS; the separate `update-feed` release contains architecture/channel/language appcasts. Formal releases can advance stable/beta/alpha feeds, beta can advance beta/alpha, and alpha only alpha. A feed never moves to an older semantic version.
+
+The workflow does not require Apple Developer ID or notarization. It uses ad-hoc application signing plus a separate, self-generated Sparkle Ed25519 update key. Configure release-environment secret `SPARKLE_PRIVATE_ED_KEY` and variable `SPARKLE_PUBLIC_ED_KEY` from Sparkle's `generate_keys`; keep that key pair across releases. These are not paid certificates. Without a configured public key, local builds leave update checks disabled. macOS Gatekeeper may still require user approval for a non-notarized first installation; update verification does not remove OS checks.
+
+See [the release protocol](../docs/updates.md). There is no legacy Tauri migration feed.
 
 ## Verification
 

@@ -1,9 +1,1 @@
-{
-  "profiles": {
-    "BibCiTeX (Package)": {
-      "commandName": "MsixPackage",
-      "alwaysReinstallApp": false,
-      "nativeDebugging": false
-    }
-  }
-}
+{"profiles":{"BibCiTeX":{"commandName":"Project","nativeDebugging":false}}}

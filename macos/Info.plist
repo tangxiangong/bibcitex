@@ -13,6 +13,8 @@
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
     <key>NSAppleEventsUsageDescription</key><string>将引用键粘贴到当前应用。</string>
-    <key>SUEnableAutomaticChecks</key><false/>
-    <key>SUShowReleaseNotes</key><false/>
+    <key>SUEnableAutomaticChecks</key><true/>
+    <key>SUShowReleaseNotes</key><true/>
+    <key>SUAutomaticallyUpdate</key><false/>
+    <key>SUVerifyUpdateBeforeExtraction</key><true/>
 </dict></plist>

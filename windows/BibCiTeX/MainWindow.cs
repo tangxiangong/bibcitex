@@ -127,7 +127,7 @@ internal sealed class MainWindow : Window
         {
             if (reloading) return;
             current = (libraries.SelectedItem as ListViewItem)?.Tag as Library;
-            if (current is { } selected) { Localized.BindValue(heading, TextBlock.TextProperty, () => selected.Name); ApplicationData.Current.LocalSettings.Values["mainLibrary"] = selected.Name; }
+            if (current is { } selected) { Localized.BindValue(heading, TextBlock.TextProperty, () => selected.Name); NativeSettings.Values["mainLibrary"] = selected.Name; }
             else Localized.Bind(heading, TextBlock.TextProperty, "文献工作台");
             references.Items.Clear();
             Localized.Count(count, 0);
@@ -165,7 +165,7 @@ internal sealed class MainWindow : Window
         }
         var app = Group("BibCiTeX");
         Add(app, "关于 BibCiTeX", () => _ = ShowAbout());
-        var update = Add(app, "检查更新", () => _ = CheckUpdates()); update.IsEnabled = Updater.CanCheck;
+        var update = Add(app, "检查更新", () => _ = CheckUpdates()); update.IsEnabled = Updater.CanCheck; Updater.AddSettings(app);
         app.Items.Add(new MenuFlyoutSeparator()); Add(app, "退出 BibCiTeX", () => { quitting = true; Close(); });
         var file = Group("menu.file"); Add(file, "新增文献库", () => _ = AddLibrary(), VirtualKey.O);
         var reference = Group("文献");
@@ -272,7 +272,7 @@ internal sealed class MainWindow : Window
             if (request != reloadVersion) return;
             // Resolve selection after the await: a user may have switched libraries meanwhile.
             var previousPath = current?.Path;
-            var name = select ?? current?.Name ?? ApplicationData.Current.LocalSettings.Values["mainLibrary"] as string;
+            var name = select ?? current?.Name ?? NativeSettings.Values["mainLibrary"] as string;
             reloading = true;
             libraries.Items.Clear();
             foreach (var library in rows)
@@ -306,7 +306,7 @@ internal sealed class MainWindow : Window
             current = (libraries.SelectedItem as ListViewItem)?.Tag as Library;
             if (current is { } selected)
             {
-                ApplicationData.Current.LocalSettings.Values["mainLibrary"] = selected.Name;
+                NativeSettings.Values["mainLibrary"] = selected.Name;
                 Localized.BindValue(heading, TextBlock.TextProperty, () => selected.Name);
             }
             else Localized.Bind(heading, TextBlock.TextProperty, "文献工作台");
@@ -569,8 +569,8 @@ internal sealed class MainWindow : Window
         var content = new StackPanel { Spacing = 12, Padding = new Thickness(28), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, RequestedTheme = App.Theme };
         var logo = BrandImage(96); logo.HorizontalAlignment = HorizontalAlignment.Center; content.Children.Add(logo);
         var name = Views.Text("BibCiTeX", 24); name.HorizontalAlignment = HorizontalAlignment.Center; content.Children.Add(name);
-        var version = Windows.ApplicationModel.Package.Current.Id.Version;
-        var versionText = Views.Text($"{version.Major}.{version.Minor}.{version.Build} ({version.Revision})", 13); versionText.HorizontalAlignment = HorizontalAlignment.Center; versionText.IsTextSelectionEnabled = true;
+        var version = Updater.CurrentVersion;
+        var versionText = Views.Text(version, 13); versionText.HorizontalAlignment = HorizontalAlignment.Center; versionText.IsTextSelectionEnabled = true;
         content.Children.Add(Views.SelectableText(versionText));
         var close = new Button { HorizontalAlignment = HorizontalAlignment.Center }; Localized.Bind(close, ContentControl.ContentProperty, "关闭"); close.Click += (_, _) => window.Close(); content.Children.Add(close);
         content.KeyDown += (_, args) => { if (args.Key == VirtualKey.Escape) { window.Close(); args.Handled = true; } };

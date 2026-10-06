@@ -22,7 +22,7 @@ struct BibCiTeXApp: App {
                     delegate.configureMainWindow()
                 }
                 .environment(\.locale, L10n.locale)
-                .onChange(of: language) { delegate.localizeMenu() }
+                .onChange(of: language) { delegate.localizeMenu(); updates.languageChanged() }
                 .onChange(of: appearance) { applyAppearance() }
         }
         .defaultSize(width: 1200, height: 800)
@@ -38,6 +38,12 @@ struct BibCiTeXApp: App {
             }
             CommandGroup(after: .appInfo) {
                 Button(L10n.text("检查更新")) { updates.check() }.disabled(!updates.canCheck)
+                Picker(L10n.text("更新通道"), selection: $updates.channel) {
+                    Text(L10n.text("正式版")).tag("stable")
+                    Text("Beta").tag("beta")
+                    Text("Alpha").tag("alpha")
+                }
+                Toggle(L10n.text("自动下载并安装更新"), isOn: $updates.automaticDownloads)
             }
             CommandGroup(replacing: .newItem) {
                 Button(L10n.text("新增文献库")) { delegate.showMainWindow(); model.adding = true }.keyboardShortcut("o")

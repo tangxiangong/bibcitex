@@ -14,7 +14,7 @@ public partial class App : Application
     {
         // Read the user's language list, independently of our persisted native override.
         L10n.SystemLanguage = () => Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? System.Globalization.CultureInfo.InstalledUICulture.Name;
-        var settings = Windows.Storage.ApplicationData.Current.LocalSettings.Values;
+        var settings = NativeSettings.Values;
         var selection = settings.TryGetValue("language", out var value) ? value as string ?? "system" : "system";
         ApplyNativeLanguage(selection);
         L10n.Select(selection);
@@ -37,20 +37,21 @@ public partial class App : Application
         }
         var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         instance.Activated += (_, _) => dispatcher.TryEnqueue(() => { main?.AppWindow.Show(); main?.Activate(); });
-        Theme = Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue("theme", out var value)
+        Theme = NativeSettings.Values.TryGetValue("theme", out var value)
             && Enum.TryParse<ElementTheme>(value as string, out var theme) ? theme : ElementTheme.Default;
         Exception? initializationError = null;
         try { await RustCore.Initialize(); } catch (Exception error) { initializationError = error; }
         main = new MainWindow(); Helper = new HelperWindow();
         Tray = new TrayWindow(() => { main.AppWindow.Show(); main.Activate(); });
         main.Closed += (_, _) => { Tray.Shutdown(); Helper.Dispose(); Helper.Close(); };
+        ((FrameworkElement)main.Content).Loaded += (_, _) => _ = Updater.Start((FrameworkElement)main.Content);
         main.Activate(); main.InstallShortcut();
         if (initializationError is { } startupError)
             ((FrameworkElement)main.Content).Loaded += async (_, _) => await Views.Error((FrameworkElement)main.Content, startupError);
     }
     internal static void SetLanguage(string language)
     {
-        Windows.Storage.ApplicationData.Current.LocalSettings.Values["language"] = language;
+        NativeSettings.Values["language"] = language;
         ApplyNativeLanguage(language);
         L10n.Select(language);
         if (Current is App { main: { } window }) WindowInterop.LocalizeSystemMenu(window);
@@ -60,7 +61,7 @@ public partial class App : Application
     internal static void SetTheme(ElementTheme theme)
     {
         Theme = theme;
-        Windows.Storage.ApplicationData.Current.LocalSettings.Values["theme"] = theme.ToString();
+        NativeSettings.Values["theme"] = theme.ToString();
         if (Current is App { main: { } window }) ((FrameworkElement)window.Content).RequestedTheme = theme;
         if (Tray is { } tray) ((FrameworkElement)tray.Content).RequestedTheme = theme;
         if (Helper is { } helper) ((FrameworkElement)helper.Content).RequestedTheme = theme;

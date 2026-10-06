@@ -351,5 +351,13 @@
   "windowsMenu.size": "&Size",
   "windowsMenu.minimize": "Mi&nimize",
   "windowsMenu.maximize": "Ma&ximize",
-  "windowsMenu.close": "&Close"
+  "windowsMenu.close": "&Close",
+  "更新通道": "Update channel",
+  "正式版": "Stable",
+  "自动下载并安装更新": "Automatically download and install updates",
+  "下载并安装": "Download and install",
+  "请先安装发布版本再检查更新": "Install a released version before checking for updates",
+  "Beta": "Beta",
+  "Alpha": "Alpha",
+  "更新设置已更改，请重新检查更新": "Update settings changed. Check for updates again."
 }

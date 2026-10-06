@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using BibCiTeX;
 
+UpdatePolicyTests.Run();
 UiBehaviorTests.Run();
 LocalizationTests.Run();
 await DialogQueueTests.Run();

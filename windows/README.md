@@ -8,7 +8,7 @@ C# / WinUI 3（Windows App SDK 2.5.1 稳定版）主窗口与 Spotlight helper�
 
 MSBuild 会自动构建 Rust DLL、运行 Interoptopus 生成器，再编译 WinUI；干净检出不需要预先执行脚本、Just 或手工生成绑定。Rust 源码变化会触发构建检查，设计时 IntelliSense 不启动 Cargo。找不到 Cargo 时检查 PATH，再检查 `%USERPROFILE%/.cargo/bin/cargo.exe`，缺失时输出明确错误。工具链沿用当前 rustup / `RUSTUP_TOOLCHAIN`，不固定版本；没有 rustup 则使用已安装目标。显式设置 `CargoExecutable` 时不会自动改用其他工具链，除非同时指定匹配的 `RustupExecutable`。
 
-项目配置了 `BibCiTeX (Package)` 启动项，Visual Studio F5 使用 MSIX 包身份。运行由用户操作；本次没有启动应用或 GUI。macOS 已验证共享动态库和 C# 语义，完整 Windows XAML 编译及部署须在 Windows 验证。
+项目使用普通 `Project` 启动项，Visual Studio F5 运行非打包 WinUI 程序，不依赖包身份。运行由用户操作；本次没有启动应用或 GUI。macOS 已验证共享动态库和 C# 语义，完整 Windows XAML 编译及部署须在 Windows 验证。
 
 CLI 和 IDE 使用同一构建链：
 
@@ -21,21 +21,15 @@ dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 
 ## 原生更新发布
 
-使用独立且空的输出目录；每次发布递增四段版本号。证书必须已安装在当前用户证书库，具有私钥，Subject 必须与 Publisher 完全相同。通过 `WINDOWS_TIMESTAMP_URL` 或 `-TimestampServer` 提供证书颁发机构的时间戳地址。开发默认 `CN=BibCiTeX` 不代表已经签名或具有受信任的证书。
+Windows uses unpackaged, self-contained WinUI 3 with Velopack 1.2.161. `Program.Main` handles installer hooks before starting XAML. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
 
 ```powershell
-./windows/scripts/publish.ps1 -Architecture x64 -Version $ReleaseVersion `
-  -Publisher $CertificateSubject -CertificateThumbprint $Thumbprint `
-  -PublishBaseUri $ReleaseHttpsUri -OutputDirectory $ReleaseDirectory
+./windows/scripts/publish.ps1 -Architecture x64 -Version 0.6.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
-脚本生成签名 MSIX 和 `.appinstaller`，不上传、不安装、不启动。将二者发布到指定的真实 HTTPS 地址，再通过 `.appinstaller` 安装；仅侧载 `.msix` 没有 App Installer 更新源。ARM64 使用单独架构的 `.appinstaller`。
+Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow uploads all artifacts to GitHub Releases and advances `update-feed` channel pointers only after verification. It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
 
-“检查更新”使用 Windows `Package.CheckUpdateAvailabilityAsync` 和 `PackageManager.RequestAddPackageByAppInstallerFileAsync`；安装确认、签名校验和替换由系统部署服务完成。未配置更新源时显示实际错误，不编造发行 URL，不自行下载替换 EXE。
-
-- [Microsoft: update non-Store apps](https://learn.microsoft.com/en-us/windows/msix/non-store-developer-updates)
-- [Microsoft: App Installer install/update API](https://learn.microsoft.com/en-us/uwp/api/windows.management.deployment.packagemanager.requestaddpackagebyappinstallerfileasync)
-- [CSharpMath](https://github.com/verybadcat/CSharpMath)
+Channel preferences are stable/beta/alpha, independent of x64/arm64. Selecting stable does not downgrade an installed preview. Markdown notes use the application's selected language and native WinUI text controls. See [the release protocol](../docs/updates.md).
 
 ## 资源
 
@@ -52,11 +46,3 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 该集成测试只访问临时 BibTeX 文件，验证 Unicode、完整字段、数学块、错误、并发、Wire 内存所有权以及文件缓存更新；另外直接在内存调用 Skia 渲染分数、积分、矩阵、希腊字母和长公式，检查 DPI、颜色和边界像素，不调用文献库配置、剪贴板、粘贴或界面，不保存图片。
 
 `windows/Tests/UiSemantics/BibCiTeX.UiSemantics.csproj` 是不可运行的 C# 语义检查项目，引用真实 WinUI 程序集并编译全部界面 C# 源文件。它明确替换 Windows XAML 编译器生成的 `InitializeComponent` 边界为抛异常声明，不生成 XAML 资源，也不证明应用构建通过；Windows CI 仍须构建真正的 `BibCiTeX.csproj`。
-
-## 从旧 Tauri 版本升级
-
-发布任务还使用 NSIS 构建 `BibCiTeX_x64-setup.exe` / `BibCiTeX_arm64-setup.exe`。它们嵌入迁移脚本和 App Installer 元数据，经 Authenticode 和旧 Tauri 更新密钥双重签名，供原 `latest.json` 更新渠道使用。迁移器调用系统 `Add-AppxPackage -AppInstallerFile`，安装 WinUI 包并登记后续更新源；部署或身份校验失败不会卸载旧应用。
-
-只有安装路径注册信息和卸载注册信息完全匹配的当前用户 NSIS 安装（包括自定义目录），才会在成功部署后以 `/S /UPDATE` 卸载，保留文献配置。旧 MSI 通过 Tauri 的确定 UpgradeCode 枚举并核对产品名与发布者。旧 MSI 是所有用户安装，因此不会为当前用户迁移而卸载共享程序；安装日志明确说明保留旧 MSI。无法验证身份或版本的安装会保留，避免执行不确定的卸载命令；新程序安装成功后通过包身份启动；旧安装清理失败会明确报错，但不阻止新程序启动。更新签名私钥必须与旧客户端内置公钥匹配。构建迁移器需要 NSIS 和 Windows SDK `signtool.exe`，不需要恢复 Tauri UI 或运行时。
-
-`windows/Tests/Migration.Tests.ps1` 使用替身验证成功部署、部署失败、发布者不符及元数据不符的路径，不安装程序。完整旧版本到 MSIX 的端到端升级仍需要 Windows、受信任发布证书以及真实发布资产验证。

@@ -161,7 +161,7 @@ internal sealed class TrayWindow : Window
             var rows = await RustCore.Libraries();
             if (!visible || request != reloadVersion) return;
             var saved = (library.SelectedItem as Library)?.Name
-                ?? Windows.Storage.ApplicationData.Current.LocalSettings.Values["trayLibrary"] as string;
+                ?? NativeSettings.Values["trayLibrary"] as string;
             updating = true;
             library.ItemsSource = rows; library.IsEnabled = rows.Count > 0;
             library.SelectedItem = rows.FirstOrDefault(x => x.Name == saved) ?? rows.FirstOrDefault();
@@ -183,7 +183,7 @@ internal sealed class TrayWindow : Window
         var selectedType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         SetBusy(true); ShowDetail(null); SetError(null);
         if (current is null) { ClearResults(); SetBusy(false); return; }
-        Windows.Storage.ApplicationData.Current.LocalSettings.Values["trayLibrary"] = current.Name;
+        NativeSettings.Values["trayLibrary"] = current.Name;
         try
         {
             if (debounce) await Task.Delay(100);
