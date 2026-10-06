@@ -80,8 +80,8 @@ internal sealed class TrayWindow : Window
         void SearchBorder() => searchBorder.BorderBrush = Views.Brush(search.FocusState != FocusState.Unfocused ? "SystemControlForegroundAccentBrush" : "ControlStrokeColorDefaultBrush");
         search.GotFocus += (_, _) => SearchBorder(); search.LostFocus += (_, _) => SearchBorder(); searchBorder.ActualThemeChanged += (_, _) => SearchBorder();
         Grid.SetRow(searchBorder, 1); root.Children.Add(searchBorder);
-        foreach (var (label, value) in Reference.Types) type.Items.Add(LocalizedCombo(label, value));
-        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(LocalizedCombo(label, value));
+        foreach (var (label, value) in Reference.Types) type.Items.Add(Localized.ComboItem(label, value));
+        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(Localized.ComboItem(label, value));
         type.SelectedIndex = field.SelectedIndex = 0;
         var filters = new Grid { ColumnSpacing = 8 };
         filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new());
@@ -213,12 +213,6 @@ internal sealed class TrayWindow : Window
         row.Children.Add(metadata);
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Key + " " + reference.Title);
-        return item;
-    }
-    private static ComboBoxItem LocalizedCombo(string key, string value)
-    {
-        var item = new ComboBoxItem { Tag = value };
-        Localized.Bind(item, ContentControl.ContentProperty, key);
         return item;
     }
     private void ShowDetail(Reference? reference)

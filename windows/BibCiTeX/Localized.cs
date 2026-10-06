@@ -22,6 +22,23 @@ internal static class Localized
             Mode = BindingMode.OneWay
         });
     }
+    internal static ComboBoxItem ComboItem(string key, string value)
+    {
+        // ComboBox caches the selected Content separately. Keep that content stable
+        // and bind inside its template so both presenters observe language changes.
+        var item = new ComboBoxItem
+        {
+            Tag = value,
+            Content = new LocalizationValue(() => L10n.Text(key)),
+            ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+                <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                    <TextBlock Text="{Binding Value, Mode=OneWay}" />
+                </DataTemplate>
+                """)
+        };
+        Name(item, key);
+        return item;
+    }
     internal static void Error(DependencyObject target, DependencyProperty property, Exception error)
         => BindValue(target, property, () => L10n.ErrorMessage(error));
     internal static ContentDialog Dialog(ContentDialog dialog, string title, string close = "确定", string? primary = null)

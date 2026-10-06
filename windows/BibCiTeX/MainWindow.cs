@@ -96,8 +96,8 @@ internal sealed class MainWindow : Window
         var countRow = Views.Row(count, progress); countRow.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(countRow, 1); titleRow.Children.Add(countRow);
         Grid.SetRow(titleRow, 0); center.Children.Add(titleRow);
-        foreach (var (label, value) in Reference.Types) type.Items.Add(LocalizedCombo(label, value));
-        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(LocalizedCombo(label, value));
+        foreach (var (label, value) in Reference.Types) type.Items.Add(Localized.ComboItem(label, value));
+        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(Localized.ComboItem(label, value));
         type.SelectedIndex = field.SelectedIndex = 0;
         var searchRow = new Grid { ColumnSpacing = 8 };
         searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); searchRow.ColumnDefinitions.Add(new());
@@ -490,12 +490,6 @@ internal sealed class MainWindow : Window
     {
         try { await RustCore.RemoveLibrary(library.Name); await ReloadLibraries(); }
         catch (Exception error) { await Report(error); }
-    }
-    private static ComboBoxItem LocalizedCombo(string key, string value)
-    {
-        var item = new ComboBoxItem { Tag = value };
-        Localized.Bind(item, ContentControl.ContentProperty, key);
-        return item;
     }
     private void ShowDetail(Reference? reference)
     {

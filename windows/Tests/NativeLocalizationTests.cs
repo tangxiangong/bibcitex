@@ -13,6 +13,7 @@ internal static class NativeLocalizationTests
     {
         L10n.Select("en");
         var root = CreateControls();
+        await CheckSelectedFilters();
         var markdown = UpdateMarkdown.Render("# Notes\n\nText\n\n```\ncode\n```");
         await Task.Delay(50);
         Assert(root, "File", "References", "All types", "0 references", "Journal article");
@@ -47,8 +48,8 @@ internal static class NativeLocalizationTests
         }
         root.Children.Add(menu);
         var filter = new ComboBox();
-        var option = new ComboBoxItem(); Localized.Bind(option, ContentControl.ContentProperty, "全部类型");
-        filter.Items.Add(option); root.Children.Add(filter);
+        var option = Localized.ComboItem("全部类型", "all");
+        filter.Items.Add(option); filter.SelectedIndex = 0; root.Children.Add(filter);
         var count = new TextBlock(); Localized.Count(count, 0); root.Children.Add(count);
         var record = new ReferenceRecord
         {
@@ -68,7 +69,7 @@ internal static class NativeLocalizationTests
     {
         var menu = (MenuBar)root.Children[0];
         if (menu.Items[0].Title != file || menu.Items[1].Title != references) throw new Exception("Menu bar did not update");
-        if (((ComboBoxItem)((ComboBox)root.Children[1]).Items[0]).Content as string != all) throw new Exception("Filter did not update");
+        if (((ComboBoxItem)((ComboBox)root.Children[1]).Items[0]).Content is not LocalizationValue label || label.Value != all) throw new Exception("Filter did not update");
         if (((TextBlock)root.Children[2]).Text != count) throw new Exception("Count did not update");
         var item = (ListViewItem)root.Children[3];
         // ReferenceItem's content is native-owned; no managed child wrappers are retained by the test.
@@ -78,6 +79,56 @@ internal static class NativeLocalizationTests
         if (((TextBlock)details.Children[1]).Text != "原文作者") throw new Exception("Bibliography data was translated");
         var expectedTitle = L10n.Text("暂无标题") + " 原文作者";
         if (Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(item) != expectedTitle) throw new Exception("Untitled accessible name did not update");
+    }
+
+    private static async Task CheckSelectedFilters()
+    {
+        foreach (var (key, alternate, tag, english, alternateEnglish) in new[]
+        {
+            ("全部类型", "期刊论文", "Article", "All types", "Journal article"),
+            ("全部字段", "作者", "author", "All fields", "Authors")
+        })
+        {
+            var filter = new ComboBox();
+            filter.Items.Add(Localized.ComboItem(key, "all"));
+            filter.Items.Add(Localized.ComboItem(alternate, tag));
+            foreach (var index in new[] { 0, 1 })
+            {
+                L10n.Select("en");
+                filter.SelectedIndex = index;
+                filter.ApplyTemplate();
+                await Task.Delay(50);
+                var selected = (ComboBoxItem)filter.SelectedItem;
+                if (filter.SelectionBoxItem is not LocalizationValue selectedLabel
+                    || !ReferenceEquals(selectedLabel, selected.Content)
+                    || filter.SelectionBoxItemTemplate is not DataTemplate template)
+                    throw new Exception("Collapsed filter does not retain the live localization source/template");
+                // Exercise the actual selection-box template with the cached selected item.
+                var collapsed = (TextBlock)template.LoadContent();
+                collapsed.DataContext = filter.SelectionBoxItem;
+                var dropdown = (TextBlock)selected.ContentTemplate.LoadContent();
+                dropdown.DataContext = selected.Content;
+                var changes = 0;
+                void Changed(object sender, SelectionChangedEventArgs args) => changes++;
+                filter.SelectionChanged += Changed;
+                GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
+                foreach (var language in new[] { "zh-Hans", "en", "zh-Hans" })
+                {
+                    L10n.Select(language); await Task.Delay(50);
+                    var expected = language == "en" ? (index == 0 ? english : alternateEnglish) : (index == 0 ? key : alternate);
+                    if (collapsed.Text != expected || dropdown.Text != expected)
+                        throw new Exception("Selected filter label did not refresh in both presentations");
+                    if (Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(selected) != expected
+                        || selectedLabel.ToString() != expected)
+                        throw new Exception("Selected filter accessibility/search text did not refresh");
+                    if (!ReferenceEquals(filter.SelectedItem, selected) || !ReferenceEquals(filter.SelectionBoxItem, selectedLabel)
+                        || filter.SelectedIndex != index || selected.Tag as string != (index == 0 ? "all" : tag) || changes != 0)
+                        throw new Exception("Language switch changed filtering or triggered a new search");
+                }
+                filter.SelectionChanged -= Changed;
+            }
+        }
+        L10n.Select("en");
     }
 
     private static void AssertMarkdown(UIElement markdown, string copy, string selectAll)

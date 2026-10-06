@@ -18,6 +18,7 @@ public sealed class LocalizationValue : INotifyPropertyChanged
         if (Sources.Count % 256 == 0) Sources.RemoveAll(source => !source.TryGetTarget(out _));
     }
     public string Value => read();
+    public override string ToString() => Value;
     public event PropertyChangedEventHandler? PropertyChanged;
     private static void Refresh()
     {
