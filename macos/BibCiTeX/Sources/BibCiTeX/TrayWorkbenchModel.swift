@@ -13,7 +13,11 @@ final class TrayWorkbenchModel: ObservableObject {
     @Published var selection: String?
     @Published private(set) var loading = false
     @Published private(set) var copied: String?
-    @Published var error: String?
+    @Published private(set) var errorDetails: LocalizedMessage?
+    var error: String? {
+        get { errorDetails?.text }
+        set { errorDetails = newValue.map { LocalizedMessage(literal: $0) } }
+    }
     private let service: any WorkbenchServing
     private let preferences: UserDefaults
     private var searchTask: Task<Void, Never>?
@@ -50,7 +54,7 @@ final class TrayWorkbenchModel: ObservableObject {
             references = []
             selection = nil
             loading = false
-            self.error = error.localizedDescription
+            self.errorDetails = LocalizedMessage(error: error)
         }
     }
     private func search() {
@@ -79,7 +83,7 @@ final class TrayWorkbenchModel: ObservableObject {
             } catch {
                 guard !Task.isCancelled, version == searchVersion else { return }
                 references = []; selection = nil; loading = false
-                self.error = error.localizedDescription
+                self.errorDetails = LocalizedMessage(error: error)
             }
         }
     }
@@ -103,7 +107,7 @@ final class TrayWorkbenchModel: ObservableObject {
                 if !Task.isCancelled { copied = nil }
             } catch {
                 guard !Task.isCancelled, currentSession == session else { return }
-                self.error = error.localizedDescription
+                self.errorDetails = LocalizedMessage(error: error)
             }
         }
     }

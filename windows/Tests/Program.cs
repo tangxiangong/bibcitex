@@ -2,6 +2,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using BibCiTeX;
 
+LocalizationTests.Run();
+await DialogQueueTests.Run();
+
 if (args.Length != 1) throw new ArgumentException("Pass the built bibcitex_csharp native library path.");
 var library = Path.GetFullPath(args[0]);
 if (!File.Exists(library)) throw new FileNotFoundException(library);
@@ -56,7 +59,16 @@ try
     Assert(reference.Authors.Contains("张") && reference.Authors.Contains("Jane"), "UTF-8 authors");
     Assert(reference.Chunks("title").Any(x => x.Kind == "math" && x.Text == "x^2"), "math chunk and enum conversion");
     Assert(reference.Chunks("title").Any(x => x.Kind == "normal" && x.Text == "NASA"), "protected title text follows core normalization");
-    Assert(reference.Type == "Article" && reference.TypeLabel == "期刊论文", "entry type");
+    Assert(reference.Type == "Article" && reference.TypeLabel == L10n.Text("期刊论文"), "entry type");
+    var languageBefore = L10n.Selection;
+    try
+    {
+        var titleBefore = reference.Title; var authorsBefore = reference.Authors;
+        L10n.Select("en"); Assert(reference.TypeLabel == "Journal article", "existing reference switches to English");
+        L10n.Select("zh-Hans"); Assert(reference.TypeLabel == "期刊论文", "existing reference switches to Chinese");
+        Assert(reference.Title == titleBefore && reference.Authors == authorsBefore && reference.Key == "unicode2026", "language switching preserves bibliography data");
+    }
+    finally { L10n.Select(languageBefore); }
     Assert(reference.Id.Length > 0, "stable reference identity");
     Assert(reference.Text("pages") == "101–109", "inclusive page endpoint");
     Assert(reference.Text("source").Contains("unicode2026") && reference.Text("source").Contains("研究"), "full BibTeX source");

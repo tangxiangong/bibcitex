@@ -4,6 +4,7 @@ import LaTeXSwiftUI
 
 /// The independent global-hotkey search-and-paste surface.
 struct HelperView: View {
+    @AppStorage("language") private var language = "system"
     @ObservedObject var model: HelperViewModel
     var onHidePanel: () -> Void = {}
     @FocusState private var searchFocused: Bool
@@ -32,7 +33,7 @@ struct HelperView: View {
     }
 
     private var placeholder: String {
-        model.isSelectingBibliography ? "搜索或选择文献库" : "搜索文献、作者、标题"
+        model.isSelectingBibliography ? L10n.text("搜索或选择文献库") : L10n.text("搜索文献、作者、标题")
     }
 
     private var header: some View {
@@ -44,9 +45,9 @@ struct HelperView: View {
                 .font(.system(size: 22))
                 .textFieldStyle(.plain)
                 .focused($searchFocused)
-                .accessibilityLabel("搜索")
+                .accessibilityLabel(L10n.text("搜索"))
             if model.isSearching || model.isLoading {
-                ProgressView().controlSize(.small).accessibilityLabel("正在搜索")
+                ProgressView().controlSize(.small).accessibilityLabel(L10n.text("正在搜索"))
             }
             libraryButton
         }
@@ -70,9 +71,9 @@ struct HelperView: View {
                 .background(.primary.opacity(0.06), in: Capsule())
             }
             .buttonStyle(.plain)
-            .help("切换文献库 (Tab)")
+            .help(L10n.text("切换文献库 (Tab)"))
             .frame(maxWidth: 160)
-            .accessibilityLabel("切换文献库")
+            .accessibilityLabel(L10n.text("切换文献库"))
         }
     }
 
@@ -85,7 +86,7 @@ struct HelperView: View {
             // the paste surface shows its keys as labels, so nothing else can hand
             // it over.
             if let key = model.failedPasteKey {
-                Button("复制引用键") { model.copyKey(key) }
+                Button(L10n.text("复制引用键")) { model.copyKey(key) }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor)
             }
@@ -101,7 +102,7 @@ struct HelperView: View {
             ProgressView().frame(maxWidth: .infinity, minHeight: HelperMetrics.emptyRow)
         } else if model.isSelectingBibliography {
             if model.filteredBibliographies.isEmpty {
-                emptyState("未找到文献库，请先到主窗口添加文献库", symbol: "library")
+                emptyState(L10n.text("未找到文献库，请先到主窗口添加文献库"), symbol: "library")
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -127,7 +128,7 @@ struct HelperView: View {
         } else if model.isSearching {
             ProgressView().frame(maxWidth: .infinity, minHeight: HelperMetrics.emptyRow)
         } else if model.searchResults.isEmpty {
-            emptyState("未找到匹配记录", symbol: "search")
+            emptyState(L10n.text("未找到匹配记录"), symbol: "search")
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
@@ -229,10 +230,11 @@ struct HelperView: View {
 }
 
 struct MathChunkText: View {
+    @AppStorage("language") private var language = "system"
     let chunks: [TextChunk]
     var body: some View {
         if chunks.isEmpty {
-            Text("暂无标题").foregroundStyle(.secondary)
+            Text(L10n.text("暂无标题")).foregroundStyle(.secondary)
         } else if !chunks.contains(where: { $0.kind == .math }) {
             Text(verbatim: chunks.map(\.text).joined())
         } else {

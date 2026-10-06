@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Documents;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace BibCiTeX;
 
@@ -31,10 +32,16 @@ internal sealed class SvgIcon : UserControl
 internal static class Views
 {
     internal static TextBlock Text(string text, double size = 14) => new() { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap };
+    internal static TextBlock LocalizedText(string key, double size = 14)
+    {
+        var text = Text("", size);
+        Localized.Bind(text, TextBlock.TextProperty, key);
+        return text;
+    }
     internal static Button Button(string icon, string name, Action action)
     {
         var button = new Button { Content = new SvgIcon(icon), Padding = new Thickness(8), MinWidth = 32, MinHeight = 32 };
-        ToolTipService.SetToolTip(button, name); AutomationProperties.SetName(button, name);
+        Localized.Tooltip(button, name); Localized.Name(button, name);
         button.Click += (_, _) => action(); return button;
     }
     // For icons that depend on the active theme: re-resolved whenever the button's
@@ -43,9 +50,74 @@ internal static class Views
     {
         var glyph = new SvgIcon(icon());
         var button = new Button { Content = glyph, Padding = new Thickness(8), MinWidth = 32, MinHeight = 32 };
-        ToolTipService.SetToolTip(button, name); AutomationProperties.SetName(button, name);
+        Localized.Tooltip(button, name); Localized.Name(button, name);
         button.ActualThemeChanged += (_, _) => glyph.Icon = icon();
         button.Click += (_, _) => action(); return button;
+    }
+    private static MenuFlyout SelectionMenu(FrameworkElement source, Func<string> selected, Action copy, Action selectAll)
+    {
+        var menu = new MenuFlyout();
+        var copyItem = new MenuFlyoutItem(); Localized.Bind(copyItem, MenuFlyoutItem.TextProperty, "menu.copy");
+        copyItem.Click += async (_, _) => await InvokeTextAction(source, copy);
+        var selectItem = new MenuFlyoutItem(); Localized.Bind(selectItem, MenuFlyoutItem.TextProperty, "menu.selectAll");
+        selectItem.Click += async (_, _) => await InvokeTextAction(source, selectAll);
+        menu.Items.Add(copyItem); menu.Items.Add(selectItem);
+        menu.Opening += (_, _) => copyItem.IsEnabled = selected().Length > 0;
+        return menu;
+    }
+    internal static TextBlock SelectableText(TextBlock text)
+    {
+        Localized.BindValue(text, FrameworkElement.LanguageProperty, () => L10n.Language);
+        text.ContextFlyout = SelectionMenu(text, () => text.SelectedText, text.CopySelectionToClipboard, text.SelectAll);
+        text.SelectionFlyout = SelectionMenu(text, () => text.SelectedText, text.CopySelectionToClipboard, text.SelectAll);
+        return text;
+    }
+    internal static void SelectableText(RichTextBlock text)
+    {
+        Localized.BindValue(text, FrameworkElement.LanguageProperty, () => L10n.Language);
+        text.ContextFlyout = SelectionMenu(text, () => text.SelectedText, text.CopySelectionToClipboard, text.SelectAll);
+        text.SelectionFlyout = SelectionMenu(text, () => text.SelectedText, text.CopySelectionToClipboard, text.SelectAll);
+    }
+    internal static void LocalizeTextBox(TextBox box)
+    {
+        Localized.BindValue(box, FrameworkElement.LanguageProperty, () => L10n.Language);
+        MenuFlyout CreateMenu(bool selection)
+        {
+            var menu = new MenuFlyout();
+            MenuFlyoutItem Add(string key, Action action)
+            {
+                var item = new MenuFlyoutItem();
+                Localized.Bind(item, MenuFlyoutItem.TextProperty, key);
+                item.Click += async (_, _) => await InvokeTextAction(box, action);
+                menu.Items.Add(item); return item;
+            }
+            MenuFlyoutItem? undo = null, redo = null;
+            if (!selection)
+            {
+                undo = Add("menu.system.Undo", box.Undo); redo = Add("menu.system.Redo", box.Redo);
+                menu.Items.Add(new MenuFlyoutSeparator());
+            }
+            var cut = Add("menu.cut", box.CutSelectionToClipboard);
+            var copy = Add("menu.copy", box.CopySelectionToClipboard);
+            var paste = Add("menu.paste", box.PasteFromClipboard);
+            var delete = selection ? null : Add("menu.delete", () => box.SelectedText = "");
+            menu.Items.Add(new MenuFlyoutSeparator());
+            var selectAll = Add("menu.selectAll", box.SelectAll);
+            menu.Opening += (_, _) =>
+            {
+                if (undo is not null) undo.IsEnabled = !box.IsReadOnly && box.CanUndo;
+                if (redo is not null) redo.IsEnabled = !box.IsReadOnly && box.CanRedo;
+                cut.IsEnabled = !box.IsReadOnly && box.SelectionLength > 0;
+                copy.IsEnabled = box.SelectionLength > 0;
+                if (delete is not null) delete.IsEnabled = !box.IsReadOnly && box.SelectionLength > 0;
+                selectAll.IsEnabled = box.Text.Length > 0;
+                try { paste.IsEnabled = !box.IsReadOnly && Clipboard.GetContent().Contains(StandardDataFormats.Text); }
+                catch { paste.IsEnabled = false; }
+            };
+            return menu;
+        }
+        box.ContextFlyout = CreateMenu(false);
+        box.SelectionFlyout = CreateMenu(true);
     }
     internal static StackPanel Row(params UIElement[] children)
     {
@@ -73,10 +145,15 @@ internal static class Views
     internal static ListViewItem ReferenceItem(Reference reference, bool citeKeyCopies = false)
     {
         var details = new StackPanel { Spacing = 4, Padding = new Thickness(4, 8, 4, 8) };
-        details.Children.Add(new ChunkText(reference.Chunks("title"), 15, reference.Title, false));
+        details.Children.Add(new ChunkText(reference.Chunks("title"), 15, reference.Title, false, "暂无标题"));
         if (reference.Authors.Length > 0) details.Children.Add(new TextBlock { Text = reference.Authors, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .75 });
         var meta = string.Join(" · ", new[] { reference.TypeLabel, reference.Venue, reference.Text("year") }.Where(x => x.Length > 0));
-        if (meta.Length > 0) details.Children.Add(new TextBlock { Text = meta, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .6 });
+        if (meta.Length > 0)
+        {
+            var metadata = new TextBlock { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .6 };
+            Localized.BindValue(metadata, TextBlock.TextProperty, () => string.Join(" · ", new[] { reference.TypeLabel, reference.Venue, reference.Text("year") }.Where(x => x.Length > 0)));
+            details.Children.Add(metadata);
+        }
 
         var row = new Grid { ColumnSpacing = 8 };
         row.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
@@ -89,7 +166,7 @@ internal static class Views
         Grid.SetColumn(key, 1); row.Children.Add(key);
 
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        AutomationProperties.SetName(item, reference.Title + " " + reference.Authors); return item;
+        Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Title + " " + reference.Authors); return item;
     }
     /// <summary>
     /// The cite key as its own copy control, pinned to the top right of a row. It
@@ -113,14 +190,14 @@ internal static class Views
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 4, 4, 0),
         };
-        ToolTipService.SetToolTip(button, "复制引用键");
-        AutomationProperties.SetName(button, "复制引用键 " + key);
+        Localized.Tooltip(button, "复制引用键");
+        Localized.Bind(button, AutomationProperties.NameProperty, "复制引用键 {0}", key);
         button.Click += async (_, _) =>
         {
             if (!await Views.CopyKey(key)) return;
-            glyph.Icon = "check"; label.Text = "已复制"; label.FontFamily = new FontFamily("Segoe UI Variable");
+            glyph.Icon = "check"; Localized.Bind(label, TextBlock.TextProperty, "已复制"); label.FontFamily = new FontFamily("Segoe UI Variable");
             await Task.Delay(1400);
-            glyph.Icon = "copy"; label.Text = key; label.FontFamily = new FontFamily("Cascadia Mono");
+            glyph.Icon = "copy"; Localized.BindValue(label, TextBlock.TextProperty, () => key); label.FontFamily = new FontFamily("Cascadia Mono");
         };
         return button;
     }
@@ -135,7 +212,7 @@ internal static class Views
     {
         var glyph = new SvgIcon(icon);
         var button = new Button { Content = glyph, Padding = new Thickness(8), MinWidth = 32, MinHeight = 32 };
-        ToolTipService.SetToolTip(button, name); AutomationProperties.SetName(button, name);
+        Localized.Tooltip(button, name); Localized.Name(button, name);
         button.Click += async (_, _) =>
         {
             if (!await action()) return;
@@ -145,10 +222,19 @@ internal static class Views
         };
         return button;
     }
+    private static async Task InvokeTextAction(FrameworkElement source, Action action)
+    {
+        try { action(); }
+        catch (Exception error) { await Error(source, error); }
+    }
+    internal static Task<ContentDialogResult> ShowDialog(ContentDialog dialog)
+        => DialogQueue.Run(dialog.XamlRoot ?? throw new InvalidOperationException("Dialog XamlRoot is missing."), async () => await dialog.ShowAsync());
     internal static async Task Error(FrameworkElement root, Exception error)
     {
         if (root.XamlRoot is null) return;
-        await new ContentDialog { XamlRoot = root.XamlRoot, Title = "BibCiTeX", Content = error.Message, CloseButtonText = "确定" }.ShowAsync();
+        var dialog = Localized.Dialog(new ContentDialog { XamlRoot = root.XamlRoot }, "BibCiTeX");
+        Localized.Error(dialog, ContentControl.ContentProperty, error);
+        await ShowDialog(dialog);
     }
 }
 
@@ -156,17 +242,20 @@ internal static class Views
 internal sealed class ChunkText : UserControl
 {
     private readonly List<Chunk> chunks;
+    private readonly string? fallbackKey;
     private readonly RichTextBlock text = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
     private int generation;
     private double lastScale;
     private double lastWidth;
     private XamlRoot? observedRoot;
-    internal ChunkText(List<Chunk> chunks, double size, string fallback = "", bool selectable = true)
+    internal ChunkText(List<Chunk> chunks, double size, string fallback = "", bool selectable = true, string? fallbackKey = null)
     {
+        this.fallbackKey = chunks.Count == 0 ? fallbackKey : null;
         this.chunks = chunks.Count == 0 ? [new("normal", fallback)] : chunks;
         FontSize = size; text.FontSize = size; text.IsTextSelectionEnabled = selectable; Content = text;
-        Loaded += (_, _) => { observedRoot = XamlRoot; if (observedRoot is not null) observedRoot.Changed += RootChanged; Render(); };
-        Unloaded += (_, _) => { generation++; if (observedRoot is not null) observedRoot.Changed -= RootChanged; observedRoot = null; };
+        if (selectable) Views.SelectableText(text);
+        Loaded += (_, _) => { if (this.fallbackKey is not null) L10n.Changed += Render; observedRoot = XamlRoot; if (observedRoot is not null) observedRoot.Changed += RootChanged; Render(); };
+        Unloaded += (_, _) => { if (this.fallbackKey is not null) L10n.Changed -= Render; generation++; if (observedRoot is not null) observedRoot.Changed -= RootChanged; observedRoot = null; };
         ActualThemeChanged += (_, _) => Render();
         SizeChanged += (_, args) => { if (args.NewSize.Width > 0 && Math.Abs(args.NewSize.Width - lastWidth) > 1) Render(); };
     }
@@ -179,7 +268,7 @@ internal sealed class ChunkText : UserControl
         var dark = ActualTheme == ElementTheme.Dark;
         var scale = lastScale = XamlRoot?.RasterizationScale ?? 1;
         var availableWidth = lastWidth = ActualWidth > 0 ? ActualWidth : 640;
-        foreach (var chunk in chunks)
+        foreach (var chunk in fallbackKey is { } key ? new List<Chunk> { new("normal", L10n.Text(key)) } : chunks)
         {
             if (version != generation) return;
             if (chunk.Kind != "math") { paragraph.Inlines.Add(new Run { Text = chunk.Text }); continue; }

@@ -13,17 +13,17 @@ internal sealed class MainWindow : Window
     private readonly ListView libraries = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Single };
     private readonly StackPanel detail = new() { Padding = new Thickness(20), Spacing = 16 };
-    private readonly TextBlock heading = Views.Text("文献工作台", 20);
-    private readonly TextBlock count = Views.Text("0 条文献", 12);
-    private readonly TextBlock empty = Views.Text("暂无可显示的文献");
+    private readonly TextBlock heading = Views.LocalizedText("文献工作台", 20);
+    private readonly TextBlock count = Views.Text(L10n.References(0), 12);
+    private readonly TextBlock empty = Views.LocalizedText("暂无可显示的文献");
     private readonly StackPanel emptyState = new() { Spacing = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly Image brand = new()
     {
         Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri("ms-appx:///Assets/favicon.png")),
         Width = 96, Height = 96, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed
     };
-    private readonly TextBlock librariesEmpty = Views.Text("暂无文献库");
-    private readonly TextBox search = new() { PlaceholderText = "搜索文献", MinWidth = 160 };
+    private readonly TextBlock librariesEmpty = Views.LocalizedText("暂无文献库");
+    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinWidth = 160 };
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
@@ -44,6 +44,8 @@ internal sealed class MainWindow : Window
         AppWindow.Resize(new Windows.Graphics.SizeInt32((int)(1200 * initialScale), (int)(800 * initialScale)));
         SetMinimumSize();
         root.RequestedTheme = App.Theme;
+        Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
+        Views.LocalizeTextBox(search);
         root.ColumnDefinitions.Add(new() { Width = new GridLength(230) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(340) });
@@ -53,13 +55,26 @@ internal sealed class MainWindow : Window
             Views.Button("download", "检查更新", () => _ = CheckUpdates()),
             Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()),
             Views.ThemedButton(() => root.ActualTheme == ElementTheme.Dark ? "moon" : "sun", "切换主题", () => App.SetTheme(root.ActualTheme == ElementTheme.Dark ? ElementTheme.Light : ElementTheme.Dark)));
+        var language = new ComboBox { MinWidth = 130 };
+        foreach (var code in L10n.Languages)
+        {
+            var option = new ComboBoxItem { Tag = code, Content = code == "zh-Hans" ? "简体中文" : "English" };
+            if (code == "system") Localized.Bind(option, ContentControl.ContentProperty, "跟随系统");
+            language.Items.Add(option);
+        }
+        language.SelectedIndex = Array.IndexOf(L10n.Languages, L10n.Selection);
+        Localized.Name(language, "语言"); Localized.Tooltip(language, "语言");
+        language.SelectionChanged += (_, _) => App.SetLanguage((string)((ComboBoxItem)language.SelectedItem).Tag);
+        toolbar.Children.Add(language);
+        Localized.Bind(search, TextBox.PlaceholderTextProperty, "搜索文献");
+        Localized.Count(count, 0);
         toolbar.Padding = new Thickness(12, 8, 12, 8); Grid.SetColumnSpan(toolbar, 3); root.Children.Add(toolbar);
         var sidebar = new Grid { Padding = new Thickness(10, 12, 10, 8) };
         sidebar.RowDefinitions.Add(new() { Height = GridLength.Auto }); sidebar.RowDefinitions.Add(new());
         var sidebarHeading = new StackPanel { Spacing = 16 };
         var libraryHeader = new Grid { Margin = new Thickness(4, 0, 4, 8) };
         libraryHeader.ColumnDefinitions.Add(new()); libraryHeader.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        var libraryTitle = Views.Text("文献库", 18); libraryTitle.VerticalAlignment = VerticalAlignment.Center;
+        var libraryTitle = Views.LocalizedText("文献库", 18); libraryTitle.VerticalAlignment = VerticalAlignment.Center;
         libraryHeader.Children.Add(libraryTitle);
         var addLibrary = Views.Button("folderAdd", "新增文献库", () => _ = AddLibrary());
         Grid.SetColumn(addLibrary, 1); libraryHeader.Children.Add(addLibrary); sidebarHeading.Children.Add(libraryHeader);
@@ -74,8 +89,8 @@ internal sealed class MainWindow : Window
         var countRow = Views.Row(count, progress); countRow.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(countRow, 1); titleRow.Children.Add(countRow);
         Grid.SetRow(titleRow, 0); center.Children.Add(titleRow);
-        foreach (var (label, value) in Reference.Types) type.Items.Add(new ComboBoxItem { Content = label, Tag = value });
-        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(new ComboBoxItem { Content = label, Tag = value });
+        foreach (var (label, value) in Reference.Types) type.Items.Add(LocalizedCombo(label, value));
+        foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(LocalizedCombo(label, value));
         type.SelectedIndex = field.SelectedIndex = 0;
         var filters = new Grid { ColumnSpacing = 8, RowSpacing = 8 };
         filters.ColumnDefinitions.Add(new()); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -88,13 +103,15 @@ internal sealed class MainWindow : Window
         Grid.SetRow(emptyState, 2); center.Children.Add(emptyState);
         Grid.SetRow(center, 1); Grid.SetColumn(center, 1); root.Children.Add(center);
         var inspector = new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }; Grid.SetColumn(inspector, 2); Grid.SetRow(inspector, 1); root.Children.Add(inspector);
+        WindowInterop.LocalizeSystemMenu(this);
         Content = root; ShowDetail(null);
         libraries.SelectionChanged += (_, _) =>
         {
             current = (libraries.SelectedItem as ListViewItem)?.Tag as Library;
-            heading.Text = current?.Name ?? "文献工作台";
+            if (current is { } selected) Localized.BindValue(heading, TextBlock.TextProperty, () => selected.Name);
+            else Localized.Bind(heading, TextBlock.TextProperty, "文献工作台");
             references.Items.Clear();
-            count.Text = "0 条文献";
+            Localized.Count(count, 0);
             emptyState.Visibility = Visibility.Visible;
             ShowDetail(null);
             _ = Search();
@@ -185,7 +202,7 @@ internal sealed class MainWindow : Window
     private async Task Search(bool debounce = false)
     {
         var version = ++searchVersion; var library = current;
-        if (library is null) { references.Items.Clear(); count.Text = "0 条文献"; emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
+        if (library is null) { references.Items.Clear(); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         try
         {
@@ -198,7 +215,7 @@ internal sealed class MainWindow : Window
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
             resultsVersion = version;
-            count.Text = $"{rows.Count} 条文献"; emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            Localized.Count(count, rows.Count); emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) await Report(error); }
         finally { if (version == searchVersion) SetBusy(false); }
@@ -207,7 +224,8 @@ internal sealed class MainWindow : Window
     {
         if (!row.Children.Contains(content)) return;
         var name = new TextBox { Text = library.Name, VerticalAlignment = VerticalAlignment.Center };
-        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(name, "文献库名称");
+        Views.LocalizeTextBox(name);
+        Localized.Name(name, "文献库名称");
         var error = Views.Text("", 11); error.Foreground = (Brush)Application.Current.Resources["SystemFillColorCriticalBrush"];
         error.Visibility = Visibility.Collapsed;
         var editor = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
@@ -222,7 +240,7 @@ internal sealed class MainWindow : Window
         {
             if (!editing || saving) return;
             var value = name.Text.Trim();
-            if (value.Length == 0) { error.Text = "文献库名称不能为空"; error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); return; }
+            if (value.Length == 0) { Localized.Bind(error, TextBlock.TextProperty, "文献库名称不能为空"); error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); return; }
             if (value == library.Name) { Cancel(); return; }
             saving = true; name.IsReadOnly = true;
             try
@@ -232,7 +250,7 @@ internal sealed class MainWindow : Window
                 editing = false;
                 await ReloadLibraries();
             }
-            catch (Exception ex) { error.Text = ex.Message; error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); }
+            catch (Exception ex) { Localized.Error(error, TextBlock.TextProperty, ex); error.Visibility = Visibility.Visible; name.Focus(FocusState.Programmatic); }
             finally { saving = false; name.IsReadOnly = false; }
         }
         name.KeyDown += async (_, args) =>
@@ -250,6 +268,7 @@ internal sealed class MainWindow : Window
         void Add(string title, string icon, Func<Task> action)
         {
             var item = new MenuFlyoutItem { Text = title, Icon = new ImageIcon { Source = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource(new Uri($"ms-appx:///Assets/Icons/{(root.ActualTheme == ElementTheme.Dark ? "Dark/" : "")}{icon}.svg")) } };
+            Localized.Bind(item, MenuFlyoutItem.TextProperty, title);
             item.Click += async (_, _) => await action(); menu.Items.Add(item);
         }
         Add("编辑", "settings", () => AddLibrary(library));
@@ -269,12 +288,17 @@ internal sealed class MainWindow : Window
         await dialogs.WaitAsync();
         try
         {
-            var name = new TextBox { Header = "文献库名称", PlaceholderText = "为文献库起一个名字" };
-            var path = new TextBox { Header = "文件路径", PlaceholderText = "尚未选择文件", IsReadOnly = true };
-            var description = new TextBox { Header = "描述", PlaceholderText = "简单描述一下这个文献库...", AcceptsReturn = true, MinHeight = 80 };
+            var name = new TextBox { Header = L10n.Text("文献库名称"), PlaceholderText = L10n.Text("为文献库起一个名字") };
+            var path = new TextBox { Header = L10n.Text("文件路径"), PlaceholderText = L10n.Text("尚未选择文件"), IsReadOnly = true };
+            var description = new TextBox { Header = L10n.Text("描述"), PlaceholderText = L10n.Text("简单描述一下这个文献库..."), AcceptsReturn = true, MinHeight = 80 };
+            foreach (var box in new[] { name, path, description }) Views.LocalizeTextBox(box);
+            Localized.Bind(name, TextBox.HeaderProperty, "文献库名称"); Localized.Bind(name, TextBox.PlaceholderTextProperty, "为文献库起一个名字");
+            Localized.Bind(path, TextBox.HeaderProperty, "文件路径"); Localized.Bind(path, TextBox.PlaceholderTextProperty, "尚未选择文件");
+            Localized.Bind(description, TextBox.HeaderProperty, "描述"); Localized.Bind(description, TextBox.PlaceholderTextProperty, "简单描述一下这个文献库...");
             name.Text = library?.Name ?? ""; path.Text = library?.Path ?? ""; description.Text = library?.Description ?? "";
             var error = Views.Text(""); error.Visibility = Visibility.Collapsed;
-            var choose = new Button { Content = "选择文件" };
+            var choose = new Button { Content = L10n.Text("选择文件") };
+            Localized.Bind(choose, ContentControl.ContentProperty, "选择文件");
             choose.Click += async (_, _) =>
             {
                 try
@@ -283,10 +307,10 @@ internal sealed class MainWindow : Window
                     WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
                     if (await picker.PickSingleFileAsync() is { } file) { path.Text = file.Path; if (name.Text.Length == 0) name.Text = System.IO.Path.GetFileNameWithoutExtension(file.Name); }
                 }
-                catch (Exception ex) { error.Text = ex.Message; error.Visibility = Visibility.Visible; }
+                catch (Exception ex) { Localized.Error(error, TextBlock.TextProperty, ex); error.Visibility = Visibility.Visible; }
             };
             var form = new StackPanel { Spacing = 20, MinWidth = 400, Margin = new Thickness(0, 8, 0, 8) };
-            if (library is null) { var subtitle = Views.Text("添加一个 .bib 文件到你的工作空间"); subtitle.Opacity = .65; form.Children.Add(subtitle); }
+            if (library is null) { var subtitle = Views.LocalizedText("添加一个 .bib 文件到你的工作空间"); subtitle.Opacity = .65; form.Children.Add(subtitle); }
             form.Children.Add(name);
             {
                 var fileSection = new StackPanel { Spacing = 12 }; fileSection.Children.Add(path); fileSection.Children.Add(choose);
@@ -294,7 +318,7 @@ internal sealed class MainWindow : Window
                 form.Children.Add(description);
             }
             form.Children.Add(error);
-            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = library is null ? "新增文献库" : "编辑文献库", Content = form, PrimaryButtonText = "保存", CloseButtonText = "取消", IsPrimaryButtonEnabled = false };
+            var dialog = Localized.Dialog(new ContentDialog { XamlRoot = root.XamlRoot, Content = form, IsPrimaryButtonEnabled = false }, library is null ? "新增文献库" : "编辑文献库", "取消", "保存");
             void Validate() => dialog.IsPrimaryButtonEnabled = name.Text.Trim().Length > 0 && path.Text.Length > 0;
             name.TextChanged += (_, _) => Validate(); path.TextChanged += (_, _) => Validate(); Validate();
             dialog.PrimaryButtonClick += async (_, args) =>
@@ -309,10 +333,10 @@ internal sealed class MainWindow : Window
                         if (current?.Name == library.Name) current = updated;
                     }
                 }
-                catch (Exception ex) { args.Cancel = true; error.Text = ex.Message; error.Visibility = Visibility.Visible; }
+                catch (Exception ex) { args.Cancel = true; Localized.Error(error, TextBlock.TextProperty, ex); error.Visibility = Visibility.Visible; }
                 finally { deferral.Complete(); }
             };
-            await dialog.ShowAsync();
+            await Views.ShowDialog(dialog);
         }
         finally { dialogs.Release(); }
         await ReloadLibraries();
@@ -322,20 +346,26 @@ internal sealed class MainWindow : Window
         await dialogs.WaitAsync();
         try
         {
-            var dialog = new ContentDialog { XamlRoot = root.XamlRoot, Title = "移除", Content = library.Name, PrimaryButtonText = "移除", CloseButtonText = "取消" };
-            if (await dialog.ShowAsync() == ContentDialogResult.Primary) await RustCore.RemoveLibrary(library.Name);
+            var dialog = Localized.Dialog(new ContentDialog { XamlRoot = root.XamlRoot, Content = library.Name }, "移除", "取消", "移除");
+            if (await Views.ShowDialog(dialog) == ContentDialogResult.Primary) await RustCore.RemoveLibrary(library.Name);
         }
         catch (Exception error) { await Views.Error(root, error); }
         finally { dialogs.Release(); }
         await ReloadLibraries();
     }
+    private static ComboBoxItem LocalizedCombo(string key, string value)
+    {
+        var item = new ComboBoxItem { Tag = value };
+        Localized.Bind(item, ContentControl.ContentProperty, key);
+        return item;
+    }
     private void ShowDetail(Reference? reference)
     {
-        detail.Children.Clear(); detail.Children.Add(Views.Text("文献详情", 18));
-        if (reference is null) { detail.Children.Add(Views.Text("选择一条文献查看字段和操作")); return; }
-        detail.Children.Add(new ChunkText(reference.Chunks("title"), 20, reference.Title));
-        detail.Children.Add(new TextBlock { Text = reference.TypeLabel, FontSize = 12, Opacity = .6 });
-        detail.Children.Add(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), IsTextSelectionEnabled = true });
+        detail.Children.Clear(); detail.Children.Add(Views.LocalizedText("文献详情", 18));
+        if (reference is null) { detail.Children.Add(Views.LocalizedText("选择一条文献查看字段和操作")); return; }
+        detail.Children.Add(new ChunkText(reference.Chunks("title"), 20, reference.Title, fallbackKey: "暂无标题"));
+        var typeLabel = Views.Text("", 12); typeLabel.Opacity = .6; Localized.BindValue(typeLabel, TextBlock.TextProperty, () => reference.TypeLabel); detail.Children.Add(typeLabel);
+        detail.Children.Add(Views.SelectableText(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), IsTextSelectionEnabled = true }));
         var actions = Views.Row(Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key)));
         if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("externalLink", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || doi.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
         if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("link", "打开 URL", () => _ = OpenUrl(url)));
@@ -345,9 +375,9 @@ internal sealed class MainWindow : Window
         {
             var value = reference.Text(key); if (value.Length == 0) continue;
             var section = new StackPanel { Spacing = 4 };
-            section.Children.Add(new TextBlock { Text = label, Opacity = .6, FontSize = 12 });
+            var caption = Views.LocalizedText(label, 12); caption.Opacity = .6; section.Children.Add(caption);
             if (key is "title" or "note" or "abstract_" or "book_title" or "issue") section.Children.Add(new ChunkText(reference.Chunks(key), 14, value));
-            else section.Children.Add(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = key == "source" ? new FontFamily("Cascadia Mono") : new FontFamily("Segoe UI Variable") });
+            else section.Children.Add(Views.SelectableText(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = key == "source" ? new FontFamily("Cascadia Mono") : new FontFamily("Segoe UI Variable") }));
             detail.Children.Add(section);
         }
     }
@@ -356,7 +386,7 @@ internal sealed class MainWindow : Window
     private static readonly (string Key, string Label)[] Metadata = [
         ("author", "作者"), ("year", "年份"), ("month", "月份"), ("journal", "期刊"), ("full_journal", "期刊全称"),
         ("volume", "卷号"), ("number", "编号"), ("pages", "页码"), ("book_pages", "总页数"), ("publisher", "出版社"),
-        ("edition", "版本"), ("series", "丛书"), ("editor", "编辑"), ("school", "学校"), ("address", "地址"),
+        ("edition", "版本"), ("series", "丛书"), ("editor", "metadata.editor"), ("school", "学校"), ("address", "地址"),
         ("organization", "组织"), ("institution", "机构"), ("doi", "DOI"), ("isbn", "ISBN"), ("mrclass", "MR 分类"),
         ("url", "URL"), ("file", "文件"), ("eprint", "Eprint"), ("archive_prefix", "Archive Prefix"),
         ("arxiv_primary_class", "arXiv 分类"), ("how_published", "发表方式"), ("abstract_", "摘要"),
@@ -368,7 +398,7 @@ internal sealed class MainWindow : Window
     }
     private async Task OpenUrl(string value)
     {
-        try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new InvalidOperationException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
+        try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
         catch (Exception error) { await Report(error); }
     }
     private async Task OpenFile(string value)
@@ -407,11 +437,7 @@ internal sealed class MainWindow : Window
         {
             var image = BrandImage(128);
             image.HorizontalAlignment = HorizontalAlignment.Center;
-            await new ContentDialog
-            {
-                XamlRoot = root.XamlRoot, RequestedTheme = root.ActualTheme,
-                Title = "关于 BibCiTeX", Content = image, CloseButtonText = "关闭"
-            }.ShowAsync();
+            await Views.ShowDialog(Localized.Dialog(new ContentDialog { XamlRoot = root.XamlRoot, RequestedTheme = root.ActualTheme, Content = image }, "关于 BibCiTeX", "关闭"));
         }
         catch (Exception error) { await Views.Error(root, error); }
         finally { dialogs.Release(); }

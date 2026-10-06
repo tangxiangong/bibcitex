@@ -58,7 +58,7 @@ internal sealed class TrayIcon : IDisposable
                     var menu = CreatePopupMenu();
                     try
                     {
-                        AppendMenuW(menu, 0, 1, "显示窗口"); AppendMenuW(menu, 0, 2, "快捷助手"); AppendMenuW(menu, 0, 3, "检查更新"); AppendMenuW(menu, 0x800, 0, null); AppendMenuW(menu, 0, 4, "退出 BibCiTeX");
+                        AppendMenuW(menu, 0, 1, L10n.Text("显示窗口")); AppendMenuW(menu, 0, 2, L10n.Text("快捷助手")); AppendMenuW(menu, 0, 3, L10n.Text("检查更新")); AppendMenuW(menu, 0x800, 0, null); AppendMenuW(menu, 0, 4, L10n.Text("退出 BibCiTeX"));
                         WindowInterop.GetCursorPos(out var point); SetForegroundWindow(hwnd);
                         switch (TrackPopupMenuEx(menu, 0x100 | 2, point.X, point.Y, hwnd, 0))
                         { case 1: show(); break; case 2: helper(); break; case 3: update(); break; case 4: quit(); break; }

@@ -1,11 +1,48 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.UI.Xaml;
 
 namespace BibCiTeX;
 
 internal static partial class WindowInterop
 {
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MenuItemInfo
+    {
+        internal uint Size, Mask, Type, State, Id;
+        internal nint Submenu, CheckedBitmap, UncheckedBitmap;
+        internal nuint Data;
+        [MarshalAs(UnmanagedType.LPWStr)] internal string Text;
+        internal uint TextLength;
+        internal nint Bitmap;
+    }
+    [LibraryImport("user32.dll")]
+    private static partial nint GetSystemMenu(nint window, [MarshalAs(UnmanagedType.Bool)] bool revert);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetMenuStringW")]
+    private static extern int GetMenuString(nint menu, uint item, StringBuilder text, int count, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint = "SetMenuItemInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetMenuItemInfo(nint menu, uint item, [MarshalAs(UnmanagedType.Bool)] bool byPosition, ref MenuItemInfo info);
+    internal static void LocalizeSystemMenu(Window window)
+    {
+        var menu = GetSystemMenu(WinRT.Interop.WindowNative.GetWindowHandle(window), false);
+        if (menu == 0) return;
+        foreach (var (command, key) in new (uint Command, string Key)[]
+        {
+            (0xF120, "windowsMenu.restore"), (0xF010, "windowsMenu.move"), (0xF000, "windowsMenu.size"),
+            (0xF020, "windowsMenu.minimize"), (0xF030, "windowsMenu.maximize"), (0xF060, "windowsMenu.close")
+        })
+        {
+            var original = new StringBuilder(256);
+            if (GetMenuString(menu, command, original, original.Capacity, 0) == 0) continue;
+            var previous = original.ToString(); var shortcut = previous.IndexOf('\t');
+            var title = L10n.Text(key) + (shortcut < 0 ? "" : previous[shortcut..]);
+            var info = new MenuItemInfo { Size = (uint)Marshal.SizeOf<MenuItemInfo>(), Mask = 0x40, Text = title };
+            // MIIM_STRING changes only the title: preserve commands, flags and disabled states.
+            SetMenuItemInfo(menu, command, false, ref info);
+        }
+    }
     [StructLayout(LayoutKind.Sequential)] internal struct Point { internal int X, Y; }
     [LibraryImport("user32.dll")] internal static partial uint GetDpiForWindow(nint hwnd);
     [LibraryImport("user32.dll")]

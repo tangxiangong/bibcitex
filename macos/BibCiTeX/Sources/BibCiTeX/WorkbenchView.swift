@@ -3,11 +3,12 @@ import AppKit
 import UniformTypeIdentifiers
 
 struct WorkbenchView: View {
+    @AppStorage("language") private var language = "system"
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
     @State private var editingLibrary: Bibliography?
-    private let types = [("all", "全部类型"), ("Article", "期刊论文"), ("Book", "图书"), ("Thesis", "学位论文"), ("TechReport", "技术报告"), ("Misc", "其他"), ("Booklet", "小册子"), ("InBook", "书籍章节"), ("InCollection", "文集章节"), ("InProceedings", "会议论文")]
-    private let fields = [("all", "全部字段"), ("author", "作者"), ("title", "标题"), ("journal", "期刊"), ("year", "年份")]
+    private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
+    private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
 
     var body: some View {
         HSplitView {
@@ -19,7 +20,7 @@ struct WorkbenchView: View {
         .frame(minWidth: 800, minHeight: 520)
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help("文献库").accessibilityLabel("文献库")
+                Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
             }
             if #available(macOS 26.0, *) {
                 ToolbarItem(placement: .navigation) { toolbarLogo }
@@ -30,15 +31,15 @@ struct WorkbenchView: View {
                 ToolbarItem(placement: .principal) { Spacer() }
             }
             ToolbarItemGroup(placement: .primaryAction) {
-                Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help("快捷助手").accessibilityLabel("快捷助手")
-                Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help("刷新").accessibilityLabel("刷新")
-                Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help("文献详情").accessibilityLabel("文献详情")
+                Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
+                Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
+                Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
             }
         }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
         .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
-        .alert("错误", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
-            Button("确定") { model.error = nil }
+        .alert(L10n.text("错误"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
+            Button(L10n.text("确定")) { model.error = nil }
         } message: { Text(model.error ?? "") }
         .task { await model.reload() }
     }
@@ -53,13 +54,13 @@ struct WorkbenchView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("文献库").font(.headline)
+                Text(L10n.text("文献库")).font(.headline)
                 Spacer()
                 Button { model.adding = true } label: { SVGIcon("folderAdd", size: 18).frame(width: 28, height: 28) }
-                    .buttonStyle(.borderless).help("新增文献库").accessibilityLabel("新增文献库")
+                    .buttonStyle(.borderless).help(L10n.text("新增文献库")).accessibilityLabel(L10n.text("新增文献库"))
             }.padding(.horizontal, 16).padding(.vertical, 12)
             if model.libraries.isEmpty {
-                Text("暂无文献库").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(L10n.text("暂无文献库")).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: Binding(get: { model.selectedLibrary }, set: model.selectLibrary)) {
                     ForEach(model.libraries) { library in
@@ -76,24 +77,24 @@ struct WorkbenchView: View {
         return VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text(model.library?.name ?? "文献工作台").font(.title3.weight(.semibold))
+                    Text(model.library?.name ?? L10n.text("文献工作台")).font(.title3.weight(.semibold))
                     Spacer()
-                    Text("\(model.references.count) 条文献").font(.caption).foregroundStyle(.secondary)
+                    Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)
                     if model.loading { ProgressView().controlSize(.small) }
                 }
                 HStack(spacing: 8) {
                     SVGIcon("search", size: 15).foregroundStyle(.secondary)
-                    TextField("搜索文献", text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
+                    TextField(L10n.text("搜索文献"), text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
                         .focused($searchFocused)
                         .background {
                             WorkbenchSearchNavigation(enabled: searchFocused, move: model.moveReference)
                         }
                 }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
                 HStack(spacing: 8) {
-                    Picker("类型筛选", selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                        .accessibilityLabel("类型筛选")
-                    Picker("字段筛选", selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
-                        .accessibilityLabel("字段筛选")
+                    Picker(L10n.text("类型筛选"), selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                        .accessibilityLabel(L10n.text("类型筛选"))
+                    Picker(L10n.text("字段筛选"), selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
+                        .accessibilityLabel(L10n.text("字段筛选"))
                 }.controlSize(.small)
             }.padding(16)
             Divider()
@@ -106,7 +107,7 @@ struct WorkbenchView: View {
                             .frame(width: 96, height: 96)
                             .accessibilityLabel("BibCiTeX")
                     }
-                    Text("暂无可显示的文献").foregroundStyle(.secondary)
+                    Text(L10n.text("暂无可显示的文献")).foregroundStyle(.secondary)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
@@ -134,8 +135,8 @@ struct WorkbenchView: View {
                                 ListCiteKey(reference: reference, model: model)
                             }.padding(.vertical, 8).tag(reference.citeKey).id(reference.citeKey)
                             .contextMenu {
-                                Button("复制引用键") { model.copy(reference.citeKey) }
-                                Button("复制 BibTeX") { model.copy(reference.source) }
+                                Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
+                                Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
                             }
                         }
                     }.listStyle(.inset).scrollContentBackground(.hidden)
@@ -148,12 +149,12 @@ struct WorkbenchView: View {
     }
     private var inspector: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("文献详情").font(.headline).padding(16)
+            Text(L10n.text("文献详情")).font(.headline).padding(16)
             Divider()
             if let reference = model.reference {
                 ReferenceInspector(reference: reference, context: model.referenceSelectionContext, model: model)
             } else {
-                Text("选择一条文献查看字段和操作").foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text(L10n.text("选择一条文献查看字段和操作")).foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }
@@ -208,6 +209,7 @@ private struct WorkbenchSearchNavigation: NSViewRepresentable {
 /// copies on click and confirms on itself for a moment, so taking a key out of a
 /// long result list never opens an alert or moves the selection.
 private struct ListCiteKey: View {
+    @AppStorage("language") private var language = "system"
     let reference: Reference
     @ObservedObject var model: WorkbenchModel
 
@@ -218,7 +220,7 @@ private struct ListCiteKey: View {
         } label: {
             HStack(spacing: 4) {
                 SVGIcon(copied ? "check" : "copy", size: 10)
-                Text(copied ? "已复制" : reference.citeKey)
+                Text(copied ? L10n.text("已复制") : reference.citeKey)
                     .font(.system(.caption, design: copied ? .default : .monospaced))
                     .lineLimit(1)
             }
@@ -227,12 +229,13 @@ private struct ListCiteKey: View {
             .background(.primary.opacity(0.06), in: Capsule())
         }
         .buttonStyle(.plain)
-        .help("复制引用键")
-        .accessibilityLabel("复制引用键 \(reference.citeKey)")
+        .help(L10n.text("复制引用键"))
+        .accessibilityLabel(L10n.text("复制引用键 {0}", reference.citeKey))
     }
 }
 
 struct ReferenceInspector: View {
+    @AppStorage("language") private var language = "system"
     let reference: Reference
     let context: WorkbenchModel.ReferenceSelectionContext
     @ObservedObject var model: WorkbenchModel
@@ -241,11 +244,11 @@ struct ReferenceInspector: View {
             VStack(alignment: .leading, spacing: 16) {
                 MathChunkText(chunks: reference.title).font(.title3)
                 HStack {
-                    copyButton(reference.citeKey, icon: "copy", label: "复制引用键")
-                    copyButton(reference.source, icon: "clipboard", label: "复制 BibTeX")
-                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { SVGIcon("folderOpen") }.help("打开文件").accessibilityLabel("打开文件") }
-                    if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { SVGIcon("externalLink") }.help("打开 URL").accessibilityLabel("打开 URL") }
-                    if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { SVGIcon("link") }.help("打开 DOI").accessibilityLabel("打开 DOI") }
+                    copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
+                    copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
+                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { SVGIcon("folderOpen") }.help(L10n.text("打开文件")).accessibilityLabel(L10n.text("打开文件")) }
+                    if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { SVGIcon("externalLink") }.help(L10n.text("打开 URL")).accessibilityLabel(L10n.text("打开 URL")) }
+                    if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { SVGIcon("link") }.help(L10n.text("打开 DOI")).accessibilityLabel(L10n.text("打开 DOI")) }
                 }.buttonStyle(.bordered)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
@@ -255,10 +258,10 @@ struct ReferenceInspector: View {
                         }
                     }
                 }
-                rich("摘要", reference.abstractChunks)
-                rich("书名", reference.bookTitle)
-                rich("期号", reference.issue)
-                rich("备注", reference.note)
+                rich(L10n.text("摘要"), reference.abstractChunks)
+                rich(L10n.text("书名"), reference.bookTitle)
+                rich(L10n.text("期号"), reference.issue)
+                rich(L10n.text("备注"), reference.note)
                 DisclosureGroup("BibTeX") {
                     Text(reference.source).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                 }
@@ -275,7 +278,7 @@ struct ReferenceInspector: View {
             if copied {
                 HStack(spacing: 4) {
                     SVGIcon("check", size: 14)
-                    Text("已复制").font(.caption)
+                    Text(L10n.text("已复制")).font(.caption)
                 }
             } else {
                 SVGIcon(icon)
@@ -294,18 +297,19 @@ struct ReferenceInspector: View {
         }
     }
     private var metadata: [(String, String)] {
-        [("引用键", reference.citeKey), ("类型", reference.displayType), ("作者", reference.author.joined(separator: ", ")),
-         ("年份", reference.year.map(String.init) ?? ""), ("月份", reference.month), ("期刊", reference.journal), ("期刊全称", reference.fullJournal),
-         ("卷号", reference.volume.map(String.init) ?? ""), ("编号", reference.number), ("页码", reference.pagesText), ("总页数", reference.bookPages),
-         ("出版社", reference.publisher.joined(separator: ", ")), ("版本", reference.edition.map(String.init) ?? ""), ("丛书", reference.series),
-         ("编辑", reference.editor.map { $0.1.isEmpty ? $0.0 : "\($0.0) (\($0.1))" }.joined(separator: ", ")),
-         ("学校", reference.school), ("地址", reference.address), ("组织", reference.organization.joined(separator: ", ")), ("机构", reference.institution),
-         ("DOI", reference.doi), ("ISBN", reference.isbn), ("MR 分类", reference.mrclass), ("URL", reference.url), ("文件", reference.file),
-         ("Eprint", reference.eprint), ("Archive Prefix", reference.archivePrefix), ("arXiv 分类", reference.arxivPrimaryClass), ("发表方式", reference.howPublished)]
+        [(L10n.text("引用键"), reference.citeKey), (L10n.text("类型"), reference.displayType), (L10n.text("作者"), reference.author.joined(separator: ", ")),
+         (L10n.text("年份"), reference.year.map(String.init) ?? ""), (L10n.text("月份"), reference.month), (L10n.text("期刊"), reference.journal), (L10n.text("期刊全称"), reference.fullJournal),
+         (L10n.text("卷号"), reference.volume.map(String.init) ?? ""), (L10n.text("编号"), reference.number), (L10n.text("页码"), reference.pagesText), (L10n.text("总页数"), reference.bookPages),
+         (L10n.text("出版社"), reference.publisher.joined(separator: ", ")), (L10n.text("版本"), reference.edition.map(String.init) ?? ""), (L10n.text("丛书"), reference.series),
+         (L10n.text("metadata.editor"), reference.editor.map { $0.1.isEmpty ? $0.0 : "\($0.0) (\($0.1))" }.joined(separator: ", ")),
+         (L10n.text("学校"), reference.school), (L10n.text("地址"), reference.address), (L10n.text("组织"), reference.organization.joined(separator: ", ")), (L10n.text("机构"), reference.institution),
+         ("DOI", reference.doi), ("ISBN", reference.isbn), (L10n.text("MR 分类"), reference.mrclass), ("URL", reference.url), (L10n.text("文件"), reference.file),
+         ("Eprint", reference.eprint), ("Archive Prefix", reference.archivePrefix), (L10n.text("arXiv 分类"), reference.arxivPrimaryClass), (L10n.text("发表方式"), reference.howPublished)]
     }
 }
 
 private struct LibrarySidebarRow: View {
+    @AppStorage("language") private var language = "system"
     @ObservedObject var model: WorkbenchModel
     let library: Bibliography
     let edit: () -> Void
@@ -314,7 +318,8 @@ private struct LibrarySidebarRow: View {
     @FocusState private var renameFocused: Bool
     @State private var renaming = false
     @State private var draftName = ""
-    @State private var renameError: String?
+    @State private var renameErrorDetails: LocalizedMessage?
+    private var renameError: String? { renameErrorDetails?.text }
     @State private var savingName = false
 
     var body: some View {
@@ -322,7 +327,7 @@ private struct LibrarySidebarRow: View {
             SVGIcon("library")
             VStack(alignment: .leading, spacing: 4) {
                 if renaming {
-                    TextField("文献库名称", text: $draftName)
+                    TextField(L10n.text("文献库名称"), text: $draftName)
                         .textFieldStyle(.roundedBorder).focused($renameFocused)
                         .disabled(savingName).onSubmit(saveName)
                         .onExitCommand { if !savingName { renaming = false; renameFocused = false } }
@@ -337,13 +342,13 @@ private struct LibrarySidebarRow: View {
                 }
             }
             Spacer(minLength: 0)
-            if library.pinned { SVGIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel("已置顶") }
+            if library.pinned { SVGIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel(L10n.text("已置顶")) }
             Menu { actions } label: { SVGIcon("more", size: 16).frame(width: 24, height: 24) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .focused($menuFocused)
                 .opacity(!renaming && (hovered || menuFocused) ? 1 : 0)
                 .disabled(renaming)
-                .help("文献库操作").accessibilityLabel("\(library.name)的操作")
+                .help(L10n.text("文献库操作")).accessibilityLabel(L10n.text("{0}的操作", library.name))
         }
         .padding(.vertical, 5).contentShape(Rectangle())
         .onHover { hovered = $0 }
@@ -353,7 +358,7 @@ private struct LibrarySidebarRow: View {
     private func saveName() {
         guard renaming, !savingName else { return }
         let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { renameError = "文献库名称不能为空"; renameFocused = true; return }
+        guard !name.isEmpty else { renameErrorDetails = LocalizedMessage(key: "文献库名称不能为空"); renameFocused = true; return }
         guard name != library.name else { renaming = false; return }
         savingName = true
         Task {
@@ -364,7 +369,7 @@ private struct LibrarySidebarRow: View {
                 await model.reload()
                 if wasSelected { model.selectLibrary(name) }
             } catch {
-                renameError = error.localizedDescription
+                renameErrorDetails = LocalizedMessage(error: error)
                 renameFocused = true
             }
             savingName = false
@@ -372,29 +377,31 @@ private struct LibrarySidebarRow: View {
     }
 
     @ViewBuilder private var actions: some View {
-        Button(action: edit) { Label { Text("编辑") } icon: { if let image = SVGImages.images["settings"] { Image(nsImage: image).renderingMode(.template) } } }
-        Button { draftName = library.name; renameError = nil; renaming = true } label: { Label { Text("重命名") } icon: { if let image = SVGImages.images["rename"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button(action: edit) { Label { Text(L10n.text("编辑")) } icon: { if let image = SVGImages.images["settings"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button { draftName = library.name; renameErrorDetails = nil; renaming = true } label: { Label { Text(L10n.text("重命名")) } icon: { if let image = SVGImages.images["rename"] { Image(nsImage: image).renderingMode(.template) } } }
         Button {
             Task {
                 do {
                     try await RustCore.shared.setLibraryPinned(name: library.name, pinned: !library.pinned)
                     await model.reload()
-                } catch { model.error = error.localizedDescription }
+                } catch { model.reportError(error) }
             }
-        } label: { Label { Text(library.pinned ? "取消置顶" : "置顶") } icon: { if let image = SVGImages.images["pin"] { Image(nsImage: image).renderingMode(.template) } } }
+        } label: { Label { Text(library.pinned ? L10n.text("取消置顶") : L10n.text("置顶")) } icon: { if let image = SVGImages.images["pin"] { Image(nsImage: image).renderingMode(.template) } } }
         Divider()
-        Button("打开文件") { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
-        Button(role: .destructive) { model.remove(library) } label: { Label { Text("移除") } icon: { if let image = SVGImages.images["x"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button(L10n.text("打开文件")) { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
+        Button(role: .destructive) { model.remove(library) } label: { Label { Text(L10n.text("移除")) } icon: { if let image = SVGImages.images["x"] { Image(nsImage: image).renderingMode(.template) } } }
     }
 }
 
 struct AddLibrarySheet: View {
+    @AppStorage("language") private var language = "system"
     @ObservedObject var model: WorkbenchModel
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var path = ""
     @State private var description = ""
-    @State private var error: String?
+    @State private var errorDetails: LocalizedMessage?
+    private var error: String? { errorDetails?.text }
     @State private var saving = false
     private let library: Bibliography?
 
@@ -414,34 +421,34 @@ struct AddLibrarySheet: View {
                     .frame(width: 48, height: 48)
                     .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(library == nil ? "新增文献库" : "编辑文献库").font(.title2.weight(.semibold))
-                    if library == nil { Text("添加一个 .bib 文件到你的工作空间").font(.callout).foregroundStyle(.secondary) }
+                    Text(library == nil ? L10n.text("新增文献库") : L10n.text("编辑文献库")).font(.title2.weight(.semibold))
+                    if library == nil { Text(L10n.text("添加一个 .bib 文件到你的工作空间")).font(.callout).foregroundStyle(.secondary) }
                 }.padding(.top, 3)
             }.padding(.bottom, 24)
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("文献库名称").font(.callout.weight(.medium))
-                    TextField("文献库名称", text: $name, prompt: Text("为文献库起一个名字"))
+                    Text(L10n.text("文献库名称")).font(.callout.weight(.medium))
+                    TextField(L10n.text("文献库名称"), text: $name, prompt: Text(L10n.text("为文献库起一个名字")))
                         .labelsHidden().textFieldStyle(.roundedBorder).controlSize(.large)
                 }
                 Group {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("文件路径").font(.callout.weight(.medium))
+                        Text(L10n.text("文件路径")).font(.callout.weight(.medium))
                         HStack(spacing: 12) {
                             SVGIcon("fileText", size: 24).foregroundStyle(.secondary)
-                            Text(path.isEmpty ? "尚未选择文件" : path)
+                            Text(path.isEmpty ? L10n.text("尚未选择文件") : path)
                                 .font(.callout).foregroundStyle(path.isEmpty ? .secondary : .primary)
                                 .lineLimit(2).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)
                                 .help(path)
-                            Button("选择文件", action: selectFile).controlSize(.large)
+                            Button(L10n.text("选择文件"), action: selectFile).controlSize(.large)
                         }
                         .padding(16).frame(maxWidth: .infinity)
                         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))
                         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator.opacity(0.5)))
                     }
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("描述").font(.callout.weight(.medium))
-                        TextField("描述", text: $description, prompt: Text("简单描述一下这个文献库..."), axis: .vertical)
+                        Text(L10n.text("描述")).font(.callout.weight(.medium))
+                        TextField(L10n.text("描述"), text: $description, prompt: Text(L10n.text("简单描述一下这个文献库...")), axis: .vertical)
                             .labelsHidden().lineLimit(3...5).textFieldStyle(.roundedBorder).controlSize(.large)
                     }
                 }
@@ -451,8 +458,8 @@ struct AddLibrarySheet: View {
             HStack(spacing: 12) {
                 if saving { ProgressView().controlSize(.small) }
                 Spacer()
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction).disabled(saving)
-                Button("保存", action: save).keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                Button(L10n.text("取消")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(saving)
+                Button(L10n.text("保存"), action: save).keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || path.isEmpty || saving)
             }.controlSize(.large)
         }.padding(28).frame(width: 520).interactiveDismissDisabled(saving)
@@ -467,7 +474,7 @@ struct AddLibrarySheet: View {
     }
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !model.libraries.contains(where: { $0.name == trimmed && $0.name != library?.name }) else { error = "该名称已存在，请换一个"; return }
+        guard !model.libraries.contains(where: { $0.name == trimmed && $0.name != library?.name }) else { errorDetails = LocalizedMessage(key: "该名称已存在，请换一个"); return }
         saving = true
         Task {
             do {
@@ -480,7 +487,7 @@ struct AddLibrarySheet: View {
                 await model.reload()
                 if wasSelected { model.selectLibrary(trimmed) }
                 dismiss()
-            } catch { self.error = error.localizedDescription; saving = false }
+            } catch { self.errorDetails = LocalizedMessage(error: error); saving = false }
         }
     }
 }

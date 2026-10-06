@@ -17,16 +17,15 @@ enum ThemeStyle: Equatable {
     }
 }
 
-enum HelperError: LocalizedError {
+enum HelperError: LocalizedError, LocalizedMessageProviding {
     case ffiError(String)
     case emptyCiteKey
 
-    var errorDescription: String? {
+    var errorDescription: String? { localizedMessage.text }
+    var localizedMessage: LocalizedMessage {
         switch self {
-        case .ffiError(let message):
-            return message
-        case .emptyCiteKey:
-            return "引用键为空"
+        case .ffiError(let message): return LocalizedMessage(key: message)
+        case .emptyCiteKey: return LocalizedMessage(key: "引用键为空")
         }
     }
 }

@@ -29,7 +29,11 @@ final class WorkbenchModel: ObservableObject {
     @Published private(set) var field = "all"
     @Published private(set) var type = "all"
     @Published private(set) var loading = false
-    @Published var error: String?
+    @Published private(set) var errorDetails: LocalizedMessage?
+    var error: String? {
+        get { errorDetails?.text }
+        set { errorDetails = newValue.map { LocalizedMessage(literal: $0) } }
+    }
     /// The text most recently copied, so the control that copied it can confirm
     /// in place. Both the cite key and the BibTeX source copy through `copy`, and
     /// this is what tells them apart.
@@ -37,6 +41,8 @@ final class WorkbenchModel: ObservableObject {
     @Published var adding = false
     @Published var showSidebar = true
     @Published var showInspector = true
+
+    func reportError(_ error: any Error) { errorDetails = LocalizedMessage(error: error) }
 
     private let service: any WorkbenchServing
     private let preferences: UserDefaults
@@ -122,7 +128,7 @@ final class WorkbenchModel: ObservableObject {
             scheduleSearch()
         } catch {
             guard version == registryGeneration else { return }
-            self.error = error.localizedDescription
+            self.errorDetails = LocalizedMessage(error: error)
         }
     }
 
@@ -178,14 +184,14 @@ final class WorkbenchModel: ObservableObject {
                 if loading { loading = false }
                 references = []
                 selectedReference = nil
-                self.error = error.localizedDescription
+                self.errorDetails = LocalizedMessage(error: error)
             }
         }
     }
     func remove(_ library: Bibliography) {
         Task {
             do { try await service.removeLibrary(name: library.name); await reload() }
-            catch { self.error = error.localizedDescription }
+            catch { self.errorDetails = LocalizedMessage(error: error) }
         }
     }
     func copy(_ text: String) {
@@ -193,7 +199,7 @@ final class WorkbenchModel: ObservableObject {
             do {
                 try await service.copy(text)
                 confirmCopy(of: text)
-            } catch { self.error = error.localizedDescription }
+            } catch { self.errorDetails = LocalizedMessage(error: error) }
         }
     }
     /// The copied text itself identifies which button was pressed, so the inspector
@@ -231,7 +237,7 @@ final class WorkbenchModel: ObservableObject {
     }
     func openFile(_ reference: Reference, context: ReferenceSelectionContext) {
         guard let url = attachmentURL(for: reference, context: context) else { return }
-        if !NSWorkspace.shared.open(url) { error = "无法打开文件：\(url.path)" }
+        if !NSWorkspace.shared.open(url) { errorDetails = LocalizedMessage(key: "无法打开文件：{0}", arguments: [LocalizedMessage(literal: url.path)]) }
     }
 }
 

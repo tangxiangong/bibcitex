@@ -11,7 +11,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../BibCiTeX/L10n.cs" Link="L10n.cs" />
     <Compile Include="FormulaTests.cs" />
+    <Compile Include="LocalizationTests.cs" />
+    <Compile Include="DialogQueueTests.cs" />
+    <Compile Include="../BibCiTeX/DialogQueue.cs" Link="DialogQueue.cs" />
     <Compile Include="../BibCiTeX/FormulaRenderer.cs" Link="FormulaRenderer.cs" />
     <PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
     <PackageReference Include="SkiaSharp" Version="4.153.1" />
@@ -19,5 +23,8 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.153.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="../BibCiTeX/RustCore.cs" Link="RustCore.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../localization/*.json" LogicalName="BibCiTeX.Localization.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

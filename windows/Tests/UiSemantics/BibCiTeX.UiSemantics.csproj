@@ -17,4 +17,7 @@
     <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="XamlCompilationBoundary.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../../localization/*.json" LogicalName="BibCiTeX.Localization.%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

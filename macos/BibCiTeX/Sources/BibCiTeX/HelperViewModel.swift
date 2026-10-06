@@ -27,7 +27,11 @@ final class HelperViewModel: ObservableObject {
     @Published private(set) var isSearching = false
     @Published private(set) var isLoading = false
     @Published var query = ""
-    @Published var errorMessage: String?
+    @Published private(set) var errorDetails: LocalizedMessage?
+    var errorMessage: String? {
+        get { errorDetails?.text }
+        set { errorDetails = newValue.map { LocalizedMessage(literal: $0) } }
+    }
     @Published var theme: ThemeStyle = .latte
 
     /// The cite key most recently copied, so that row can confirm the copy in
@@ -125,7 +129,7 @@ final class HelperViewModel: ObservableObject {
             } catch {
                 guard version == stateVersion else { return }
                 isLoading = false
-                errorMessage = "加载文献库失败：\(error.localizedDescription)"
+                errorDetails = LocalizedMessage(key: "加载文献库失败：{0}", arguments: [LocalizedMessage(error: error)])
                 isSelectingBibliography = true
                 recalcHeight()
             }
@@ -248,7 +252,7 @@ final class HelperViewModel: ObservableObject {
             } catch {
                 guard version == stateVersion else { return }
                 isLoading = false
-                errorMessage = "加载失败：\(error.localizedDescription)"
+                errorDetails = LocalizedMessage(key: "加载失败：{0}", arguments: [LocalizedMessage(error: error)])
                 recalcHeight()
             }
         }
@@ -325,7 +329,7 @@ final class HelperViewModel: ObservableObject {
                 guard session == sessionGeneration else { return }
                 isPasting = false
                 failedPasteKey = key
-                errorMessage = "粘贴失败：\(error.localizedDescription)"
+                errorDetails = LocalizedMessage(key: "粘贴失败：{0}", arguments: [LocalizedMessage(error: error)])
                 recalcHeight()
                 onPasteFailure?()
             }
@@ -345,7 +349,7 @@ final class HelperViewModel: ObservableObject {
                 if failedPasteKey == key { failedPasteKey = nil; recalcHeight() }
             } catch {
                 guard session == sessionGeneration else { return }
-                errorMessage = "复制失败：\(error.localizedDescription)"
+                errorDetails = LocalizedMessage(key: "复制失败：{0}", arguments: [LocalizedMessage(error: error)])
                 recalcHeight()
             }
         }
@@ -378,7 +382,7 @@ final class HelperViewModel: ObservableObject {
             searchResults = []
             selectedReferenceIndex = nil
             isSearching = false
-            errorMessage = "搜索失败：\(error.localizedDescription)"
+            errorDetails = LocalizedMessage(key: "搜索失败：{0}", arguments: [LocalizedMessage(error: error)])
             recalcHeight()
         }
     }

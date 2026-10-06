@@ -13,7 +13,7 @@ internal static class Updater
         // Query a PackageManager-owned Package; Package.Current cannot run this check.
         var package = manager.FindPackageForUser(string.Empty, Package.Current.Id.FullName);
         var installer = package.GetAppInstallerInfo();
-        if (installer is null) throw new InvalidOperationException("未配置 App Installer 更新源");
+        if (installer is null) throw new LocalizedException("未配置 App Installer 更新源");
         var result = await package.CheckUpdateAvailabilityAsync();
         if (result.Availability is PackageUpdateAvailability.Available or PackageUpdateAvailability.Required)
         {
@@ -22,7 +22,11 @@ internal static class Updater
             if (deployment.ExtendedErrorCode is { } error && error.HResult < 0) throw new InvalidOperationException(deployment.ErrorText, error);
         }
         else if (result.Availability == PackageUpdateAvailability.NoUpdates)
-            await new ContentDialog { XamlRoot = owner.XamlRoot, Title = "检查更新", Content = "当前已是最新版本", CloseButtonText = "确定" }.ShowAsync();
-        else throw result.ExtendedError ?? new InvalidOperationException("无法检查更新");
+        {
+            var dialog = Localized.Dialog(new ContentDialog { XamlRoot = owner.XamlRoot }, "检查更新");
+            Localized.Bind(dialog, ContentControl.ContentProperty, "当前已是最新版本");
+            await Views.ShowDialog(dialog);
+        }
+        else throw result.ExtendedError ?? new LocalizedException("无法检查更新");
     }
 }

@@ -10,7 +10,22 @@ public partial class App : Application
     internal static TrayWindow? Tray { get; private set; }
     internal static HelperWindow? Helper { get; private set; }
     internal static ElementTheme Theme { get; private set; }
-    public App() => InitializeComponent();
+    public App()
+    {
+        // Read the user's language list, independently of our persisted native override.
+        L10n.SystemLanguage = () => Windows.System.UserProfile.GlobalizationPreferences.Languages.FirstOrDefault() ?? System.Globalization.CultureInfo.InstalledUICulture.Name;
+        var settings = Windows.Storage.ApplicationData.Current.LocalSettings.Values;
+        var selection = settings.TryGetValue("language", out var value) ? value as string ?? "system" : "system";
+        ApplyNativeLanguage(selection);
+        L10n.Select(selection);
+        InitializeComponent();
+    }
+    private static void ApplyNativeLanguage(string selection)
+    {
+        var language = L10n.Resolve(selection, L10n.SystemLanguage());
+        // This must precede XAML resource loading, including at application startup.
+        Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language == "zh-Hans" ? "zh-CN" : "en-US";
+    }
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
         instance = AppInstance.FindOrRegisterForKey("BibCiTeX");
@@ -32,6 +47,15 @@ public partial class App : Application
         main.Activate(); main.InstallShortcut();
         if (initializationError is { } startupError)
             ((FrameworkElement)main.Content).Loaded += async (_, _) => await Views.Error((FrameworkElement)main.Content, startupError);
+    }
+    internal static void SetLanguage(string language)
+    {
+        Windows.Storage.ApplicationData.Current.LocalSettings.Values["language"] = language;
+        ApplyNativeLanguage(language);
+        L10n.Select(language);
+        if (Current is App { main: { } window }) WindowInterop.LocalizeSystemMenu(window);
+        if (Tray is { } tray) WindowInterop.LocalizeSystemMenu(tray);
+        if (Helper is { } helper) WindowInterop.LocalizeSystemMenu(helper);
     }
     internal static void SetTheme(ElementTheme theme)
     {

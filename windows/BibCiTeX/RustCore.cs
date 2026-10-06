@@ -9,7 +9,7 @@ internal static class RustCore
 {
     private static void Check(string? error)
     {
-        if (error is not null) throw new InvalidOperationException(error);
+        if (error is not null) throw new LocalizedException(error);
     }
     internal static Task Initialize() => Task.Run(() =>
     {
@@ -40,7 +40,7 @@ internal static class RustCore
         using var request = new UpdateLibraryRequest { name = name, new_name = newName, path = path, description = description }.Wire();
         using var wire = Interop.update_library(request).AsOk();
         var response = wire.Unwire(); Check(response.error);
-        return Library.From(response.payload ?? throw new InvalidOperationException("Bibliography not found"));
+        return Library.From(response.payload ?? throw new LocalizedException("Bibliography not found"));
     });
     internal static Task SetLibraryPinned(string name, bool pinned) => Task.Run(() =>
     {
@@ -65,7 +65,7 @@ internal static class RustCore
         using var request = new SelectLibraryRequest { name = name, path = path }.Wire();
         using var wire = Interop.helper_select(request).AsOk();
         var response = wire.Unwire(); Check(response.error);
-        return Library.From(response.payload ?? throw new InvalidOperationException("Missing bibliography response."));
+        return Library.From(response.payload ?? throw new LocalizedException("Missing bibliography response."));
     });
     internal static Task CapturePasteTarget() => Task.Run(() =>
     {
@@ -97,10 +97,10 @@ internal sealed class Reference(ReferenceRecord data)
     internal string Id => Data.id;
     internal string Key => Data.cite_key;
     internal string Type => Data.entry_type;
-    internal string Title => Text("title") is { Length: > 0 } title ? title : "暂无标题";
+    internal string Title => Text("title") is { Length: > 0 } title ? title : L10n.Text("暂无标题");
     internal string Authors => Text("author");
     internal string Venue => new[] { "full_journal", "journal", "book_title", "publisher", "school", "institution", "organization", "how_published" }.Select(Text).FirstOrDefault(x => x.Length > 0) ?? "";
-    internal string TypeLabel => Types.FirstOrDefault(x => x.Value.Equals(Type, StringComparison.OrdinalIgnoreCase)).Label ?? (Type.ToLowerInvariant() is "phdthesis" or "mastersthesis" ? "学位论文" : Type);
+    internal string TypeLabel => L10n.Text(Types.FirstOrDefault(x => x.Value.Equals(Type, StringComparison.OrdinalIgnoreCase)).Label ?? (Type.ToLowerInvariant() is "phdthesis" or "mastersthesis" ? "学位论文" : Type));
     internal List<Chunk> Chunks(string key) => ChunkRecords(key).Select(x => new Chunk(x.kind.IsMath ? "math" : x.kind.IsVerbatim ? "verbatim" : "normal", x.text)).ToList();
     private IEnumerable<ChunkRecord> ChunkRecords(string key) => key switch { "title" => Data.title, "note" => Data.note, "abstract_" => Data.abstract_text, "book_title" => Data.book_title, "issue" => Data.issue, _ => [] };
     internal string Text(string key) => key switch
@@ -116,5 +116,5 @@ internal sealed class Reference(ReferenceRecord data)
         "school" => Data.school ?? "", "address" => Data.address ?? "", "month" => Data.month ?? "", "institution" => Data.institution ?? "",
         "eprint" => Data.eprint ?? "", "archive_prefix" => Data.archive_prefix ?? "", "arxiv_primary_class" => Data.arxiv_primary_class ?? "", "how_published" => Data.how_published ?? "", _ => ""
     };
-    internal static readonly (string Label, string Value)[] Types = [("全部类型", "all"), ("期刊论文", "Article"), ("图书", "Book"), ("学位论文", "Thesis"), ("技术报告", "TechReport"), ("其他", "Misc"), ("小册子", "Booklet"), ("书籍章节", "InBook"), ("文集章节", "InCollection"), ("会议论文", "InProceedings")];
+    internal static (string Label, string Value)[] Types => [("全部类型", "all"), ("期刊论文", "Article"), ("图书", "Book"), ("学位论文", "Thesis"), ("技术报告", "TechReport"), ("其他", "Misc"), ("小册子", "Booklet"), ("书籍章节", "InBook"), ("文集章节", "InCollection"), ("会议论文", "InProceedings")];
 }

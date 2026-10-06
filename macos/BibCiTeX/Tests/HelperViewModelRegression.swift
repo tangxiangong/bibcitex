@@ -153,6 +153,8 @@ private actor TestService: HelperServing {
         precondition(!didHide && restoredFailures == 1)
         precondition(model.failedPasteKey == "key_raw")
         precondition(model.errorMessage?.contains("test paste failure") == true)
+        precondition(model.errorDetails?.resolve(language: "en") == "Failed to paste: test paste failure")
+        precondition(model.errorDetails?.resolve(language: "zh-Hans") == "粘贴失败：test paste failure")
         let failedKeys = await service.pastedKeys
         precondition(failedKeys == ["key_raw"], "Concurrent activation must not paste twice")
         model.copyKey(reference.citeKey)

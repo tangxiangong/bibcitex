@@ -22,7 +22,7 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double PanelWidth = 720;
 
     private readonly Grid root = new();
-    private readonly TextBox search = new() { PlaceholderText = "搜索文献、作者、标题", FontSize = 22, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 22, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
     private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(8, 0, 8, 8) };
     private readonly TextBlock status = Views.Text("");
     private readonly Button chooseLibrary;
@@ -44,10 +44,12 @@ internal sealed class HelperWindow : Window, IDisposable
 
     internal HelperWindow()
     {
-        Title = "快捷助手"; SystemBackdrop = new DesktopAcrylicBackdrop();
+        Title = L10n.Text("快捷助手"); SystemBackdrop = new DesktopAcrylicBackdrop();
         var presenter = OverlappedPresenter.CreateForToolWindow(); presenter.SetBorderAndTitleBar(false, false); presenter.IsAlwaysOnTop = true; presenter.IsResizable = false; presenter.IsMinimizable = false; presenter.IsMaximizable = false; AppWindow.SetPresenter(presenter);
         AppWindow.IsShownInSwitchers = false;
         root.RequestedTheme = App.Theme;
+        Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
+        Views.LocalizeTextBox(search);
         root.RowDefinitions.Add(new() { Height = new GridLength(Header) });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new());
@@ -56,16 +58,20 @@ internal sealed class HelperWindow : Window, IDisposable
         var header = new Grid { Padding = new Thickness(20, 0, 16, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         header.Children.Add(new SvgIcon("search", 24)); Grid.SetColumn(search, 1); header.Children.Add(search);
-        AutomationProperties.SetName(search, "搜索");
+        Localized.Name(search, "搜索");
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
         chooseLibrary = Views.Button("library", "文献库", () => { if (busy) return; selecting = !selecting; search.Text = ""; _ = Refresh(); });
         Grid.SetColumn(chooseLibrary, 3); header.Children.Add(chooseLibrary); root.Children.Add(header);
 
         status.Margin = new Thickness(20, 8, 20, 8); status.Visibility = Visibility.Collapsed; Grid.SetRow(status, 1); root.Children.Add(status);
         Grid.SetRow(results, 2); root.Children.Add(results);
-        fallback = new Button { Content = "复制引用键", Margin = new Thickness(20, 0, 20, 8), Visibility = Visibility.Collapsed };
-        fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetStatus(error.Message); } } };
+        fallback = new Button { Content = L10n.Text("复制引用键"), Margin = new Thickness(20, 0, 20, 8), Visibility = Visibility.Collapsed };
+        fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };
         Grid.SetRow(fallback, 3); root.Children.Add(fallback);
+        Localized.Bind(search, TextBox.PlaceholderTextProperty, "搜索文献、作者、标题");
+        Localized.Bind(fallback, ContentControl.ContentProperty, "复制引用键");
+        L10n.Changed += LocalizeTitle;
+        WindowInterop.LocalizeSystemMenu(this);
         Content = root;
         search.TextCompositionStarted += (_, _) => composing = true;
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Refresh(); };
@@ -77,6 +83,8 @@ internal sealed class HelperWindow : Window, IDisposable
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };
         Resize(Header);
     }
+
+    private void LocalizeTitle() => Title = L10n.Text("快捷助手");
 
     internal async Task Toggle()
     {
@@ -106,7 +114,7 @@ internal sealed class HelperWindow : Window, IDisposable
         }
         catch (Exception error)
         {
-            if (showVersion == lifecycle) { visible = true; Activate(); SetStatus(error.Message); Resize(Header + ReferenceRow); }
+            if (showVersion == lifecycle) { visible = true; Activate(); SetErrorStatus(error); Resize(Header + ReferenceRow); }
         }
         finally { opening = false; busy = false; if (visible && !active) Hide(); }
     }
@@ -119,8 +127,9 @@ internal sealed class HelperWindow : Window, IDisposable
         if (!visible || busy) return;
         var request = ++version;
         failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
-        search.PlaceholderText = selecting ? "搜索或选择文献库" : "搜索文献、作者、标题";
-        ToolTipService.SetToolTip(chooseLibrary, current?.Name ?? "文献库");
+        Localized.Bind(search, TextBox.PlaceholderTextProperty, selecting ? "搜索或选择文献库" : "搜索文献、作者、标题");
+        if (current is { } selected) Localized.BindValue(chooseLibrary, ToolTipService.ToolTipProperty, () => selected.Name);
+        else Localized.Tooltip(chooseLibrary, "文献库");
         var query = search.Text; var selectedPath = current?.Path;
         try
         {
@@ -130,7 +139,7 @@ internal sealed class HelperWindow : Window, IDisposable
             if (selecting)
             {
                 foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path));
-                if (results.Items.Count == 0) SetStatus(libraries.Count == 0 ? "未找到文献库，请先到主窗口添加文献库" : "未找到匹配的文献");
+                if (results.Items.Count == 0) SetLocalizedStatus(libraries.Count == 0 ? "未找到文献库，请先到主窗口添加文献库" : "未找到匹配的文献");
             }
             else if (query.Trim().Length > 0 && selectedPath is not null)
             {
@@ -138,12 +147,12 @@ internal sealed class HelperWindow : Window, IDisposable
                 var references = await RustCore.Search(selectedPath, query);
                 if (request != version) return;
                 foreach (var reference in references) results.Items.Add(Views.ReferenceItem(reference));
-                if (references.Count == 0) SetStatus("未找到匹配的文献");
+                if (references.Count == 0) SetLocalizedStatus("未找到匹配的文献");
             }
             if (results.Items.Count > 0) results.SelectedIndex = 0;
             ResizeContent();
         }
-        catch (Exception error) { if (request == version) { SetStatus(error.Message); ResizeContent(); } }
+        catch (Exception error) { if (request == version) { SetErrorStatus(error); ResizeContent(); } }
         finally { if (request == version) { progress.IsActive = false; progress.Visibility = Visibility.Collapsed; } }
     }
     private async void KeyDown(object sender, KeyRoutedEventArgs args)
@@ -193,11 +202,17 @@ internal sealed class HelperWindow : Window, IDisposable
         {
             if (request != version) return;
             if (item.Tag is Reference reference) { failedKey = reference.Key; fallback.Visibility = Visibility.Visible; }
-            Activate(); search.Focus(FocusState.Programmatic); SetStatus(error.Message); ResizeContent();
+            Activate(); search.Focus(FocusState.Programmatic); SetErrorStatus(error); ResizeContent();
         }
         finally { pasting = false; busy = false; }
     }
-    private void SetStatus(string text) { status.Text = text; status.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible; }
+    private void SetErrorStatus(Exception value) { Localized.Error(status, TextBlock.TextProperty, value); status.Visibility = Visibility.Visible; }
+    private void SetLocalizedStatus(string key)
+    {
+        SetStatus(L10n.Text(key));
+        Localized.Bind(status, TextBlock.TextProperty, key);
+    }
+    private void SetStatus(string text) { Localized.BindValue(status, TextBlock.TextProperty, () => text); status.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible; }
     private void ResizeContent()
     {
         var rows = results.Items.Count;
@@ -231,5 +246,5 @@ internal sealed class HelperWindow : Window, IDisposable
         // Moving across monitors can change DPI and therefore the final pixel width.
         Place(Area());
     }
-    public void Dispose() { disposed = true; Hide(); }
+    public void Dispose() { disposed = true; L10n.Changed -= LocalizeTitle; Hide(); }
 }
