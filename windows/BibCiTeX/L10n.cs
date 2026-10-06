@@ -14,23 +14,46 @@ internal static class L10n
             return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
         });
     internal static string Selection { get; private set; } = "system";
-    internal static Func<string> SystemLanguage { get; set; } = () => CultureInfo.InstalledUICulture.Name;
-    internal static string Language => Resolve(Selection, SystemLanguage());
+    internal static Func<IEnumerable<string>> SystemLanguages { get; set; } = () => [CultureInfo.InstalledUICulture.Name];
+    internal static string Language { get; private set; } = "en";
+    internal static event Action<string>? Changing;
     internal static event Action? Changed;
-    internal static string Resolve(string selection, string preferred)
+    internal static string Resolve(string selection, string preferred) => Resolve(selection, [preferred]);
+    internal static string Resolve(string selection, IEnumerable<string> preferred)
     {
         if (selection is "zh-Hans" or "en") return selection;
-        var tag = preferred.Replace('_', '-').ToLowerInvariant();
-        return tag is "zh" or "zh-cn" or "zh-sg" || tag.StartsWith("zh-hans", StringComparison.Ordinal) ? "zh-Hans" : "en";
+        foreach (var language in preferred)
+        {
+            var tag = language.Replace('_', '-').ToLowerInvariant();
+            if (tag is "zh" or "zh-cn" or "zh-sg" || tag.StartsWith("zh-hans", StringComparison.Ordinal)) return "zh-Hans";
+            if (tag == "en" || tag.StartsWith("en-", StringComparison.Ordinal)) return "en";
+        }
+        return "en";
     }
     internal static void Select(string selection)
     {
         selection = Languages.Contains(selection) ? selection : "system";
-        if (Selection == selection) return;
+        var language = Resolve(selection, SystemLanguages());
+        if (Selection == selection && Language == language) return;
+        Changing?.Invoke(language);
         Selection = selection;
+        Language = language;
         Changed?.Invoke();
     }
-    internal static string ErrorMessage(Exception error) => error is LocalizedException localized ? Text(localized.Key) : error.Message;
+    internal static void RefreshSystemLanguage() { if (Selection == "system") Select(Selection); }
+    internal static string ErrorMessage(Exception error)
+    {
+        if (error is LocalizedException localized)
+        {
+            if (Catalogs["en"].ContainsKey(localized.Key)) return Text(localized.Key, localized.Arguments);
+            // Compatibility with service errors that include diagnostic details in a string.
+            const string prefix = "Invalid settings: ";
+            if (localized.Key.StartsWith(prefix, StringComparison.Ordinal))
+                return Text("error.invalidSettings", localized.Key[prefix.Length..]);
+        }
+        // OS/library messages are diagnostics, never UI keys. Keep the details intact.
+        return Text("error.operationFailed", error is LocalizedException core ? core.Key : error.Message);
+    }
     internal static string Text(string key, params object[] arguments) => Translate(key, Language, arguments);
     internal static string Translate(string key, string language, params object[] arguments)
     {
@@ -42,7 +65,8 @@ internal static class L10n
 }
 
 /// Retain the source key so a visible error can follow later language changes.
-internal sealed class LocalizedException(string key) : InvalidOperationException(L10n.Text(key))
+internal sealed class LocalizedException(string key, params object[] arguments) : InvalidOperationException(L10n.Text(key, arguments))
 {
     internal string Key { get; } = key;
+    internal object[] Arguments { get; } = arguments;
 }

@@ -359,5 +359,20 @@
   "请先安装发布版本再检查更新": "Install a released version before checking for updates",
   "Beta": "Beta",
   "Alpha": "Alpha",
-  "更新设置已更改，请重新检查更新": "Update settings changed. Check for updates again."
+  "更新设置已更改，请重新检查更新": "Update settings changed. Check for updates again.",
+  "windowsMenu.copy": "Copy",
+  "error.operationFailed": "Operation failed: {0}",
+  "error.invalidSettings": "Invalid settings: {0}",
+  "Invalid settings: bibliographies must be an object": "Invalid settings: bibliographies must be an object",
+  "Invalid bibliography path": "Invalid bibliography path",
+  "Bibliography path does not match registry": "Bibliography path does not match registry",
+  "Bibliography changed while reading; retry search": "Bibliography changed while reading; retry search",
+  "Previous application is no longer a valid paste target": "Previous application is no longer a valid paste target",
+  "Clipboard lock poisoned": "Clipboard is unavailable",
+  "Paste target lock poisoned": "Paste target is unavailable",
+  "Settings lock poisoned": "Settings are unavailable",
+  "Cache lock poisoned": "Search cache is unavailable",
+  "Unknown search field": "Unknown search field",
+  "Unknown bibliography type filter": "Unknown bibliography type filter",
+  "Unexpected entry type serialization": "Unable to read the bibliography type"
 }

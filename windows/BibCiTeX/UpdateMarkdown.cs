@@ -26,14 +26,14 @@ internal static class UpdateMarkdown
             if (block is HtmlBlock) continue;
             if (block is CodeBlock code)
             {
-                panel.Children.Add(new TextBlock { Text = code.Lines.ToString(), FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
+                panel.Children.Add(Views.SelectableText(new TextBlock { Text = code.Lines.ToString(), FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true }));
             }
             else if (block is LeafBlock leaf)
             {
                 var text = new TextBlock { TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true };
                 if (block is HeadingBlock heading) { text.FontSize = Math.Max(15, 25 - heading.Level * 2); text.FontWeight = FontWeights.SemiBold; }
                 if (leaf.Inline is { } inline) AddInline(text.Inlines, inline);
-                panel.Children.Add(text);
+                panel.Children.Add(Views.SelectableText(text));
             }
             else if (block is ListBlock list)
             {

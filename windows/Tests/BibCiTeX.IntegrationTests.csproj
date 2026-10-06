@@ -20,6 +20,7 @@
     <Compile Include="../BibCiTeX/WorkbenchLayout.cs" Link="WorkbenchLayout.cs" />
     <Compile Include="../BibCiTeX/AttachmentPath.cs" Link="AttachmentPath.cs" />
     <Compile Include="../BibCiTeX/L10n.cs" Link="L10n.cs" />
+    <Compile Include="../BibCiTeX/LocalizationValue.cs" Link="LocalizationValue.cs" />
     <Compile Include="FormulaTests.cs" />
     <Compile Include="LocalizationTests.cs" />
     <Compile Include="DialogQueueTests.cs" />

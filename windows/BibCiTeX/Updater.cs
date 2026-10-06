@@ -156,7 +156,7 @@ internal static class Updater
                     manager.ApplyUpdatesAndRestart(update);
                 }
                 catch (OperationCanceledException) { }
-                catch (Exception error) { errorBar.Message = L10n.ErrorMessage(error); errorBar.IsOpen = true; }
+                catch (Exception error) { Localized.Error(errorBar, InfoBar.MessageProperty, error); errorBar.IsOpen = true; }
                 finally { downloading = false; dialog.IsPrimaryButtonEnabled = true; }
             }
             dialog.PrimaryButtonClick += (_, args) =>

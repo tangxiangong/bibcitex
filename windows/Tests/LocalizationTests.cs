@@ -26,31 +26,45 @@ internal static class LocalizationTests
         Check(L10n.Translate("unknown key", "en") == "unknown key");
         Check(L10n.Translate("/tmp/文献.bib", "en") == "/tmp/文献.bib");
         Check(L10n.Translate("搜索", "unsupported") == "Search");
+        Check(L10n.Resolve("system", new[] { "ja-JP", "zh-CN", "en-US" }) == "zh-Hans");
+        Check(L10n.Resolve("system", new[] { "fr-FR", "en-GB", "zh-CN" }) == "en");
+        Check(L10n.Resolve("en", new[] { "zh-CN" }) == "en");
         var previous = L10n.Selection;
-        var preferred = L10n.SystemLanguage;
+        var preferred = L10n.SystemLanguages;
         var culture = CultureInfo.CurrentUICulture;
         var changes = 0;
         void Changed() => changes++;
         L10n.Changed += Changed;
         try
         {
-            L10n.SystemLanguage = () => "zh-CN";
+            L10n.SystemLanguages = () => ["zh-CN"];
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
             L10n.Select("system"); Check(L10n.Language == "zh-Hans");
             L10n.Select("en");
             var visibleError = new LocalizedException("文献库名称不能为空");
             Check(L10n.ErrorMessage(visibleError) == "Library name cannot be empty");
             L10n.Select("zh-Hans"); Check(L10n.ErrorMessage(visibleError) == "文献库名称不能为空");
-            Check(L10n.ErrorMessage(new IOException("/tmp/文献.bib {0}")) == "/tmp/文献.bib {0}");
+            Check(L10n.ErrorMessage(new IOException("/tmp/文献.bib {0}")) == "操作失败：/tmp/文献.bib {0}");
+            Check(L10n.ErrorMessage(new LocalizedException("Invalid settings: broken {0}")) == "设置无效：broken {0}");
+            Check(L10n.ErrorMessage(new LocalizedException("Previous application is no longer a valid paste target")) == "之前的应用已无法接收粘贴");
             L10n.Select("system"); Check(L10n.Language == "zh-Hans");
-            L10n.SystemLanguage = () => "en-US"; Check(L10n.Language == "en");
+            L10n.SystemLanguages = () => ["en-US"];
+            var beforeRefresh = changes; L10n.RefreshSystemLanguage();
+            Check(L10n.Language == "en" && changes == beforeRefresh + 1);
+            L10n.RefreshSystemLanguage(); Check(changes == beforeRefresh + 1);
             L10n.Select("en"); Check(L10n.References(1) == "1 reference");
             L10n.Select("zh-Hans"); Check(L10n.References(1) == "1 条文献");
             Check(L10n.References(42) == "42 条文献");
             L10n.Select("en"); Check(L10n.References(42) == "42 references");
+            var source = new LocalizationValue(() => L10n.Text("menu.file"));
+            var updates = 0;
+            source.PropertyChanged += (_, args) => { Check(args.PropertyName == "Value"); updates++; };
+            GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
+            L10n.Select("zh-Hans"); Check(source.Value == "文件" && updates == 1);
+            L10n.Select("en"); Check(source.Value == "File" && updates == 2);
             var count = changes; L10n.Select("en"); Check(changes == count);
         }
-        finally { L10n.Changed -= Changed; L10n.SystemLanguage = preferred; CultureInfo.CurrentUICulture = culture; L10n.Select(previous); }
+        finally { L10n.Changed -= Changed; L10n.SystemLanguages = preferred; CultureInfo.CurrentUICulture = culture; L10n.Select(previous); }
         Dictionary<string, string> Catalog(string code)
         {
             using var stream = typeof(L10n).Assembly.GetManifestResourceStream($"BibCiTeX.Localization.{code}.json")!;
@@ -67,7 +81,7 @@ internal static class LocalizationTests
         var textCommands = new Dictionary<string, (string En, string Zh)>
         {
             ["menu.system.Undo"] = ("Undo", "撤销"), ["menu.system.Redo"] = ("Redo", "重做"),
-            ["menu.cut"] = ("Cut", "剪切"), ["menu.copy"] = ("Copy", "拷贝"),
+            ["menu.cut"] = ("Cut", "剪切"), ["windowsMenu.copy"] = ("Copy", "复制"),
             ["menu.paste"] = ("Paste", "粘贴"), ["menu.delete"] = ("Delete", "删除"), ["menu.selectAll"] = ("Select All", "全选")
         };
         foreach (var (key, labels) in textCommands) Check(en[key] == labels.En && zh[key] == labels.Zh);

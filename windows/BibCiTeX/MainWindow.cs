@@ -574,8 +574,9 @@ internal sealed class MainWindow : Window
         content.Children.Add(Views.SelectableText(versionText));
         var close = new Button { HorizontalAlignment = HorizontalAlignment.Center }; Localized.Bind(close, ContentControl.ContentProperty, "关闭"); close.Click += (_, _) => window.Close(); content.Children.Add(close);
         content.KeyDown += (_, args) => { if (args.Key == VirtualKey.Escape) { window.Close(); args.Handled = true; } };
+        Localized.BindValue(content, FrameworkElement.LanguageProperty, () => L10n.Language);
         window.Content = content; aboutWindow = window;
-        void Localize() => window.Title = L10n.Text("关于 BibCiTeX");
+        void Localize() { window.Title = L10n.Text("关于 BibCiTeX"); WindowInterop.LocalizeSystemMenu(window); }
         L10n.Changed += Localize; window.Closed += (_, _) => { L10n.Changed -= Localize; aboutWindow = null; };
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window); var scale = WindowInterop.GetDpiForWindow(hwnd) / 96.0;
         window.AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)(340 * scale), (int)(300 * scale)));

@@ -25,7 +25,7 @@ void Assert(bool condition, string name)
 async Task Throws(Func<Task> call, string expected)
 {
     try { await call(); }
-    catch (InvalidOperationException error) { Assert(!string.IsNullOrWhiteSpace(error.Message) && error.Message.Contains(expected, StringComparison.OrdinalIgnoreCase), "error preserves message: " + expected); return; }
+    catch (InvalidOperationException error) { Assert(!string.IsNullOrWhiteSpace(error.Message) && (error is LocalizedException localized ? localized.Key : error.Message).Contains(expected, StringComparison.OrdinalIgnoreCase), "error preserves message: " + expected); return; }
     throw new InvalidOperationException("Expected error: " + expected);
 }
 

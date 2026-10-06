@@ -359,5 +359,20 @@
   "请先安装发布版本再检查更新": "请先安装发布版本再检查更新",
   "Beta": "Beta",
   "Alpha": "Alpha",
-  "更新设置已更改，请重新检查更新": "更新设置已更改，请重新检查更新"
+  "更新设置已更改，请重新检查更新": "更新设置已更改，请重新检查更新",
+  "windowsMenu.copy": "复制",
+  "error.operationFailed": "操作失败：{0}",
+  "error.invalidSettings": "设置无效：{0}",
+  "Invalid settings: bibliographies must be an object": "设置无效：文献库配置必须为对象",
+  "Invalid bibliography path": "文献库路径无效",
+  "Bibliography path does not match registry": "文献库路径与登记信息不符",
+  "Bibliography changed while reading; retry search": "读取期间文献库发生变化，请重新搜索",
+  "Previous application is no longer a valid paste target": "之前的应用已无法接收粘贴",
+  "Clipboard lock poisoned": "剪贴板不可用",
+  "Paste target lock poisoned": "粘贴目标不可用",
+  "Settings lock poisoned": "设置不可用",
+  "Cache lock poisoned": "搜索缓存不可用",
+  "Unknown search field": "未知的搜索字段",
+  "Unknown bibliography type filter": "未知的文献类型筛选",
+  "Unexpected entry type serialization": "无法读取文献类型"
 }

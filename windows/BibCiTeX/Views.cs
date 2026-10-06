@@ -57,7 +57,7 @@ internal static class Views
     private static MenuFlyout SelectionMenu(FrameworkElement source, Func<string> selected, Action copy, Action selectAll)
     {
         var menu = new MenuFlyout();
-        var copyItem = new MenuFlyoutItem(); Localized.Bind(copyItem, MenuFlyoutItem.TextProperty, "menu.copy");
+        var copyItem = new MenuFlyoutItem(); Localized.Bind(copyItem, MenuFlyoutItem.TextProperty, "windowsMenu.copy");
         copyItem.Click += async (_, _) => await InvokeTextAction(source, copy);
         var selectItem = new MenuFlyoutItem(); Localized.Bind(selectItem, MenuFlyoutItem.TextProperty, "menu.selectAll");
         selectItem.Click += async (_, _) => await InvokeTextAction(source, selectAll);
@@ -98,7 +98,7 @@ internal static class Views
                 menu.Items.Add(new MenuFlyoutSeparator());
             }
             var cut = Add("menu.cut", box.CutSelectionToClipboard);
-            var copy = Add("menu.copy", box.CopySelectionToClipboard);
+            var copy = Add("windowsMenu.copy", box.CopySelectionToClipboard);
             var paste = Add("menu.paste", box.PasteFromClipboard);
             var delete = selection ? null : Add("menu.delete", () => box.SelectedText = "");
             menu.Items.Add(new MenuFlyoutSeparator());
