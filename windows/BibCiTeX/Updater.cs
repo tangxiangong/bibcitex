@@ -7,6 +7,14 @@ namespace BibCiTeX;
 
 internal static class Updater
 {
+    internal static bool CanCheck
+    {
+        get
+        {
+            try { return new PackageManager().FindPackageForUser(string.Empty, Package.Current.Id.FullName).GetAppInstallerInfo() is not null; }
+            catch { return false; }
+        }
+    }
     internal static async Task Check(FrameworkElement owner)
     {
         var manager = new PackageManager();

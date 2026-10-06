@@ -17,7 +17,7 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double ReferenceRow = 80;
     private const double ListPadding = 16;
     private const double StatusRow = 40;
-    private const double FallbackRow = 40;
+    private const double EmptyRow = 112;
     private const double MaxList = 460;
     private const double PanelWidth = 720;
 
@@ -26,6 +26,14 @@ internal sealed class HelperWindow : Window, IDisposable
     private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(8, 0, 8, 8) };
     private readonly TextBlock status = Views.Text("");
     private readonly Button chooseLibrary;
+    private readonly TextBlock libraryName = new() { FontSize = 11, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 108 };
+    private readonly Grid errorBar = new() { ColumnSpacing = 7, Padding = new Thickness(12, 7, 12, 7), Visibility = Visibility.Collapsed };
+    private readonly Grid listArea = new();
+    private readonly StackPanel emptyState = new() { Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+    private readonly TextBlock emptyLabel = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+    private readonly SvgIcon emptyIcon = new("search", 24);
+    private readonly ProgressRing listProgress = new() { Width = 24, Height = 24, IsActive = false, Visibility = Visibility.Collapsed };
+    private bool searching;
     private readonly ProgressRing progress = new() { Width = 18, Height = 18, IsActive = false, Visibility = Visibility.Collapsed };
     private readonly Button fallback;
     private List<Library> libraries = [];
@@ -55,19 +63,27 @@ internal sealed class HelperWindow : Window, IDisposable
         root.RowDefinitions.Add(new());
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
 
-        var header = new Grid { Padding = new Thickness(20, 0, 16, 0), ColumnSpacing = 14 };
+        var header = new Grid { Padding = new Thickness(22, 0, 22, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        header.Children.Add(new SvgIcon("search", 24)); Grid.SetColumn(search, 1); header.Children.Add(search);
+        header.Children.Add(new SvgIcon("search", 22)); Grid.SetColumn(search, 1); header.Children.Add(search);
         Localized.Name(search, "搜索");
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
-        chooseLibrary = Views.Button("library", "文献库", () => { if (busy) return; selecting = !selecting; search.Text = ""; _ = Refresh(); });
+        chooseLibrary = new Button { Content = Views.Row(new SvgIcon("library", 14), libraryName, new SvgIcon("chevronDown", 9)), CornerRadius = new CornerRadius(16), Padding = new Thickness(10, 6, 10, 6), MaxWidth = 160, BorderThickness = new Thickness(0) };
+        Localized.Tooltip(chooseLibrary, "切换文献库 (Tab)"); Localized.Name(chooseLibrary, "切换文献库");
+        chooseLibrary.Click += (_, _) => { if (busy) return; selecting = true; search.Text = ""; _ = Refresh(); search.Focus(FocusState.Programmatic); };
         Grid.SetColumn(chooseLibrary, 3); header.Children.Add(chooseLibrary); root.Children.Add(header);
 
-        status.Margin = new Thickness(20, 8, 20, 8); status.Visibility = Visibility.Collapsed; Grid.SetRow(status, 1); root.Children.Add(status);
-        Grid.SetRow(results, 2); root.Children.Add(results);
-        fallback = new Button { Content = L10n.Text("复制引用键"), Margin = new Thickness(20, 0, 20, 8), Visibility = Visibility.Collapsed };
+        errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); errorBar.ColumnDefinitions.Add(new()); errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        errorBar.Children.Add(new SvgIcon("alert", 14) { VerticalAlignment = VerticalAlignment.Center });
+        status.FontSize = 11; status.MaxLines = 2; Views.ThemeForeground(status, "SystemFillColorCriticalBrush");
+        Grid.SetColumn(status, 1); errorBar.Children.Add(status); Grid.SetRow(errorBar, 1); root.Children.Add(errorBar);
+        listArea.Children.Add(results);
+        emptyIcon.HorizontalAlignment = HorizontalAlignment.Center; emptyState.Children.Add(emptyIcon); emptyState.Children.Add(emptyLabel); listArea.Children.Add(emptyState); listArea.Children.Add(listProgress);
+        var rule = Views.Divider(); rule.VerticalAlignment = VerticalAlignment.Top; listArea.Children.Add(rule);
+        Grid.SetRow(listArea, 2); root.Children.Add(listArea);
+        fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
         fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };
-        Grid.SetRow(fallback, 3); root.Children.Add(fallback);
+        Grid.SetColumn(fallback, 2); errorBar.Children.Add(fallback);
         Localized.Bind(search, TextBox.PlaceholderTextProperty, "搜索文献、作者、标题");
         Localized.Bind(fallback, ContentControl.ContentProperty, "复制引用键");
         L10n.Changed += LocalizeTitle;
@@ -101,26 +117,26 @@ internal sealed class HelperWindow : Window, IDisposable
             await RustCore.CapturePasteTarget();
             if (showVersion != lifecycle) return;
             failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
-            search.Text = ""; results.Items.Clear(); Resize(Header); Position(); visible = true;
-            Activate(); search.Focus(FocusState.Programmatic);
+            search.Text = ""; results.Items.Clear(); chooseLibrary.Visibility = Visibility.Collapsed; Resize(Header); Position(); visible = true;
+            Activate(); search.Focus(FocusState.Programmatic); SetSearching(true);
             var rows = await RustCore.Libraries();
             var saved = await RustCore.HelperCurrent();
             if (showVersion != lifecycle) return;
             libraries = rows; current = saved;
             if (current is not null && !libraries.Any(x => x.Name == current.Name && x.Path == current.Path)) current = null;
             selecting = current is null;
-            busy = false;
+            busy = false; SetSearching(false);
             await Refresh();
         }
         catch (Exception error)
         {
-            if (showVersion == lifecycle) { visible = true; Activate(); SetErrorStatus(error); Resize(Header + ReferenceRow); }
+            if (showVersion == lifecycle) { visible = true; Activate(); SetSearching(false); SetErrorStatus(error); ResizeContent(); }
         }
         finally { opening = false; busy = false; if (visible && !active) Hide(); }
     }
     internal void Hide()
     {
-        visible = false; version++; lifecycle++; composing = false; AppWindow.Hide();
+        visible = false; version++; lifecycle++; composing = false; SetSearching(false); AppWindow.Hide();
     }
     private async Task Refresh(bool debounce = false)
     {
@@ -128,9 +144,11 @@ internal sealed class HelperWindow : Window, IDisposable
         var request = ++version;
         failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
         Localized.Bind(search, TextBox.PlaceholderTextProperty, selecting ? "搜索或选择文献库" : "搜索文献、作者、标题");
-        if (current is { } selected) Localized.BindValue(chooseLibrary, ToolTipService.ToolTipProperty, () => selected.Name);
-        else Localized.Tooltip(chooseLibrary, "文献库");
+        chooseLibrary.Visibility = !selecting && current is not null ? Visibility.Visible : Visibility.Collapsed;
+        libraryName.Text = current?.Name ?? "";
+        emptyState.Visibility = Visibility.Collapsed;
         var query = search.Text; var selectedPath = current?.Path;
+        SetSearching(!selecting && query.Trim().Length > 0);
         try
         {
             if (debounce) await Task.Delay(90);
@@ -138,8 +156,8 @@ internal sealed class HelperWindow : Window, IDisposable
             results.Items.Clear();
             if (selecting)
             {
-                foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path));
-                if (results.Items.Count == 0) SetLocalizedStatus(libraries.Count == 0 ? "未找到文献库，请先到主窗口添加文献库" : "未找到匹配的文献");
+                foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || PathDisplay.Format(x.Path).Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path));
+                if (results.Items.Count == 0) SetEmpty("未找到文献库，请先到主窗口添加文献库", "library");
             }
             else if (query.Trim().Length > 0 && selectedPath is not null)
             {
@@ -147,13 +165,13 @@ internal sealed class HelperWindow : Window, IDisposable
                 var references = await RustCore.Search(selectedPath, query);
                 if (request != version) return;
                 foreach (var reference in references) results.Items.Add(Views.ReferenceItem(reference));
-                if (references.Count == 0) SetLocalizedStatus("未找到匹配的文献");
+                if (references.Count == 0) SetEmpty("未找到匹配记录", "search");
             }
             if (results.Items.Count > 0) results.SelectedIndex = 0;
             ResizeContent();
         }
         catch (Exception error) { if (request == version) { SetErrorStatus(error); ResizeContent(); } }
-        finally { if (request == version) { progress.IsActive = false; progress.Visibility = Visibility.Collapsed; } }
+        finally { if (request == version) SetSearching(false); }
     }
     private async void KeyDown(object sender, KeyRoutedEventArgs args)
     {
@@ -167,7 +185,7 @@ internal sealed class HelperWindow : Window, IDisposable
         switch (args.Key)
         {
             case VirtualKey.Escape: args.Handled = true; Hide(); break;
-            case VirtualKey.Tab: args.Handled = true; selecting = !selecting || current is null; search.Text = ""; await Refresh(); search.Focus(FocusState.Programmatic); break;
+            case VirtualKey.Tab: args.Handled = true; selecting = true; search.Text = ""; await Refresh(); search.Focus(FocusState.Programmatic); break;
             case VirtualKey.Down:
             case VirtualKey.Up:
                 args.Handled = true;
@@ -178,7 +196,7 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     private async Task Execute(ListViewItem? item)
     {
-        if (pasting || busy || item is null) return;
+        if (pasting || busy || searching || item is null) return;
         var session = lifecycle;
         var request = ++version;
         try
@@ -206,25 +224,35 @@ internal sealed class HelperWindow : Window, IDisposable
         }
         finally { pasting = false; busy = false; }
     }
-    private void SetErrorStatus(Exception value) { Localized.Error(status, TextBlock.TextProperty, value); status.Visibility = Visibility.Visible; }
-    private void SetLocalizedStatus(string key)
+    private void SetErrorStatus(Exception value) { Localized.Error(status, TextBlock.TextProperty, value); errorBar.Visibility = Visibility.Visible; ResizeContent(); }
+    private void SetEmpty(string key, string icon)
     {
-        SetStatus(L10n.Text(key));
-        Localized.Bind(status, TextBlock.TextProperty, key);
+        Localized.Bind(emptyLabel, TextBlock.TextProperty, key); emptyIcon.Icon = icon; emptyState.Visibility = Visibility.Visible;
     }
-    private void SetStatus(string text) { Localized.BindValue(status, TextBlock.TextProperty, () => text); status.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible; }
+    private void SetStatus(string text) { Localized.BindValue(status, TextBlock.TextProperty, () => text); errorBar.Visibility = text.Length == 0 ? Visibility.Collapsed : Visibility.Visible; }
+    private void SetSearching(bool value)
+    {
+        searching = value;
+        progress.IsActive = listProgress.IsActive = value;
+        progress.Visibility = listProgress.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+        results.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+        if (value) emptyState.Visibility = Visibility.Collapsed;
+        ResizeContent();
+    }
     private void ResizeContent()
     {
+        if (!visible) return;
         var rows = results.Items.Count;
-        var list = rows == 0 ? 0 : Math.Min(MaxList, rows * (selecting ? LibraryRow : ReferenceRow) + ListPadding);
-        Resize(Header + list + (status.Visibility == Visibility.Visible ? StatusRow : 0) + (fallback.Visibility == Visibility.Visible ? FallbackRow : 0));
+        var list = searching || emptyState.Visibility == Visibility.Visible ? EmptyRow : rows == 0 ? 0 : Math.Min(MaxList, rows * ((selecting ? LibraryRow : ReferenceRow) + 2) + ListPadding);
+        listArea.Visibility = list > 0 ? Visibility.Visible : Visibility.Collapsed;
+        Resize(Header + list + (errorBar.Visibility == Visibility.Visible ? StatusRow : 0));
     }
     private void Resize(double height)
     {
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this); var scale = WindowInterop.GetDpiForWindow(hwnd) / 96.0;
         var area = Area();
         var width = Math.Min(PanelWidth * scale, area.Width - 40 * scale);
-        AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)Math.Max(320, width), (int)Math.Min(height * scale, area.Height - 80 * scale)));
+        AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)Math.Max(320, width), (int)Math.Min(height * scale, area.Height - 120 * scale)));
         // Keep the helper centred on its display after its content height changes.
         Place(area);
     }

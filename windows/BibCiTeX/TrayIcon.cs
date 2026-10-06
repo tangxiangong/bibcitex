@@ -7,6 +7,19 @@ namespace BibCiTeX;
 // Windows notification area and menus, attached to the WinUI HWND message loop.
 internal sealed class TrayIcon : IDisposable
 {
+    private static TrayIcon? current;
+    [StructLayout(LayoutKind.Sequential)] private struct IconIdentifier { internal uint Size; internal nint Window; internal uint Id; internal Guid Guid; }
+    [StructLayout(LayoutKind.Sequential)] private struct Rect { internal int Left, Top, Right, Bottom; }
+    [DllImport("shell32.dll")] private static extern int Shell_NotifyIconGetRect(ref IconIdentifier identifier, out Rect rect);
+    internal static Windows.Graphics.RectInt32? Bounds
+    {
+        get
+        {
+            if (current is not { disposed: false } tray) return null;
+            var identifier = new IconIdentifier { Size = (uint)Marshal.SizeOf<IconIdentifier>(), Window = tray.hwnd, Id = tray.data.Id };
+            return Shell_NotifyIconGetRect(ref identifier, out var rect) == 0 ? new Windows.Graphics.RectInt32(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top) : null;
+        }
+    }
     private const uint Message = 0x8000 + 52;
     private readonly nint hwnd;
     private readonly nint icon;
@@ -55,10 +68,11 @@ internal sealed class TrayIcon : IDisposable
                 if ((uint)lparam is 0x0202 or 0x0203 or 0x0400 or 0x0401) { tray(); return 0; }
                 if ((uint)lparam == 0x0205)
                 {
+                    App.Tray?.Hide();
                     var menu = CreatePopupMenu();
                     try
                     {
-                        AppendMenuW(menu, 0, 1, L10n.Text("显示窗口")); AppendMenuW(menu, 0, 2, L10n.Text("快捷助手")); AppendMenuW(menu, 0, 3, L10n.Text("检查更新")); AppendMenuW(menu, 0x800, 0, null); AppendMenuW(menu, 0, 4, L10n.Text("退出 BibCiTeX"));
+                        AppendMenuW(menu, 0, 1, L10n.Text("显示窗口")); AppendMenuW(menu, 0, 2, L10n.Text("快捷助手")); AppendMenuW(menu, Updater.CanCheck ? 0u : 1u, 3, L10n.Text("检查更新")); AppendMenuW(menu, 0x800, 0, null); AppendMenuW(menu, 0, 4, L10n.Text("退出 BibCiTeX"));
                         WindowInterop.GetCursorPos(out var point); SetForegroundWindow(hwnd);
                         switch (TrackPopupMenuEx(menu, 0x100 | 2, point.X, point.Y, hwnd, 0))
                         { case 1: show(); break; case 2: helper(); break; case 3: update(); break; case 4: quit(); break; }
@@ -71,6 +85,7 @@ internal sealed class TrayIcon : IDisposable
         };
         if (!WindowInterop.SetWindowSubclass(hwnd, callback, Message, 0)) { DestroyIcon(icon); throw new Win32Exception(Marshal.GetLastWin32Error()); }
         if (!Shell_NotifyIconW(0, ref data)) { WindowInterop.RemoveWindowSubclass(hwnd, callback, Message); DestroyIcon(icon); throw new Win32Exception(Marshal.GetLastWin32Error()); }
+        current = this;
     }
     public void Dispose()
     {
