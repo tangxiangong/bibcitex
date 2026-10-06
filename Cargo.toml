@@ -20,7 +20,7 @@ version = "0.6.0"
 
 [workspace.dependencies]
 arboard = "3"
-base64 = "0.22"
+base64 = "0.23"
 bibcitex-core = { path = "crates/bibcitex-core" }
 bibcitex-csharp = { path = "crates/bibcitex-csharp" }
 bibcitex-service = { path = "crates/bibcitex-service" }
@@ -28,22 +28,22 @@ biblatex = { version = "0.12", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.15"
 dirs = "7"
+ed25519-dalek = "3"
 enigo = "0.6"
 flate2 = "1"
 fs-err = "3"
 interoptopus = "0.16"
 interoptopus_csharp = "0.16"
 minisign = "0.10"
-minisign-verify = "=0.2.5"
+minisign-verify = "0.3"
 objc2 = "0.6"
 objc2-app-kit = "0.3"
 quick-xml = "0.42"
 rayon = "1"
-ed25519-dalek = "2"
 semver = "1"
-sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.11"
 tar = "0.4"
 tempfile = "3"
 thiserror = "2"

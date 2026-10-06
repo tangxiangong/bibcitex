@@ -2,6 +2,16 @@ use super::*;
 use ed25519_dalek::{Signer, SigningKey};
 use serde_json::json;
 
+#[test]
+fn release_hash_matches_standard_sha256_encoding() {
+    let file = tempfile::NamedTempFile::new().unwrap();
+    fs::write(file.path(), b"abc").unwrap();
+    assert_eq!(
+        hash(file.path()).unwrap(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+}
+
 fn fixture(tag: &str) -> (tempfile::TempDir, String) {
     let dir = tempfile::tempdir().unwrap();
     let key = SigningKey::from_bytes(&[17; 32]);

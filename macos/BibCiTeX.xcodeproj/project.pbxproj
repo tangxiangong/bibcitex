@@ -886,7 +886,7 @@
 			repositoryURL = "https://github.com/colinc86/LaTeXSwiftUI";
 			requirement = {
 				kind = exactVersion;
-				version = 1.5.0;
+				version = 2.0.0;
 			};
 		};
 		6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
@@ -902,7 +902,7 @@
 			repositoryURL = "https://github.com/swhitty/SwiftDraw";
 			requirement = {
 				kind = exactVersion;
-				version = 0.27.0;
+				version = 0.29.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

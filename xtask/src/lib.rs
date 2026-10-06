@@ -53,7 +53,13 @@ pub fn audiences(channel: &str) -> &[&str] {
     }
 }
 fn hash(path: &Path) -> Result<String> {
-    Ok(format!("{:x}", Sha256::digest(fs::read(path)?)))
+    use std::fmt::Write;
+
+    let mut encoded = String::with_capacity(64);
+    for byte in Sha256::digest(fs::read(path)?) {
+        write!(encoded, "{byte:02x}")?;
+    }
+    Ok(encoded)
 }
 fn safe_file(directory: &Path, name: &str) -> Result<std::path::PathBuf> {
     ensure(
