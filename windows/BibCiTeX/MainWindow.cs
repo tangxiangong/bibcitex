@@ -411,39 +411,33 @@ internal sealed class MainWindow : Window
         try
         {
             var name = new TextBox { Header = L10n.Text("文献库名称"), PlaceholderText = L10n.Text("为文献库起一个名字") };
-            var path = new TextBox { Header = L10n.Text("文件路径"), PlaceholderText = L10n.Text("尚未选择文件"), IsReadOnly = true };
+            // Keep file selection as data; an unattached TextBox cannot reliably deliver TextChanged.
+            var selectedPath = library?.Path ?? "";
             var description = new TextBox { Header = L10n.Text("描述"), PlaceholderText = L10n.Text("简单描述一下这个文献库..."), AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 80, MaxHeight = 130 };
-            foreach (var box in new[] { name, path, description }) Views.LocalizeTextBox(box);
+            foreach (var box in new[] { name, description }) Views.LocalizeTextBox(box);
             Localized.Bind(name, TextBox.HeaderProperty, "文献库名称"); Localized.Bind(name, TextBox.PlaceholderTextProperty, "为文献库起一个名字");
-            Localized.Bind(path, TextBox.HeaderProperty, "文件路径"); Localized.Bind(path, TextBox.PlaceholderTextProperty, "尚未选择文件");
             Localized.Bind(description, TextBox.HeaderProperty, "描述"); Localized.Bind(description, TextBox.PlaceholderTextProperty, "简单描述一下这个文献库...");
-            name.Text = library?.Name ?? ""; path.Text = library?.Path ?? ""; description.Text = library?.Description ?? "";
+            name.Text = library?.Name ?? ""; description.Text = library?.Description ?? "";
             var error = Views.Text(""); error.Visibility = Visibility.Collapsed; error.IsTextSelectionEnabled = true; Views.SelectableText(error); Views.ThemeForeground(error, "SystemFillColorCriticalBrush");
             var choose = new Button { Content = L10n.Text("选择文件") };
             Localized.Bind(choose, ContentControl.ContentProperty, "选择文件");
-            choose.Click += async (_, _) =>
-            {
-                try
-                {
-                    var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".bib");
-                    WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
-                    if (await picker.PickSingleFileAsync() is { } file) { path.Text = file.Path; if (name.Text.Length == 0) name.Text = System.IO.Path.GetFileNameWithoutExtension(file.Name); }
-                }
-                catch (Exception ex) { Localized.Error(error, TextBlock.TextProperty, ex); error.Visibility = Visibility.Visible; }
-            };
             var form = new StackPanel { Spacing = 20, Width = 464, Margin = new Thickness(0, 8, 0, 8) };
             var title = Views.LocalizedText(library is null ? "新增文献库" : "编辑文献库", 22);
             var titleRow = Views.Row(new Border { Child = new SvgIcon("folderAdd", 24), Padding = new Thickness(12), CornerRadius = new CornerRadius(12), Background = Views.Brush("SubtleFillColorSecondaryBrush") }, title);
             title.VerticalAlignment = VerticalAlignment.Center; form.Children.Add(titleRow);
             if (library is null) { var subtitle = Views.LocalizedText("添加一个 .bib 文件到你的工作空间"); subtitle.Opacity = .65; form.Children.Add(subtitle); }
             form.Children.Add(name);
+            var pathLabel = new MiddleEllipsisText(14, 2) { VerticalAlignment = VerticalAlignment.Center };
+            void UpdatePath()
+            {
+                Localized.BindValue(pathLabel, MiddleEllipsisText.ValueProperty, () => selectedPath.Length == 0 ? L10n.Text("尚未选择文件") : PathDisplay.Format(selectedPath));
+                ToolTipService.SetToolTip(pathLabel, PathDisplay.Format(selectedPath));
+            }
+            UpdatePath();
             {
                 var fileSection = new Grid { ColumnSpacing = 12 };
                 fileSection.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); fileSection.ColumnDefinitions.Add(new()); fileSection.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
                 fileSection.Children.Add(new SvgIcon("fileText", 24) { VerticalAlignment = VerticalAlignment.Center });
-                var pathLabel = new MiddleEllipsisText(14, 2) { VerticalAlignment = VerticalAlignment.Center };
-                void UpdatePath() { Localized.BindValue(pathLabel, MiddleEllipsisText.ValueProperty, () => path.Text.Length == 0 ? L10n.Text("尚未选择文件") : PathDisplay.Format(path.Text)); ToolTipService.SetToolTip(pathLabel, PathDisplay.Format(path.Text)); }
-                path.TextChanged += (_, _) => UpdatePath(); UpdatePath();
                 Grid.SetColumn(pathLabel, 1); fileSection.Children.Add(pathLabel); Grid.SetColumn(choose, 2); fileSection.Children.Add(choose);
                 form.Children.Add(Views.LocalizedText("文件路径"));
                 form.Children.Add(new Border { Child = fileSection, Padding = new Thickness(16), CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1), BorderBrush = (Brush)Application.Current.Resources["ControlStrokeColorDefaultBrush"] });
@@ -457,8 +451,24 @@ internal sealed class MainWindow : Window
             Localized.Name(dialog, library is null ? "新增文献库" : "编辑文献库");
             var saving = false;
             dialog.Closing += (_, args) => { if (saving) args.Cancel = true; };
-            void Validate() => dialog.IsPrimaryButtonEnabled = !saving && name.Text.Trim().Length > 0 && path.Text.Length > 0;
-            name.TextChanged += (_, _) => Validate(); path.TextChanged += (_, _) => Validate(); Validate();
+            void Validate() => dialog.IsPrimaryButtonEnabled = !saving && name.Text.Trim().Length > 0 && selectedPath.Length > 0;
+            name.TextChanged += (_, _) => Validate(); Validate();
+            choose.Click += async (_, _) =>
+            {
+                try
+                {
+                    var picker = new FileOpenPicker(); picker.FileTypeFilter.Add(".bib");
+                    WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+                    if (await picker.PickSingleFileAsync() is { } file)
+                    {
+                        selectedPath = file.Path;
+                        if (name.Text.Length == 0) name.Text = System.IO.Path.GetFileNameWithoutExtension(file.Name);
+                        UpdatePath();
+                        Validate();
+                    }
+                }
+                catch (Exception ex) { Localized.Error(error, TextBlock.TextProperty, ex); error.Visibility = Visibility.Visible; }
+            };
             dialog.PrimaryButtonClick += async (_, args) =>
             {
                 if (libraries.Items.Cast<ListViewItem>().Any(item => item.Tag is Library other && other.Name == name.Text.Trim() && other.Name != library?.Name))
@@ -470,10 +480,10 @@ internal sealed class MainWindow : Window
                 saveProgress.IsActive = true; saveProgress.Visibility = Visibility.Visible;
                 try
                 {
-                    if (library is null) await RustCore.AddLibrary(name.Text.Trim(), path.Text, description.Text);
+                    if (library is null) await RustCore.AddLibrary(name.Text.Trim(), selectedPath, description.Text);
                     else
                     {
-                        var updated = await RustCore.UpdateLibrary(library.Name, name.Text.Trim(), path.Text == library.Path ? null : path.Text, description.Text);
+                        var updated = await RustCore.UpdateLibrary(library.Name, name.Text.Trim(), selectedPath == library.Path ? null : selectedPath, description.Text);
                         if (current?.Name == library.Name) current = updated;
                     }
                     if (library is null || current?.Name == library.Name || current?.Name == name.Text.Trim()) selectAfterSave = name.Text.Trim();
