@@ -21,7 +21,6 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		F8A1C329EA194045A74376C3 /* tray-template.svg in Resources */ = {isa = PBXBuildFile; fileRef = F8A1C329EA194045A74376C4 /* tray-template.svg */; };
 		012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */ = {isa = PBXBuildFile; fileRef = 18D1244D5E41DA43FACF65D8 /* refresh.svg */; };
 		0259FFCAC0274ED41C46DFBF /* rename.svg in Resources */ = {isa = PBXBuildFile; fileRef = 54D1A490BCC9B75E7CF23CD4 /* rename.svg */; };
 		0DB711FF0A699B56A62641E7 /* check.svg in Resources */ = {isa = PBXBuildFile; fileRef = D318D2E31242780F2128FA79 /* check.svg */; };
@@ -65,6 +64,11 @@
 		9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */; };
 		A1017E6C56AFA62048689647 /* folderAdd.svg in Resources */ = {isa = PBXBuildFile; fileRef = D3CD787C2C1A7587729003E2 /* folderAdd.svg */; };
 		A1B2C3D4E5F60718293A4B5C /* TrayPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */; };
+		AB10CA120000000000000000 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000000 /* L10n.swift */; };
+		AB10CA120000000000000001 /* ../localization/en.json in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000001 /* ../localization/en.json */; };
+		AB10CA120000000000000002 /* ../localization/zh-Hans.json in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000002 /* ../localization/zh-Hans.json */; };
+		AB10CA130000000000000000 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA140000000000000000 /* InfoPlist.strings */; };
+		AB10CA160000000000000000 /* MainMenuLocalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10CA170000000000000000 /* MainMenuLocalizer.swift */; };
 		B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */; };
 		B53283C7D509A479590CD4BF /* WorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */; };
 		B58EE2C0B3F5293B39E5D01E /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91C61546766387505A3A82CF /* AppKit.framework */; };
@@ -80,15 +84,11 @@
 		E67055DBC62D6DA2924B6D73 /* calendar.svg in Resources */ = {isa = PBXBuildFile; fileRef = C6C134C8DA9637AE5D05DBF2 /* calendar.svg */; };
 		F3C75D9E0DB47EA0B20ABF5D /* alert.svg in Resources */ = {isa = PBXBuildFile; fileRef = 4D982CA22F7E43B0327660E0 /* alert.svg */; };
 		F8A1C329EA194045A74376C1 /* favicon.png in Resources */ = {isa = PBXBuildFile; fileRef = F8A1C329EA194045A74376C2 /* favicon.png */; };
+		F8A1C329EA194045A74376C3 /* tray-template.svg in Resources */ = {isa = PBXBuildFile; fileRef = F8A1C329EA194045A74376C4 /* tray-template.svg */; };
 		F93874016C640C3299F952B2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */; };
 		FB3A90F9BC5C4D6194AF6D37 /* chevronLeft.svg in Resources */ = {isa = PBXBuildFile; fileRef = 7B2DE7B37539C688F176DE6F /* chevronLeft.svg */; };
 		FDBF12F9B10228CE2E2D814B /* SwiftDraw in Frameworks */ = {isa = PBXBuildFile; productRef = FD711F2D6C6ED28FB6F00A5C /* SwiftDraw */; };
 		FE47B842645AE986AE7D1A6B /* pin.svg in Resources */ = {isa = PBXBuildFile; fileRef = 6817A3BFC571F02A645A3A88 /* pin.svg */; };
-		AB10CA120000000000000000 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000000 /* L10n.swift */; };
-		AB10CA120000000000000001 /* ../localization/en.json in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000001 /* ../localization/en.json */; };
-		AB10CA120000000000000002 /* ../localization/zh-Hans.json in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000002 /* ../localization/zh-Hans.json */; };
-		AB10CA130000000000000000 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA140000000000000000 /* InfoPlist.strings */; };
-		AB10CA160000000000000000 /* MainMenuLocalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10CA170000000000000000 /* MainMenuLocalizer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,7 +109,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		F8A1C329EA194045A74376C4 /* tray-template.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "tray-template.svg"; path = "../assets/app-icons/tray-template.svg"; sourceTree = "<group>"; };
 		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = refresh.svg; sourceTree = "<group>"; };
 		20A8CCD92B6053AB065871E0 /* chevronRight.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = chevronRight.svg; sourceTree = "<group>"; };
@@ -140,6 +139,12 @@
 		A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BibCiTeXApp.swift; sourceTree = "<group>"; };
 		AA4AE55941866C34949D675B /* AppResources.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppResources.swift; sourceTree = "<group>"; };
 		AAC02E7B140A57A506B77D0F /* download.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = download.svg; sourceTree = "<group>"; };
+		AB10CA110000000000000000 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		AB10CA110000000000000001 /* ../localization/en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ../localization/en.json; sourceTree = SOURCE_ROOT; };
+		AB10CA110000000000000002 /* ../localization/zh-Hans.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "../localization/zh-Hans.json"; sourceTree = SOURCE_ROOT; };
+		AB10CA150000000000000000 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
+		AB10CA150000000000000001 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
+		AB10CA170000000000000000 /* MainMenuLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuLocalizer.swift; sourceTree = "<group>"; };
 		B175C23E24258D56DD93E5F2 /* add.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = add.svg; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrayPanelController.swift; sourceTree = "<group>"; };
 		B3427E0196B1D54D70378C9D /* HelperPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperPanelController.swift; sourceTree = "<group>"; };
@@ -170,15 +175,10 @@
 		F5A73E973D985370D4F1BBDA /* panelRightClose.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightClose.svg; sourceTree = "<group>"; };
 		F7DD40D9024759F35E8FAABB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		F8A1C329EA194045A74376C2 /* favicon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = favicon.png; path = ../public/favicon.png; sourceTree = "<group>"; };
+		F8A1C329EA194045A74376C4 /* tray-template.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "tray-template.svg"; path = "../assets/app-icons/tray-template.svg"; sourceTree = "<group>"; };
 		FACEFEED0000000000000000 /* TrayWorkbenchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchModel.swift; sourceTree = "<group>"; };
 		FACEFEED0000000000000001 /* TrayWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrayWorkbenchView.swift; sourceTree = "<group>"; };
 		FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = externalLink.svg; sourceTree = "<group>"; };
-		AB10CA110000000000000000 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
-		AB10CA110000000000000001 /* ../localization/en.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = ../localization/en.json; sourceTree = SOURCE_ROOT; };
-		AB10CA110000000000000002 /* ../localization/zh-Hans.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "../localization/zh-Hans.json"; sourceTree = SOURCE_ROOT; };
-		AB10CA150000000000000000 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
-		AB10CA150000000000000001 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
-		AB10CA170000000000000000 /* MainMenuLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuLocalizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -622,8 +622,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				BIBCITEX_BINDINGS_DIR = "$(BUILD_DIR)/BibCiTeXBindings/$(CONFIGURATION)";
 				BIBCITEX_RUST_TARGET_DIR = "$(PROJECT_TEMP_DIR)/RustTarget";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -758,8 +760,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				BIBCITEX_BINDINGS_DIR = "$(BUILD_DIR)/BibCiTeXBindings/$(CONFIGURATION)";
 				BIBCITEX_RUST_TARGET_DIR = "$(PROJECT_TEMP_DIR)/RustTarget";
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";

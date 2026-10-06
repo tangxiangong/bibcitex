@@ -19,6 +19,7 @@ dist/
 
 # Platform build outputs
 **/.build/
+**/.vs/
 windows/**/bin/
 windows/**/obj/
 windows/**/AppPackages/
