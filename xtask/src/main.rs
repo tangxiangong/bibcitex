@@ -10,6 +10,9 @@ fn run() -> Result<()> {
     {
         ["release-metadata"] => {
             let version = versions(&env::var("RELEASE_TAG")?)?;
+            if version.version != env!("CARGO_PKG_VERSION") {
+                return Err("Release tag does not match the checked-out workspace version".into());
+            }
             let mut output = OpenOptions::new()
                 .append(true)
                 .create(true)
