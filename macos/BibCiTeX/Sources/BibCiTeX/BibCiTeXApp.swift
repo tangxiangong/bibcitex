@@ -162,13 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             for window in NSApp.windows where !(window is NSPanel) && window.title == "BibCiTeX" {
                 window.delegate = self
                 window.isReleasedWhenClosed = false
-                // Extend the content view behind the titlebar. Without this the clear,
-                // non-opaque window leaves the titlebar strip unpainted, so it samples
-                // the desktop unblurred while the content below it is blurred.
-                window.styleMask.insert(.fullSizeContentView)
-                window.isOpaque = false
-                window.backgroundColor = .clear
-                window.titlebarAppearsTransparent = true
+                window.isOpaque = true
+                window.backgroundColor = .windowBackgroundColor
+                window.titlebarAppearsTransparent = false
                 window.titleVisibility = .hidden
             }
         }

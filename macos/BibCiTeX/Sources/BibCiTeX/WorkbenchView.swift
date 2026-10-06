@@ -3,20 +3,35 @@ import AppKit
 import UniformTypeIdentifiers
 
 struct WorkbenchView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("language") private var language = "system"
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
     @State private var editingLibrary: Bibliography?
+    private var sidebarBackground: Color {
+        colorScheme == .dark ? Color(red: 44 / 255, green: 44 / 255, blue: 46 / 255)
+            : Color(red: 233 / 255, green: 233 / 255, blue: 235 / 255)
+    }
+    private var contentBackground: Color {
+        colorScheme == .dark ? Color(red: 30 / 255, green: 30 / 255, blue: 32 / 255) : .white
+    }
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
 
     var body: some View {
         HSplitView {
-            if model.showSidebar { sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300) }
-            references.frame(minWidth: 330, maxWidth: .infinity)
-            if model.showInspector { inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520) }
+            if model.showSidebar {
+                sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300, maxHeight: .infinity)
+                    .background(sidebarBackground)
+            }
+            references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
+                .background(contentBackground)
+            if model.showInspector {
+                inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520, maxHeight: .infinity)
+                    .background(sidebarBackground)
+            }
         }
-        .background { WindowMaterial().ignoresSafeArea() }
+        .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
         .frame(minWidth: 800, minHeight: 520)
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -492,19 +507,4 @@ struct AddLibrarySheet: View {
             } catch { self.errorDetails = LocalizedMessage(error: error); saving = false }
         }
     }
-}
-
-struct WindowMaterial: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView(); glass.style = .regular; glass.cornerRadius = 0
-            return glass
-        }
-        let effect = NSVisualEffectView()
-        effect.material = .underWindowBackground
-        effect.blendingMode = .behindWindow
-        effect.state = .followsWindowActiveState
-        return effect
-    }
-    func updateNSView(_ view: NSView, context: Context) {}
 }

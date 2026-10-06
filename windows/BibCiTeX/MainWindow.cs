@@ -93,6 +93,9 @@ internal sealed class MainWindow : Window
         librariesEmpty.Margin = new Thickness(8, 32, 8, 8); Grid.SetRow(librariesEmpty, 1); sidebar.Children.Add(librariesEmpty);
         Grid.SetRow(sidebar, 1); root.Children.Add(sidebar);
         var center = new Grid { Padding = new Thickness(16) };
+        SetPaneBackground(sidebar, "WorkbenchSidebarBackgroundBrush");
+        SetPaneBackground(inspector, "WorkbenchSidebarBackgroundBrush");
+        SetPaneBackground(center, "WorkbenchContentBackgroundBrush");
         center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new());
         referenceHeader.Margin = new Thickness(0, 0, 0, 12);
         center.Children.Add(referenceHeader);
@@ -150,6 +153,11 @@ internal sealed class MainWindow : Window
         Closed += (_, _) => { aboutWindow?.Close(); shortcut?.Dispose(); tray?.Dispose(); };
         root.SizeChanged += (_, _) => LayoutPanes();
         LayoutPanes();
+    }
+
+    private static void SetPaneBackground(Grid pane, string resource)
+    {
+        pane.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load($"<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Grid\"><Setter Property=\"Background\" Value=\"{{ThemeResource {resource}}}\" /></Style>");
     }
 
     private MenuBar BuildMenu()

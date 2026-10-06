@@ -2,7 +2,22 @@
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
  <Application.Resources>
-  <ResourceDictionary><ResourceDictionary.MergedDictionaries>
+  <ResourceDictionary>
+   <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+     <SolidColorBrush x:Key="WorkbenchSidebarBackgroundBrush" Color="#E9E9EB" />
+     <SolidColorBrush x:Key="WorkbenchContentBackgroundBrush" Color="#FFFFFF" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Default">
+     <SolidColorBrush x:Key="WorkbenchSidebarBackgroundBrush" Color="#2C2C2E" />
+     <SolidColorBrush x:Key="WorkbenchContentBackgroundBrush" Color="#1E1E20" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="HighContrast">
+     <SolidColorBrush x:Key="WorkbenchSidebarBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+     <SolidColorBrush x:Key="WorkbenchContentBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
+    </ResourceDictionary>
+   </ResourceDictionary.ThemeDictionaries>
+   <ResourceDictionary.MergedDictionaries>
    <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
   </ResourceDictionary.MergedDictionaries></ResourceDictionary>
  </Application.Resources>
