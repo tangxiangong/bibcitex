@@ -55,6 +55,14 @@ v0.7.1 更新内容：[中文发布说明](release-notes/0.7.1/zh-Hans.md) · [E
 
 ### macOS 安装说明
 
+也可以通过项目维护的 [Homebrew tap](https://github.com/tangxiangong/homebrew-tap) 安装，支持 macOS 13 及以上的 Apple Silicon 和 Intel Mac：
+
+```bash
+brew install --cask tangxiangong/tap/bibcitex
+```
+
+应用支持内置更新。如需通过 Homebrew 更新，执行 `brew update` 后运行 `brew upgrade --cask --greedy bibcitex`。
+
 若提示 `BibCiTeX` 已损坏，请打开终端执行以下命令：
 
 ```bash
