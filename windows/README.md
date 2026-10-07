@@ -21,13 +21,15 @@ dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 
 ## 原生更新发布
 
-Windows uses unpackaged, self-contained WinUI 3 with Velopack 1.2.161. `Program.Main` handles installer hooks before starting XAML. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
+Windows uses unpackaged, framework-dependent WinUI 3 with Velopack 1.2.161. EXE and MSI installers detect and install the matching .NET 10 runtime and Visual C++ runtime when missing. Before starting WinUI on the first application launch, `WindowsRuntime` checks Windows App Runtime 2.5.1, downloads the matching Microsoft installer if needed, verifies its pinned SHA-256, installs it and retries initialization. Existing compatible installations are reused; missing dependencies require internet access. Silent installation defers Windows App Runtime provisioning until the first application launch. `Program.Main` handles Velopack hooks before this bootstrap, so packaging and uninstall hooks do not download runtimes. When upgrading the Windows App SDK runtime package, update the bootstrap version, URLs and verified hashes together. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
 
 ```powershell
 ./windows/scripts/publish.ps1 -Architecture x64 -Version 0.7.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
 Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow uploads all artifacts to GitHub Releases and advances `update-feed` channel pointers only after verification. It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
+
+`BibCiTeX.exe --prepare-runtime` provisions Windows App Runtime without opening the UI and returns a nonzero exit code on failure. CI runs this before the 60-second native localization test. Only a missing compatible framework triggers a download; other bootstrap failures are reported without reinstalling the runtime.
 
 Channel preferences are stable/beta/alpha, independent of x64/arm64. Selecting stable does not downgrade an installed preview. Markdown notes use the application's selected language and native WinUI text controls. See [the release protocol](../docs/updates.md).
 

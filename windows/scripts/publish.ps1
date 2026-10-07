@@ -22,6 +22,12 @@ foreach ($Language in @('zh-Hans', 'en')) {
 }
 & dotnet publish (Join-Path $Repo 'windows/BibCiTeX/BibCiTeX.csproj') -c Release "-p:Platform=$Architecture" "-p:RuntimeIdentifier=$Rid" "-p:Version=$Version" -o $Publish
 if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
+foreach ($BundledRuntime in @('coreclr.dll', 'Microsoft.ui.xaml.dll', 'DirectML.dll', 'onnxruntime.dll')) {
+    if (Test-Path (Join-Path $Publish $BundledRuntime)) { throw "Unexpected bundled runtime: $BundledRuntime" }
+}
+$RuntimeConfig = Get-Content -Raw (Join-Path $Publish 'BibCiTeX.runtimeconfig.json') | ConvertFrom-Json
+if ($RuntimeConfig.runtimeOptions.framework.name -ne 'Microsoft.NETCore.App') { throw 'Expected framework-dependent .NET publish output.' }
+if (-not (Test-Path (Join-Path $Publish 'Microsoft.WindowsAppRuntime.Bootstrap.dll'))) { throw 'Windows App Runtime bootstrap DLL is missing.' }
 if (-not (Test-Path (Join-Path $Tools 'vpk.exe'))) {
     & dotnet tool install vpk --version 1.2.161 --tool-path $Tools
     if ($LASTEXITCODE -ne 0) { throw 'Velopack tool installation failed.' }
@@ -33,7 +39,7 @@ $Text = "<!-- locale:zh-Hans -->`n" + (Get-Content -Raw (Join-Path $Notes 'zh-Ha
 # MSI has numeric versions; the CI run sequence is independent from display SemVer.
 $MsiVersion = "1.$([math]::Floor($BuildNumber / 65536)).$($BuildNumber % 65536)"
 if ($BuildNumber -ge 16777216) { throw 'MSI build sequence exhausted.' }
-& (Join-Path $Tools 'vpk.exe') pack --packId BibCiTeX --packVersion $Version --packDir $Publish --mainExe BibCiTeX.exe --runtime $Rid --channel "$Rid-$Channel" --outputDir $OutputDirectory --icon (Join-Path $Repo 'assets/app-icons/icon.ico') --releaseNotes $Combined --msi --msiVersion $MsiVersion
+& (Join-Path $Tools 'vpk.exe') pack --packId BibCiTeX --packVersion $Version --packDir $Publish --mainExe BibCiTeX.exe --runtime $Rid --framework "net10.0-$Arch-runtime,vcredist143-$Arch" --channel "$Rid-$Channel" --outputDir $OutputDirectory --icon (Join-Path $Repo 'assets/app-icons/icon.ico') --releaseNotes $Combined --msi --msiVersion $MsiVersion
 if ($LASTEXITCODE -ne 0) { throw 'Velopack packaging failed.' }
 foreach ($Extension in @('exe', 'msi')) {
     $Installers = @(Get-ChildItem $OutputDirectory -File -Filter "*.$Extension")

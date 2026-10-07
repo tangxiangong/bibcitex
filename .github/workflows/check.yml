@@ -117,6 +117,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native localization test build failed.' }
           $directory = (dotnet msbuild $project '-p:Configuration=Debug' '-p:Platform=${{ matrix.arch }}' -p:LocalizationTestBuild=true -getProperty:TargetDir).Trim()
           if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve test executable directory.' }
+          # Provision dependencies separately from the bounded GUI regression test.
+          $bootstrap = Start-Process -FilePath (Join-Path $directory 'BibCiTeX.exe') -ArgumentList '--prepare-runtime' -PassThru
+          if (-not $bootstrap.WaitForExit(900000)) { throw 'Windows App Runtime preparation timed out.' }
+          if ($bootstrap.ExitCode -ne 0) { throw 'Windows App Runtime preparation failed.' }
           $report = Join-Path $directory 'localization-test-results.txt'
           Remove-Item $report -ErrorAction SilentlyContinue
           $process = Start-Process -FilePath (Join-Path $directory 'BibCiTeX.exe') -PassThru

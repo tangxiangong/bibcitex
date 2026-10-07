@@ -12,6 +12,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="UpdatePolicyTests.cs" />
+    <Compile Include="WindowsRuntimeTests.cs" />
+    <Compile Include="../BibCiTeX/WindowsRuntime.cs" Link="WindowsRuntime.cs" />
     <Compile Include="../BibCiTeX/NativeSettings.cs" Link="NativeSettings.cs" />
     <Compile Include="../BibCiTeX/UpdatePolicy.cs" Link="UpdatePolicy.cs" />
     <Compile Include="UiBehaviorTests.cs" />

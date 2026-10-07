@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using BibCiTeX;
 
 UpdatePolicyTests.Run();
+WindowsRuntimeTests.Run();
 UiBehaviorTests.Run();
 LocalizationTests.Run();
 await DialogQueueTests.Run();
