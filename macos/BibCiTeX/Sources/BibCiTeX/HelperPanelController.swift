@@ -113,8 +113,7 @@ final class HelperPanelController: NSObject {
         guard let panel else { return }
         isVisible = true
         positionPanel(accordingTo: model.preferredHeight)
-        panel.makeKeyAndOrderFront(nil)
-        panel.orderFrontRegardless()
+        showWithoutActivatingApplication(panel)
         model.focusRequest += 1
         installKeyMonitor()
     }
@@ -130,16 +129,23 @@ final class HelperPanelController: NSObject {
         failureAlert = alert
         isVisible = true
         positionPanel(accordingTo: model.preferredHeight)
-        panel.makeKeyAndOrderFront(nil)
+        showWithoutActivatingApplication(panel)
         installKeyMonitor()
         let session = model.sessionGeneration
         alert.beginSheetModal(for: panel) { [weak self] _ in
             guard let self, self.model.sessionGeneration == session else { return }
             self.failureAlert = nil
             guard self.isVisible else { return }
-            self.panel?.makeKeyAndOrderFront(nil)
+            if let panel = self.panel { self.showWithoutActivatingApplication(panel) }
             self.model.focusRequest += 1
         }
+    }
+
+    private func showWithoutActivatingApplication(_ panel: NSPanel) {
+        // Order just this nonactivating panel, then give it keyboard focus.
+        // Do not unhide/activate the app, which would restore its other windows.
+        panel.orderFrontRegardless()
+        panel.makeKey()
     }
 
     func hidePanel() {
@@ -184,6 +190,9 @@ final class HelperPanelController: NSObject {
 
         panel.isFloatingPanel = true
         panel.hidesOnDeactivate = false
+        // App hiding (Cmd+H) is independent of losing activation. The helper
+        // must remain displayable without unhiding the main application.
+        panel.canHide = false
         panel.level = .floating
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
         panel.isOpaque = false
