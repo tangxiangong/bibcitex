@@ -52,3 +52,9 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 本地化使用由原生控件持有的 XAML Binding，避免 C# 控件包装对象被 GC 回收后，菜单和既有列表退出语言刷新。`Strings/en-US` 与 `Strings/zh-CN` 声明原生资源语言，界面词典仍共用根目录 JSON。
 
 不编写或运行 UI/GUI 测试；界面通过人工验收，CI 保留实际应用编译和非 UI 集成测试。
+
+## 原生面板材质
+
+主窗口保留现有三栏 Grid。侧栏和详情栏使用系统透明 layer brush，让 Mica（不支持时 Acrylic）透出；内容列使用 `LayerFillColorDefaultBrush`。App.xaml 的 Grid Style 通过 `ThemeResource` 保持窗口主题切换时的动态解析，不使用不透明的 SolidBackground 覆盖材质，也不在代码中一次性获取背景 brush。分隔线使用 `DividerStrokeColorDefaultBrush`。
+
+托盘和助手保留 Acrylic 及现有布局。浅色、深色、高对比、应用内主题切换，以及 Windows 10 的 Acrylic 回退均需 Windows 实机验收；非 UI 集成测试不替代 WinUI/XAML 编译。

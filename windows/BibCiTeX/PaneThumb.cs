@@ -15,7 +15,7 @@ internal sealed class PaneThumb : UserControl
         ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
         var thumb = new Thumb
         {
-            Template = (ControlTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load("<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Thumb\"><Grid Background=\"Transparent\"><Border Width=\"1\" Background=\"{ThemeResource ControlStrokeColorDefaultBrush}\" /></Grid></ControlTemplate>"),
+            Template = (ControlTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load("<ControlTemplate xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Thumb\"><Grid Background=\"Transparent\"><Border Width=\"1\" Background=\"{ThemeResource DividerStrokeColorDefaultBrush}\" /></Grid></ControlTemplate>"),
             IsTabStop = false
         };
         thumb.DragDelta += (_, args) => Dragged?.Invoke(args.HorizontalChange);

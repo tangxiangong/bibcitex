@@ -40,6 +40,7 @@
 		36C34A7EE98EE0FE330D6A87 /* BibCiTeX.icon in Resources */ = {isa = PBXBuildFile; fileRef = 6C06F02CE6E49ED6A759478C /* BibCiTeX.icon */; };
 		3A85E58E4056FF3618733592 /* externalLink.svg in Resources */ = {isa = PBXBuildFile; fileRef = FB00CEE0FB39FECB8CDAABF9 /* externalLink.svg */; };
 		3BED296EB5CB22F95C2D2A64 /* WorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */; };
+		5C5D7A1100000000000000A1 /* SystemSurfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C5D7A1100000000000000B1 /* SystemSurfaces.swift */; };
 		41303FCE78232CDB53AF2714 /* HelperPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3427E0196B1D54D70378C9D /* HelperPanelController.swift */; };
 		472F1164A90E45CE5A68A356 /* add.svg in Resources */ = {isa = PBXBuildFile; fileRef = B175C23E24258D56DD93E5F2 /* add.svg */; };
 		4755010CCC63100950BD005F /* copy.svg in Resources */ = {isa = PBXBuildFile; fileRef = B68F9A470891876822BCE79B /* copy.svg */; };
@@ -124,6 +125,7 @@
 		50246B511084B357B60B89C3 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		54D1A490BCC9B75E7CF23CD4 /* rename.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = rename.svg; sourceTree = "<group>"; };
 		5F73FDEB788A8843DF1EA4C2 /* WorkbenchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkbenchView.swift; sourceTree = "<group>"; };
+		5C5D7A1100000000000000B1 /* SystemSurfaces.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SystemSurfaces.swift; sourceTree = "<group>"; };
 		6817A3BFC571F02A645A3A88 /* pin.svg */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = pin.svg; sourceTree = "<group>"; };
 		6C06F02CE6E49ED6A759478C /* BibCiTeX.icon */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.icon; name = BibCiTeX.icon; path = "../assets/app-icons/BibCiTeX.icon"; sourceTree = "<group>"; };
 		75AF055211F7EC123C4DD4DC /* panelRightOpen.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = panelRightOpen.svg; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				B3427E0196B1D54D70378C9D /* HelperPanelController.swift */,
 				22666F6B8718AD1E87409835 /* HelperTheme.swift */,
 				A761A35383E18EC4F83041CE /* HelperView.swift */,
+				5C5D7A1100000000000000B1 /* SystemSurfaces.swift */,
 				9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */,
 				9E458D60B8FDDC97D5B48DCA /* RustCore.swift */,
 				B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */,
@@ -410,7 +413,7 @@
 			mainGroup = 39654625D322553780512534;
 			packageReferences = (
 				A70CDCA275241A66C3F1DB07 /* XCRemoteSwiftPackageReference "SwiftDraw" */,
-				25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */,
+				25A2B9CAF9D6D9904C9C963D /* XCLocalSwiftPackageReference "LaTeXSwiftUI" */,
 				6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = 66FFAFE0C6CA0DC78091E274 /* Products */;
@@ -522,6 +525,7 @@
 				B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5C /* TrayPanelController.swift in Sources */,
 				DEADBEEF0000000000000001 /* TrayWorkbenchView.swift in Sources */,
+				5C5D7A1100000000000000A1 /* SystemSurfaces.swift in Sources */,
 				DEADBEEF0000000000000000 /* TrayWorkbenchModel.swift in Sources */,
 				2B5603948BD543CF6D639A8A /* RustCore.swift in Sources */,
 				846FC375E2D5E95DE88F03E6 /* SVGIcon.swift in Sources */,
@@ -876,15 +880,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/colinc86/LaTeXSwiftUI";
-			requirement = {
-				kind = exactVersion;
-				version = 2.0.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		25A2B9CAF9D6D9904C9C963D /* XCLocalSwiftPackageReference "LaTeXSwiftUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/LaTeXSwiftUI;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		6537152E8545AB55924736F0 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -906,7 +909,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		5CBBD8369E7177396845BD89 /* LaTeXSwiftUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 25A2B9CAF9D6D9904C9C963D /* XCRemoteSwiftPackageReference "LaTeXSwiftUI" */;
+			package = 25A2B9CAF9D6D9904C9C963D /* XCLocalSwiftPackageReference "LaTeXSwiftUI" */;
 			productName = LaTeXSwiftUI;
 		};
 		C688CF78E1730A823A796F8F /* Sparkle */ = {

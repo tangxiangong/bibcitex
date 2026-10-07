@@ -3,60 +3,103 @@ import AppKit
 import UniformTypeIdentifiers
 
 struct WorkbenchView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("language") private var language = "system"
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
     @State private var editingLibrary: Bibliography?
-    private var sidebarBackground: Color {
-        colorScheme == .dark ? Color(red: 44 / 255, green: 44 / 255, blue: 46 / 255)
-            : Color(red: 233 / 255, green: 233 / 255, blue: 235 / 255)
-    }
-    private var contentBackground: Color {
-        colorScheme == .dark ? Color(red: 30 / 255, green: 30 / 255, blue: 32 / 255) : .white
-    }
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
 
     var body: some View {
-        HSplitView {
-            if model.showSidebar {
-                sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300, maxHeight: .infinity)
-                    .background(sidebarBackground)
+        panes
+            .background(AutoHidingScrollbars())
+            .background(NeutralListSelection())
+            .frame(minWidth: 800, minHeight: 520)
+            .toolbar {
+                // NavigationSplitView supplies its own sidebar toggle, so the
+                // hand-written one is only needed by the 13 fallback layout.
+                if #unavailable(macOS 14.0) {
+                    ToolbarItem(placement: .navigation) {
+                        Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
+                    }
+                }
+                if #available(macOS 26.0, *) {
+                    ToolbarItem(placement: .navigation) { toolbarLogo }
+                        .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .navigation) { toolbarLogo }
+                }
+                if #unavailable(macOS 14.0) {
+                    ToolbarItemGroup {
+                        Spacer()
+                        toolbarActions
+                    }
+                }
             }
-            references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
-                .background(contentBackground)
-            if model.showInspector {
-                inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520, maxHeight: .infinity)
-                    .background(sidebarBackground)
-            }
-        }
-        .background(Color(nsColor: .windowBackgroundColor).ignoresSafeArea())
-        .frame(minWidth: 800, minHeight: 520)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
-            }
-            if #available(macOS 26.0, *) {
-                ToolbarItem(placement: .navigation) { toolbarLogo }
-                    .sharedBackgroundVisibility(.hidden)
-                ToolbarSpacer(.flexible, placement: .primaryAction)
-            } else {
-                ToolbarItem(placement: .navigation) { toolbarLogo }
-                ToolbarItem(placement: .principal) { Spacer() }
-            }
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
-                Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
-                Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
-            }
-        }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
         .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
         .alert(L10n.text("错误"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button(L10n.text("确定")) { model.error = nil }
         } message: { Text(model.error ?? "") }
         .task { await model.reload() }
+    }
+
+    @ViewBuilder private var toolbarActions: some View {
+        Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
+        Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
+        Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
+    }
+
+    /// The standard three-pane idiom where the system provides it. On macOS 14+
+    /// `NavigationSplitView` owns the sidebar and `.inspector` owns the trailing
+    /// pane, so both panes carry system material and the system draws the boundary.
+    /// The macOS 13 fallback keeps `HSplitView` and applies the same semantics by
+    /// hand: the sidebar material, the content background, and one separator.
+    @ViewBuilder private var panes: some View {
+        if #available(macOS 14.0, *) {
+            NavigationSplitView(columnVisibility: sidebarVisibility) {
+                sidebar.navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
+            } detail: {
+                references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .inspector(isPresented: $model.showInspector) {
+                inspector.inspectorColumnWidth(min: 280, ideal: 350, max: 520)
+                    .toolbar {
+                        if #available(macOS 26.0, *) {
+                            ToolbarSpacer(.flexible)
+                        }
+                        ToolbarItemGroup {
+                            if #unavailable(macOS 26.0) { Spacer() }
+                            toolbarActions
+                        }
+                    }
+            }
+        } else {
+            HSplitView {
+                if model.showSidebar {
+                    sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300, maxHeight: .infinity)
+                        .background(SystemSidebarBackground())
+                    SystemSeparator(vertical: true)
+                }
+                references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SystemPaneBackground())
+                if model.showInspector {
+                    SystemSeparator(vertical: true)
+                    inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520, maxHeight: .infinity)
+                        .background(SystemSidebarBackground())
+                }
+            }
+        }
+    }
+
+    /// Sidebar and inspector stay independent choices, so "sidebar hidden with the
+    /// inspector shown" stays expressible; `.detailOnly` is the only value either
+    /// column can report as hidden on its own.
+    private var sidebarVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { model.showSidebar ? .all : .detailOnly },
+            set: { model.showSidebar = $0 != .detailOnly }
+        )
     }
 
     @ViewBuilder private var toolbarLogo: some View {
@@ -82,8 +125,11 @@ struct WorkbenchView: View {
                         LibrarySidebarRow(model: model, library: library) {
                             editingLibrary = library
                         }.tag(library.name)
+                        .foregroundStyle(Color(nsColor: .labelColor))
+                        .listRowBackground(model.selectedLibrary == library.name
+                            ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear)
                     }
-                }.listStyle(.sidebar).scrollContentBackground(.hidden)
+                }.listStyle(.sidebar)
             }
         }
     }
@@ -151,12 +197,15 @@ struct WorkbenchView: View {
                                 Spacer(minLength: 8)
                                 ListCiteKey(reference: reference, model: model)
                             }.padding(.vertical, 8).tag(reference.citeKey).id(reference.citeKey)
+                            .foregroundStyle(Color(nsColor: .labelColor))
+                            .listRowBackground(model.selectedReference == reference.citeKey
+                                ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear)
                             .contextMenu {
                                 Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
                                 Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
                             }
                         }
-                    }.listStyle(.inset).scrollContentBackground(.hidden)
+                    }.listStyle(.inset)
                     .onChange(of: model.selectedReference) { key in
                         if let key { proxy.scrollTo(key) }
                     }

@@ -31,6 +31,150 @@ internal sealed class SvgIcon : UserControl
 
 internal static class Views
 {
+    private static void ObserveScrollViewer(Control host, Action<ScrollViewer> configure)
+    {
+        void Find(DependencyObject node)
+        {
+            if (node is ScrollViewer viewer) { configure(viewer); return; }
+            for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++)
+                Find(VisualTreeHelper.GetChild(node, i));
+        }
+        void Attach()
+        {
+            if (!host.IsLoaded) return;
+            host.ApplyTemplate();
+            Find(host);
+        }
+        host.Loaded += (_, _) => Attach();
+        host.RegisterPropertyChangedCallback(Control.TemplateProperty, (_, _) =>
+            host.DispatcherQueue.TryEnqueue(Attach));
+        Attach();
+    }
+
+    internal static void HideScrollbars(Control host)
+    {
+        ScrollViewer.SetVerticalScrollBarVisibility(host, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetHorizontalScrollBarVisibility(host, ScrollBarVisibility.Hidden);
+        ObserveScrollViewer(host, viewer =>
+        {
+            viewer.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
+            viewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
+        });
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ScrollViewer, IdleScrollbars> idleScrollbars = new();
+
+    internal static T AutoHideScrollbars<T>(T host) where T : Control
+    {
+        ObserveScrollViewer(host, viewer =>
+            idleScrollbars.GetValue(viewer, value => new IdleScrollbars(value)).RefreshBars());
+        return host;
+    }
+
+    // Keep scrollbar layout intact; only opacity and pointer response change.
+    private sealed class IdleScrollbars
+    {
+        private readonly ScrollViewer viewer;
+        private readonly List<Microsoft.UI.Xaml.Controls.Primitives.ScrollBar> bars = [];
+        private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
+        private double x, y;
+        private bool dragging, hovering, visible;
+
+        internal IdleScrollbars(ScrollViewer viewer)
+        {
+            this.viewer = viewer;
+            x = viewer.HorizontalOffset; y = viewer.VerticalOffset;
+            timer.Tick += (_, _) => { timer.Stop(); if (!dragging && !hovering) SetVisible(false); };
+            viewer.ViewChanged += (_, _) =>
+            {
+                if (x == viewer.HorizontalOffset && y == viewer.VerticalOffset) return;
+                x = viewer.HorizontalOffset; y = viewer.VerticalOffset;
+                SetVisible(true);
+                RestartTimer();
+            };
+            var move = new Microsoft.UI.Xaml.Input.PointerEventHandler((_, args) =>
+            {
+                var point = args.GetCurrentPoint(viewer).Position;
+                var wasHovering = hovering;
+                hovering = point.X >= 0 && point.Y >= 0 && point.X <= viewer.ActualWidth && point.Y <= viewer.ActualHeight &&
+                    ((viewer.ScrollableHeight > 0 && (viewer.VerticalScrollBarVisibility is ScrollBarVisibility.Auto or ScrollBarVisibility.Visible) && point.X >= viewer.ActualWidth - 20) ||
+                     (viewer.ScrollableWidth > 0 && (viewer.HorizontalScrollBarVisibility is ScrollBarVisibility.Auto or ScrollBarVisibility.Visible) && point.Y >= viewer.ActualHeight - 20));
+                if (hovering) SetVisible(true);
+                if (hovering || wasHovering) RestartTimer();
+            });
+            viewer.AddHandler(UIElement.PointerEnteredEvent, move, true);
+            viewer.AddHandler(UIElement.PointerMovedEvent, move, true);
+            viewer.AddHandler(UIElement.PointerExitedEvent,
+                new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => { hovering = false; RestartTimer(); }), true);
+            viewer.Unloaded += (_, _) =>
+            {
+                timer.Stop(); dragging = hovering = false; SetVisible(false);
+            };
+            viewer.RegisterPropertyChangedCallback(Control.TemplateProperty, (_, _) =>
+                viewer.DispatcherQueue.TryEnqueue(() => { if (viewer.IsLoaded) RefreshBars(); }));
+        }
+
+        internal void RefreshBars()
+        {
+            foreach (var bar in bars)
+            {
+                bar.Scroll -= OnScroll;
+                if (cancelDrag is not null)
+                {
+                    bar.RemoveHandler(UIElement.PointerCanceledEvent, cancelDrag);
+                    bar.RemoveHandler(UIElement.PointerCaptureLostEvent, cancelDrag);
+                }
+            }
+            bars.Clear();
+            dragging = false;
+            viewer.ApplyTemplate();
+            void Find(DependencyObject node)
+            {
+                // Never scan the list's realized rows or nested content viewers.
+                if (node is ScrollContentPresenter || node is ScrollViewer nested && !ReferenceEquals(nested, viewer)) return;
+                if (node is Microsoft.UI.Xaml.Controls.Primitives.ScrollBar bar)
+                {
+                    bars.Add(bar);
+                    bar.Scroll += OnScroll;
+                    bar.AddHandler(UIElement.PointerCanceledEvent, cancelDrag, true);
+                    bar.AddHandler(UIElement.PointerCaptureLostEvent, cancelDrag, true);
+                    return;
+                }
+                for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Find(VisualTreeHelper.GetChild(node, i));
+            }
+            cancelDrag ??= new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) =>
+            {
+                dragging = hovering = false;
+                RestartTimer();
+            });
+            Find(viewer);
+            SetVisible(visible);
+            RestartTimer();
+        }
+
+        private Microsoft.UI.Xaml.Input.PointerEventHandler? cancelDrag;
+
+        private void OnScroll(object sender, Microsoft.UI.Xaml.Controls.Primitives.ScrollEventArgs args)
+        {
+            if (args.ScrollEventType == Microsoft.UI.Xaml.Controls.Primitives.ScrollEventType.ThumbTrack) dragging = true;
+            else if (args.ScrollEventType == Microsoft.UI.Xaml.Controls.Primitives.ScrollEventType.EndScroll) dragging = false;
+            SetVisible(true);
+            RestartTimer();
+        }
+
+        private void RestartTimer()
+        {
+            timer.Stop();
+            if (!dragging && !hovering && viewer.IsLoaded) timer.Start();
+        }
+
+        private void SetVisible(bool value)
+        {
+            visible = value;
+            foreach (var bar in bars) { bar.Opacity = value ? 1 : 0; bar.IsHitTestVisible = value; }
+        }
+    }
+
     internal static TextBlock Text(string text, double size = 14) => new() { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap };
     internal static TextBlock LocalizedText(string key, double size = 14)
     {
@@ -132,13 +276,13 @@ internal static class Views
     }
     internal static Border Divider(bool vertical = false)
     {
-        var line = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Background=\"{ThemeResource ControlStrokeColorDefaultBrush}\" />");
+        var line = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Background=\"{ThemeResource DividerStrokeColorDefaultBrush}\" />");
         if (vertical) line.Width = 1; else line.Height = 1;
         return line;
     }
     internal static ListViewItem LibraryItem(Library library, bool current = false, bool sidebar = false)
     {
-        var row = new Grid { ColumnSpacing = 9, Padding = new Thickness(10, 5, 4, 5) };
+        var row = new Grid { ColumnSpacing = 9, Padding = new Thickness(10, 5, 10, 5) };
         row.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); row.ColumnDefinitions.Add(new()); row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         row.Children.Add(new SvgIcon("library", 15) { VerticalAlignment = VerticalAlignment.Center });
         var stack = new StackPanel { Spacing = 3, VerticalAlignment = VerticalAlignment.Center };

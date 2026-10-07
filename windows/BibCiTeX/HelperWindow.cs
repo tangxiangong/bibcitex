@@ -23,7 +23,7 @@ internal sealed class HelperWindow : Window, IDisposable
 
     private readonly Grid root = new();
     private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 22, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
-    private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(8, 0, 8, 8) };
+    private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock status = Views.Text("");
     private readonly Button chooseLibrary;
     private readonly TextBlock libraryName = new() { FontSize = 11, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 108 };
@@ -77,7 +77,9 @@ internal sealed class HelperWindow : Window, IDisposable
         errorBar.Children.Add(new SvgIcon("alert", 14) { VerticalAlignment = VerticalAlignment.Center });
         status.FontSize = 11; status.MaxLines = 2; Views.ThemeForeground(status, "SystemFillColorCriticalBrush");
         Grid.SetColumn(status, 1); errorBar.Children.Add(status); Grid.SetRow(errorBar, 1); root.Children.Add(errorBar);
-        listArea.Children.Add(results);
+        // Keep equal gutters outside the scrolling template, so a template's
+        // scrollbar/content padding cannot add a second right-hand gutter.
+        listArea.Children.Add(new Border { Padding = new Thickness(8, 0, 8, 8), Child = results });
         emptyIcon.HorizontalAlignment = HorizontalAlignment.Center; emptyState.Children.Add(emptyIcon); emptyState.Children.Add(emptyLabel); listArea.Children.Add(emptyState); listArea.Children.Add(listProgress);
         var rule = Views.Divider(); rule.VerticalAlignment = VerticalAlignment.Top; listArea.Children.Add(rule);
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
@@ -88,6 +90,11 @@ internal sealed class HelperWindow : Window, IDisposable
         Localized.Bind(fallback, ContentControl.ContentProperty, "复制引用键");
         L10n.Changed += LocalizeTitle;
         WindowInterop.LocalizeSystemMenu(this);
+        ScrollViewer.SetVerticalScrollBarVisibility(results, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetHorizontalScrollBarVisibility(results, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetHorizontalScrollMode(results, ScrollMode.Disabled);
+        Views.HideScrollbars(results);
+        Views.HideScrollbars(search);
         Content = root;
         search.TextCompositionStarted += (_, _) => composing = true;
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Refresh(); };
@@ -138,6 +145,14 @@ internal sealed class HelperWindow : Window, IDisposable
     {
         visible = false; version++; lifecycle++; composing = false; SetSearching(false); AppWindow.Hide();
     }
+    private static ListViewItem FullWidthRow(ListViewItem item)
+    {
+        item.HorizontalAlignment = HorizontalAlignment.Stretch;
+        item.HorizontalContentAlignment = HorizontalAlignment.Stretch;
+        item.Margin = new Thickness(0);
+        return item;
+    }
+
     private async Task Refresh(bool debounce = false)
     {
         if (!visible || busy) return;
@@ -156,7 +171,7 @@ internal sealed class HelperWindow : Window, IDisposable
             results.Items.Clear();
             if (selecting)
             {
-                foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || PathDisplay.Format(x.Path).Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path));
+                foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || PathDisplay.Format(x.Path).Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(FullWidthRow(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path)));
                 if (results.Items.Count == 0) SetEmpty("未找到文献库，请先到主窗口添加文献库", "library");
             }
             else if (query.Trim().Length > 0 && selectedPath is not null)
@@ -164,7 +179,7 @@ internal sealed class HelperWindow : Window, IDisposable
                 progress.Visibility = Visibility.Visible; progress.IsActive = true;
                 var references = await RustCore.Search(selectedPath, query);
                 if (request != version) return;
-                foreach (var reference in references) results.Items.Add(Views.ReferenceItem(reference));
+                foreach (var reference in references) results.Items.Add(FullWidthRow(Views.ReferenceItem(reference)));
                 if (references.Count == 0) SetEmpty("未找到匹配记录", "search");
             }
             if (results.Items.Count > 0) results.SelectedIndex = 0;

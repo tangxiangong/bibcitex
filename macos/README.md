@@ -55,4 +55,12 @@ UI/GUI tests are prohibited; GUI acceptance is manual. The standalone integratio
 
 ## Component limitation
 
-A field mixing mathematical chunks with paired literal dollar signs in ordinary text can be misinterpreted by LaTeXSwiftUI 1.5's string parser. Version 2.0 fixes unmatched delimiters but does not expose typed text/math chunks. Plain fields use `Text(verbatim:)`; mixed fields disable Markdown formatting. No character-rewriting workaround, vendored renderer, or replacement math engine is used.
+A field mixing mathematical chunks with paired literal dollar signs in ordinary text can be misinterpreted by LaTeXSwiftUI 1.5's string parser. Version 2.0 fixes unmatched delimiters but does not expose typed text/math chunks. Plain fields use `Text(verbatim:)`; mixed fields disable Markdown formatting. No character-rewriting workaround or replacement math engine is used.
+
+## Native pane layout
+
+macOS 14+ uses `NavigationSplitView` with an independent inspector; macOS 13 keeps `HSplitView` with system sidebar material and separators. The sidebar and inspector retain separate visibility settings. The right action group belongs to the inspector toolbar; macOS 26 keeps native toolbar spacing and glass behavior. Lists use neutral selection, and shared LaTeX rendering scales equations to 1.1 times the surrounding font's x-height.
+
+Manual acceptance covers both panes open/closed independently, reopening the inspector from its toolbar, light/dark/high-contrast appearance, and formula baseline/clipping in the main window, tray and helper. Compilation does not establish these visual results.
+
+LaTeXSwiftUI 2.0.0 is included as a local package in `Packages/LaTeXSwiftUI` (upstream revision `cc677f66b9cc1751e09207621d62d1cda0200675`, MIT license retained). The patch preserves NSImage logical point sizes on both cold renders and cache hits, includes display scale in image cache keys, and rerenders when display scale changes. Formula views use the actual screen scale for Retina rasterization; no 1x override is applied. The package contains the upstream runtime sources and manifest, without its test target. Replace this local package when an upstream release includes these fixes.

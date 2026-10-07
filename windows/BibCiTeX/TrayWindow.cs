@@ -63,7 +63,7 @@ internal sealed class TrayWindow : Window
         var separator = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
             <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     Width="1" Height="16" Margin="0,0,4,0"
-                    Background="{ThemeResource ControlStrokeColorDefaultBrush}" />
+                    Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
             """);
         libraryArea.Children.Add(separator);
         libraryArea.Children.Add(new SvgIcon("library", 13) { VerticalAlignment = VerticalAlignment.Center, Opacity = .7 });
@@ -93,7 +93,7 @@ internal sealed class TrayWindow : Window
         var bodyRule = Views.Divider(true); Grid.SetColumn(bodyRule, 1); body.Children.Add(bodyRule);
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
         var reading = new Grid(); reading.RowDefinitions.Add(new()); reading.RowDefinitions.Add(new() { Height = GridLength.Auto }); reading.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        reading.Children.Add(new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+        reading.Children.Add(Views.AutoHideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         detailEmpty.HorizontalAlignment = HorizontalAlignment.Center; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; reading.Children.Add(detailEmpty);
         var actionRule = Views.Divider(); Grid.SetRow(actionRule, 1); reading.Children.Add(actionRule);
         Grid.SetRow(actions, 2); reading.Children.Add(actions); Grid.SetColumn(reading, 2); body.Children.Add(reading);
@@ -110,6 +110,8 @@ internal sealed class TrayWindow : Window
         Localized.Bind(library, LibraryPicker.PlaceholderTextProperty, "文献库");
         Localized.Count(count, 0);
         WindowInterop.LocalizeSystemMenu(this);
+        ScrollViewer.SetVerticalScrollBarVisibility(references, ScrollBarVisibility.Auto);
+        Views.AutoHideScrollbars(references);
         Content = root; ShowDetail(null);
         library.SelectionChanged += () => { Localized.BindValue(library, ToolTipService.ToolTipProperty, () => (library.SelectedItem as Library)?.Name ?? L10n.Text("文献库")); if (!updating) _ = Search(); };
         type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();

@@ -8,7 +8,6 @@ struct HelperView: View {
     @ObservedObject var model: HelperViewModel
     var onHidePanel: () -> Void = {}
     @FocusState private var searchFocused: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,11 +16,12 @@ struct HelperView: View {
                 errorBar(error)
             }
             if showsList {
-                Divider().opacity(0.5)
+                Divider()
                 content
             }
         }
         .ignoresSafeArea()
+        .scrollIndicators(.never)
         .onAppear { searchFocused = true }
         .onChange(of: model.focusRequest) { _ in searchFocused = true }
     }
@@ -68,7 +68,7 @@ struct HelperView: View {
                 }
                 .font(.system(size: 11, weight: .medium))
                 .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(.primary.opacity(0.06), in: Capsule())
+                .background(.quaternary, in: Capsule())
             }
             .buttonStyle(.plain)
             .help(L10n.text("切换文献库 (Tab)"))
@@ -118,8 +118,9 @@ struct HelperView: View {
                                 .id(index)
                                 .accessibilityAddTraits(model.selectedBibliographyIndex == index ? .isSelected : [])
                             }
-                        }.padding(8)
+                        }.frame(maxWidth: .infinity).padding(8)
                     }
+                    .scrollIndicators(.never)
                     .onChange(of: model.selectedBibliographyIndex) { index in
                         if let index { proxy.scrollTo(index) }
                     }
@@ -145,8 +146,9 @@ struct HelperView: View {
                                 .accessibilityElement(children: .contain)
                                 .accessibilityAddTraits(model.selectedReferenceIndex == index ? .isSelected : [])
                         }
-                    }.padding(8)
+                    }.frame(maxWidth: .infinity).padding(8)
                 }
+                .scrollIndicators(.never)
                 .onChange(of: model.selectedReferenceIndex) { index in
                     if let index { proxy.scrollTo(index) }
                 }
@@ -169,6 +171,7 @@ struct HelperView: View {
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
         .frame(height: HelperMetrics.libraryRow)
         .contentShape(Rectangle())
         .background(selection(selected))
@@ -203,6 +206,7 @@ struct HelperView: View {
             citeKeyLabel(reference)
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: HelperMetrics.referenceRow, alignment: .top)
         .background(selection(selected))
     }
@@ -218,7 +222,7 @@ struct HelperView: View {
 
     private func selection(_ selected: Bool) -> some View {
         RoundedRectangle(cornerRadius: 7)
-            .fill(selected ? Color.accentColor.opacity(colorScheme == .dark ? 0.25 : 0.13) : .clear)
+            .fill(selected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : .clear)
     }
 
     private func emptyState(_ text: String, symbol: String) -> some View {
@@ -241,6 +245,8 @@ struct MathChunkText: View {
             LaTeX(chunks.map { $0.kind == .math ? "$\($0.text)$" : $0.text }.joined())
                 .parsingMode(.onlyEquations)
                 .ignoreStringFormatting()
+                .script(.custom(1.1))
+
         }
     }
 }

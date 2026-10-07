@@ -93,9 +93,11 @@ internal sealed class MainWindow : Window
         librariesEmpty.Margin = new Thickness(8, 32, 8, 8); Grid.SetRow(librariesEmpty, 1); sidebar.Children.Add(librariesEmpty);
         Grid.SetRow(sidebar, 1); root.Children.Add(sidebar);
         var center = new Grid { Padding = new Thickness(16) };
-        SetPaneBackground(sidebar, "WorkbenchSidebarBackgroundBrush");
-        SetPaneBackground(inspector, "WorkbenchSidebarBackgroundBrush");
-        SetPaneBackground(center, "WorkbenchContentBackgroundBrush");
+        // Keep Mica visible beside the content layer. XAML styles retain live
+        // ThemeResource references, including per-window theme overrides.
+        SetPaneBackground(sidebar, "WorkbenchSidePaneStyle");
+        SetPaneBackground(inspector, "WorkbenchSidePaneStyle");
+        SetPaneBackground(center, "WorkbenchContentPaneStyle");
         center.RowDefinitions.Add(new() { Height = GridLength.Auto }); center.RowDefinitions.Add(new());
         referenceHeader.Margin = new Thickness(0, 0, 0, 12);
         center.Children.Add(referenceHeader);
@@ -121,7 +123,7 @@ internal sealed class MainWindow : Window
         inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new());
         var detailHeading = Views.LocalizedText("文献详情", 16); detailHeading.Margin = new Thickness(16); inspector.Children.Add(detailHeading);
         var rule = Views.Divider(); Grid.SetRow(rule, 1); inspector.Children.Add(rule);
-        var scroll = new ScrollViewer { Content = detail, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var scroll = Views.AutoHideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         Grid.SetRow(scroll, 2); inspector.Children.Add(scroll);
         detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.HorizontalAlignment = HorizontalAlignment.Center;
         Grid.SetRow(detailEmpty, 2); inspector.Children.Add(detailEmpty);
@@ -130,6 +132,10 @@ internal sealed class MainWindow : Window
         Grid.SetColumn(leftDivider, 1); Grid.SetColumn(rightDivider, 3);
         Grid.SetRow(leftDivider, 1); Grid.SetRow(rightDivider, 1); root.Children.Add(leftDivider); root.Children.Add(rightDivider);
         WindowInterop.LocalizeSystemMenu(this);
+        ScrollViewer.SetVerticalScrollBarVisibility(libraries, ScrollBarVisibility.Auto);
+        Views.AutoHideScrollbars(libraries);
+        ScrollViewer.SetVerticalScrollBarVisibility(references, ScrollBarVisibility.Auto);
+        Views.AutoHideScrollbars(references);
         Content = root; ShowDetail(null);
         libraries.SelectionChanged += (_, _) =>
         {
@@ -155,10 +161,8 @@ internal sealed class MainWindow : Window
         LayoutPanes();
     }
 
-    private static void SetPaneBackground(Grid pane, string resource)
-    {
-        pane.Style = (Style)Microsoft.UI.Xaml.Markup.XamlReader.Load($"<Style xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" TargetType=\"Grid\"><Setter Property=\"Background\" Value=\"{{ThemeResource {resource}}}\" /></Style>");
-    }
+    private static void SetPaneBackground(Grid pane, string resource) =>
+        pane.Style = (Style)Application.Current.Resources[resource];
 
     private MenuBar BuildMenu()
     {
@@ -552,7 +556,7 @@ internal sealed class MainWindow : Window
         if (reference.Text("file") is { Length: > 0 } file) actions.Children.Add(Views.Button("folderOpen", "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(file, libraryPath, attachment: true); }));
         if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("externalLink", "打开 URL", () => _ = OpenUrl(url)));
         if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("link", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
-        detail.Children.Add(new ScrollViewer { Content = actions, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled });
+        detail.Children.Add(Views.AutoHideScrollbars(new ScrollViewer { Content = actions, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         foreach (var (key, label) in Metadata)
         {
             var value = key == "cite_key" ? reference.Key : key == "type" ? reference.TypeLabel : reference.Text(key); if (value.Length == 0) continue;

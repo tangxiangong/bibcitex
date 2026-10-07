@@ -28,7 +28,7 @@ struct TrayWorkbenchView: View {
                 }
                 .overlay(alignment: .trailing) {
                     HStack(spacing: 10) {
-                        Divider().frame(height: 16).opacity(0.65)
+                        SystemSeparator(vertical: true).frame(height: 16)
                         Menu {
                             Picker(L10n.text("文献库"), selection: $model.libraryName) {
                                 ForEach(model.libraries) { library in
@@ -51,10 +51,10 @@ struct TrayWorkbenchView: View {
                     }
                 }
                 .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(searchFocused ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.1), lineWidth: 1)
+                        .strokeBorder(searchFocused ? Color.accentColor.opacity(0.6) : Color(nsColor: .separatorColor), lineWidth: 1)
                         .allowsHitTesting(false)
                 }
                 HStack(spacing: 8) {
@@ -85,6 +85,7 @@ struct TrayWorkbenchView: View {
                 }.foregroundStyle(.red).padding(10)
             }
         }
+        .background(AutoHidingScrollbars())
         .onAppear { searchFocused = true }
     }
     private var results: some View {
@@ -103,6 +104,7 @@ struct TrayWorkbenchView: View {
                     }.padding(.vertical, 7).tag(reference.citeKey).id(reference.citeKey)
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
+                .accentColor(.gray)
                 .overlay {
                     if model.references.isEmpty && !model.loading {
                         Text(L10n.text("暂无可显示的文献")).font(.callout).foregroundStyle(.secondary)
