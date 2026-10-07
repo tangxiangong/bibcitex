@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using BibCiTeX;
 
 UpdatePolicyTests.Run();
+await UpdateSourceTests.Run();
 WindowsRuntimeTests.Run();
 
 if (args.Length != 1) throw new ArgumentException("Pass the built bibcitex_csharp native library path.");

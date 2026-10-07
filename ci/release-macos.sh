@@ -9,7 +9,7 @@ work="$(mktemp -d "$RUNNER_TEMP/bibcitex-release.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 umask 077
 printf '%s' "$SPARKLE_PRIVATE_ED_KEY" > "$work/sparkle.key"
-export UPDATE_BASE_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/update-feed"
+export UPDATE_BASE_URL="https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed"
 export CONFIGURATION=release BUILD_ONLY=0 CODE_SIGN_IDENTITY=-
 bash "$root/macos/build.sh"
 app="$root/dist/macos/$ARCH/BibCiTeX.app"

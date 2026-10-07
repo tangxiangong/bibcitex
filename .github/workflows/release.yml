@@ -159,3 +159,11 @@ jobs:
           cp "release-notes/$VERSION/zh-Hans.md" release-assets/notes-zh-Hans.md
           cp "release-notes/$VERSION/en.md" release-assets/notes-en.md
           cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-release
+      - name: Publish verified artifacts and channel feeds to COS
+        env:
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_ASSETS: release-assets
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-cos

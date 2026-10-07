@@ -12,6 +12,9 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="UpdatePolicyTests.cs" />
+    <Compile Include="UpdateSourceTests.cs" />
+    <Compile Include="../BibCiTeX/UpdateSource.cs" Link="UpdateSource.cs" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
     <Compile Include="WindowsRuntimeTests.cs" />
     <Compile Include="../BibCiTeX/WindowsRuntime.cs" Link="WindowsRuntime.cs" />
     <Compile Include="../BibCiTeX/NativeSettings.cs" Link="NativeSettings.cs" />

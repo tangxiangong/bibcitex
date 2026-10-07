@@ -38,8 +38,14 @@ fn run() -> Result<()> {
             &env::var("SPARKLE_PUBLIC_ED_KEY")?,
             github,
         ),
+        ["publish-cos"] => xtask::cos::publish(
+            &env::var("RELEASE_TAG")?,
+            Path::new(&env::var("RELEASE_ASSETS")?),
+            &env::var("GITHUB_REPOSITORY")?,
+            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+        ),
         _ => Err(
-            "Usage: xtask release-metadata | verify-release <directory> | publish-release".into(),
+            "Usage: xtask release-metadata | verify-release <directory> | publish-release | publish-cos".into(),
         ),
     }
 }

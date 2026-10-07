@@ -69,3 +69,6 @@ ci-release-windows:
 
 ci-publish-release:
     cargo run --locked -p xtask -- publish-release
+
+ci-publish-cos:
+    cargo run --locked -p xtask -- publish-cos

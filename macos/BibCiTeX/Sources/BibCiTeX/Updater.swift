@@ -44,25 +44,43 @@ struct UpdateVersion: Comparable {
     }
 }
 
+@MainActor
+private final class MirrorUpdateDriver: SPUStandardUserDriver {
+    var shouldRetry: ((NSError) -> Bool)?
+
+    override func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        if shouldRetry?(error as NSError) == true {
+            acknowledgement()
+        } else {
+            super.showUpdaterError(error, acknowledgement: acknowledgement)
+        }
+    }
+}
+
 /// Sparkle verifies the update archive, replaces the bundle and relaunches the app.
 @MainActor
 final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
     @Published private(set) var canCheck = false
     @Published var channel: String {
-        didSet { UserDefaults.standard.set(channel, forKey: "updateChannel"); controller?.updater.resetUpdateCycle() }
+        didSet { UserDefaults.standard.set(channel, forKey: "updateChannel"); updater?.resetUpdateCycle() }
     }
     @Published var automaticDownloads: Bool {
         didSet {
             UserDefaults.standard.set(automaticDownloads, forKey: "SUAutomaticallyUpdate")
-            if controller?.updater.automaticallyDownloadsUpdates != automaticDownloads {
-                controller?.updater.automaticallyDownloadsUpdates = automaticDownloads
+            if updater?.automaticallyDownloadsUpdates != automaticDownloads {
+                updater?.automaticallyDownloadsUpdates = automaticDownloads
             }
         }
     }
     private(set) var unavailableReason: String?
-    private var controller: SPUStandardUpdaterController?
+    private var updater: SPUUpdater?
     private var observations = Set<AnyCancellable>()
     private let baseURL: String
+    private let fallbackURL = "https://github.com/tangxiangong/bibcitex/releases/download/update-feed"
+    private var usingFallback = false
+    private var pendingFallback: SPUUpdateCheck?
+    private var checkedChannel = ""
+    private var checkedLanguage = ""
 
     override init() {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -71,22 +89,32 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
         channel = ["stable", "beta", "alpha"].contains(saved) ? saved : initial
         automaticDownloads = UserDefaults.standard.bool(forKey: "SUAutomaticallyUpdate")
         baseURL = Bundle.main.object(forInfoDictionaryKey: "UpdateBaseURL") as? String
-            ?? "https://github.com/tangxiangong/bibcitex/releases/download/update-feed"
+            ?? "https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed"
         super.init()
         UserDefaults.standard.set(channel, forKey: "updateChannel")
         guard URL(string: baseURL)?.scheme == "https" else { unavailableReason = "更新地址无效"; return }
         guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
               !key.isEmpty else { unavailableReason = "此构建未配置更新验证公钥"; return }
-        let controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: nil)
-        self.controller = controller
-        controller.updater.automaticallyChecksForUpdates = true
-        controller.updater.updateCheckInterval = 6 * 60 * 60
-        controller.updater.automaticallyDownloadsUpdates = automaticDownloads
-        controller.startUpdater()
-        controller.updater.publisher(for: \.canCheckForUpdates)
-            .receive(on: RunLoop.main).sink { [weak self] in self?.canCheck = $0 }
+        let driver = MirrorUpdateDriver(hostBundle: .main, delegate: nil)
+        driver.shouldRetry = { [weak self] error in
+            guard let self else { return false }
+            return !self.usingFallback && self.checkedChannel == self.channel
+                && self.checkedLanguage == L10n.language && Self.canRetryFromMirror(error)
+        }
+        let updater = SPUUpdater(hostBundle: .main, applicationBundle: .main, userDriver: driver, delegate: self)
+        self.updater = updater
+        updater.automaticallyChecksForUpdates = true
+        updater.updateCheckInterval = 6 * 60 * 60
+        updater.automaticallyDownloadsUpdates = automaticDownloads
+        do { try updater.start() }
+        catch { unavailableReason = error.localizedDescription; return }
+        updater.publisher(for: \.canCheckForUpdates)
+            .receive(on: RunLoop.main).sink { [weak self] ready in
+                self?.canCheck = ready
+                self?.retryFallbackIfReady()
+            }
             .store(in: &observations)
-        controller.updater.publisher(for: \.automaticallyDownloadsUpdates)
+        updater.publisher(for: \.automaticallyDownloadsUpdates)
             .receive(on: RunLoop.main).sink { [weak self] enabled in
                 if self?.automaticDownloads != enabled { self?.automaticDownloads = enabled }
             }.store(in: &observations)
@@ -98,7 +126,10 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
         #else
         let architecture = "x86_64"
         #endif
-        return "\(baseURL)/appcast-\(architecture)-\(channel)-\(L10n.language).xml"
+        checkedChannel = channel
+        checkedLanguage = L10n.language
+        let source = usingFallback ? fallbackURL : baseURL
+        return "\(source)/appcast-\(architecture)-\(channel)-\(L10n.language).xml"
     }
     func bestValidUpdate(in appcast: SUAppcast, for updater: SPUUpdater) -> SUAppcastItem? {
         let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
@@ -110,6 +141,41 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
             SUStandardVersionComparator.default.compareVersion($0.versionString, toVersion: $1.versionString) == .orderedAscending
         } ?? SUAppcastItem.empty()
     }
-    func languageChanged() { controller?.updater.resetUpdateCycle() }
-    func check() { guard canCheck else { return }; controller?.checkForUpdates(nil) }
+    func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
+        defer { if pendingFallback == nil { usingFallback = false } }
+        guard !usingFallback, checkedChannel == channel, checkedLanguage == L10n.language,
+              let failure = error as NSError?, Self.canRetryFromMirror(failure) else { return }
+        usingFallback = true
+        pendingFallback = updateCheck
+        // Sparkle must finish tearing down its driver before another check starts.
+        DispatchQueue.main.async { [weak self] in self?.retryFallbackIfReady() }
+    }
+
+    private static func canRetryFromMirror(_ error: NSError) -> Bool {
+        if error.domain == NSURLErrorDomain { return error.code != NSURLErrorCancelled }
+        if let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError,
+           underlying.domain == NSURLErrorDomain, underlying.code == NSURLErrorCancelled { return false }
+        // Only feed/transport failures: never retry cancellation, installation or signature errors.
+        return error.domain == SUSparkleErrorDomain && [1000, 1002, 2001].contains(error.code)
+    }
+
+    private func retryFallbackIfReady() {
+        guard let check = pendingFallback, let updater = updater,
+              updater.canCheckForUpdates else { return }
+        pendingFallback = nil
+        guard checkedChannel == channel, checkedLanguage == L10n.language else {
+            usingFallback = false
+            return
+        }
+        canCheck = false
+        switch check {
+        case .updates: updater.checkForUpdates()
+        case .updatesInBackground: updater.checkForUpdatesInBackground()
+        case .updateInformation: updater.checkForUpdateInformation()
+        @unknown default: usingFallback = false
+        }
+    }
+
+    func languageChanged() { updater?.resetUpdateCycle() }
+    func check() { guard canCheck, pendingFallback == nil else { return }; updater?.checkForUpdates() }
 }

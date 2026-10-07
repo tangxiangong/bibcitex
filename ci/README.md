@@ -2,7 +2,7 @@
 
 The Check workflow builds the Rust workspace and both native applications on x86_64 and ARM64. IDE builds own binding generation. macOS command-line builds do not launch an application. Windows XAML compilation runs on Windows; C# semantic builds on macOS are supplementary.
 
-The Release workflow accepts `vMAJOR.MINOR.PATCH`, `-alpha.N`, and `-beta.N` tags. Publishing a GitHub Release triggers Check and builds both architectures from the resolved tag commit. The workflow validates the full artifact set, uploads it to that existing public Release, and only then advances the separate `update-feed` release. There is no Tauri migration, MSIX or App Installer output.
+The Release workflow accepts `vMAJOR.MINOR.PATCH`, `-alpha.N`, and `-beta.N` tags. Publishing a GitHub Release triggers Check and builds both architectures from the resolved tag commit. The workflow validates the full artifact set, uploads it to that existing public Release, and only then advances the separate `update-feed` release. It then publishes the same verified payloads and COS-specific feeds to the primary COS mirror. There is no Tauri migration, MSIX or App Installer output.
 
 ## Required configuration
 
@@ -11,9 +11,11 @@ Use a GitHub environment named `release`:
 | Type | Name | Purpose |
 | --- | --- | --- |
 | Secret | `SPARKLE_PRIVATE_ED_KEY` | Exported Sparkle Ed25519 private update key |
+| Secret | `COS_SECRET_ID` | CAM publishing subuser SecretId |
+| Secret | `COS_SECRET_KEY` | CAM publishing subuser SecretKey |
 | Variable | `SPARKLE_PUBLIC_ED_KEY` | Matching public key embedded into the macOS application |
 
-These self-generated keys are free and independent of Apple Developer ID certificates. The workflow needs no commercial signing certificates, Microsoft Store, custom server or cloud storage. `GITHUB_TOKEN` provides repository release access; no token is shipped to clients. Keep the same key pair for future Sparkle updates.
+These self-generated keys are free and independent of Apple Developer ID certificates. The workflow needs no commercial signing certificates, Microsoft Store, custom application server. COS hosts the primary update files; GitHub Releases remains the fallback. `GITHUB_TOKEN` provides repository release access; no token is shipped to clients. Keep the same key pair for future Sparkle updates.
 
 The currently configured macOS runner label is `xcode-27`; runners must provide the project's supported Xcode SDK. Windows builds use `windows-2025` and `windows-11-arm`. Release jobs install the pinned Velopack CLI 1.2.161. macOS uses the Sparkle tools that Xcode resolved and verified with SwiftPM, avoiding a second unverified tool download.
 
@@ -23,4 +25,29 @@ Add reviewed release notes in both languages under `release-notes/<version>/`. T
 
 The installer build sequence is `github.run_number`; preserve monotonicity if replacing this workflow. The first release using this mechanism is manually installed. Later releases update in place.
 
-See [the update protocol](../docs/updates.md) for asset names, channel rules, verification and acceptance tests.
+## COS primary source and GitHub fallback
+
+The release bucket is `app-release-1302963684` in `ap-guangzhou`. This application's publisher writes only under `bibcitex/`, leaving other apps in the shared bucket untouched. Clients use:
+
+- Primary: `https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed`
+- Fallback: `https://github.com/tangxiangong/bibcitex/releases/download/update-feed`
+
+Each new check prefers COS. A valid primary feed with no eligible update is not an error and does not query GitHub. On macOS, Sparkle retries feed/transport failures once through the GitHub feed using the original foreground/background check mode; primary errors eligible for retry do not interrupt the user. Cancellation, signature/validation failures and installation errors never trigger a retry. On Windows, the Velopack source retries failed feed requests and package downloads against GitHub. Package fallback retains the original filename, size and SHA-256; it never substitutes a different version. User cancellation stops the operation. Both-source failures remain visible through the existing updater error handling. There is no permanent source preference change.
+
+Enable global acceleration on the bucket: CI uploads through `app-release-1302963684.cos.accelerate.myqcloud.com`; clients download through the normal Guangzhou HTTPS endpoint. Permit anonymous reads of release objects. The publisher explicitly sets `public-read`; its CAM subuser needs `cos:HeadObject`, `cos:PutObject` and `cos:PutObjectACL` on `app-release-1302963684/bibcitex/*` (or the previously configured bucket-wide publishing policy). It does not delete objects, list the bucket or require signed GET access. Secrets may be repository secrets or release-environment secrets; neither is embedded into the app. Storage bucket, region and app prefix are fixed in the publisher, so no GitHub Variables for COS are required.
+
+```text
+bibcitex/
+  releases/vX.Y.Z/              # Versioned release assets, notes and checksums
+  update-feed/
+    appcast-<arch>-<channel>-<locale>.xml
+    releases.win-<arch>-<channel>.json
+    <versioned-full-package>.nupkg
+    channels.json
+```
+
+The COS publisher validates all four platform/architecture payloads, Sparkle signatures and Windows hashes before network writes. Existing objects are checked using anonymous downloads and SHA-256; different contents fail rather than being overwritten. Uploads retry transient errors and use COS's forbid-overwrite header for immutable objects (the service only enforces that header when bucket versioning has never been enabled). Keep all publishing workflows in the shared `release-feeds` concurrency group; do not run independent writers concurrently. Initial catalogs and mutable feed pointers use `no-cache, max-age=60`; versioned assets use `public, max-age=31536000, immutable`. All payloads are uploaded and publicly verified before channel feeds advance. `channels.json` reserves the highest target version for each audience before client-facing feeds change; equal-version retries regenerate pointers so interrupted runs can finish without allowing an older repair to downgrade partially published feeds. Do not delete the catalog or configure automatic expiry/archival for referenced packages. Each source maintains its own monotonically advancing stable/beta/alpha audiences; failure halfway through feed upload can temporarily leave audiences on different valid versions, and retry completes publication.
+
+The COS appcasts point to COS archives and localized notes; GitHub appcasts retain GitHub links. Velopack packages live beside each source's channel feeds and have identical bytes on both hosts. Publishing GitHub first ensures the fallback is ready before COS advances. If COS publication fails, GitHub remains valid; rerun the failed publish job, or use **Publish existing release to COS** with the existing tag. That manual workflow downloads and verifies already published GitHub assets without rebuilding or changing their signatures. Do not rebuild a populated release to repair a mirror.
+
+Verification: `just check-rust`, `just test-ci`, macOS compilation, and non-UI C#/Rust transport/integration checks. GUI update acceptance, real CAM permissions, global acceleration and signed in-place upgrades still require validation against a published release. Compilation or a local simulated transport test is not a live deployment test.

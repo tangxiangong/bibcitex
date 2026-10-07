@@ -45,7 +45,7 @@ internal static class Updater
         if (string.IsNullOrEmpty(requested)) return;
         try
         {
-            var manager = new UpdateManager(UpdatePolicy.BaseUrl);
+            var manager = new UpdateManager(new UpdateSource());
             var pending = manager.IsInstalled ? manager.UpdatePendingRestart : null;
             if (UpdatePolicy.CanApplyPending(AutomaticDownloads, requested, pending?.Version.ToString(), Channel))
                 manager.ApplyUpdatesAndRestart(pending);
@@ -75,7 +75,7 @@ internal static class Updater
         {
             var requestedChannel = Channel;
             var revision = preferencesRevision;
-            var manager = new UpdateManager(UpdatePolicy.BaseUrl, new UpdateOptions
+            var manager = new UpdateManager(new UpdateSource(), new UpdateOptions
             {
                 ExplicitChannel = UpdatePolicy.FeedChannel(Architecture, requestedChannel),
                 AllowVersionDowngrade = false,

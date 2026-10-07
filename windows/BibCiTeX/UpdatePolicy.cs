@@ -2,7 +2,8 @@ namespace BibCiTeX;
 
 internal static class UpdatePolicy
 {
-    internal const string BaseUrl = "https://github.com/tangxiangong/bibcitex/releases/download/update-feed";
+    internal const string BaseUrl = "https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed";
+    internal const string FallbackUrl = "https://github.com/tangxiangong/bibcitex/releases/download/update-feed";
     internal static string DefaultChannel(string version) => version.Contains("-alpha.", StringComparison.Ordinal) ? "alpha"
         : version.Contains("-beta.", StringComparison.Ordinal) ? "beta" : "stable";
     internal static string Channel(string? saved, string version) => saved is "stable" or "beta" or "alpha" ? saved : DefaultChannel(version);

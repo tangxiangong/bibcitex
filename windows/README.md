@@ -29,7 +29,7 @@ Windows uses unpackaged, framework-dependent WinUI 3 with Velopack 1.2.161. EXE 
 ./windows/scripts/publish.ps1 -Architecture x64 -Version 0.7.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
-Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow uploads all artifacts to GitHub Releases and advances `update-feed` channel pointers only after verification. It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
+Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow publishes verified artifacts to GitHub Releases and then COS. The client checks COS first and falls back to GitHub on feed or download failure, retaining the selected package filename and SHA-256. Cancellation stops downloads without starting fallback. See [COS configuration](../ci/README.md#cos-primary-source-and-github-fallback). It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
 
 `BibCiTeX.exe --prepare-runtime` provisions Windows App Runtime without opening the UI and returns a nonzero exit code on failure. Only a missing compatible framework triggers a download; other bootstrap failures are reported without reinstalling the runtime.
 

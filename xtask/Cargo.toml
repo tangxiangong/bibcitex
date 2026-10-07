@@ -8,6 +8,9 @@ publish = false
 [dependencies]
 base64.workspace = true
 ed25519-dalek.workspace = true
+hmac.workspace = true
+reqwest.workspace = true
+sha1.workspace = true
 quick-xml.workspace = true
 semver.workspace = true
 serde.workspace = true

@@ -1,3 +1,5 @@
+pub mod cos;
+
 use base64::Engine;
 use ed25519_dalek::{Signature, VerifyingKey};
 use quick_xml::{XmlVersion, events::Event, name::ResolveResult, reader::NsReader};
@@ -350,6 +352,25 @@ pub fn feeds(
     manifest: &Manifest,
     channels: &mut Channels,
 ) -> Result<Vec<String>> {
+    feeds_at(
+        directory,
+        output,
+        &format!(
+            "https://github.com/{repository}/releases/download/v{}",
+            manifest.version
+        ),
+        manifest,
+        channels,
+    )
+}
+
+fn feeds_at(
+    directory: &Path,
+    output: &Path,
+    release_url: &str,
+    manifest: &Manifest,
+    channels: &mut Channels,
+) -> Result<Vec<String>> {
     fs::create_dir_all(output)?;
     let current = Version::parse(&manifest.version)?;
     let mut result = Vec::new();
@@ -364,10 +385,7 @@ pub fn feeds(
             let root = parse_xml(&source)?;
             root.one("", "channel")?.one("", "item")?;
             for locale in ["zh-Hans", "en"] {
-                let link = format!(
-                    "https://github.com/{repository}/releases/download/v{}/notes-{locale}.md",
-                    manifest.version
-                );
+                let link = format!("{release_url}/notes-{locale}.md");
                 let xml = source.replace(
                     "</item>",
                     &format!("<sparkle:releaseNotesLink>{link}</sparkle:releaseNotesLink></item>"),

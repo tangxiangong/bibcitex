@@ -12,7 +12,7 @@ fn release_hash_matches_standard_sha256_encoding() {
     );
 }
 
-fn fixture(tag: &str) -> (tempfile::TempDir, String) {
+pub(crate) fn fixture(tag: &str) -> (tempfile::TempDir, String) {
     let dir = tempfile::tempdir().unwrap();
     let key = SigningKey::from_bytes(&[17; 32]);
     let version = versions(tag).unwrap();
