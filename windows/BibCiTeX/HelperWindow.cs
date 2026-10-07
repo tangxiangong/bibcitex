@@ -49,6 +49,7 @@ internal sealed class HelperWindow : Window, IDisposable
     private int version;
     private int lifecycle;
     private string? failedKey;
+    private ContentDialog? pasteFailureDialog;
 
     internal HelperWindow()
     {
@@ -70,7 +71,7 @@ internal sealed class HelperWindow : Window, IDisposable
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
         chooseLibrary = new Button { Content = Views.Row(new SvgIcon("library", 14), libraryName, new SvgIcon("chevronDown", 9)), CornerRadius = new CornerRadius(16), Padding = new Thickness(10, 6, 10, 6), MaxWidth = 160, BorderThickness = new Thickness(0) };
         Localized.Tooltip(chooseLibrary, "切换文献库 (Tab)"); Localized.Name(chooseLibrary, "切换文献库");
-        chooseLibrary.Click += (_, _) => { if (busy) return; selecting = true; search.Text = ""; _ = Refresh(); search.Focus(FocusState.Programmatic); };
+        chooseLibrary.Click += (_, _) => { if (busy || pasting) return; selecting = true; search.Text = ""; _ = Refresh(); search.Focus(FocusState.Programmatic); };
         Grid.SetColumn(chooseLibrary, 3); header.Children.Add(chooseLibrary); root.Children.Add(header);
 
         errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); errorBar.ColumnDefinitions.Add(new()); errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -143,7 +144,7 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     internal void Hide()
     {
-        visible = false; version++; lifecycle++; composing = false; SetSearching(false); AppWindow.Hide();
+        visible = false; version++; lifecycle++; composing = false; SetSearching(false); pasteFailureDialog?.Hide(); AppWindow.Hide();
     }
     private static ListViewItem FullWidthRow(ListViewItem item)
     {
@@ -155,7 +156,7 @@ internal sealed class HelperWindow : Window, IDisposable
 
     private async Task Refresh(bool debounce = false)
     {
-        if (!visible || busy) return;
+        if (!visible || busy || pasting) return;
         var request = ++version;
         failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
         Localized.Bind(search, TextBox.PlaceholderTextProperty, selecting ? "搜索或选择文献库" : "搜索文献、作者、标题");
@@ -190,7 +191,7 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     private async void KeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (composing || (busy && args.Key != VirtualKey.Escape)) return;
+        if (pasting || pasteFailureDialog is not null || composing || (busy && args.Key != VirtualKey.Escape)) return;
         var control = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
         var alt = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
@@ -227,6 +228,9 @@ internal sealed class HelperWindow : Window, IDisposable
             else if (item.Tag is Reference reference)
             {
                 pasting = true;
+                // Release keyboard focus without invalidating this paste session.
+                visible = false;
+                AppWindow.Hide();
                 await RustCore.Paste(reference.Key);
                 if (session == lifecycle) Hide();
             }
@@ -234,8 +238,43 @@ internal sealed class HelperWindow : Window, IDisposable
         catch (Exception error)
         {
             if (request != version) return;
-            if (item.Tag is Reference reference) { failedKey = reference.Key; fallback.Visibility = Visibility.Visible; }
-            Activate(); search.Focus(FocusState.Programmatic); SetErrorStatus(error); ResizeContent();
+            if (item.Tag is Reference reference)
+            {
+                // Copy automatically, even when key injection failed before writing
+                // the clipboard. The dialog reports only the original paste error.
+                try
+                {
+                    await RustCore.Copy(reference.Key);
+                    if (session != lifecycle || disposed) return;
+                    failedKey = null; fallback.Visibility = Visibility.Collapsed;
+                }
+                catch
+                {
+                    if (session != lifecycle || disposed) return;
+                    failedKey = reference.Key; fallback.Visibility = Visibility.Visible;
+                }
+                visible = true;
+                Activate(); SetErrorStatus(error);
+                // A compact helper needs enough room for a native ContentDialog.
+                Resize(360);
+                var dialog = Localized.Dialog(new ContentDialog { XamlRoot = root.XamlRoot }, "错误");
+                Localized.Error(dialog, ContentControl.ContentProperty, error);
+                pasteFailureDialog = dialog;
+                try { await Views.ShowDialog(dialog); }
+                catch (Exception dialogError)
+                {
+                    // The window can close while WinUI prepares the dialog. Keep
+                    // the original inline paste error rather than escaping an
+                    // async event handler or replacing it with a dialog failure.
+                    System.Diagnostics.Debug.WriteLine(dialogError);
+                }
+                finally { pasteFailureDialog = null; }
+                if (session == lifecycle && !disposed && visible)
+                {
+                    ResizeContent(); search.Focus(FocusState.Programmatic);
+                }
+            }
+            else { Activate(); search.Focus(FocusState.Programmatic); SetErrorStatus(error); ResizeContent(); }
         }
         finally { pasting = false; busy = false; }
     }

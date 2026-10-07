@@ -12,6 +12,7 @@ protocol HelperServing: Sendable {
 
 @MainActor
 final class HelperViewModel: ObservableObject {
+    var onPasteStart: (() -> Void)?
     var onPasteFailure: (() -> Void)?
     @Published var isPasting = false
     @Published private(set) var isPasteOperationPending = false
@@ -306,30 +307,38 @@ final class HelperViewModel: ObservableObject {
 
     private func paste(_ reference: Reference, onSuccess: @escaping () -> Void) {
         guard !isPasteOperationPending else { return }
-        // Injecting keystrokes into another app is what the accessibility
-        // permission gates, so ask before writing the pasteboard. The system's own
-        // dialog names the permission and offers Settings; an in-app error cannot,
-        // and it would have to be dismissed before the user could act on it.
-        guard requestPastePermission() else { return }
         let key = reference.citeKey
         let session = sessionGeneration
         isPasting = true
         isPasteOperationPending = true
         errorMessage = nil
+        let hasPermission = requestPastePermission()
+        onPasteStart?()
 
         Task { @MainActor in
             defer { isPasteOperationPending = false }
             guard session == sessionGeneration else { return }
             do {
+                guard hasPermission else {
+                    throw HelperError.ffiError("缺少辅助功能权限，无法控制其他应用")
+                }
                 try await service.copyAndPaste(citeKey: key)
                 guard session == sessionGeneration else { return }
                 isPasting = false
                 onSuccess()
             } catch {
                 guard session == sessionGeneration else { return }
+                let pasteError = LocalizedMessage(error: error)
+                do {
+                    try await service.copy(citeKey: key)
+                    guard session == sessionGeneration else { return }
+                    failedPasteKey = nil
+                } catch {
+                    guard session == sessionGeneration else { return }
+                    failedPasteKey = key
+                }
                 isPasting = false
-                failedPasteKey = key
-                errorDetails = LocalizedMessage(key: "粘贴失败：{0}", arguments: [LocalizedMessage(error: error)])
+                errorDetails = LocalizedMessage(key: "粘贴失败：{0}", arguments: [pasteError])
                 recalcHeight()
                 onPasteFailure?()
             }

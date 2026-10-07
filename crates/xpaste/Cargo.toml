@@ -11,6 +11,7 @@ arboard = { workspace = true }
 enigo = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+dispatch2 = { workspace = true }
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true }
 

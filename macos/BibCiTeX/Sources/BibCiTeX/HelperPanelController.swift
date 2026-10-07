@@ -31,7 +31,7 @@ enum HelperKeyHandling {
         case 126: // Up
             model.moveSelection(delta: -1)
             return nil
-        case 36: // Return
+        case 36, 76: // Return / keypad Enter
             if model.isSelectingBibliography {
                 model.chooseCurrentBibliography()
             } else {
@@ -63,6 +63,7 @@ final class HelperPanelController: NSObject {
     private var keyMonitor: Any?
     private var hostingController: NSHostingController<HelperView>?
     private var isVisible = false
+    private var failureAlert: NSAlert?
 
     override init() {
         super.init()
@@ -94,16 +95,17 @@ final class HelperPanelController: NSObject {
 
     private func presentPanel() {
         ensurePanel()
+        model.onPasteStart = { [weak self] in
+            // Release the panel's keyboard focus without invalidating the paste session.
+            self?.isVisible = false
+            self?.panel?.orderOut(nil)
+            self?.removeKeyMonitor()
+        }
         // The hotkey panel is the cross-app one: activating a row hands its cite
         // key to the app that was frontmost when the panel opened.
         // This surface owns paste-failure restore while it is the visible one.
         model.onPasteFailure = { [weak self] in
-            guard let self else { return }
-            self.isVisible = true
-            self.positionPanel(accordingTo: self.model.preferredHeight)
-            self.panel?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            self.installKeyMonitor()
+            self?.presentPasteFailure()
         }
         model.loadState()
         model.recalcHeight()
@@ -113,15 +115,41 @@ final class HelperPanelController: NSObject {
         positionPanel(accordingTo: model.preferredHeight)
         panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
         model.focusRequest += 1
         installKeyMonitor()
+    }
+
+    private func presentPasteFailure() {
+        guard let panel, failureAlert == nil, let message = model.errorMessage else { return }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = message
+        alert.addButton(withTitle: L10n.text("确定"))
+        // Set this before any key-window transition: sheet attachment may resign
+        // the panel before AppKit exposes attachedSheet.
+        failureAlert = alert
+        isVisible = true
+        positionPanel(accordingTo: model.preferredHeight)
+        panel.makeKeyAndOrderFront(nil)
+        installKeyMonitor()
+        let session = model.sessionGeneration
+        alert.beginSheetModal(for: panel) { [weak self] _ in
+            guard let self, self.model.sessionGeneration == session else { return }
+            self.failureAlert = nil
+            guard self.isVisible else { return }
+            self.panel?.makeKeyAndOrderFront(nil)
+            self.model.focusRequest += 1
+        }
     }
 
     func hidePanel() {
         model.invalidateSession()
         opening = false
         isVisible = false
+        if let panel, let sheet = panel.attachedSheet {
+            panel.endSheet(sheet, returnCode: .cancel)
+        }
+        failureAlert = nil
         panel?.orderOut(nil)
         removeKeyMonitor()
     }
@@ -155,6 +183,7 @@ final class HelperPanelController: NSObject {
         )
 
         panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
         panel.level = .floating
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
         panel.isOpaque = false
@@ -218,7 +247,7 @@ final class HelperPanelController: NSObject {
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            if event.window !== self.panel || self.panel?.isKeyWindow != true {
+            if event.window !== self.panel || self.panel?.isKeyWindow != true || self.failureAlert != nil || self.panel?.attachedSheet != nil {
                 return event
             }
             return HelperKeyHandling.handle(event, model: self.model, dismiss: self.hidePanel)
@@ -254,7 +283,7 @@ final class HelperPanelController: NSObject {
 
 extension HelperPanelController: NSWindowDelegate {
     func windowDidResignKey(_ notification: Notification) {
-        guard isVisible, !model.isPasting else { return }
+        guard isVisible, !model.isPasting, failureAlert == nil, panel?.attachedSheet == nil else { return }
         hidePanel()
     }
 }

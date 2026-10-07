@@ -30,8 +30,8 @@ enum ThemeMode: Int32, Sendable {
 
 /// The accessibility permission that cross-app paste depends on. `xpaste` still
 /// enforces it at the point of injection; this only decides when the system is
-/// allowed to explain itself, and does so with the OS dialog rather than an
-/// error in our own UI.
+/// allowed to show its permission prompt. The paste model independently handles
+/// denied access with automatic copying and a paste-failure alert.
 @MainActor
 enum AccessibilityPermission {
     private static var prompted = false
@@ -40,8 +40,8 @@ enum AccessibilityPermission {
 
     /// Returns whether a paste may proceed. On the first attempt without the
     /// permission it opens the system prompt instead, and reports failure so the
-    /// caller skips the doomed paste; every later attempt stays quiet until the
-    /// user changes the setting.
+    /// caller skips key injection. Later attempts do not repeat the OS prompt;
+    /// the caller still handles denial and reports the paste failure.
     static func ensureTrusted() -> Bool {
         if isTrusted { return true }
         guard !prompted else { return false }

@@ -58,3 +58,7 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 主窗口保留现有三栏 Grid。侧栏和详情栏使用系统透明 layer brush，让 Mica（不支持时 Acrylic）透出；内容列使用 `LayerFillColorDefaultBrush`。App.xaml 的 Grid Style 通过 `ThemeResource` 保持窗口主题切换时的动态解析，不使用不透明的 SolidBackground 覆盖材质，也不在代码中一次性获取背景 brush。分隔线使用 `DividerStrokeColorDefaultBrush`。
 
 托盘和助手保留 Acrylic 及现有布局。浅色、深色、高对比、应用内主题切换，以及 Windows 10 的 Acrylic 回退均需 Windows 实机验收；非 UI 集成测试不替代 WinUI/XAML 编译。
+
+## Helper 粘贴失败处理
+
+粘贴前先隐藏 helper 并保留目标快照；失败时自动复制引用键到剪贴板，再恢复 helper 并显示原生错误弹窗。弹窗只显示失败原因，不显示复制结果，也不要求用户选择复制。Windows 沿用自身的前台窗口检查与 Ctrl+V 注入，不使用 macOS 的 TCC 授权或主队列键盘布局调用。

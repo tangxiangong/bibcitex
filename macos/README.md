@@ -26,6 +26,18 @@ For a locally signed build, use `DEVELOPMENT_TEAM=YOUR_TEAM_ID just build arm64 
 
 On systems where `linkd` requires a validated bundle, unsigned/ad-hoc apps can log `com.apple.linkd.autoShortcut` error 4097 with `Unable to get teamId`. Setting a team string alone does not supply a certificate or establish a valid signature. This is separate from SwiftUI state-publication diagnostics.
 
+## Helper accessibility authorization
+
+The helper shows a nonactivating panel without activating the main application. Before sending a citation it orders the panel out, preserving the captured target and paste session; a paste failure restores the panel and its error. Return and keypad Enter both activate the selected result.
+
+Rust calls arrive on background actors, but Enigo's macOS keyboard-layout lookup and key injection run on the main dispatch queue. Calling the layout APIs from the actor executor triggers a system queue assertion on newer macOS versions. Target activation polling remains outside this main-queue section.
+
+Accessibility authorization applies to the signed application identity, not just the enabled switch shown in System Settings. Ad-hoc builds can have a designated requirement tied to their code hash: replacing the app can invalidate an existing grant even with the same bundle identifier. A denied permission check now displays the existing paste error and automatically copies the citation instead of silently ignoring activation. A native alert reports only the paste error; copying happens automatically without a choice or copy-result message.
+
+If System Settings shows an enabled entry but TCC logs report `Failed to match existing code requirement`, quit BibCiTeX, remove the stale BibCiTeX entry from the Accessibility permission list (called Device Control and Data Access on newer macOS), add the actual installed `/Applications/BibCiTeX.app` again, enable it, and relaunch. Do this manually; builds must not reset or modify TCC. Debug builds use `com.tangxiangong.bibcitex.debug` and display as `BibCiTeX Debug`; Release keeps `com.tangxiangong.bibcitex`. Authorize both apps separately so their grants do not overwrite one another. This also separates bundle-scoped preferences; the shared Rust library registry is unchanged.
+
+For authorization continuity across builds, use the existing `CODE_SIGN_IDENTITY` / `DEVELOPMENT_TEAM` support with a valid, consistent signing identity. Ad-hoc signing remains available for compilation, but does not promise persistent authorization. Do not replace signature requirements with an identifier-only requirement to work around this check.
+
 Architectures are `arm64`, `x86_64`, or `universal`; profiles are `debug` and `release`. The `RustBindings` target builds the requested architectures and combines Rust static libraries with `lipo` for a universal build. Direct Xcode Release builds also support both standard architectures. The Bash wrapper accepts `DERIVED_DATA_PATH`; otherwise it uses `target/xcode/<architecture>`. CI can supply a three-component `APP_VERSION` and numeric `BUILD_NUMBER`. These scripts do not require Python, Ruby, XcodeGen, or another project generator.
 
 Equivalent build command:

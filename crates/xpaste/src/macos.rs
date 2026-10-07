@@ -1,7 +1,9 @@
 // Copyright (c) EcoPasteHub; modifications (c) 2025 BibCiTeX Contributors
 // SPDX-License-Identifier: Apache-2.0
 // Derived from https://github.com/EcoPasteHub/EcoPaste
+use dispatch2::DispatchQueue;
 use enigo::{Direction, Enigo, Key, Keyboard};
+use objc2::MainThreadMarker;
 use objc2::rc::autoreleasepool;
 use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication, NSWorkspace};
 use std::{sync::Mutex, thread, time::Duration};
@@ -65,7 +67,26 @@ fn focus_previous_window_inner() -> Result<(), String> {
         }
         thread::sleep(Duration::from_millis(20));
     }
+    // Enigo resolves Unicode keys through TSMGetInputSourceProperty, which
+    // asserts the main queue on macOS. Keep focus polling off that queue, but
+    // perform layout lookup and key injection there together.
+    if MainThreadMarker::new().is_some() {
+        return send_paste_keys(pid);
+    }
+    let mut result = Err("Paste key injection did not execute".into());
+    DispatchQueue::main().exec_sync(|| {
+        result = autoreleasepool(|_| send_paste_keys(pid));
+    });
+    result
+}
+
+fn send_paste_keys(pid: i32) -> Result<(), String> {
     let mut enigo = Enigo::new(&enigo::Settings::default()).map_err(|e| e.to_string())?;
+    let is_frontmost = || {
+        NSWorkspace::sharedWorkspace()
+            .frontmostApplication()
+            .is_some_and(|front| front.processIdentifier() == pid)
+    };
     if !is_frontmost() {
         return Err("Target application did not receive focus".into());
     }
