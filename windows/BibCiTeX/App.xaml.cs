@@ -71,7 +71,7 @@ public partial class App : Application
     {
         Theme = theme;
         NativeSettings.Values["theme"] = theme.ToString();
-        if (Current is App { main: { } window }) ((FrameworkElement)window.Content).RequestedTheme = theme;
+        if (Current is App { main: { } window }) window.ApplyTheme();
         if (Tray is { } tray) ((FrameworkElement)tray.Content).RequestedTheme = theme;
         if (Helper is { } helper) ((FrameworkElement)helper.Content).RequestedTheme = theme;
     }

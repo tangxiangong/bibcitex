@@ -36,14 +36,11 @@ struct BibCiTeXApp: App {
                     NSApp.orderFrontStandardAboutPanel(options: options)
                 }
             }
+            CommandGroup(replacing: .appSettings) {
+                Button(L10n.text("设置") + "…") { openWindow(id: "settings") }.keyboardShortcut(",")
+            }
             CommandGroup(after: .appInfo) {
                 Button(L10n.text("检查更新")) { updates.check() }.disabled(!updates.canCheck)
-                Picker(L10n.text("更新通道"), selection: $updates.channel) {
-                    Text(L10n.text("正式版")).tag("stable")
-                    Text("Beta").tag("beta")
-                    Text("Alpha").tag("alpha")
-                }
-                Toggle(L10n.text("自动下载并安装更新"), isOn: $updates.automaticDownloads)
             }
             CommandGroup(replacing: .newItem) {
                 Button(L10n.text("新增文献库")) { delegate.showMainWindow(); model.adding = true }.keyboardShortcut("o")
@@ -53,19 +50,15 @@ struct BibCiTeXApp: App {
                 Button(L10n.text("复制引用键")) { if let reference = model.reference { model.copy(reference.citeKey) } }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(model.reference == nil)
                 Button(L10n.text("刷新")) { Task { await model.reload() } }.keyboardShortcut("r")
             }
-            CommandGroup(after: .toolbar) {
-                Picker(L10n.text("语言"), selection: $language) {
-                    Text(L10n.text("跟随系统")).tag("system")
-                    Text("简体中文").tag("zh-Hans")
-                    Text("English").tag("en")
-                }
-                Picker(L10n.text("主题"), selection: $appearance) {
-                    Text(L10n.text("跟随系统")).tag("system")
-                    Text(L10n.text("浅色")).tag("light")
-                    Text(L10n.text("深色")).tag("dark")
-                }
-            }
         }
+        Window(L10n.text("设置"), id: "settings") {
+            PreferencesView(updates: updates)
+                .environment(\.locale, L10n.locale)
+                .onAppear { applyAppearance(appearance) }
+                .onChange(of: appearance) { value in applyAppearance(value) }
+                .onChange(of: language) { _ in delegate.localizeMenu(); updates.languageChanged() }
+        }
+        .windowResizability(.contentSize)
     }
     private func applyAppearance(_ appearance: String) {
         NSApp.appearance = appearance == "system" ? nil : NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
@@ -185,5 +178,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let identifier = EventHotKeyID(signature: 0x42494243, id: 1)
         let result = RegisterEventHotKey(UInt32(kVK_ANSI_K), UInt32(cmdKey | shiftKey), identifier, GetApplicationEventTarget(), 0, &hotKey)
         if result != noErr { NSLog("BibCiTeX: Cmd+Shift+K registration failed (%d)", result) }
+    }
+}
+
+private struct PreferencesView: View {
+    @ObservedObject var updates: Updater
+    @AppStorage("language") private var language = "system"
+    @AppStorage("appearance") private var appearance = "system"
+
+    var body: some View {
+        Form {
+            Section(L10n.text("外观")) {
+                Picker(L10n.text("主题"), selection: $appearance) {
+                    Text(L10n.text("跟随系统")).tag("system")
+                    Text(L10n.text("浅色")).tag("light")
+                    Text(L10n.text("深色")).tag("dark")
+                }
+            }
+            Section(L10n.text("语言")) {
+                Picker(L10n.text("语言"), selection: $language) {
+                    Text(L10n.text("跟随系统")).tag("system")
+                    Text("简体中文").tag("zh-Hans")
+                    Text("English").tag("en")
+                }
+            }
+            Section(L10n.text("更新")) {
+                LabeledContent(L10n.text("当前版本"), value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+                Picker(L10n.text("更新通道"), selection: $updates.channel) {
+                    Text(L10n.text("正式版")).tag("stable")
+                    Text("Beta").tag("beta")
+                    Text("Alpha").tag("alpha")
+                }
+                Toggle(L10n.text("自动下载并安装更新"), isOn: $updates.automaticDownloads)
+                Button(L10n.text("检查更新")) { updates.check() }.disabled(!updates.canCheck)
+                if let reason = updates.unavailableReason {
+                    Text(L10n.text(reason)).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .background(AutoHidingScrollbars())
+        .frame(width: 480, height: 440)
     }
 }

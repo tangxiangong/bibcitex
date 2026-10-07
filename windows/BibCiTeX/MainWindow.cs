@@ -40,6 +40,7 @@ internal sealed class MainWindow : Window
     private ToggleButton sidebarToggle = null!, inspectorToggle = null!;
     private PaneThumb leftDivider = null!, rightDivider = null!;
     private Window? aboutWindow;
+    internal SettingsWindow? Settings { get; private set; }
     private int reloadVersion;
     private Library? current;
     private int searchVersion;
@@ -73,7 +74,7 @@ internal sealed class MainWindow : Window
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var primary = Views.Row(Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
-            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle);
+            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle, Views.Button("settings", "设置", ShowSettings));
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
         chrome.Children.Add(toolbar); chrome.Children.Add(Views.Divider());
         Grid.SetColumnSpan(chrome, 5); root.Children.Add(chrome);
@@ -156,7 +157,7 @@ internal sealed class MainWindow : Window
         search.TextChanged += (_, _) => { if (!searchComposing) _ = Search(true); }; type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
         root.Loaded += async (_, _) => { SetMinimumSize(); root.XamlRoot.Changed += (_, _) => SetMinimumSize(); if (!initialized) { initialized = true; await ReloadLibraries(); } };
         AppWindow.Closing += (_, args) => { if (!quitting && tray is not null) { args.Cancel = true; AppWindow.Hide(); } };
-        Closed += (_, _) => { aboutWindow?.Close(); shortcut?.Dispose(); tray?.Dispose(); };
+        Closed += (_, _) => { aboutWindow?.Close(); Settings?.Close(); shortcut?.Dispose(); tray?.Dispose(); };
         root.SizeChanged += (_, _) => LayoutPanes();
         LayoutPanes();
     }
@@ -183,7 +184,8 @@ internal sealed class MainWindow : Window
         }
         var app = Group("BibCiTeX");
         Add(app, "关于 BibCiTeX", () => _ = ShowAbout());
-        var update = Add(app, "检查更新", () => _ = CheckUpdates()); update.IsEnabled = Updater.CanCheck; Updater.AddSettings(app);
+        var update = Add(app, "检查更新", () => _ = CheckUpdates()); update.IsEnabled = Updater.CanCheck;
+        Add(app, "设置", ShowSettings);
         app.Items.Add(new MenuFlyoutSeparator()); Add(app, "退出 BibCiTeX", () => { quitting = true; Close(); });
         var file = Group("menu.file"); Add(file, "新增文献库", () => _ = AddLibrary(), VirtualKey.O);
         var reference = Group("文献");
@@ -194,21 +196,7 @@ internal sealed class MainWindow : Window
         var view = Group("menu.view");
         Add(view, "文献库", () => { SetPaneVisibility(true, !showSidebar); });
         Add(view, "文献详情", () => { SetPaneVisibility(false, !showInspector); });
-        var languages = new MenuFlyoutSubItem(); Localized.Bind(languages, MenuFlyoutSubItem.TextProperty, "语言");
-        foreach (var code in L10n.Languages)
-        {
-            var option = new RadioMenuFlyoutItem { GroupName = "Language", IsChecked = code == L10n.Selection };
-            if (code == "system") Localized.Bind(option, MenuFlyoutItem.TextProperty, "跟随系统"); else option.Text = code == "zh-Hans" ? "简体中文" : "English";
-            option.Click += (_, _) => App.SetLanguage(code); languages.Items.Add(option);
-        }
-        view.Items.Add(languages);
-        var themes = new MenuFlyoutSubItem(); Localized.Bind(themes, MenuFlyoutSubItem.TextProperty, "主题");
-        foreach (var (label, value) in new[] { ("跟随系统", ElementTheme.Default), ("浅色", ElementTheme.Light), ("深色", ElementTheme.Dark) })
-        {
-            var option = new RadioMenuFlyoutItem { GroupName = "Theme", IsChecked = App.Theme == value };
-            Localized.Bind(option, MenuFlyoutItem.TextProperty, label); option.Click += (_, _) => { App.SetTheme(value); if (aboutWindow?.Content is FrameworkElement content) content.RequestedTheme = value; }; themes.Items.Add(option);
-        }
-        view.Items.Add(themes); return menu;
+        return menu;
     }
     private static ToggleButton PaneToggle(string icon, string label, Action action)
     {
@@ -609,6 +597,23 @@ internal sealed class MainWindow : Window
         };
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(image, "BibCiTeX");
         return image;
+    }
+
+    internal void ApplyTheme()
+    {
+        root.RequestedTheme = App.Theme;
+        Settings?.ApplyTheme();
+        if (aboutWindow?.Content is FrameworkElement content) content.RequestedTheme = App.Theme;
+    }
+
+    private void ShowSettings()
+    {
+        if (Settings is not null) { Settings.Activate(); return; }
+        var window = new SettingsWindow();
+        Settings = window;
+        window.Closed += (_, _) => Settings = null;
+        window.AppWindow.Move(new Windows.Graphics.PointInt32(AppWindow.Position.X + (AppWindow.Size.Width - window.AppWindow.Size.Width) / 2, AppWindow.Position.Y + (AppWindow.Size.Height - window.AppWindow.Size.Height) / 2));
+        window.Activate();
     }
 
     private Task ShowAbout()

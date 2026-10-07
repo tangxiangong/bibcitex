@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct WorkbenchView: View {
     @AppStorage("language") private var language = "system"
+    @Environment(\.openWindow) private var openWindow
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
     @State private var editingLibrary: Bibliography?
@@ -48,6 +49,7 @@ struct WorkbenchView: View {
         Button { HelperPanelController.shared.showPanel() } label: { NativeIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
         Button { Task { await model.reload() } } label: { NativeIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
         Button { model.showInspector.toggle() } label: { NativeIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
+        Button { openWindow(id: "settings") } label: { NativeIcon("settings") }.help(L10n.text("设置")).accessibilityLabel(L10n.text("设置"))
     }
 
     /// The standard three-pane idiom where the system provides it. On macOS 14+

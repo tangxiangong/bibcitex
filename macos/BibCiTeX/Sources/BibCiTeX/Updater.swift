@@ -59,6 +59,7 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
             }
         }
     }
+    private(set) var unavailableReason: String?
     private var controller: SPUStandardUpdaterController?
     private var observations = Set<AnyCancellable>()
     private let baseURL: String
@@ -73,9 +74,9 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
             ?? "https://github.com/tangxiangong/bibcitex/releases/download/update-feed"
         super.init()
         UserDefaults.standard.set(channel, forKey: "updateChannel")
-        guard URL(string: baseURL)?.scheme == "https",
-              let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
-              !key.isEmpty else { return }
+        guard URL(string: baseURL)?.scheme == "https" else { unavailableReason = "更新地址无效"; return }
+        guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
+              !key.isEmpty else { unavailableReason = "此构建未配置更新验证公钥"; return }
         let controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: self, userDriverDelegate: nil)
         self.controller = controller
         controller.updater.automaticallyChecksForUpdates = true

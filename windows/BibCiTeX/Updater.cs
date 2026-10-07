@@ -54,21 +54,6 @@ internal static class Updater
         // A stale marker must never authorize a different cached package later.
         NativeSettings.Values["pendingUpdate"] = "";
     }
-    internal static void AddSettings(MenuBarItem menu)
-    {
-        var channels = new MenuFlyoutSubItem(); Localized.Bind(channels, MenuFlyoutSubItem.TextProperty, "更新通道");
-        foreach (var channel in new[] { "stable", "beta", "alpha" })
-        {
-            var item = new RadioMenuFlyoutItem { GroupName = "UpdateChannel", IsChecked = channel == Channel };
-            Localized.Bind(item, MenuFlyoutItem.TextProperty, channel == "stable" ? "正式版" : channel == "beta" ? "Beta" : "Alpha");
-            item.Click += (_, _) => Channel = channel; channels.Items.Add(item);
-        }
-        menu.Items.Add(channels);
-        var automatic = new ToggleMenuFlyoutItem { IsChecked = AutomaticDownloads };
-        Localized.Bind(automatic, MenuFlyoutItem.TextProperty, "自动下载并安装更新");
-        automatic.Click += (_, _) => AutomaticDownloads = automatic.IsChecked;
-        menu.Items.Add(automatic);
-    }
     internal static async Task Start(FrameworkElement owner)
     {
         if (started) return;
@@ -102,6 +87,8 @@ internal static class Updater
                 return;
             }
             var update = await manager.CheckForUpdatesAsync();
+            // A settings window can close while the network request is in flight.
+            if (manual && !owner.IsLoaded) return;
             if (revision != preferencesRevision) return;
             if (update is null)
             {

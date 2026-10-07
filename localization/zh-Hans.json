@@ -374,5 +374,11 @@
   "Cache lock poisoned": "搜索缓存不可用",
   "Unknown search field": "未知的搜索字段",
   "Unknown bibliography type filter": "未知的文献类型筛选",
-  "Unexpected entry type serialization": "无法读取文献类型"
+  "Unexpected entry type serialization": "无法读取文献类型",
+  "设置": "设置",
+  "外观": "外观",
+  "更新": "更新",
+  "当前版本": "当前版本",
+  "更新地址无效": "更新地址无效",
+  "此构建未配置更新验证公钥": "此构建未配置更新验证公钥"
 }
