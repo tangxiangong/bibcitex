@@ -1,0 +1,34 @@
+name: Update Homebrew tap
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: update-homebrew-tap
+  cancel-in-progress: false
+jobs:
+  update:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: tangxiangong/homebrew-tap
+          ref: main
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+      - name: Test update validation
+        run: ruby scripts/update-bibcitex-test.rb
+      - name: Download and verify the latest complete stable release
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ruby scripts/update-bibcitex.rb
+      - name: Commit verified cask update
+        if: steps.update.outputs.version != ''
+        env:
+          VERSION: ${{ steps.update.outputs.version }}
+        run: bash scripts/commit-bibcitex.sh

@@ -51,3 +51,20 @@ The COS publisher validates all four platform/architecture payloads, Sparkle sig
 The COS appcasts point to COS archives and localized notes; GitHub appcasts retain GitHub links. Velopack packages live beside each source's channel feeds and have identical bytes on both hosts. Publishing GitHub first ensures the fallback is ready before COS advances. If COS publication fails, GitHub remains valid; rerun the failed publish job, or use **Publish existing release to COS** with the existing tag. That manual workflow downloads and verifies already published GitHub assets without rebuilding or changing their signatures. Do not rebuild a populated release to repair a mirror.
 
 Verification: `just check-rust`, `just test-ci`, macOS compilation, and non-UI C#/Rust transport/integration checks. GUI update acceptance, real CAM permissions, global acceleration and signed in-place upgrades still require validation against a published release. Compilation or a local simulated transport test is not a live deployment test.
+
+## Automatic Homebrew tap updates
+
+After **Release** completes successfully, **Update Homebrew tap** runs through a
+`workflow_run` completion event. No scheduled polling is used. It downloads and
+verifies both macOS archives from the newest complete stable release, then
+commits the version and SHA-256 changes to `tangxiangong/homebrew-tap`.
+The tap updater ignores prereleases and incomplete releases and prevents
+version downgrades. Its tests and commit helper live in the tap repository.
+
+Configure repository secret `HOMEBREW_TAP_DEPLOY_KEY` with the private SSH key
+whose public key is installed as a write-enabled deploy key on the tap only.
+This grants no write access to other repositories. The completion workflow uses
+the maintained tap `main` branch, never code or artifacts from the triggering
+workflow. The workflow file must exist on this repository's default branch.
+For recovery after a tap update failure, manually dispatch **Update Homebrew tap**;
+there is no need to rebuild or republish release assets.
