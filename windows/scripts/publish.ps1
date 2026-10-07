@@ -10,6 +10,8 @@ $ErrorActionPreference = 'Stop'
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $Arch = $Architecture.ToLowerInvariant()
 $Rid = "win-$Arch"
+# Installer OS guard matches TargetPlatformMinVersion; update channels keep their existing names.
+$InstallerRuntime = "win10.0.17763-$Arch"
 # Isolate publish output so obsolete files from another version cannot enter a package.
 $Publish = Join-Path $Repo "target/publish/$Rid-$([guid]::NewGuid().ToString('N'))"
 if ((Test-Path $OutputDirectory) -and @(Get-ChildItem -Force $OutputDirectory).Count -ne 0) {
@@ -39,7 +41,7 @@ $Text = "<!-- locale:zh-Hans -->`n" + (Get-Content -Raw (Join-Path $Notes 'zh-Ha
 # MSI has numeric versions; the CI run sequence is independent from display SemVer.
 $MsiVersion = "1.$([math]::Floor($BuildNumber / 65536)).$($BuildNumber % 65536)"
 if ($BuildNumber -ge 16777216) { throw 'MSI build sequence exhausted.' }
-& (Join-Path $Tools 'vpk.exe') pack --packId BibCiTeX --packVersion $Version --packDir $Publish --mainExe BibCiTeX.exe --runtime $Rid --framework "net10.0-$Arch-runtime,vcredist143-$Arch" --channel "$Rid-$Channel" --outputDir $OutputDirectory --icon (Join-Path $Repo 'assets/app-icons/icon.ico') --releaseNotes $Combined --msi --msiVersion $MsiVersion
+& (Join-Path $Tools 'vpk.exe') pack --packId BibCiTeX --packVersion $Version --packDir $Publish --mainExe BibCiTeX.exe --runtime $InstallerRuntime --framework "net10.0-$Arch-runtime,vcredist143-$Arch" --channel "$Rid-$Channel" --outputDir $OutputDirectory --icon (Join-Path $Repo 'assets/app-icons/icon.ico') --releaseNotes $Combined --msi --msiVersion $MsiVersion
 if ($LASTEXITCODE -ne 0) { throw 'Velopack packaging failed.' }
 foreach ($Extension in @('exe', 'msi')) {
     $Installers = @(Get-ChildItem $OutputDirectory -File -Filter "*.$Extension")

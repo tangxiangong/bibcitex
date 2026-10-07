@@ -23,7 +23,7 @@ trap 'exit 143' TERM
     cat "$package/Tests/HelperViewModelRegression.swift"
 } > "$work/Regression.swift"
 cp "$package/../../localization/"*.json "$work/"
-swiftc -parse-as-library -target "$(uname -m)-apple-macosx14.0" \
+swiftc -parse-as-library -target "$(uname -m)-apple-macosx13.0" \
     -module-cache-path "$work/modules" "$work/Regression.swift" -o "$work/regressions"
 "$work/regressions" &
 test_pid=$!

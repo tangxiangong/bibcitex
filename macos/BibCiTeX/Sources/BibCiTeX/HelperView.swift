@@ -23,7 +23,7 @@ struct HelperView: View {
         }
         .ignoresSafeArea()
         .onAppear { searchFocused = true }
-        .onChange(of: model.focusRequest) { searchFocused = true }
+        .onChange(of: model.focusRequest) { _ in searchFocused = true }
     }
 
     /// The idle surface is the search field alone; anything more is the oversized
@@ -120,7 +120,7 @@ struct HelperView: View {
                             }
                         }.padding(8)
                     }
-                    .onChange(of: model.selectedBibliographyIndex) { _, index in
+                    .onChange(of: model.selectedBibliographyIndex) { index in
                         if let index { proxy.scrollTo(index) }
                     }
                 }
@@ -147,7 +147,7 @@ struct HelperView: View {
                         }
                     }.padding(8)
                 }
-                .onChange(of: model.selectedReferenceIndex) { _, index in
+                .onChange(of: model.selectedReferenceIndex) { index in
                     if let index { proxy.scrollTo(index) }
                 }
             }

@@ -157,7 +157,7 @@ struct WorkbenchView: View {
                             }
                         }
                     }.listStyle(.inset).scrollContentBackground(.hidden)
-                    .onChange(of: model.selectedReference) { _, key in
+                    .onChange(of: model.selectedReference) { key in
                         if let key { proxy.scrollTo(key) }
                     }
                 }
@@ -348,7 +348,7 @@ private struct LibrarySidebarRow: View {
                         .textFieldStyle(.roundedBorder).focused($renameFocused)
                         .disabled(savingName).onSubmit(saveName)
                         .onExitCommand { if !savingName { renaming = false; renameFocused = false } }
-                        .onChange(of: renameFocused) { _, focused in if !focused { saveName() } }
+                        .onChange(of: renameFocused) { focused in if !focused { saveName() } }
                         .task { renameFocused = true }
                     if let renameError { Text(renameError).font(.caption).foregroundStyle(.red) }
                 } else {

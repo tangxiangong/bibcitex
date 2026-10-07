@@ -14,7 +14,7 @@
 - Check GitHub Releases for updates on Stable, Beta, and Alpha channels.
 - Sparkle on macOS and Velopack on Windows provide localized release notes, download integrity checks, and optional automatic updates.
 - Switching channels never automatically downgrades the app. Changing channels or automatic-update preferences cancels stale background downloads.
-- Supports Apple Silicon and Intel Macs running macOS 14 Sonoma or later, and x64 and ARM64 PCs running Windows 10 version 2004 (build 19041) or later.
+- Supports Apple Silicon and Intel Macs running macOS 13 Ventura or later, and x64 and ARM64 PCs running Windows 10 version 1809 (build 17763) or later.
 - DMG installers for macOS; EXE and MSI installers for Windows.
 
 Install this version manually when switching from an older version. The previous updater, settings, and installer are not migrated automatically. Keep your original `.bib` files, then add your libraries again and review settings after installation. Subsequent versions use the new in-app updater. Cross-application paste on macOS requires Accessibility permission.

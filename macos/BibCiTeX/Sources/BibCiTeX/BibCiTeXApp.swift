@@ -16,14 +16,14 @@ struct BibCiTeXApp: App {
         Window("BibCiTeX", id: "main") {
             WorkbenchView(model: model)
                 .onAppear {
-                    applyAppearance()
+                    applyAppearance(appearance)
                     delegate.reopenMain = { openWindow(id: "main") }
                     delegate.updates = updates
                     delegate.configureMainWindow()
                 }
                 .environment(\.locale, L10n.locale)
-                .onChange(of: language) { delegate.localizeMenu(); updates.languageChanged() }
-                .onChange(of: appearance) { applyAppearance() }
+                .onChange(of: language) { _ in delegate.localizeMenu(); updates.languageChanged() }
+                .onChange(of: appearance) { value in applyAppearance(value) }
         }
         .defaultSize(width: 1200, height: 800)
         .commands {
@@ -67,7 +67,7 @@ struct BibCiTeXApp: App {
             }
         }
     }
-    private func applyAppearance() {
+    private func applyAppearance(_ appearance: String) {
         NSApp.appearance = appearance == "system" ? nil : NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
     }
 }

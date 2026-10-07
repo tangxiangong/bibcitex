@@ -14,7 +14,7 @@
 - 从 GitHub Releases 检查更新，支持正式版、Beta 和 Alpha 通道。
 - macOS 使用 Sparkle，Windows 使用 Velopack；更新公告跟随应用语言，支持下载完整性校验和可选自动更新。
 - 切换更新通道不会自动降级，切换通道或自动更新设置会取消过时的后台下载。
-- macOS 支持 Apple Silicon 和 Intel，最低系统为 macOS 14 Sonoma；Windows 支持 x64 和 ARM64，最低系统为 Windows 10 版本 2004（内部版本 19041）。
+- macOS 支持 Apple Silicon 和 Intel，最低系统为 macOS 13 Ventura；Windows 支持 x64 和 ARM64，最低系统为 Windows 10 版本 1809（内部版本 17763）。
 - macOS 提供 DMG，Windows 提供 EXE 和 MSI 安装包。
 
 从旧版切换到本版本时，请手动安装一次。旧版更新器、设置和安装器不会自动迁移；请保留原始 `.bib` 文件，安装后重新添加文献库并检查设置。后续版本通过新的应用内更新机制升级。macOS 跨应用粘贴需要辅助功能权限。

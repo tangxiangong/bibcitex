@@ -2,6 +2,8 @@
 
 C# / WinUI 3（Windows App SDK 2.5.1 稳定版）主窗口与 Spotlight helper；共享 Rust Core、XPaste、原生 Helper 状态。主窗使用系统 Mica（不支持时使用 Desktop Acrylic），helper 使用系统 Desktop Acrylic。快捷键 `Win+Shift+K`，空闲搜索栏高 56 DIP。公式由 CSharpMath + SkiaSharp 在原生控件内渲染，无 WebView。
 
+最低运行系统为 Windows 10 1809（内部版本 17763），支持 x64 和 ARM64。编译使用的 Windows SDK 版本与最低运行版本分别配置；C# 语义检查也按 17763 检查 API 可用性。
+
 ## Visual Studio
 
 安装 Visual Studio 2026 的 Windows 应用开发、C++ 桌面开发工具和对应 Windows SDK，.NET 10 LTS、Rust MSVC 工具链。首次选择架构时，有 rustup 则自动补齐所选目标和生成器宿主目标。直接打开 `windows/BibCiTeX.sln`，选择 `Debug` / `Release` 和 `x64` / `ARM64`，执行“生成解决方案”即可。
