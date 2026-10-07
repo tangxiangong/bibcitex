@@ -20,7 +20,7 @@ struct WorkbenchView: View {
                 // hand-written one is only needed by the 13 fallback layout.
                 if #unavailable(macOS 14.0) {
                     ToolbarItem(placement: .navigation) {
-                        Button { model.showSidebar.toggle() } label: { SVGIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
+                        Button { model.showSidebar.toggle() } label: { NativeIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
                     }
                 }
                 if #available(macOS 26.0, *) {
@@ -45,9 +45,9 @@ struct WorkbenchView: View {
     }
 
     @ViewBuilder private var toolbarActions: some View {
-        Button { HelperPanelController.shared.showPanel() } label: { SVGIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
-        Button { Task { await model.reload() } } label: { SVGIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
-        Button { model.showInspector.toggle() } label: { SVGIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
+        Button { HelperPanelController.shared.showPanel() } label: { NativeIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
+        Button { Task { await model.reload() } } label: { NativeIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
+        Button { model.showInspector.toggle() } label: { NativeIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
     }
 
     /// The standard three-pane idiom where the system provides it. On macOS 14+
@@ -114,7 +114,7 @@ struct WorkbenchView: View {
             HStack {
                 Text(L10n.text("文献库")).font(.headline)
                 Spacer()
-                Button { model.adding = true } label: { SVGIcon("folderAdd", size: 18).frame(width: 28, height: 28) }
+                Button { model.adding = true } label: { NativeIcon("folderAdd", size: 18).frame(width: 28, height: 28) }
                     .buttonStyle(.borderless).help(L10n.text("新增文献库")).accessibilityLabel(L10n.text("新增文献库"))
             }.padding(.horizontal, 16).padding(.vertical, 12)
             if model.libraries.isEmpty {
@@ -145,7 +145,7 @@ struct WorkbenchView: View {
                         if model.loading { ProgressView().controlSize(.small) }
                     }
                     HStack(spacing: 8) {
-                        SVGIcon("search", size: 15).foregroundStyle(.secondary)
+                        NativeIcon("search", size: 15).foregroundStyle(.secondary)
                         TextField(L10n.text("搜索文献"), text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
                             .focused($searchFocused)
                             .background {
@@ -280,12 +280,12 @@ private struct ListCiteKey: View {
     @ObservedObject var model: WorkbenchModel
 
     var body: some View {
-        let copied = model.copied == reference.citeKey
+        let copied = model.copied[.list] == reference.citeKey
         Button {
             model.copy(reference.citeKey)
         } label: {
             HStack(spacing: 4) {
-                SVGIcon(copied ? "check" : "copy", size: 10)
+                NativeIcon(copied ? "check" : "copy", size: 10)
                 Text(copied ? L10n.text("已复制") : reference.citeKey)
                     .font(.system(.caption, design: copied ? .default : .monospaced))
                     .lineLimit(1)
@@ -312,9 +312,9 @@ struct ReferenceInspector: View {
                 HStack {
                     copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
                     copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
-                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { SVGIcon("folderOpen") }.help(L10n.text("打开文件")).accessibilityLabel(L10n.text("打开文件")) }
-                    if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { SVGIcon("externalLink") }.help(L10n.text("打开 URL")).accessibilityLabel(L10n.text("打开 URL")) }
-                    if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { SVGIcon("link") }.help(L10n.text("打开 DOI")).accessibilityLabel(L10n.text("打开 DOI")) }
+                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { NativeIcon("folderOpen") }.help(L10n.text("打开文件")).accessibilityLabel(L10n.text("打开文件")) }
+                    if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { NativeIcon("externalLink") }.help(L10n.text("打开 URL")).accessibilityLabel(L10n.text("打开 URL")) }
+                    if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { NativeIcon("link") }.help(L10n.text("打开 DOI")).accessibilityLabel(L10n.text("打开 DOI")) }
                 }.buttonStyle(.bordered)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
@@ -337,17 +337,17 @@ struct ReferenceInspector: View {
     /// Both copy actions answer on the button itself: the icon becomes a check for
     /// a moment, so a copy that succeeded says so without an alert to dismiss.
     private func copyButton(_ text: String, icon: String, label: String) -> some View {
-        let copied = model.copied == text
+        let copied = model.copied[.detail] == text
         return Button {
-            model.copy(text)
+            model.copy(text, surface: .detail)
         } label: {
             if copied {
                 HStack(spacing: 4) {
-                    SVGIcon("check", size: 14)
+                    NativeIcon("check", size: 14)
                     Text(L10n.text("已复制")).font(.caption)
                 }
             } else {
-                SVGIcon(icon)
+                NativeIcon(icon)
             }
         }
         .help(label)
@@ -390,7 +390,7 @@ private struct LibrarySidebarRow: View {
 
     var body: some View {
         HStack(spacing: 9) {
-            SVGIcon("library")
+            NativeIcon("library")
             VStack(alignment: .leading, spacing: 4) {
                 if renaming {
                     TextField(L10n.text("文献库名称"), text: $draftName)
@@ -408,8 +408,8 @@ private struct LibrarySidebarRow: View {
                 }
             }
             Spacer(minLength: 0)
-            if library.pinned { SVGIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel(L10n.text("已置顶")) }
-            Menu { actions } label: { SVGIcon("more", size: 16).frame(width: 24, height: 24) }
+            if library.pinned { NativeIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel(L10n.text("已置顶")) }
+            Menu { actions } label: { NativeIcon("more", size: 16).frame(width: 24, height: 24) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .focused($menuFocused)
                 .opacity(!renaming && (hovered || menuFocused) ? 1 : 0)
@@ -443,8 +443,8 @@ private struct LibrarySidebarRow: View {
     }
 
     @ViewBuilder private var actions: some View {
-        Button(action: edit) { Label { Text(L10n.text("编辑")) } icon: { if let image = SVGImages.images["settings"] { Image(nsImage: image).renderingMode(.template) } } }
-        Button { draftName = library.name; renameErrorDetails = nil; renaming = true } label: { Label { Text(L10n.text("重命名")) } icon: { if let image = SVGImages.images["rename"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button(action: edit) { Label { Text(L10n.text("编辑")) } icon: { if let image = NativeImages.image(named: "settings") { image } } }
+        Button { draftName = library.name; renameErrorDetails = nil; renaming = true } label: { Label { Text(L10n.text("重命名")) } icon: { if let image = NativeImages.image(named: "rename") { image } } }
         Button {
             Task {
                 do {
@@ -452,10 +452,10 @@ private struct LibrarySidebarRow: View {
                     await model.reload()
                 } catch { model.reportError(error) }
             }
-        } label: { Label { Text(library.pinned ? L10n.text("取消置顶") : L10n.text("置顶")) } icon: { if let image = SVGImages.images["pin"] { Image(nsImage: image).renderingMode(.template) } } }
+        } label: { Label { Text(library.pinned ? L10n.text("取消置顶") : L10n.text("置顶")) } icon: { if let image = NativeImages.image(named: "pin") { image } } }
         Divider()
         Button(L10n.text("打开文件")) { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
-        Button(role: .destructive) { model.remove(library) } label: { Label { Text(L10n.text("移除")) } icon: { if let image = SVGImages.images["x"] { Image(nsImage: image).renderingMode(.template) } } }
+        Button(role: .destructive) { model.remove(library) } label: { Label { Text(L10n.text("移除")) } icon: { if let image = NativeImages.image(named: "x") { image } } }
     }
 }
 
@@ -482,7 +482,7 @@ struct AddLibrarySheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 14) {
-                SVGIcon("folderAdd", size: 24)
+                NativeIcon("folderAdd", size: 24)
                     .foregroundStyle(Color.accentColor)
                     .frame(width: 48, height: 48)
                     .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
@@ -501,7 +501,7 @@ struct AddLibrarySheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(L10n.text("文件路径")).font(.callout.weight(.medium))
                         HStack(spacing: 12) {
-                            SVGIcon("fileText", size: 24).foregroundStyle(.secondary)
+                            NativeIcon("fileText", size: 24).foregroundStyle(.secondary)
                             Text(path.isEmpty ? L10n.text("尚未选择文件") : path)
                                 .font(.callout).foregroundStyle(path.isEmpty ? .secondary : .primary)
                                 .lineLimit(2).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)

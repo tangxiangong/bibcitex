@@ -78,37 +78,51 @@ internal static class Views
         private readonly List<Microsoft.UI.Xaml.Controls.Primitives.ScrollBar> bars = [];
         private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
         private double x, y;
-        private bool dragging, hovering, visible;
+        private bool dragging, manipulating, visible;
+        private long scrollInputUntil;
 
         internal IdleScrollbars(ScrollViewer viewer)
         {
             this.viewer = viewer;
             x = viewer.HorizontalOffset; y = viewer.VerticalOffset;
-            timer.Tick += (_, _) => { timer.Stop(); if (!dragging && !hovering) SetVisible(false); };
+            timer.Tick += (_, _) => { timer.Stop(); if (!dragging && !manipulating) SetVisible(false); };
             viewer.ViewChanged += (_, _) =>
             {
                 if (x == viewer.HorizontalOffset && y == viewer.VerticalOffset) return;
                 x = viewer.HorizontalOffset; y = viewer.VerticalOffset;
+                // Layout and selection restoration also change offsets at startup.
+                if (!dragging && !manipulating && !visible && Environment.TickCount64 > scrollInputUntil) return;
                 SetVisible(true);
                 RestartTimer();
             };
-            var move = new Microsoft.UI.Xaml.Input.PointerEventHandler((_, args) =>
-            {
-                var point = args.GetCurrentPoint(viewer).Position;
-                var wasHovering = hovering;
-                hovering = point.X >= 0 && point.Y >= 0 && point.X <= viewer.ActualWidth && point.Y <= viewer.ActualHeight &&
-                    ((viewer.ScrollableHeight > 0 && (viewer.VerticalScrollBarVisibility is ScrollBarVisibility.Auto or ScrollBarVisibility.Visible) && point.X >= viewer.ActualWidth - 20) ||
-                     (viewer.ScrollableWidth > 0 && (viewer.HorizontalScrollBarVisibility is ScrollBarVisibility.Auto or ScrollBarVisibility.Visible) && point.Y >= viewer.ActualHeight - 20));
-                if (hovering) SetVisible(true);
-                if (hovering || wasHovering) RestartTimer();
-            });
-            viewer.AddHandler(UIElement.PointerEnteredEvent, move, true);
-            viewer.AddHandler(UIElement.PointerMovedEvent, move, true);
-            viewer.AddHandler(UIElement.PointerExitedEvent,
-                new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => { hovering = false; RestartTimer(); }), true);
+            void MarkScrollInput() => scrollInputUntil = Environment.TickCount64 + 1000;
+            viewer.DirectManipulationStarted += (_, _) => { manipulating = true; timer.Stop(); };
+            viewer.DirectManipulationCompleted += (_, _) => { manipulating = false; RestartTimer(); };
+            viewer.AddHandler(UIElement.PointerPressedEvent,
+                new Microsoft.UI.Xaml.Input.PointerEventHandler((_, args) =>
+                {
+                    if (args.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch) MarkScrollInput();
+                }), true);
+            viewer.AddHandler(UIElement.PointerWheelChangedEvent,
+                new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) => MarkScrollInput()), true);
+            viewer.AddHandler(UIElement.PointerMovedEvent,
+                new Microsoft.UI.Xaml.Input.PointerEventHandler((_, args) =>
+                {
+                    if (args.Pointer.PointerDeviceType == Microsoft.UI.Input.PointerDeviceType.Touch &&
+                        args.GetCurrentPoint(viewer).IsInContact) MarkScrollInput();
+                }), true);
+            viewer.AddHandler(UIElement.PreviewKeyDownEvent,
+                new Microsoft.UI.Xaml.Input.KeyEventHandler((_, args) =>
+                {
+                    if (args.Key is Windows.System.VirtualKey.Up or Windows.System.VirtualKey.Down or
+                        Windows.System.VirtualKey.Left or Windows.System.VirtualKey.Right or
+                        Windows.System.VirtualKey.PageUp or Windows.System.VirtualKey.PageDown or
+                        Windows.System.VirtualKey.Home or Windows.System.VirtualKey.End or Windows.System.VirtualKey.Space)
+                        MarkScrollInput();
+                }), true);
             viewer.Unloaded += (_, _) =>
             {
-                timer.Stop(); dragging = hovering = false; SetVisible(false);
+                timer.Stop(); dragging = manipulating = false; scrollInputUntil = 0; SetVisible(false);
             };
             viewer.RegisterPropertyChangedCallback(Control.TemplateProperty, (_, _) =>
                 viewer.DispatcherQueue.TryEnqueue(() => { if (viewer.IsLoaded) RefreshBars(); }));
@@ -144,7 +158,7 @@ internal static class Views
             }
             cancelDrag ??= new Microsoft.UI.Xaml.Input.PointerEventHandler((_, _) =>
             {
-                dragging = hovering = false;
+                dragging = false;
                 RestartTimer();
             });
             Find(viewer);
@@ -165,7 +179,7 @@ internal static class Views
         private void RestartTimer()
         {
             timer.Stop();
-            if (!dragging && !hovering && viewer.IsLoaded) timer.Start();
+            if (!dragging && !manipulating && viewer.IsLoaded) timer.Start();
         }
 
         private void SetVisible(bool value)

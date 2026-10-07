@@ -97,12 +97,35 @@ struct AutoHidingScrollbars: NSViewRepresentable {
     }
 }
 
+/// Keep AppKit's layout/hover updates from revealing an idle overlay scroller.
+private final class ActivityScroller: NSScroller {
+    override class var isCompatibleWithOverlayScrollers: Bool { true }
+
+    var activityVisible = false {
+        didSet {
+            super.isHidden = !activityVisible
+            super.alphaValue = activityVisible ? 1 : 0
+        }
+    }
+
+    override var isHidden: Bool {
+        get { super.isHidden }
+        set { super.isHidden = !activityVisible || newValue }
+    }
+
+    override var alphaValue: CGFloat {
+        get { super.alphaValue }
+        set { super.alphaValue = activityVisible ? newValue : 0 }
+    }
+}
+
 final class ScrollbarConfigurationView: NSView {
     var alwaysHidden = false
     private final class ScrollState {
         weak var scroll: NSScrollView?
         var origin: NSPoint
         var hideWork: DispatchWorkItem?
+        var inputUntil: TimeInterval = 0
 
         init(_ scroll: NSScrollView) {
             self.scroll = scroll
@@ -115,12 +138,17 @@ final class ScrollbarConfigurationView: NSView {
     private var states: [ObjectIdentifier: ScrollState] = [:]
     private var configurationPending = false
     private var observing = false
+    private var inputMonitor: Any?
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         stopObserving()
         guard window != nil else { return }
         observing = true
+        inputMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .keyDown]) { [weak self] event in
+            self?.recordScrollInput(event)
+            return event
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(boundsChanged(_:)),
             name: NSView.boundsDidChangeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(liveScroll(_:)),
@@ -136,6 +164,8 @@ final class ScrollbarConfigurationView: NSView {
     }
 
     func stopObserving() {
+        if let inputMonitor { NSEvent.removeMonitor(inputMonitor) }
+        inputMonitor = nil
         NotificationCenter.default.removeObserver(self)
         observing = false
         states.removeAll()
@@ -170,9 +200,32 @@ final class ScrollbarConfigurationView: NSView {
                     scroll.contentInsets = insets
                 }
             }
+            installActivityScrollers(scroll)
             if state.hideWork == nil { setIndicators(scroll, visible: false) }
         }
         for child in view.subviews { configure(child) }
+    }
+
+    private func installActivityScrollers(_ scroll: NSScrollView) {
+        func replacement(for original: NSScroller?) -> NSScroller? {
+            guard let original, !(original is ActivityScroller) else { return original }
+            let scroller = ActivityScroller(frame: original.frame)
+            scroller.controlSize = original.controlSize
+            scroller.scrollerStyle = .overlay
+            scroller.knobStyle = original.knobStyle
+            scroller.target = original.target
+            scroller.action = original.action
+            scroller.doubleValue = original.doubleValue
+            scroller.knobProportion = original.knobProportion
+            scroller.activityVisible = false
+            return scroller
+        }
+        if let scroller = scroll.verticalScroller, !(scroller is ActivityScroller) {
+            scroll.verticalScroller = replacement(for: scroller)
+        }
+        if let scroller = scroll.horizontalScroller, !(scroller is ActivityScroller) {
+            scroll.horizontalScroller = replacement(for: scroller)
+        }
     }
 
     private func state(for scroll: NSScrollView) -> ScrollState {
@@ -183,13 +236,34 @@ final class ScrollbarConfigurationView: NSView {
         return state
     }
 
+    private func recordScrollInput(_ event: NSEvent) {
+        guard !alwaysHidden, let window, event.window === window else { return }
+        let view: NSView?
+        if event.type == .scrollWheel, let root = window.contentView {
+            view = root.hitTest(root.convert(event.locationInWindow, from: nil))
+        } else if event.type == .keyDown, [UInt16(49), 115, 116, 119, 121, 123, 124, 125, 126].contains(event.keyCode) {
+            view = window.firstResponder as? NSView
+        } else {
+            return
+        }
+        guard let scroll = (view as? NSScrollView) ?? view?.enclosingScrollView else { return }
+        state(for: scroll).inputUntil = ProcessInfo.processInfo.systemUptime + 1
+    }
+
     @objc private func boundsChanged(_ notification: Notification) {
         guard let clip = notification.object as? NSClipView,
               let scroll = clip.enclosingScrollView, scroll.window === window else { return }
         let state = state(for: scroll)
         guard state.origin != clip.bounds.origin else { return }
         state.origin = clip.bounds.origin
-        showTemporarily(scroll)
+        installActivityScrollers(scroll)
+        // Initial layout and selection restoration also change the clip bounds.
+        // Show only for user input or an ongoing scroll, including legacy wheels.
+        if state.hideWork != nil || ProcessInfo.processInfo.systemUptime <= state.inputUntil {
+            showTemporarily(scroll)
+        } else {
+            setIndicators(scroll, visible: false)
+        }
     }
 
     @objc private func liveScroll(_ notification: Notification) {
@@ -203,6 +277,7 @@ final class ScrollbarConfigurationView: NSView {
             setIndicators(scroll, visible: false)
             return
         }
+        installActivityScrollers(scroll)
         let state = state(for: scroll)
         state.hideWork?.cancel()
         let work = DispatchWorkItem { [weak self, weak state] in
@@ -220,7 +295,13 @@ final class ScrollbarConfigurationView: NSView {
         // scrollers causes SwiftUI lists to remeasure and rewrap their rows.
         let alpha: CGFloat = !alwaysHidden && visible ? 1 : 0
         for scroller in [scroll.verticalScroller, scroll.horizontalScroller] {
-            if let scroller, scroller.alphaValue != alpha { scroller.alphaValue = alpha }
+            if let scroller {
+                (scroller as? ActivityScroller)?.activityVisible = alpha != 0
+                // AppKit can restore overlay alpha during hover or layout.
+                // Hide the view too, without removing its scroll-view slot.
+                scroller.isHidden = alpha == 0
+                if scroller.alphaValue != alpha { scroller.alphaValue = alpha }
+            }
         }
     }
 }

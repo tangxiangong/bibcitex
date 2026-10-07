@@ -46,7 +46,9 @@ tests from GUI acceptance and signed update deployment.
 - Do not add `rust-version` or a pinned Rust toolchain file. Use the available
   toolchain locally and stable Rust in CI.
 - Preserve existing UI text; do not add unsolicited explanations to the UI.
-- All UI icons must be standalone SVG files, never embedded SVG/data URLs/fonts.
+- macOS UI icons prefer SF Symbols available on the running OS, falling back to
+  the existing standalone SVG assets when a symbol is unavailable. Preserve brand assets.
+- Windows UI icons remain standalone SVG files; never embed SVG/data URLs/icon fonts.
 - Main windows and the Spotlight helper are all in scope on both platforms.
 - Keep the helper compact. Do not restore the oversized idle search panel.
 - Never commit or push unless requested. Preserve unrelated uncommitted work.

@@ -21,7 +21,7 @@ struct TrayWorkbenchView: View {
                     toolbarButtons
                 }
                 HStack(spacing: 8) {
-                    SVGIcon("search", size: 15).foregroundStyle(.secondary)
+                    NativeIcon("search", size: 15).foregroundStyle(.secondary)
                     TextField(L10n.text("搜索文献"), text: $model.query)
                         .textFieldStyle(.plain).focused($searchFocused)
                         .padding(.trailing, 174)
@@ -37,12 +37,12 @@ struct TrayWorkbenchView: View {
                             }
                         } label: {
                             HStack(spacing: 6) {
-                                SVGIcon("library", size: 13).foregroundStyle(.secondary)
+                                NativeIcon("library", size: 13).foregroundStyle(.secondary)
                                 Text(model.libraryName ?? L10n.text("暂无文献库"))
                                     .font(.system(size: 12, weight: .medium))
                                     .lineLimit(1).truncationMode(.middle)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                SVGIcon("chevronDown", size: 10).foregroundStyle(.secondary)
+                                NativeIcon("chevronDown", size: 10).foregroundStyle(.secondary)
                             }.frame(width: 150, height: 20).contentShape(Rectangle())
                         }
                         .menuStyle(.borderlessButton).menuIndicator(.hidden)
@@ -100,7 +100,7 @@ struct TrayWorkbenchView: View {
             if let error = model.error {
                 Divider()
                 HStack {
-                    SVGIcon("alert", size: 14)
+                    NativeIcon("alert", size: 14)
                     Text(error).font(.caption).lineLimit(3)
                     Spacer()
                     iconButton("x", L10n.text("关闭")) { model.error = nil }
@@ -166,10 +166,10 @@ struct TrayWorkbenchView: View {
         }
     }
     private func citeKeyButton(_ key: String) -> some View {
-        let copied = model.copied == key
+        let copied = model.copied[.list] == key
         return Button { model.copy(key) } label: {
             HStack(spacing: 4) {
-                SVGIcon(copied ? "check" : "copy", size: 10)
+                NativeIcon(copied ? "check" : "copy", size: 10)
                 Text(copied ? L10n.text("已复制") : key)
                     .font(.system(.caption, design: copied ? .default : .monospaced))
                     .lineLimit(1)
@@ -225,15 +225,15 @@ struct TrayWorkbenchView: View {
         }
     }
     private func copyButton(_ value: String, _ label: String) -> some View {
-        Button { model.copy(value) } label: {
+        Button { model.copy(value, surface: .detail) } label: {
             HStack(spacing: 4) {
-                SVGIcon(model.copied == value ? "check" : "copy", size: 12)
-                Text(model.copied == value ? L10n.text("已复制") : label)
+                NativeIcon(model.copied[.detail] == value ? "check" : "copy", size: 12)
+                Text(model.copied[.detail] == value ? L10n.text("已复制") : label)
             }
         }.accessibilityLabel(label)
     }
     private func iconButton(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { SVGIcon(icon, size: 16).frame(width: 24, height: 24) }
+        Button(action: action) { NativeIcon(icon, size: 16).frame(width: 24, height: 24) }
             .buttonStyle(.plain).help(label).accessibilityLabel(label)
     }
 }

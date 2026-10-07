@@ -38,7 +38,7 @@ struct HelperView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            SVGIcon("search", size: 22)
+            NativeIcon("search", size: 22)
                 .foregroundStyle(.secondary)
             TextField(placeholder,
                 text: Binding(get: { model.query }, set: { model.requestQuery($0) }))
@@ -62,9 +62,9 @@ struct HelperView: View {
                 searchFocused = true
             } label: {
                 HStack(spacing: 5) {
-                    SVGIcon("library", size: 14)
+                    NativeIcon("library", size: 14)
                     Text(bib.name).lineLimit(1)
-                    SVGIcon("chevronDown", size: 9)
+                    NativeIcon("chevronDown", size: 9)
                 }
                 .font(.system(size: 11, weight: .medium))
                 .padding(.horizontal, 10).padding(.vertical, 6)
@@ -79,7 +79,7 @@ struct HelperView: View {
 
     private func errorBar(_ error: String) -> some View {
         HStack(spacing: 7) {
-            SVGIcon("alert", size: 14)
+            NativeIcon("alert", size: 14)
             Text(error).lineLimit(2)
             Spacer(minLength: 0)
             // A failed paste is the one case where the key must still be reachable:
@@ -159,7 +159,7 @@ struct HelperView: View {
     /// Same fields as the workbench sidebar: name first, path as the secondary line.
     private func libraryRow(_ bib: Bibliography, selected: Bool) -> some View {
         HStack(spacing: 10) {
-            SVGIcon("library", size: 15).foregroundStyle(.secondary)
+            NativeIcon("library", size: 15).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 3) {
                 Text(bib.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
                 Text(bib.path).font(.system(size: 11)).foregroundStyle(.secondary)
@@ -167,7 +167,7 @@ struct HelperView: View {
             }
             Spacer(minLength: 8)
             if model.currentBibliography?.id == bib.id {
-                SVGIcon("check", size: 13).foregroundStyle(Color.accentColor)
+                NativeIcon("check", size: 13).foregroundStyle(Color.accentColor)
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
@@ -182,7 +182,7 @@ struct HelperView: View {
     /// never competes with the title for the same line.
     private func referenceRow(_ reference: Reference, selected: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            SVGIcon("fileText", size: 15).foregroundStyle(.secondary).padding(.top, 2)
+            NativeIcon("fileText", size: 15).foregroundStyle(.secondary).padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
                 MathChunkText(chunks: reference.title)
                     .font(.system(size: 13, weight: .medium)).lineLimit(2)
@@ -227,7 +227,7 @@ struct HelperView: View {
 
     private func emptyState(_ text: String, symbol: String) -> some View {
         VStack(spacing: 8) {
-            SVGIcon(symbol, size: 24)
+            NativeIcon(symbol, size: 24)
             Text(text).font(.system(size: 12))
         }.foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: HelperMetrics.emptyRow)
     }

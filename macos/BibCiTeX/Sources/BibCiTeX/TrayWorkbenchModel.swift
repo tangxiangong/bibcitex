@@ -13,7 +13,7 @@ final class TrayWorkbenchModel: ObservableObject {
     @Published var detailVisible = false
     @Published var selection: String?
     @Published private(set) var loading = false
-    @Published private(set) var copied: String?
+    @Published private(set) var copied: [CopySurface: String] = [:]
     @Published private(set) var errorDetails: LocalizedMessage?
     var error: String? {
         get { errorDetails?.text }
@@ -22,7 +22,7 @@ final class TrayWorkbenchModel: ObservableObject {
     private let service: any WorkbenchServing
     private let preferences: UserDefaults
     private var searchTask: Task<Void, Never>?
-    private var copyTask: Task<Void, Never>?
+    private var copyTask: [CopySurface: Task<Void, Never>] = [:]
     private var searchVersion = 0
     private var loadedVersion = -1
     private var reloadVersion = 0
@@ -95,17 +95,18 @@ final class TrayWorkbenchModel: ObservableObject {
             ?? (delta > 0 ? 0 : references.count - 1)
         selection = references[next].citeKey
     }
-    func copy(_ value: String) {
+    func copy(_ value: String, surface: CopySurface = .list) {
         let currentSession = session
-        copyTask?.cancel()
-        copyTask = Task { @MainActor [weak self] in
+        copyTask[surface]?.cancel()
+        copied[surface] = nil
+        copyTask[surface] = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 try await service.copy(value)
                 guard !Task.isCancelled, currentSession == session else { return }
-                copied = value
+                copied[surface] = value
                 try await Task.sleep(nanoseconds: 1_500_000_000)
-                if !Task.isCancelled { copied = nil }
+                if !Task.isCancelled { copied[surface] = nil }
             } catch {
                 guard !Task.isCancelled, currentSession == session else { return }
                 self.errorDetails = LocalizedMessage(error: error)
@@ -114,7 +115,7 @@ final class TrayWorkbenchModel: ObservableObject {
     }
     func suspend() {
         session += 1; reloadVersion += 1; searchVersion += 1
-        searchTask?.cancel(); copyTask?.cancel()
-        loading = false; copied = nil
+        searchTask?.cancel(); copyTask.values.forEach { $0.cancel() }; copyTask.removeAll()
+        loading = false; copied.removeAll()
     }
 }

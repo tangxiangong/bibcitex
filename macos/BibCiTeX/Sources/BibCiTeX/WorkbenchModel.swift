@@ -1,6 +1,10 @@
 import AppKit
 import SwiftUI
 
+enum CopySurface: Hashable {
+    case list, detail
+}
+
 protocol WorkbenchServing: Sendable {
     func libraries() async throws -> [Bibliography]
     func search(path: String, query: String, field: String, type: String) async throws -> [Reference]
@@ -34,10 +38,8 @@ final class WorkbenchModel: ObservableObject {
         get { errorDetails?.text }
         set { errorDetails = newValue.map { LocalizedMessage(literal: $0) } }
     }
-    /// The text most recently copied, so the control that copied it can confirm
-    /// in place. Both the cite key and the BibTeX source copy through `copy`, and
-    /// this is what tells them apart.
-    @Published private(set) var copied: String?
+    /// Feedback and expiry are independent for the list and inspector.
+    @Published private(set) var copied: [CopySurface: String] = [:]
     @Published var adding = false
     @Published var showSidebar = true {
         didSet { preferences.set(showSidebar, forKey: "mainShowSidebar") }
@@ -54,7 +56,7 @@ final class WorkbenchModel: ObservableObject {
     private var inputCommit: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
     private var rowCommit: Task<Void, Never>?
-    private var copyConfirmation: Task<Void, Never>?
+    private var copyConfirmation: [CopySurface: Task<Void, Never>] = [:]
     private var generation = 0
     private var registryGeneration = 0
     private var referencesRevision = 0
@@ -200,24 +202,22 @@ final class WorkbenchModel: ObservableObject {
             catch { self.errorDetails = LocalizedMessage(error: error) }
         }
     }
-    func copy(_ text: String) {
-        Task {
+    func copy(_ text: String, surface: CopySurface = .list) {
+        copyConfirmation[surface]?.cancel()
+        copied[surface] = nil
+        copyConfirmation[surface] = Task { @MainActor [weak self] in
+            guard let self else { return }
             do {
                 try await service.copy(text)
-                confirmCopy(of: text)
-            } catch { self.errorDetails = LocalizedMessage(error: error) }
-        }
-    }
-    /// The copied text itself identifies which button was pressed, so the inspector
-    /// can answer on that button instead of raising an alert for a copy that needs
-    /// no acknowledgement beyond "it worked".
-    private func confirmCopy(of text: String) {
-        copied = text
-        copyConfirmation?.cancel()
-        copyConfirmation = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
-            guard let self, !Task.isCancelled else { return }
-            if self.copied == text { self.copied = nil }
+                guard !Task.isCancelled else { return }
+                copied[surface] = text
+                try await Task.sleep(nanoseconds: 1_400_000_000)
+                guard !Task.isCancelled else { return }
+                copied[surface] = nil
+            } catch {
+                guard !Task.isCancelled else { return }
+                self.errorDetails = LocalizedMessage(error: error)
+            }
         }
     }
     func openURL(_ string: String) {
