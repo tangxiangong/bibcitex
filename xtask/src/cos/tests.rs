@@ -161,6 +161,37 @@ fn hmac_matches_rfc_2202_and_encoding_preserves_object_names() {
 }
 
 #[test]
+fn hmac_matches_rfc_2202_with_long_keys_and_messages() {
+    // RFC 2202 section 3, cases 6 and 7: keys exceed SHA-1's 64-byte block.
+    assert_eq!(
+        hmac(
+            &[0xaa; 80],
+            "Test Using Larger Than Block-Size Key - Hash Key First",
+        )
+        .unwrap(),
+        "aa4ae5e15272d00e95705637ce8a3b55ed402112"
+    );
+    assert_eq!(
+        hmac(
+            &[0xaa; 80],
+            "Test Using Larger Than Block-Size Key and Larger Than One Block-Size Data",
+        )
+        .unwrap(),
+        "e8e99d0f45237d786d6bbaa7965c7808bbff1a91"
+    );
+}
+
+#[test]
+fn signing_hex_preserves_zero_padding_and_lowercase() {
+    assert_eq!(hex(&[0x00, 0x01, 0x0f, 0x10, 0xab, 0xff]), "00010f10abff");
+    // Independently computed with Python's standard-library hmac/hashlib.
+    assert_eq!(
+        hmac(b"", "").unwrap(),
+        "fbdb1d1b18aa6c08324b7d64b71fb76370690e1d"
+    );
+}
+
+#[test]
 fn authorization_matches_independent_cos_v5_vector() {
     let headers = BTreeMap::from([
         ("content-type".into(), "application/octet-stream".into()),
@@ -182,6 +213,28 @@ fn authorization_matches_independent_cos_v5_vector() {
     assert_eq!(
         signature,
         "q-sign-algorithm=sha1&q-ak=test-id&q-sign-time=940;4600&q-key-time=940;4600&q-header-list=content-type;host;x-cos-acl&q-url-param-list=&q-signature=67b63dfbbe37d1b8d1190eaeef859731143d683d"
+    );
+}
+
+#[test]
+fn authorization_preserves_unicode_paths_and_saturating_start_time() {
+    let headers = BTreeMap::from([(
+        "host".into(),
+        "example.cos.ap-guangzhou.myqcloud.com".into(),
+    )]);
+    // Independently computed with Python's standard-library hmac/hashlib.
+    let signature = authorization(
+        "test-id",
+        "test-secret",
+        "HEAD",
+        "/bibcitex/文件 +%.zip",
+        &headers,
+        30,
+    )
+    .unwrap();
+    assert_eq!(
+        signature,
+        "q-sign-algorithm=sha1&q-ak=test-id&q-sign-time=0;3630&q-key-time=0;3630&q-header-list=host&q-url-param-list=&q-signature=959c3cf830fc52134f608cb5819609f76d984094"
     );
 }
 
