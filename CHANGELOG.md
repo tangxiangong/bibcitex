@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-10-07
+
+### 🚀 Features
+
+- *(settings)* Add native settings windows on macOS and Windows for language, appearance, update channels, and automatic updates; support `⌘,` on macOS.
+- *(tray)* Add floating reference details, clickable citation keys for copying, and Escape dismissal.
+- *(about)* Display license information on both platforms.
+- *(updates)* Prefer Tencent Cloud COS for update feeds and downloads, with GitHub fallback and download integrity checks.
+
+### 🐛 Bug Fixes
+
+- *(helper)* Fix a possible macOS cross-application paste crash and improve focus handoff while keeping the main window hidden when opening quick citation.
+- *(helper)* Automatically copy citations to the clipboard when cross-application paste fails on either platform.
+- *(macos)* Isolate copy feedback between controls and prevent stale confirmations from replacing newer feedback.
+- *(formulas)* Fix inconsistent initial and cached formula sizing on macOS; improve inline formula sizing, spacing, and baseline alignment on Windows.
+
+### 🎨 Styling
+
+- Refine split panes, list selection, scrollbar behavior, and quick-citation row alignment and selection indicators.
+- Prefer system icons on macOS and refresh tray artwork; improve Windows title bars, themes, settings layout, and icons.
+
+### Updates and installation
+
+- Install missing Windows .NET, Visual C++, and Windows App Runtime dependencies as needed, reusing compatible installed versions. Missing dependencies require internet access during installation or first launch.
+- Lower minimum system requirements to macOS 13 Ventura and Windows 10 version 1809 (build 17763), retaining support for Apple Silicon, Intel, Windows x64, and Windows ARM64.
+
+Release notes: [简体中文](release-notes/0.7.1/zh-Hans.md) · [English](release-notes/0.7.1/en.md).
+
 ## [0.5.1] - 2025-10-09
 
 ### Dependencies

@@ -16,7 +16,7 @@
     <WindowsPackageType>None</WindowsPackageType>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <DefaultLanguage>en-US</DefaultLanguage>
-    <Version>0.7.0</Version>
+    <Version>0.7.1</Version>
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <SelfContained>false</SelfContained>
     <!-- Bootstrap only after Velopack hooks and runtime provisioning have completed. -->
