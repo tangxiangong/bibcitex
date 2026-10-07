@@ -11,9 +11,7 @@ internal static class Program
     private static void Main(string[] args)
     {
         // Installer hooks must finish before WinUI, single-instance registration or Rust startup.
-#if !LOCALIZATION_TESTS
         VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
-#endif
         var prepareRuntimeOnly = args.Length == 1 && args[0] == "--prepare-runtime";
         try { WindowsRuntime.EnsureInstalled(); }
         catch (Exception error)
@@ -31,9 +29,7 @@ internal static class Program
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void StartApplication()
     {
-#if !LOCALIZATION_TESTS
         Updater.ApplyPending();
-#endif
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Application.Start(parameters =>
         {

@@ -20,7 +20,7 @@ The root Justfile invokes the same Xcode project:
 
 - `just build [arch] [profile]` builds without exporting or signing a release.
 - `just bundle [arch] [profile]` exports and signs `dist/macos/<architecture>/BibCiTeX.app`, without launching it.
-- `just test-macos` runs helper and generated Swift/Rust integration tests.
+- `just test-macos` runs update policy and generated Swift/Rust integration tests.
 
 For a locally signed build, use `DEVELOPMENT_TEAM=YOUR_TEAM_ID just build arm64 debug` with an installed Apple Development certificate and its private key. Alternatively, pass `CODE_SIGN_IDENTITY` to use a specific installed identity. The wrapper enables signing when either is supplied; a requested signing failure is not retried unsigned. Without either, command-line builds remain unsigned for CI. In the Xcode app target, select your Team and Apple Development identity instead of the default ad-hoc identity (`-`).
 
@@ -49,9 +49,9 @@ See [the release protocol](../docs/updates.md). There is no legacy Tauri migrati
 
 ## Verification
 
-The Xcode project has built the arm64 app with an empty DerivedData directory and no repository-local generated bindings. Default Debug architecture selection and the x86_64 command-line cross-build both pass. Cargo discovery also passes with a GUI-style minimal PATH. Helper model regressions and generated Swift/Rust ABI tests pass against Xcode's static library products. An unchanged build skips the Rust binding script. Both architecture products contain all 31 SVG icons, MathJax resources and the embedded Sparkle framework; neither GUI was launched. Release distribution signing and notarization remain unverified.
+The Xcode project has built the arm64 app with an empty DerivedData directory and no repository-local generated bindings. Default Debug architecture selection and the x86_64 command-line cross-build both pass. Cargo discovery also passes with a GUI-style minimal PATH. Generated Swift/Rust ABI tests pass against Xcode's static library products. An unchanged build skips the Rust binding script. Both architecture products contain all 31 SVG icons, MathJax resources and the embedded Sparkle framework; neither GUI was launched. Release distribution signing and notarization remain unverified.
 
-The standalone test scripts are `BibCiTeX/Tests/run-regressions.sh` and `BibCiTeX/Tests/run-interop-tests.sh`. The latter accepts `--products` and `--rust-library`; its default products are `target/xcode/<host-architecture>/Build/Products/Debug`, and it discovers generated headers and the Rust archive beside those products. Tests use temporary directories and retain 20/30-second timeouts; they do not change the user's registry or clipboard.
+UI/GUI tests are prohibited; GUI acceptance is manual. The standalone integration script is `BibCiTeX/Tests/run-interop-tests.sh`. It accepts `--products` and `--rust-library`; its default products are `target/xcode/<host-architecture>/Build/Products/Debug`, and it discovers generated headers and the Rust archive beside those products. Tests use temporary directories and retain a 30-second timeout; they do not change the user's registry or clipboard.
 
 ## Component limitation
 

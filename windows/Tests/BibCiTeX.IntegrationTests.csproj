@@ -16,22 +16,7 @@
     <Compile Include="../BibCiTeX/WindowsRuntime.cs" Link="WindowsRuntime.cs" />
     <Compile Include="../BibCiTeX/NativeSettings.cs" Link="NativeSettings.cs" />
     <Compile Include="../BibCiTeX/UpdatePolicy.cs" Link="UpdatePolicy.cs" />
-    <Compile Include="UiBehaviorTests.cs" />
-    <Compile Include="../BibCiTeX/PathDisplay.cs" Link="PathDisplay.cs" />
-    <Compile Include="../BibCiTeX/TextElision.cs" Link="TextElision.cs" />
-    <Compile Include="../BibCiTeX/WorkbenchLayout.cs" Link="WorkbenchLayout.cs" />
-    <Compile Include="../BibCiTeX/AttachmentPath.cs" Link="AttachmentPath.cs" />
     <Compile Include="../BibCiTeX/L10n.cs" Link="L10n.cs" />
-    <Compile Include="../BibCiTeX/LocalizationValue.cs" Link="LocalizationValue.cs" />
-    <Compile Include="FormulaTests.cs" />
-    <Compile Include="LocalizationTests.cs" />
-    <Compile Include="DialogQueueTests.cs" />
-    <Compile Include="../BibCiTeX/DialogQueue.cs" Link="DialogQueue.cs" />
-    <Compile Include="../BibCiTeX/FormulaRenderer.cs" Link="FormulaRenderer.cs" />
-    <PackageReference Include="CSharpMath.SkiaSharp" Version="0.5.1" />
-    <PackageReference Include="SkiaSharp" Version="4.153.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="4.153.1" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="4.153.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <Compile Include="$(GeneratedBindingsDirectory)/*.cs" Link="Generated/%(Filename)%(Extension)" />
     <Compile Include="../BibCiTeX/RustCore.cs" Link="RustCore.cs" />
   </ItemGroup>

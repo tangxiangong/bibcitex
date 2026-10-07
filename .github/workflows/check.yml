@@ -76,9 +76,6 @@ jobs:
       - name: Swift and Rust integration tests
         if: matrix.arch == 'arm64'
         run: just test-macos
-      - name: Helper state and keyboard regression tests
-        if: matrix.arch != 'arm64'
-        run: just test-helper
   windows:
     strategy:
       fail-fast: false
@@ -109,23 +106,3 @@ jobs:
       - name: C# and Rust integration tests
         shell: pwsh
         run: just test-windows "${{ github.workspace }}/target/${{ matrix.target }}/debug/bibcitex_csharp.dll"
-      - name: Native WinUI localization after garbage collection
-        shell: pwsh
-        run: |
-          $project = 'windows/BibCiTeX/BibCiTeX.csproj'
-          dotnet build $project -c Debug '-p:Platform=${{ matrix.arch }}' -p:LocalizationTestBuild=true
-          if ($LASTEXITCODE -ne 0) { throw 'Native localization test build failed.' }
-          $directory = (dotnet msbuild $project '-p:Configuration=Debug' '-p:Platform=${{ matrix.arch }}' -p:LocalizationTestBuild=true -getProperty:TargetDir).Trim()
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve test executable directory.' }
-          # Provision dependencies separately from the bounded GUI regression test.
-          $bootstrap = Start-Process -FilePath (Join-Path $directory 'BibCiTeX.exe') -ArgumentList '--prepare-runtime' -PassThru
-          if (-not $bootstrap.WaitForExit(900000)) { throw 'Windows App Runtime preparation timed out.' }
-          if ($bootstrap.ExitCode -ne 0) { throw 'Windows App Runtime preparation failed.' }
-          $report = Join-Path $directory 'localization-test-results.txt'
-          Remove-Item $report -ErrorAction SilentlyContinue
-          $process = Start-Process -FilePath (Join-Path $directory 'BibCiTeX.exe') -PassThru
-          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Native localization test timed out.' }
-          if (-not (Test-Path $report)) { throw 'Native localization test did not produce a report.' }
-          $result = Get-Content -Raw $report
-          Write-Output $result
-          if ($process.ExitCode -ne 0 -or -not $result.StartsWith('PASS native WinUI localization')) { throw 'Native localization regression failed.' }

@@ -35,6 +35,10 @@ tests from GUI acceptance and signed update deployment.
 
 ## Working Constraints
 
+- Do not write or restore UI/GUI tests, including interface model, interaction,
+  layout, control, and visual rendering regressions. Use compilation and non-UI
+  core/integration tests; GUI acceptance is manual.
+
 - The latest user instruction authorizes binding generation, compilation, tests,
   and Cargo clippy. Run them and fix failures; static parsing alone is insufficient.
 - Do not launch/open GUI applications, publish, or locally package releases unless

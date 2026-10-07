@@ -6,10 +6,8 @@ namespace BibCiTeX;
 public partial class App : Application
 {
     private MainWindow? main = null;
-#if !LOCALIZATION_TESTS
     private AppInstance? instance;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? languageTimer;
-#endif
     internal static TrayWindow? Tray { get; private set; }
     internal static HelperWindow? Helper { get; private set; }
     internal static ElementTheme Theme { get; private set; }
@@ -17,12 +15,8 @@ public partial class App : Application
     {
         // Read the user's language list, independently of our persisted native override.
         L10n.SystemLanguages = () => Windows.System.UserProfile.GlobalizationPreferences.Languages;
-#if LOCALIZATION_TESTS
-        var selection = "en";
-#else
         var settings = NativeSettings.Values;
         var selection = settings.TryGetValue("language", out var value) ? value as string ?? "system" : "system";
-#endif
         L10n.Changing += ApplyNativeLanguage;
         ApplyNativeLanguage(L10n.Resolve(selection, L10n.SystemLanguages()));
         L10n.Select(selection);
@@ -35,20 +29,6 @@ public partial class App : Application
     }
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-#if LOCALIZATION_TESTS
-        try
-        {
-            await NativeLocalizationTests.Run();
-            System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "localization-test-results.txt"), "PASS native WinUI localization bindings after GC and language round trips");
-            Environment.ExitCode = 0;
-        }
-        catch (Exception error)
-        {
-            System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "localization-test-results.txt"), error.ToString());
-            Environment.ExitCode = 1;
-        }
-        Exit();
-#else
         instance = AppInstance.FindOrRegisterForKey("BibCiTeX");
         if (!instance.IsCurrent)
         {
@@ -75,7 +55,6 @@ public partial class App : Application
         main.Activate(); main.InstallShortcut();
         if (initializationError is { } startupError)
             ((FrameworkElement)main.Content).Loaded += async (_, _) => await Views.Error((FrameworkElement)main.Content, startupError);
-#endif
     }
     internal static void SetLanguage(string language)
     {

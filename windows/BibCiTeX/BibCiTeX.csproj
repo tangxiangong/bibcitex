@@ -15,7 +15,6 @@
     <EnableMsixTooling>false</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <DefineConstants Condition="'$(LocalizationTestBuild)' == 'true'">$(DefineConstants);LOCALIZATION_TESTS</DefineConstants>
     <DefaultLanguage>en-US</DefaultLanguage>
     <Version>0.7.0</Version>
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
@@ -28,10 +27,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
     <AppxAutoIncrementPackageRevision>false</AppxAutoIncrementPackageRevision>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(LocalizationTestBuild)' == 'true'">
-    <OutputPath>bin/$(Platform)/$(Configuration)/localization-tests/</OutputPath>
-    <IntermediateOutputPath>obj/$(Platform)/$(Configuration)/localization-tests/</IntermediateOutputPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
@@ -53,9 +48,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)' != 'true' and '$(EnableMsixTooling)' == 'true'">
     <ProjectCapability Include="Msix" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(LocalizationTestBuild)' == 'true'">
-    <Compile Include="../Tests/NativeLocalizationTests.cs" Link="Tests/NativeLocalizationTests.cs" />
   </ItemGroup>
   <Import Project="Build/Rust.targets" />
   <ItemGroup>

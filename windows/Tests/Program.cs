@@ -4,9 +4,6 @@ using BibCiTeX;
 
 UpdatePolicyTests.Run();
 WindowsRuntimeTests.Run();
-UiBehaviorTests.Run();
-LocalizationTests.Run();
-await DialogQueueTests.Run();
 
 if (args.Length != 1) throw new ArgumentException("Pass the built bibcitex_csharp native library path.");
 var library = Path.GetFullPath(args[0]);
@@ -109,7 +106,6 @@ try
     for (var i = 0; i < 64; i++) Assert((await RustCore.Search(bibliography, "")).Count == 3, "repeated wire ownership " + i);
     await File.AppendAllTextAsync(bibliography, "\n@misc{fresh, title={Newly added}}\n");
     Assert((await RustCore.Search(bibliography, "")).Count == 4, "file cache invalidates after content changes");
-    FormulaTests.Run(Assert);
     Console.WriteLine($"PASS: {assertions} assertions against the actual Rust dynamic library. No registry, clipboard, paste, or UI calls.");
 }
 finally { Directory.Delete(directory, recursive: true); }
