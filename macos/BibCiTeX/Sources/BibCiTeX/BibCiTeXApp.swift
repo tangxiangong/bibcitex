@@ -33,6 +33,16 @@ struct BibCiTeXApp: App {
                     if let image = AppImages.logo {
                         options[.applicationIcon] = image
                     }
+                    let paragraph = NSMutableParagraphStyle()
+                    paragraph.alignment = .center
+                    options[.credits] = NSAttributedString(
+                        string: "MIT OR Apache-2.0",
+                        attributes: [
+                            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                            .foregroundColor: NSColor.secondaryLabelColor,
+                            .paragraphStyle: paragraph
+                        ]
+                    )
                     NSApp.orderFrontStandardAboutPanel(options: options)
                 }
             }

@@ -609,6 +609,11 @@ internal sealed class MainWindow : Window
         var version = Updater.CurrentVersion;
         var versionText = Views.Text(version, 13); versionText.HorizontalAlignment = HorizontalAlignment.Center; versionText.IsTextSelectionEnabled = true;
         content.Children.Add(Views.SelectableText(versionText));
+        var license = Views.Text("MIT OR Apache-2.0", 12);
+        license.HorizontalAlignment = HorizontalAlignment.Center;
+        license.Opacity = .7;
+        license.IsTextSelectionEnabled = true;
+        content.Children.Add(Views.SelectableText(license));
         content.KeyDown += (_, args) => { if (args.Key == VirtualKey.Escape) { window.Close(); args.Handled = true; } };
         Localized.BindValue(content, FrameworkElement.LanguageProperty, () => L10n.Language);
         window.Content = content; aboutWindow = window;
