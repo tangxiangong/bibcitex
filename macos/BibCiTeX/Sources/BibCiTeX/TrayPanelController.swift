@@ -28,6 +28,7 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         HelperPanelController.shared.hidePanel()
         ensurePanel()
         position()
+        model.detailVisible = false
         isVisible = true
         presentation += 1
         let current = presentation
@@ -90,7 +91,10 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
             guard let self, event.window === panel, panel?.isKeyWindow == true else { return event }
             if let editor = panel?.firstResponder as? NSTextView, editor.hasMarkedText() { return event }
             guard event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
-            if event.keyCode == 53 { dismiss(); return nil }
+            if event.keyCode == 53 {
+                if model.detailVisible { model.detailVisible = false } else { dismiss() }
+                return nil
+            }
             // Only the search field redirects arrows; lists and pickers keep native navigation.
             if let editor = panel?.firstResponder as? NSTextView, editor.isFieldEditor {
                 if event.keyCode == 125 { model.move(1); return nil }

@@ -10,6 +10,7 @@ final class TrayWorkbenchModel: ObservableObject {
     @Published var field = "all" { didSet { if oldValue != field { search() } } }
     @Published var type = "all" { didSet { if oldValue != type { search() } } }
     @Published private(set) var references: [Reference] = []
+    @Published var detailVisible = false
     @Published var selection: String?
     @Published private(set) var loading = false
     @Published private(set) var copied: String?

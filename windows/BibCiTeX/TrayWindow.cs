@@ -2,6 +2,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
@@ -17,6 +18,9 @@ internal sealed class TrayWindow : Window
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Single };
+    private readonly Border detailPanel;
+    private readonly ToggleButton detailToggle;
+    private readonly Button closeDetail;
     private readonly StackPanel detail = new() { Spacing = 12, Padding = new Thickness(14) };
     private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(12) };
     private readonly TextBlock count = Views.Text(L10n.References(0), 12);
@@ -46,7 +50,30 @@ internal sealed class TrayWindow : Window
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new());
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         header.Children.Add(new TextBlock { Text = "BibCiTeX", FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-        var buttons = Views.Row(Views.Button("refresh", "刷新", () => _ = Reload()),
+        detailToggle = (ToggleButton)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <ToggleButton xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Padding="8" MinWidth="32" MinHeight="32">
+                <ToggleButton.Resources>
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundChecked" Color="{ThemeResource SubtleFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPointerOver" Color="{ThemeResource SubtleFillColorTertiary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedPressed" Color="{ThemeResource SubtleFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonBackgroundCheckedDisabled" Color="{ThemeResource ControlFillColorDisabled}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundChecked" Color="{ThemeResource TextFillColorPrimary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPointerOver" Color="{ThemeResource TextFillColorPrimary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedPressed" Color="{ThemeResource TextFillColorSecondary}" />
+                    <SolidColorBrush x:Key="ToggleButtonForegroundCheckedDisabled" Color="{ThemeResource TextFillColorDisabled}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushChecked" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPointerOver" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedPressed" Color="{ThemeResource ControlStrokeColorDefault}" />
+                    <SolidColorBrush x:Key="ToggleButtonBorderBrushCheckedDisabled" Color="{ThemeResource ControlStrokeColorDefault}" />
+                </ToggleButton.Resources>
+            </ToggleButton>
+            """);
+        detailToggle.Content = new SvgIcon("panelRightOpen");
+        Localized.Name(detailToggle, "文献详情"); Localized.Tooltip(detailToggle, "文献详情");
+        detailToggle.Click += (_, _) => SetDetailVisible(detailToggle.IsChecked == true);
+        var buttons = Views.Row(detailToggle,
+            Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
         Grid.SetColumn(buttons, 2); header.Children.Add(buttons); root.Children.Add(header);
         // One outer search field, with a separately focusable library picker inside its trailing edge.
@@ -89,14 +116,29 @@ internal sealed class TrayWindow : Window
         var counter = Views.Row(progress, count); counter.HorizontalAlignment = HorizontalAlignment.Right; counter.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(counter, 2); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
         var body = new Grid { ColumnSpacing = 0 };
-        body.ColumnDefinitions.Add(new()); body.ColumnDefinitions.Add(new() { Width = new GridLength(1) }); body.ColumnDefinitions.Add(new() { Width = new GridLength(282) });
-        var bodyRule = Views.Divider(true); Grid.SetColumn(bodyRule, 1); body.Children.Add(bodyRule);
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
         var reading = new Grid(); reading.RowDefinitions.Add(new()); reading.RowDefinitions.Add(new() { Height = GridLength.Auto }); reading.RowDefinitions.Add(new() { Height = GridLength.Auto });
         reading.Children.Add(Views.AutoHideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         detailEmpty.HorizontalAlignment = HorizontalAlignment.Center; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; reading.Children.Add(detailEmpty);
         var actionRule = Views.Divider(); Grid.SetRow(actionRule, 1); reading.Children.Add(actionRule);
-        Grid.SetRow(actions, 2); reading.Children.Add(actions); Grid.SetColumn(reading, 2); body.Children.Add(reading);
+        Grid.SetRow(actions, 2); reading.Children.Add(actions);
+        var floatingContent = new Grid();
+        floatingContent.RowDefinitions.Add(new() { Height = GridLength.Auto }); floatingContent.RowDefinitions.Add(new());
+        var detailHeader = new Grid { Padding = new Thickness(14, 8, 8, 8) };
+        detailHeader.ColumnDefinitions.Add(new()); detailHeader.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var detailTitle = Views.LocalizedText("文献详情", 12); detailTitle.VerticalAlignment = VerticalAlignment.Center; detailHeader.Children.Add(detailTitle);
+        closeDetail = Views.Button("x", "关闭", () => SetDetailVisible(false)); Grid.SetColumn(closeDetail, 1); detailHeader.Children.Add(closeDetail);
+        floatingContent.Children.Add(detailHeader); Grid.SetRow(reading, 1); floatingContent.Children.Add(reading);
+        detailPanel = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    Width="282" Margin="12" HorizontalAlignment="Right" CornerRadius="12" BorderThickness="1"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" Visibility="Collapsed" />
+            """);
+        detailPanel.Child = floatingContent;
+        detailPanel.Shadow = new ThemeShadow();
+        detailPanel.Translation = new System.Numerics.Vector3(0, 0, 24);
+        body.Children.Add(detailPanel);
         var bodyFrame = new Grid(); bodyFrame.RowDefinitions.Add(new() { Height = GridLength.Auto }); bodyFrame.RowDefinitions.Add(new());
         bodyFrame.Children.Add(Views.Divider()); Grid.SetRow(body, 1); bodyFrame.Children.Add(body); Grid.SetRow(bodyFrame, 3); root.Children.Add(bodyFrame);
         errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); errorBar.ColumnDefinitions.Add(new()); errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -119,7 +161,7 @@ internal sealed class TrayWindow : Window
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Search(); };
         search.TextChanged += (_, _) => { if (!composing) _ = Search(true); };
         search.PreviewKeyDown += SearchKeyDown;
-        root.PreviewKeyDown += (_, args) => { if (!composing && args.Key == VirtualKey.Escape && !Modified()) { args.Handled = true; Hide(); } };
+        root.PreviewKeyDown += (_, args) => { if (!composing && args.Key == VirtualKey.Escape && !Modified()) { args.Handled = true; if (detailPanel.Visibility == Visibility.Visible) SetDetailVisible(false); else Hide(); } };
         references.SelectionChanged += (_, _) => ShowDetail(loadedVersion == version ? (references.SelectedItem as ListViewItem)?.Tag as Reference : null);
         Activated += (_, args) => { if (args.WindowActivationState == WindowActivationState.Deactivated) Hide(); };
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };
@@ -129,6 +171,7 @@ internal sealed class TrayWindow : Window
     {
         if (visible) { Hide(); return; }
         App.Helper?.Hide();
+        SetDetailVisible(false, restoreFocus: false);
         Position(); visible = true; session++;
         AppWindow.Show(); Activate(); search.Focus(FocusState.Programmatic);
         _ = Reload();
@@ -204,11 +247,19 @@ internal sealed class TrayWindow : Window
         catch (Exception ex) { if (visible && request == version) { ClearResults(); ShowError(ex); } }
         finally { if (request == version) SetBusy(false); }
     }
-    private static ListViewItem ReferenceRow(Reference reference)
+    private ListViewItem ReferenceRow(Reference reference)
     {
         var row = new StackPanel { Spacing = 5, Padding = new Thickness(0, 7, 0, 7) };
-        row.Children.Add(new TextBlock { Text = reference.Key, FontSize = 12, FontFamily = new FontFamily("Cascadia Mono"), Foreground = Views.Brush("SystemControlForegroundAccentBrush"), TextTrimming = TextTrimming.CharacterEllipsis });
-        row.Children.Add(new ChunkText(reference.Chunks("title"), 14, reference.Title, false, "暂无标题", maxLines: 2));
+        var heading = new Grid { ColumnSpacing = 12 };
+        heading.ColumnDefinitions.Add(new());
+        heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        heading.Children.Add(new ChunkText(reference.Chunks("title"), 14, reference.Title, false, "暂无标题", maxLines: 2));
+        var key = Views.CiteKey(reference.Key, CopyValue);
+        key.HorizontalAlignment = HorizontalAlignment.Right;
+        // Keep unusually long keys from consuming the title's column.
+        if (key.Content is StackPanel keyContent)
+            foreach (var label in keyContent.Children.OfType<TextBlock>()) label.MaxWidth = 150;
+        Grid.SetColumn(key, 1); heading.Children.Add(key); row.Children.Add(heading);
         if (reference.Authors.Length > 0) row.Children.Add(new TextBlock { Text = reference.Authors, FontSize = 12, Opacity = .7, TextTrimming = TextTrimming.CharacterEllipsis });
         var metadata = new TextBlock { FontSize = 11, Opacity = .6, TextTrimming = TextTrimming.CharacterEllipsis };
         Localized.BindValue(metadata, TextBlock.TextProperty, () => string.Join(" · ", new[] { reference.TypeLabel, reference.Text("year"), reference.Venue }.Where(x => x.Length > 0)));
@@ -217,12 +268,19 @@ internal sealed class TrayWindow : Window
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Key + " " + reference.Title);
         return item;
     }
+    private void SetDetailVisible(bool value, bool restoreFocus = true)
+    {
+        detailPanel.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+        detailToggle.IsChecked = value;
+        detailToggle.Content = new SvgIcon(value ? "panelRightClose" : "panelRightOpen");
+        if (value) closeDetail.Focus(FocusState.Programmatic);
+        else if (restoreFocus) detailToggle.Focus(FocusState.Programmatic);
+    }
     private void ShowDetail(Reference? reference)
     {
         detail.Children.Clear(); actions.Children.Clear();
         detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
         if (reference is null) return;
-        detail.Children.Add(Views.LocalizedText("文献详情", 12));
         detail.Children.Add(new ChunkText(reference.Chunks("title"), 16, reference.Title, true, "暂无标题"));
         foreach (var (label, value) in new[] { ("引用键", reference.Key), ("作者", reference.Authors), ("类型", reference.TypeLabel), ("年份", reference.Text("year")), ("期刊", reference.Venue), ("DOI", reference.Text("doi")), ("URL", reference.Text("url")) })
         {
@@ -243,13 +301,14 @@ internal sealed class TrayWindow : Window
         actions.Children.Add(CopyButton("复制引用键", reference.Key));
         actions.Children.Add(CopyButton("复制 BibTeX", reference.Text("source")));
     }
+    private async Task<bool> CopyValue(string value)
+    {
+        var current = session;
+        try { await RustCore.Copy(value); return visible && current == session; }
+        catch (Exception ex) { if (visible && current == session) ShowError(ex); return false; }
+    }
     private Button CopyButton(string label, string value)
-        => Views.CopyButton("copy", label, async () =>
-        {
-            var current = session;
-            try { await RustCore.Copy(value); return visible && current == session; }
-            catch (Exception ex) { if (visible && current == session) ShowError(ex); return false; }
-        }, showLabel: true);
+        => Views.CopyButton("copy", label, () => CopyValue(value), showLabel: true);
     private void ClearResults() { references.Items.Clear(); Localized.Count(count, 0); empty.Visibility = Visibility.Visible; ShowDetail(null); }
     private void SetBusy(bool value) { loading = value; progress.IsActive = value; progress.Visibility = value ? Visibility.Visible : Visibility.Collapsed; empty.Visibility = !value && references.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed; }
     private void ShowError(Exception value) { Localized.Error(error, TextBlock.TextProperty, value); error.Visibility = errorBar.Visibility = Visibility.Visible; }

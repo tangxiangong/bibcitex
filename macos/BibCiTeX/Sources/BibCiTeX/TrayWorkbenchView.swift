@@ -7,6 +7,8 @@ struct TrayWorkbenchView: View {
     let showMain: () -> Void
     let dismiss: () -> Void
     @FocusState private var searchFocused: Bool
+    @FocusState private var detailToggleFocused: Bool
+    @FocusState private var detailCloseFocused: Bool
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
 
@@ -16,9 +18,7 @@ struct TrayWorkbenchView: View {
                 HStack(spacing: 10) {
                     Text("BibCiTeX").font(.headline)
                     Spacer()
-                    iconButton("refresh", L10n.text("刷新")) { Task { await model.reload() } }
-                    iconButton("externalLink", L10n.text("显示窗口"), action: showMain)
-                    iconButton("x", L10n.text("关闭"), action: dismiss)
+                    toolbarButtons
                 }
                 HStack(spacing: 8) {
                     SVGIcon("search", size: 15).foregroundStyle(.secondary)
@@ -70,11 +70,33 @@ struct TrayWorkbenchView: View {
                 }.controlSize(.small)
             }.padding(16)
             Divider()
-            HStack(spacing: 0) {
-                results.frame(maxWidth: .infinity)
-                Divider()
-                detail.frame(width: 282)
-            }
+            results.frame(maxWidth: .infinity)
+                .overlay(alignment: .trailing) {
+                    if model.detailVisible {
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text(L10n.text("文献详情")).font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                iconButton("x", L10n.text("关闭")) {
+                                    model.detailVisible = false
+                                }.focused($detailCloseFocused)
+                            }.padding(.horizontal, 14).padding(.vertical, 8)
+                            Divider()
+                            detail
+                        }
+                        .frame(width: 282)
+                        .frame(maxHeight: .infinity)
+                        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12)
+                                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                                .allowsHitTesting(false)
+                        }
+                        .shadow(color: .black.opacity(0.18), radius: 12, x: -3, y: 4)
+                        .padding(12)
+                    }
+                }
             if let error = model.error {
                 Divider()
                 HStack {
@@ -87,14 +109,44 @@ struct TrayWorkbenchView: View {
         }
         .background(AutoHidingScrollbars())
         .onAppear { searchFocused = true }
+        .onChange(of: model.detailVisible) { visible in
+            if visible { detailCloseFocused = true } else { detailToggleFocused = true }
+        }
+    }
+    @ViewBuilder private var toolbarButtons: some View {
+        if #available(macOS 26.0, *) {
+            toolbarButtonGroup
+                .padding(4)
+                .glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            toolbarButtonGroup
+                .padding(4)
+                .background(.regularMaterial, in: Capsule())
+        }
+    }
+    private var toolbarButtonGroup: some View {
+        HStack(spacing: 8) {
+            iconButton(model.detailVisible ? "panelRightClose" : "panelRightOpen", L10n.text("文献详情")) {
+                model.detailVisible.toggle()
+            }
+            .focused($detailToggleFocused)
+            .accessibilityAddTraits(model.detailVisible ? .isSelected : [])
+            iconButton("refresh", L10n.text("刷新")) { Task { await model.reload() } }
+            iconButton("externalLink", L10n.text("显示窗口"), action: showMain)
+            iconButton("x", L10n.text("关闭"), action: dismiss)
+        }
     }
     private var results: some View {
         ScrollViewReader { proxy in
             List(selection: $model.selection) {
                 ForEach(model.references) { reference in
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(reference.citeKey).font(.system(.caption, design: .monospaced)).foregroundStyle(Color.accentColor)
-                        MathChunkText(chunks: reference.title).lineLimit(2)
+                        HStack(alignment: .top, spacing: 12) {
+                            MathChunkText(chunks: reference.title).lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            citeKeyButton(reference.citeKey)
+                                .frame(maxWidth: 180, alignment: .trailing)
+                        }
                         if !reference.author.isEmpty {
                             Text(reference.author.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
@@ -113,12 +165,28 @@ struct TrayWorkbenchView: View {
                 .onChange(of: model.selection) { key in if let key { proxy.scrollTo(key) } }
         }
     }
+    private func citeKeyButton(_ key: String) -> some View {
+        let copied = model.copied == key
+        return Button { model.copy(key) } label: {
+            HStack(spacing: 4) {
+                SVGIcon(copied ? "check" : "copy", size: 10)
+                Text(copied ? L10n.text("已复制") : key)
+                    .font(.system(.caption, design: copied ? .default : .monospaced))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(copied ? Color.green : Color.accentColor)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(.primary.opacity(0.06), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.text("复制引用键"))
+        .accessibilityLabel(L10n.text("复制引用键 {0}", key))
+    }
     @ViewBuilder private var detail: some View {
         if let reference = model.reference {
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text(L10n.text("文献详情")).font(.caption).foregroundStyle(.secondary)
                         MathChunkText(chunks: reference.title).font(.headline)
                         metadata(L10n.text("引用键"), reference.citeKey)
                         metadata(L10n.text("作者"), reference.author.joined(separator: ", "))
