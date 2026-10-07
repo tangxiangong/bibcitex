@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2026-10-07
+
+### Bug fixes
+
+- Keep the macOS main window hidden when opening quick citation with the global shortcut, including after a failed paste.
+- Include WinUI resources in Windows publish output.
+
+### Installation
+
+- Document installation and upgrades through the project Homebrew tap.
+
+Release notes: [简体中文](release-notes/0.7.2/zh-Hans.md) · [English](release-notes/0.7.2/en.md).
+
 ## [0.7.1] - 2026-10-07
 
 ### 🚀 Features
