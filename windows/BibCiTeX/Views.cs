@@ -357,7 +357,8 @@ internal static class Views
         Grid.SetColumn(key, citeKeyCopies ? 1 : 2); row.Children.Add(key);
 
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
-        if (!citeKeyCopies) { item.MinHeight = 82; item.Padding = new Thickness(0); }
+        // Keep helper content inside the native selection indicator's gutter.
+        if (!citeKeyCopies) { item.MinHeight = 82; item.Padding = new Thickness(12, 0, 12, 0); }
         if (citeKeyCopies && copy is not null)
         {
             var menu = new MenuFlyout();
@@ -503,9 +504,25 @@ internal sealed class ChunkText : UserControl
                 stream.Seek(0);
                 var bitmap = new BitmapImage(); await bitmap.SetSourceAsync(stream);
                 if (version != generation) return;
-                var image = new Image { Source = bitmap, Width = formula.Width, Height = formula.Height, VerticalAlignment = VerticalAlignment.Center };
+                var image = new Image { Source = bitmap, Width = formula.Width, Height = formula.Height };
                 AutomationProperties.SetName(image, chunk.Text);
-                paragraph.Inlines.Add(new InlineUIContainer { Child = image });
+                // WinUI treats an Image's bottom as its baseline, but honors a
+                // RichTextBlock's actual baseline. The canvas ends at the math
+                // baseline; bottom padding reserves the image's descent without
+                // clipping subscripts or letting them overlap the next line.
+                var canvas = new Canvas { Width = formula.Width, Height = formula.Baseline };
+                canvas.Children.Add(image);
+                var inline = new RichTextBlock
+                {
+                    FontSize = 1,
+                    IsTextSelectionEnabled = false,
+                    TextLineBounds = TextLineBounds.TrimToBaseline,
+                    Padding = new Thickness(0, 0, 0, Math.Max(0, formula.Height - formula.Baseline))
+                };
+                var mathLine = new Paragraph();
+                mathLine.Inlines.Add(new InlineUIContainer { Child = canvas });
+                inline.Blocks.Add(mathLine);
+                paragraph.Inlines.Add(new InlineUIContainer { Child = inline });
             }
             catch { if (version == generation) paragraph.Inlines.Add(new Run { Text = chunk.Text }); }
         }

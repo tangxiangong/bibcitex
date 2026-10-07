@@ -67,14 +67,16 @@ internal sealed class MainWindow : Window
         root.ColumnDefinitions.Add(new() { Width = new GridLength(5) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(350) });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new());
-        var chrome = new StackPanel(); chrome.Children.Add(BuildMenu());
+        var chrome = new StackPanel();
+        InstallKeyboardAccelerators();
         var toolbar = new Grid { Padding = new Thickness(12, 4, 12, 8) };
         toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); toolbar.ColumnDefinitions.Add(new()); toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         sidebarToggle = PaneToggle("panelLeftClose", "文献库", () => { SetPaneVisibility(true, sidebarToggle.IsChecked == true); });
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var primary = Views.Row(Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
-            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle, Views.Button("settings", "设置", ShowSettings));
+            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle, Views.Button("settings", "设置", ShowSettings),
+            Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()));
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
         chrome.Children.Add(toolbar); chrome.Children.Add(Views.Divider());
         Grid.SetColumnSpan(chrome, 5); root.Children.Add(chrome);
@@ -138,6 +140,7 @@ internal sealed class MainWindow : Window
         ScrollViewer.SetVerticalScrollBarVisibility(references, ScrollBarVisibility.Auto);
         Views.AutoHideScrollbars(references);
         Content = root; ShowDetail(null);
+        WindowInterop.ConfigureTitleBar(this);
         libraries.SelectionChanged += (_, _) =>
         {
             if (reloading) return;
@@ -165,38 +168,18 @@ internal sealed class MainWindow : Window
     private static void SetPaneBackground(Grid pane, string resource) =>
         pane.Style = (Style)Application.Current.Resources[resource];
 
-    private MenuBar BuildMenu()
+    private void InstallKeyboardAccelerators()
     {
-        var menu = new MenuBar();
-        MenuBarItem Group(string title)
+        void Add(VirtualKey key, Action action, VirtualKeyModifiers modifiers = VirtualKeyModifiers.Control)
         {
-            var group = new MenuBarItem(); Localized.Bind(group, MenuBarItem.TitleProperty, title); menu.Items.Add(group); return group;
+            var accelerator = new KeyboardAccelerator { Key = key, Modifiers = modifiers };
+            accelerator.Invoked += (_, args) => { action(); args.Handled = true; };
+            root.KeyboardAccelerators.Add(accelerator);
         }
-        MenuFlyoutItem Add(MenuBarItem parent, string label, Action action, VirtualKey? key = null, VirtualKeyModifiers modifiers = VirtualKeyModifiers.Control)
-        {
-            var item = new MenuFlyoutItem(); Localized.Bind(item, MenuFlyoutItem.TextProperty, label); item.Click += (_, _) => action(); parent.Items.Add(item);
-            if (key is { } value)
-            {
-                var accelerator = new KeyboardAccelerator { Key = value, Modifiers = modifiers };
-                accelerator.Invoked += (_, args) => { action(); args.Handled = true; }; item.KeyboardAccelerators.Add(accelerator);
-            }
-            return item;
-        }
-        var app = Group("BibCiTeX");
-        Add(app, "关于 BibCiTeX", () => _ = ShowAbout());
-        var update = Add(app, "检查更新", () => _ = CheckUpdates()); update.IsEnabled = Updater.CanCheck;
-        Add(app, "设置", ShowSettings);
-        app.Items.Add(new MenuFlyoutSeparator()); Add(app, "退出 BibCiTeX", () => { quitting = true; Close(); });
-        var file = Group("menu.file"); Add(file, "新增文献库", () => _ = AddLibrary(), VirtualKey.O);
-        var reference = Group("文献");
-        Add(reference, "快捷助手", () => _ = App.Helper!.Toggle(), VirtualKey.K, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
-        var copy = Add(reference, "复制引用键", () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = Copy(selected.Key); }, VirtualKey.C, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
-        copy.IsEnabled = false; references.SelectionChanged += (_, _) => copy.IsEnabled = references.SelectedItem is not null;
-        Add(reference, "刷新", () => _ = ReloadLibraries(), VirtualKey.R);
-        var view = Group("menu.view");
-        Add(view, "文献库", () => { SetPaneVisibility(true, !showSidebar); });
-        Add(view, "文献详情", () => { SetPaneVisibility(false, !showInspector); });
-        return menu;
+        Add(VirtualKey.O, () => _ = AddLibrary());
+        Add(VirtualKey.K, () => _ = App.Helper!.Toggle(), VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        Add(VirtualKey.C, () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = Copy(selected.Key); }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        Add(VirtualKey.R, () => _ = ReloadLibraries());
     }
     private static ToggleButton PaneToggle(string icon, string label, Action action)
     {
@@ -626,10 +609,10 @@ internal sealed class MainWindow : Window
         var version = Updater.CurrentVersion;
         var versionText = Views.Text(version, 13); versionText.HorizontalAlignment = HorizontalAlignment.Center; versionText.IsTextSelectionEnabled = true;
         content.Children.Add(Views.SelectableText(versionText));
-        var close = new Button { HorizontalAlignment = HorizontalAlignment.Center }; Localized.Bind(close, ContentControl.ContentProperty, "关闭"); close.Click += (_, _) => window.Close(); content.Children.Add(close);
         content.KeyDown += (_, args) => { if (args.Key == VirtualKey.Escape) { window.Close(); args.Handled = true; } };
         Localized.BindValue(content, FrameworkElement.LanguageProperty, () => L10n.Language);
         window.Content = content; aboutWindow = window;
+        WindowInterop.ConfigureTitleBar(window);
         void Localize() { window.Title = L10n.Text("关于 BibCiTeX"); WindowInterop.LocalizeSystemMenu(window); }
         L10n.Changed += Localize; window.Closed += (_, _) => { L10n.Changed -= Localize; aboutWindow = null; };
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window); var scale = WindowInterop.GetDpiForWindow(hwnd) / 96.0;

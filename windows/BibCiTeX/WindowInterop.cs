@@ -7,6 +7,25 @@ namespace BibCiTeX;
 
 internal static partial class WindowInterop
 {
+    internal static void ConfigureTitleBar(Window window)
+    {
+        window.AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico"));
+        var root = (FrameworkElement)window.Content;
+        void Refresh() => window.AppWindow.TitleBar.PreferredTheme = root.ActualTheme == ElementTheme.Dark
+            ? Microsoft.UI.Windowing.TitleBarTheme.Dark
+            : Microsoft.UI.Windowing.TitleBarTheme.Light;
+        void ThemeChanged(FrameworkElement sender, object args) => Refresh();
+        void Loaded(object sender, RoutedEventArgs args) => Refresh();
+        root.ActualThemeChanged += ThemeChanged;
+        root.Loaded += Loaded;
+        window.Closed += (_, _) =>
+        {
+            root.ActualThemeChanged -= ThemeChanged;
+            root.Loaded -= Loaded;
+        };
+        Refresh();
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct MenuItemInfo
     {

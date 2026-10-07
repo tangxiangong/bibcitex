@@ -5,7 +5,7 @@ using SkiaSharp;
 
 namespace BibCiTeX;
 
-internal readonly record struct RenderedFormula(byte[] Bytes, double Width, double Height);
+internal readonly record struct RenderedFormula(byte[] Bytes, double Width, double Height, double Baseline);
 
 // CPU-only rendering shared by WinUI and the no-window integration tests.
 internal static class FormulaRenderer
@@ -20,7 +20,9 @@ internal static class FormulaRenderer
         var painter = new MathPainter
         {
             LaTeX = NormalizeControlWords(latex),
-            FontSize = fontSize * scale,
+            // WinUI uses DIPs (96/inch); CSharpMath uses points (72/inch).
+            FontSize = fontSize * (72f / 96f) * scale,
+            LineStyle = LineStyle.Text,
             TextColor = dark ? SKColors.White : SKColors.Black,
             DisplayErrorInline = false
         };
@@ -29,7 +31,7 @@ internal static class FormulaRenderer
         if (!float.IsFinite(bounds.Width) || !float.IsFinite(bounds.Height)) throw new FormatException(latex);
 
         // Padding is in logical units, so changing monitor DPI preserves layout.
-        var padding = 4 * scale;
+        var padding = scale;
         var widthBudget = Math.Max(1, Math.Min(8192, availableWidth * scale) - 2 * padding);
         var heightBudget = Math.Max(1, 8192 - 2 * padding);
         var fit = (float)Math.Min(1, Math.Min(widthBudget / Math.Max(1, bounds.Width), heightBudget / Math.Max(1, bounds.Height)));
@@ -42,7 +44,7 @@ internal static class FormulaRenderer
         painter.Draw(surface.Canvas, padding, -bounds.Y + padding);
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        return new RenderedFormula(data.ToArray(), width / scale, height / scale);
+        return new RenderedFormula(data.ToArray(), width / scale, height / scale, (-bounds.Y + padding) / scale);
     }
 
     private static string NormalizeControlWords(string latex)
