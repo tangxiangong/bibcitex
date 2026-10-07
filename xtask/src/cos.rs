@@ -1,8 +1,8 @@
 //! COS is the primary mirror; GitHub retains the same signed payloads as a fallback.
 use crate::{Channels, Result, ensure, feeds_at, hash, prepare};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use reqwest::{Method, StatusCode, blocking::Client};
-use sha1::{Digest as Sha1Digest, Sha1};
+use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
@@ -32,10 +32,14 @@ fn encode(value: &str) -> String {
         .collect()
 }
 
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 fn hmac(key: &[u8], value: &str) -> Result<String> {
     let mut mac = Hmac::<Sha1>::new_from_slice(key)?;
     mac.update(value.as_bytes());
-    Ok(format!("{:x}", mac.finalize().into_bytes()))
+    Ok(hex(&mac.finalize().into_bytes()))
 }
 
 // COS v5 requires the hexadecimal SignKey as the second HMAC key, not raw bytes.
@@ -55,7 +59,8 @@ fn authorization(
         .collect::<Vec<_>>()
         .join("&");
     let request = format!("{}\n{path}\n\n{values}\n", method.to_ascii_lowercase());
-    let string_to_sign = format!("sha1\n{time}\n{:x}\n", Sha1::digest(request.as_bytes()));
+    let request_hash = hex(&Sha1::digest(request.as_bytes()));
+    let string_to_sign = format!("sha1\n{time}\n{request_hash}\n");
     let sign_key = hmac(secret_key.as_bytes(), &time)?;
     let signature = hmac(sign_key.as_bytes(), &string_to_sign)?;
     Ok(format!(
