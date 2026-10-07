@@ -106,3 +106,6 @@ jobs:
       - name: C# and Rust integration tests
         shell: pwsh
         run: just test-windows "${{ github.workspace }}/target/${{ matrix.target }}/debug/bibcitex_csharp.dll"
+      - name: Verify WinUI publish resources
+        shell: pwsh
+        run: dotnet publish windows/BibCiTeX/BibCiTeX.csproj --no-restore -c Release -p:Platform=${{ matrix.arch }} -o target/publish-check

@@ -50,6 +50,7 @@
     <ProjectCapability Include="Msix" />
   </ItemGroup>
   <Import Project="Build/Rust.targets" />
+  <Import Project="Build/Publish.targets" />
   <ItemGroup>
     <EmbeddedResource Include="../../localization/*.json" LogicalName="BibCiTeX.Localization.%(Filename)%(Extension)" />
   </ItemGroup>
