@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.tangxiangong.bibcitex</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <name>BibCiTeX</name>
+  <summary>BibTeX reference search and citation helper</summary>
+  <description><p>Search local BibTeX libraries, inspect references, copy citation keys, and paste citations using a compact desktop helper.</p></description>
+  <launchable type="desktop-id">io.github.tangxiangong.bibcitex.desktop</launchable>
+  <url type="homepage">https://github.com/tangxiangong/bibcitex</url>
+  <url type="bugtracker">https://github.com/tangxiangong/bibcitex/issues</url>
+  <provides><binary>bibcitex</binary></provides>
+  <content_rating type="oars-1.1"/>
+</component>

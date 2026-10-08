@@ -309,3 +309,14 @@ fn missing_asset_error_names_the_file() {
             .contains("missing.exe")
     );
 }
+
+#[test]
+fn linux_payloads_without_signed_metadata_cannot_be_published() {
+    let (dir, public) = fixture("v0.6.0");
+    fs::write(
+        dir.path().join("BibCiTeX-0.6.0-linux-arm64.tar.gz"),
+        b"unsigned",
+    )
+    .unwrap();
+    assert!(prepare(dir.path(), "v0.6.0", "owner/repo", &public).is_err());
+}

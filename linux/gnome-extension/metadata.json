@@ -1,0 +1,8 @@
+{
+  "uuid": "bibcitex-tray@tangxiangong.github.io",
+  "name": "BibCiTeX Tray",
+  "description": "BibCiTeX-only left-click activation and tray window placement. Requires Ubuntu AppIndicators or AppIndicator and KStatusNotifierItem Support.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 1,
+  "url": "https://github.com/tangxiangong/bibcitex"
+}

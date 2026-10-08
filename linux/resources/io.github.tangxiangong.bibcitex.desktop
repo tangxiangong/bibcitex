@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Application
+Name=BibCiTeX
+Comment=BibTeX reference search and citation helper
+Comment[zh_CN]=BibTeX 文献搜索与快捷引用
+Exec=bibcitex
+Icon=io.github.tangxiangong.bibcitex
+Terminal=false
+Categories=Office;Education;
+StartupNotify=true
+StartupWMClass=io.github.tangxiangong.bibcitex
+Actions=Helper;Tray;
+
+[Desktop Action Helper]
+Name=Quick helper
+Name[zh_CN]=快捷助手
+Exec=bibcitex --helper
+
+[Desktop Action Tray]
+Name=Workbench
+Name[zh_CN]=文献工作台
+Exec=bibcitex --tray

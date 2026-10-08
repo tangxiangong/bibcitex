@@ -1,0 +1,43 @@
+[package]
+name = "bibcitex-linux"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+
+[[bin]]
+name = "bibcitex"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+async-channel.workspace = true
+base64.workspace = true
+bibcitex-service.workspace = true
+dirs.workspace = true
+ed25519-dalek.workspace = true
+flate2.workspace = true
+gpui-kit.workspace = true
+image.workspace = true
+latex-rust.workspace = true
+reqwest.workspace = true
+semver.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tempfile.workspace = true
+sha2.workspace = true
+tar.workspace = true
+url.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd.workspace = true
+futures-util.workspace = true
+ksni.workspace = true
+smol.workspace = true
+x11rb.workspace = true
+raw-window-handle.workspace = true
+wayland-client.workspace = true
+wayland-backend.workspace = true
+wayland-protocols.workspace = true

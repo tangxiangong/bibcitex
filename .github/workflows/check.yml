@@ -16,6 +16,32 @@ concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.revision || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: extractions/setup-just@v4
+      - name: Install GPUI Linux build dependencies
+        if: hashFiles('linux/Cargo.toml') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev cmake ninja-build pkg-config libssl-dev libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev libvulkan-dev libasound2-dev
+      - name: Rust checks and non-GUI tests
+        if: hashFiles('linux/Cargo.toml') != ''
+        run: just check-rust
+      - name: Compile GPUI Kit Linux client
+        if: hashFiles('linux/Cargo.toml') != ''
+        run: just build debug
   rust:
     strategy:
       fail-fast: false

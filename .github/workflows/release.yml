@@ -22,6 +22,7 @@ jobs:
       tag: ${{ steps.metadata.outputs.tag }}
       version: ${{ steps.metadata.outputs.version }}
       channel: ${{ steps.metadata.outputs.channel }}
+      linux: ${{ steps.metadata.outputs.linux }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -33,6 +34,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           cargo run --locked -p xtask -- release-metadata
+          if test -f linux/Cargo.toml; then echo 'linux=true' >> "$GITHUB_OUTPUT"; else echo 'linux=false' >> "$GITHUB_OUTPUT"; fi
           git show-ref --verify "refs/tags/$RELEASE_TAG"
           printf 'tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           printf 'revision=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -79,6 +81,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
       - uses: actions/upload-artifact@v7
         with:
           name: release-macos-${{ matrix.arch }}
@@ -123,8 +126,49 @@ jobs:
           name: release-windows-${{ matrix.arch }}
           path: dist/release/windows-${{ matrix.artifact_arch }}/*
           if-no-files-found: error
+  linux:
+    needs: [prepare, checks]
+    if: needs.prepare.outputs.linux == 'true'
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: x86_64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang libclang-dev cmake ninja-build pkg-config libssl-dev libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev libvulkan-dev libasound2-dev
+      - name: Build Linux client and packages
+        env:
+          BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
+        run: |
+          test -n "$BIBCITEX_LINUX_UPDATE_PUBLIC_KEY"
+          cargo build --locked --release -p bibcitex-linux
+          cargo run --locked -p xtask -- package-linux target/release/bibcitex dist/release/linux-${{ matrix.arch }} ${{ matrix.arch }}
+      - name: Sign Linux update metadata
+        env:
+          LINUX_UPDATE_PRIVATE_KEY: ${{ secrets.LINUX_UPDATE_PRIVATE_KEY }}
+          BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
+        run: cargo run --locked -p xtask -- sign-linux dist/release/linux-${{ matrix.arch }} ${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: dist/release/linux-${{ matrix.arch }}/*
+          if-no-files-found: error
   publish:
-    needs: [prepare, macos, windows]
+    needs: [prepare, macos, windows, linux]
+    if: always() && needs.prepare.result == 'success' && needs.macos.result == 'success' && needs.windows.result == 'success' && (needs.linux.result == 'success' || needs.linux.result == 'skipped')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -152,6 +196,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_ASSETS: release-assets
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
           VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_REVISION: ${{ needs.prepare.outputs.revision }}
         run: |
@@ -164,6 +209,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_ASSETS: release-assets
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
         run: cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-cos

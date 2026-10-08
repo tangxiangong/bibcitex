@@ -1,4 +1,5 @@
 pub mod cos;
+pub mod linux;
 
 use base64::Engine;
 use ed25519_dalek::{Signature, VerifyingKey};
@@ -286,6 +287,22 @@ pub fn prepare(
                 .as_str()
                 .is_some_and(|value| value.eq_ignore_ascii_case(&checksum)),
             "Velopack checksum mismatch",
+        )?;
+    }
+    let mut has_linux_assets = false;
+    for entry in fs::read_dir(directory)? {
+        let name = entry?.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with("linux-") || name.contains("-linux-") {
+            has_linux_assets = true;
+            break;
+        }
+    }
+    if has_linux_assets {
+        linux::verify(
+            directory,
+            &version.version,
+            &std::env::var("BIBCITEX_LINUX_UPDATE_PUBLIC_KEY")?,
         )?;
     }
     for locale in ["zh-Hans", "en"] {

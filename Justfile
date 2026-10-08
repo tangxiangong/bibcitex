@@ -19,10 +19,21 @@ build architecture=host_arch profile="release":
 build architecture=host_arch profile="release":
     dotnet build windows/BibCiTeX.sln -c '{{ replace(profile, "'", "''") }}' '-p:Platform={{ replace(architecture, "'", "''") }}'
 
+# Compile the GPUI Kit Linux client without launching or packaging it.
+[linux]
+build profile="release":
+    cargo build --locked -p bibcitex-linux --profile {{ if profile == "debug" { "dev" } else { quote(profile) } }}
+
 # Create the macOS .app bundle; never launch it.
 [macos]
 bundle architecture=host_arch profile="release":
     ARCH={{ quote(architecture) }} CONFIGURATION={{ quote(lowercase(profile)) }} BUILD_ONLY=0 bash macos/build.sh
+
+# Build Linux portable and Debian packages without launching the app.
+[linux]
+bundle architecture=host_arch:
+    cargo build --locked --release -p bibcitex-linux
+    cargo run --locked -p xtask -- package-linux target/release/bibcitex target/linux-packages {{ quote(architecture) }}
 
 # Check Rust formatting, lint and tests.
 check-rust: fmt clippy test-rust

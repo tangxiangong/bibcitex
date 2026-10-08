@@ -8,6 +8,8 @@ fn run() -> Result<()> {
         .collect::<Vec<_>>()
         .as_slice()
     {
+        ["package-linux", binary, directory, arch] => xtask::linux::package(Path::new(binary), Path::new(directory), arch),
+        ["sign-linux", directory, arch] => xtask::linux::sign(Path::new(directory), arch),
         ["release-metadata"] => {
             let version = versions(&env::var("RELEASE_TAG")?)?;
             if version.version != env!("CARGO_PKG_VERSION") {
@@ -45,7 +47,7 @@ fn run() -> Result<()> {
             &env::var("SPARKLE_PUBLIC_ED_KEY")?,
         ),
         _ => Err(
-            "Usage: xtask release-metadata | verify-release <directory> | publish-release | publish-cos".into(),
+            "Usage: xtask release-metadata | verify-release <directory> | publish-release | publish-cos | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
         ),
     }
 }

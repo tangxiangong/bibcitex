@@ -40,6 +40,8 @@
 
 支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
 
+Linux 客户端目前是**半成品，仍有许多未解决的问题，不代表可用性或功能对齐已经完成**。当前使用 GPUI Kit，以 macOS 界面为基准，正在实现工作台、托盘、快捷助手与签名更新；构建安装方法、桌面权限要求和验证范围见 [Linux 开发说明](linux/README.md)。
+
 v0.7.2 更新内容：[中文发布说明](release-notes/0.7.2/zh-Hans.md) · [English release notes](release-notes/0.7.2/en.md)。
 
 ### 核心特性

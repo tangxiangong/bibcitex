@@ -7,6 +7,7 @@ members = [
     "crates/bibcitex-ffi",
     "crates/bibcitex-service",
     "crates/xpaste",
+    "linux",
     "xtask",
 ]
 default-members = ["crates/bibcitex-core"]
@@ -19,6 +20,8 @@ license = "MIT OR Apache-2.0"
 version = "0.7.2"
 
 [workspace.dependencies]
+async-channel = "2"
+ashpd = { version = "0.13", default-features = false, features = ["async-io", "global_shortcuts", "remote_desktop", "screencast"] }
 arboard = "3"
 base64 = "0.23"
 bibcitex-core = { path = "crates/bibcitex-core" }
@@ -33,7 +36,12 @@ enigo = "0.6"
 dispatch2 = "0.3"
 flate2 = "1"
 fs-err = "3"
+gpui-kit = "0.7.1"
+futures-util = "0.3"
+ksni = { version = "0.3", default-features = false, features = ["async-io"] }
+latex-rust = "2.1.1"
 hmac = "0.13"
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 interoptopus = "0.16"
 interoptopus_csharp = "0.16"
 minisign = "0.10"
@@ -42,6 +50,7 @@ objc2 = "0.6"
 objc2-app-kit = "0.3"
 quick-xml = "0.42"
 rayon = "1"
+raw-window-handle = "0.6"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
@@ -50,7 +59,13 @@ sha1 = "0.11"
 sha2 = "0.11"
 tar = "0.4"
 tempfile = "3"
+smol = "2"
 thiserror = "2"
 uniffi = "0.32"
+url = "2"
 windows = "0.62"
+wayland-client = "0.31"
+wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
+wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 xpaste = { path = "crates/xpaste" }
+x11rb = { version = "0.13", features = ["xtest"] }
