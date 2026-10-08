@@ -1,0 +1,2 @@
+# Keep Just's platform-independent formatter stable on Windows checkouts.
+Justfile text eol=lf
