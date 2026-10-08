@@ -36,17 +36,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang libclang-dev cmake ninja-build pkg-config libssl-dev libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-xcb-dev libxcb1-dev libvulkan-dev libasound2-dev
-      - name: Rust checks and non-GUI tests
+      - name: Check Justfile formatting
+        run: just --fmt --check
+      - name: Linux client checks and non-GUI tests
         if: hashFiles('linux/Cargo.toml') != ''
-        run: just check-rust
+        run: just check-rust-linux
       - name: Compile GPUI Kit Linux client
         if: hashFiles('linux/Cargo.toml') != ''
         run: just build debug
-  rust:
+  shared-rust:
     strategy:
       fail-fast: false
       matrix:
-        os: [xcode-27, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, xcode-27, windows-2025]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -61,9 +63,13 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: extractions/setup-just@v4
-      - run: just check-rust
-      - name: Release metadata regression tests
-        run: just test-ci
+      - name: Check Justfile formatting
+        run: just --fmt --check
+      - name: Install shared Rust Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libxkbcommon-dev
+      - name: Shared Rust checks and non-GUI tests
+        run: just check-rust-shared
   macos:
     strategy:
       fail-fast: false
@@ -92,7 +98,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+          components: clippy
       - uses: extractions/setup-just@v4
+      - name: macOS Rust checks and non-GUI tests
+        run: just check-rust-macos
       - name: Generate Swift bindings and compile SwiftUI
         run: just build ${{ matrix.arch }} debug
         env:
@@ -122,10 +131,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+          components: clippy
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
       - uses: extractions/setup-just@v4
+      - name: Windows Rust checks and non-GUI tests
+        run: just check-rust-windows
       - name: Generate C# bindings and compile WinUI
         shell: pwsh
         run: just build ${{ matrix.arch }} Debug

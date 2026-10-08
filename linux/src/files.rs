@@ -84,9 +84,12 @@ mod tests {
             attachment_path("draft;50%#?.pdf", library, None).unwrap(),
             Path::new("/papers/draft;50%#?.pdf")
         );
+        let directory = tempfile::tempdir().unwrap();
+        let file_path = directory.path().join("a b.pdf");
+        let file_uri = url::Url::from_file_path(&file_path).unwrap();
         assert_eq!(
-            attachment_path("file:///papers/a%20b.pdf", library, None).unwrap(),
-            Path::new("/papers/a b.pdf")
+            attachment_path(file_uri.as_str(), library, None).unwrap(),
+            file_path
         );
         assert_eq!(
             attachment_path("~/a.pdf", library, Some(Path::new("/users/test"))).unwrap(),

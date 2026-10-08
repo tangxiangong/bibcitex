@@ -35,17 +35,60 @@ bundle architecture=host_arch:
     cargo build --locked --release -p bibcitex-linux
     cargo run --locked -p xtask -- package-linux target/release/bibcitex target/linux-packages {{ quote(architecture) }}
 
-# Check Rust formatting, lint and tests.
-check-rust: fmt clippy test-rust
+# Check shared crates and only the current host's native Rust packages.
+check-rust: check-rust-shared
+    just check-rust-{{ os() }}
 
+# Formatting is platform-independent and covers every workspace member.
 fmt:
     cargo fmt --all -- --check
 
-clippy:
-    cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+clippy: clippy-shared
+    just clippy-{{ os() }}
 
-test-rust:
-    cargo test --locked --workspace --all-targets --all-features
+test-rust: test-rust-shared
+    just test-rust-{{ os() }}
+
+check-rust-shared: fmt clippy-shared test-rust-shared
+
+clippy-shared:
+    cargo clippy --locked -p bibcitex-core -p bibcitex-service -p xpaste -p xtask --all-targets --all-features -- -D warnings
+
+test-rust-shared:
+    cargo test --locked -p bibcitex-core -p bibcitex-service -p xpaste -p xtask --all-targets --all-features
+
+[macos]
+check-rust-macos: clippy-macos test-rust-macos
+
+[macos]
+clippy-macos:
+    cargo clippy --locked -p bibcitex-ffi -p bibcitex-bindgen --all-targets --all-features -- -D warnings
+
+[macos]
+test-rust-macos:
+    cargo test --locked -p bibcitex-ffi -p bibcitex-bindgen --all-targets --all-features
+
+[windows]
+check-rust-windows: clippy-windows test-rust-windows
+
+[windows]
+clippy-windows:
+    cargo clippy --locked -p bibcitex-csharp -p bibcitex-csharp-bindgen --all-targets --all-features -- -D warnings
+
+[windows]
+test-rust-windows:
+    cargo test --locked -p bibcitex-csharp -p bibcitex-csharp-bindgen --all-targets --all-features
+
+[linux]
+check-rust-linux: clippy-linux test-rust-linux
+
+[linux]
+clippy-linux:
+    cargo clippy --locked -p bibcitex-linux --all-targets --all-features -- -D warnings
+
+[linux]
+test-rust-linux:
+    cargo test --locked -p bibcitex-linux --all-targets --all-features
 
 # Test release version ordering and update channel eligibility without a GUI.
 [macos]
