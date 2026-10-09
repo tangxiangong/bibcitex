@@ -12,7 +12,7 @@ namespace BibCiTeX;
 internal sealed class HelperWindow : Window, IDisposable
 {
     // Kept in step with the macOS helper metrics so both platforms read the same.
-    private const double Header = 56;
+    private const double Header = 64;
     private const double LibraryRow = 56;
     private const double ReferenceRow = 80;
     private const double ListPadding = 16;
@@ -20,9 +20,11 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double EmptyRow = 112;
     private const double MaxList = 460;
     private const double PanelWidth = 720;
+    // The floating controls overlay the list and take no height of their own.
+    private const double BottomBar = 52;
 
     private readonly Grid root = new();
-    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 22, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 20, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
     private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock status = Views.Text("");
     private readonly Button chooseLibrary;
@@ -36,6 +38,8 @@ internal sealed class HelperWindow : Window, IDisposable
     private bool searching;
     private readonly ProgressRing progress = new() { Width = 18, Height = 18, IsActive = false, Visibility = Visibility.Collapsed };
     private readonly Button fallback;
+    private readonly Button pasteHint;
+    private readonly Border bottomBar;
     private List<Library> libraries = [];
     private Library? current;
     private bool selecting;
@@ -64,14 +68,14 @@ internal sealed class HelperWindow : Window, IDisposable
         root.RowDefinitions.Add(new());
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
 
-        var header = new Grid { Padding = new Thickness(22, 0, 22, 0), ColumnSpacing = 14 };
+        var header = new Grid { Padding = new Thickness(18, 0, 18, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        header.Children.Add(new SvgIcon("search", 22)); Grid.SetColumn(search, 1); header.Children.Add(search);
+        header.Children.Add(new SvgIcon("search", 18) { VerticalAlignment = VerticalAlignment.Center }); Grid.SetColumn(search, 1); header.Children.Add(search);
         Localized.Name(search, "搜索");
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
         chooseLibrary = new Button { Content = Views.Row(new SvgIcon("library", 14), libraryName, new SvgIcon("chevronDown", 9)), CornerRadius = new CornerRadius(16), Padding = new Thickness(10, 6, 10, 6), MaxWidth = 160, BorderThickness = new Thickness(0) };
         Localized.Tooltip(chooseLibrary, "切换文献库 (Tab)"); Localized.Name(chooseLibrary, "切换文献库");
-        chooseLibrary.Click += (_, _) => { if (busy || pasting) return; selecting = true; search.Text = ""; _ = Refresh(); search.Focus(FocusState.Programmatic); };
+        chooseLibrary.Click += (_, _) => { if (busy || pasting) return; _ = StartSelecting(); };
         Grid.SetColumn(chooseLibrary, 3); header.Children.Add(chooseLibrary); root.Children.Add(header);
 
         errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); errorBar.ColumnDefinitions.Add(new()); errorBar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -83,6 +87,16 @@ internal sealed class HelperWindow : Window, IDisposable
         listArea.Children.Add(new Border { Padding = new Thickness(8, 0, 8, 8), Child = results });
         emptyIcon.HorizontalAlignment = HorizontalAlignment.Center; emptyState.Children.Add(emptyIcon); emptyState.Children.Add(emptyLabel); listArea.Children.Add(emptyState); listArea.Children.Add(listProgress);
         var rule = Views.Divider(); rule.VerticalAlignment = VerticalAlignment.Top; listArea.Children.Add(rule);
+        // Floating controls, no bar: Enter (cross-app paste) and Tab as clickable hints,
+        // grouped in one capsule at the trailing edge. Rows scroll beneath them.
+        pasteHint = Views.KeyHint("粘贴引用键", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
+        var switchHint = Views.KeyHint("切换文献库", "⇥", () => { if (!busy && !pasting) _ = StartSelecting(); });
+        var hints = Views.Row(pasteHint, switchHint); hints.Spacing = 2;
+        bottomBar = Views.Capsule(hints);
+        bottomBar.HorizontalAlignment = HorizontalAlignment.Right; bottomBar.VerticalAlignment = VerticalAlignment.Bottom;
+        bottomBar.Margin = new Thickness(0, 0, 12, 8); bottomBar.Visibility = Visibility.Collapsed;
+        listArea.Children.Add(bottomBar);
+        results.SelectionChanged += (_, _) => pasteHint.IsEnabled = results.SelectedItem is not null;
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
         fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
         fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };
@@ -201,7 +215,7 @@ internal sealed class HelperWindow : Window, IDisposable
         switch (args.Key)
         {
             case VirtualKey.Escape: args.Handled = true; Hide(); break;
-            case VirtualKey.Tab: args.Handled = true; selecting = true; search.Text = ""; await Refresh(); search.Focus(FocusState.Programmatic); break;
+            case VirtualKey.Tab: args.Handled = true; await StartSelecting(); break;
             case VirtualKey.Down:
             case VirtualKey.Up:
                 args.Handled = true;
@@ -278,6 +292,10 @@ internal sealed class HelperWindow : Window, IDisposable
         }
         finally { pasting = false; busy = false; }
     }
+    private async Task StartSelecting()
+    {
+        selecting = true; search.Text = ""; await Refresh(); search.Focus(FocusState.Programmatic);
+    }
     private void SetErrorStatus(Exception value) { Localized.Error(status, TextBlock.TextProperty, value); errorBar.Visibility = Visibility.Visible; ResizeContent(); }
     private void SetEmpty(string key, string icon)
     {
@@ -299,6 +317,10 @@ internal sealed class HelperWindow : Window, IDisposable
         var rows = results.Items.Count;
         var list = searching || emptyState.Visibility == Visibility.Visible ? EmptyRow : rows == 0 ? 0 : Math.Min(MaxList, rows * ((selecting ? LibraryRow : ReferenceRow) + 2) + ListPadding);
         listArea.Visibility = list > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var bar = !selecting && !searching && !busy && rows > 0 && search.Text.Trim().Length > 0;
+        bottomBar.Visibility = bar ? Visibility.Visible : Visibility.Collapsed;
+        // An inset rather than a row: the last result can still scroll clear of the controls.
+        results.Padding = new Thickness(0, 0, 0, bar ? BottomBar : 0);
         Resize(Header + list + (errorBar.Visibility == Visibility.Visible ? StatusRow : 0));
     }
     private void Resize(double height)

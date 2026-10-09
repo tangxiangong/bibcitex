@@ -75,7 +75,11 @@ internal sealed class TrayWindow : Window
         var buttons = Views.Row(detailToggle,
             Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
-        Grid.SetColumn(buttons, 2); header.Children.Add(buttons); root.Children.Add(header);
+        // One capsule for the toolbar, as on the macOS tray.
+        foreach (var button in buttons.Children.OfType<Control>()) button.CornerRadius = new CornerRadius(16);
+        buttons.Spacing = 4;
+        var toolbar = Views.Capsule(buttons);
+        Grid.SetColumn(toolbar, 2); header.Children.Add(toolbar); root.Children.Add(header);
         // One outer search field, with a separately focusable library picker inside its trailing edge.
         var searchContainer = new Grid();
         searchContainer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -118,7 +122,7 @@ internal sealed class TrayWindow : Window
         var body = new Grid { ColumnSpacing = 0 };
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
         var reading = new Grid(); reading.RowDefinitions.Add(new()); reading.RowDefinitions.Add(new() { Height = GridLength.Auto }); reading.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        reading.Children.Add(Views.AutoHideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }));
+        reading.Children.Add(Views.HideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         detailEmpty.HorizontalAlignment = HorizontalAlignment.Center; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; reading.Children.Add(detailEmpty);
         var actionRule = Views.Divider(); Grid.SetRow(actionRule, 1); reading.Children.Add(actionRule);
         Grid.SetRow(actions, 2); reading.Children.Add(actions);
@@ -131,7 +135,7 @@ internal sealed class TrayWindow : Window
         floatingContent.Children.Add(detailHeader); Grid.SetRow(reading, 1); floatingContent.Children.Add(reading);
         detailPanel = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
             <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    Width="282" Margin="12" HorizontalAlignment="Right" CornerRadius="12" BorderThickness="1"
+                    Width="282" Margin="12" HorizontalAlignment="Right" CornerRadius="16" BorderThickness="1"
                     Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
                     BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" Visibility="Collapsed" />
             """);
@@ -152,8 +156,8 @@ internal sealed class TrayWindow : Window
         Localized.Bind(library, LibraryPicker.PlaceholderTextProperty, "文献库");
         Localized.Count(count, 0);
         WindowInterop.LocalizeSystemMenu(this);
-        ScrollViewer.SetVerticalScrollBarVisibility(references, ScrollBarVisibility.Auto);
-        Views.AutoHideScrollbars(references);
+        // Like the helper, the tray never shows scrollbars.
+        Views.HideScrollbars(references);
         Content = root; ShowDetail(null);
         library.SelectionChanged += () => { Localized.BindValue(library, ToolTipService.ToolTipProperty, () => (library.SelectedItem as Library)?.Name ?? L10n.Text("文献库")); if (!updating) _ = Search(); };
         type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
@@ -264,7 +268,7 @@ internal sealed class TrayWindow : Window
         var metadata = new TextBlock { FontSize = 11, Opacity = .6, TextTrimming = TextTrimming.CharacterEllipsis };
         Localized.BindValue(metadata, TextBlock.TextProperty, () => string.Join(" · ", new[] { reference.TypeLabel, reference.Text("year"), reference.Venue }.Where(x => x.Length > 0)));
         row.Children.Add(metadata);
-        var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(Views.RowRadius) };
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Key + " " + reference.Title);
         return item;
     }

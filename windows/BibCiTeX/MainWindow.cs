@@ -126,7 +126,7 @@ internal sealed class MainWindow : Window
         inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new());
         var detailHeading = Views.LocalizedText("文献详情", 16); detailHeading.Margin = new Thickness(16); inspector.Children.Add(detailHeading);
         var rule = Views.Divider(); Grid.SetRow(rule, 1); inspector.Children.Add(rule);
-        var scroll = Views.AutoHideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+        var scroll = Views.HideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         Grid.SetRow(scroll, 2); inspector.Children.Add(scroll);
         detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.HorizontalAlignment = HorizontalAlignment.Center;
         Grid.SetRow(detailEmpty, 2); inspector.Children.Add(detailEmpty);
@@ -135,10 +135,9 @@ internal sealed class MainWindow : Window
         Grid.SetColumn(leftDivider, 1); Grid.SetColumn(rightDivider, 3);
         Grid.SetRow(leftDivider, 1); Grid.SetRow(rightDivider, 1); root.Children.Add(leftDivider); root.Children.Add(rightDivider);
         WindowInterop.LocalizeSystemMenu(this);
-        ScrollViewer.SetVerticalScrollBarVisibility(libraries, ScrollBarVisibility.Auto);
-        Views.AutoHideScrollbars(libraries);
-        ScrollViewer.SetVerticalScrollBarVisibility(references, ScrollBarVisibility.Auto);
-        Views.AutoHideScrollbars(references);
+        // Like the helper and the tray, the workbench never shows scrollbars.
+        Views.HideScrollbars(libraries);
+        Views.HideScrollbars(references);
         Content = root; ShowDetail(null);
         WindowInterop.ConfigureTitleBar(this);
         libraries.SelectionChanged += (_, _) =>
@@ -533,7 +532,7 @@ internal sealed class MainWindow : Window
         if (reference.Text("file") is { Length: > 0 } file) actions.Children.Add(Views.Button("folderOpen", "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(file, libraryPath, attachment: true); }));
         if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("externalLink", "打开 URL", () => _ = OpenUrl(url)));
         if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("link", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
-        detail.Children.Add(Views.AutoHideScrollbars(new ScrollViewer { Content = actions, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled }));
+        detail.Children.Add(Views.HideScrollbars(new ScrollViewer { Content = actions, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         foreach (var (key, label) in Metadata)
         {
             var value = key == "cite_key" ? reference.Key : key == "type" ? reference.TypeLabel : reference.Text(key); if (value.Length == 0) continue;

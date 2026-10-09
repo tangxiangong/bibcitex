@@ -51,16 +51,23 @@ internal static class Views
         Attach();
     }
 
-    internal static void HideScrollbars(Control host)
+    // The helper, tray and workbench never show scrollbars; scrolling itself stays.
+    // A disabled axis stays disabled: Hidden would make it scrollable again.
+    internal static T HideScrollbars<T>(T host) where T : Control
     {
-        ScrollViewer.SetVerticalScrollBarVisibility(host, ScrollBarVisibility.Hidden);
-        ScrollViewer.SetHorizontalScrollBarVisibility(host, ScrollBarVisibility.Hidden);
+        static ScrollBarVisibility Hide(ScrollBarVisibility value) => value == ScrollBarVisibility.Disabled ? value : ScrollBarVisibility.Hidden;
+        ScrollViewer.SetVerticalScrollBarVisibility(host, Hide(ScrollViewer.GetVerticalScrollBarVisibility(host)));
+        ScrollViewer.SetHorizontalScrollBarVisibility(host, Hide(ScrollViewer.GetHorizontalScrollBarVisibility(host)));
         ObserveScrollViewer(host, viewer =>
         {
-            viewer.VerticalScrollBarVisibility = ScrollBarVisibility.Hidden;
-            viewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden;
+            viewer.VerticalScrollBarVisibility = Hide(viewer.VerticalScrollBarVisibility);
+            viewer.HorizontalScrollBarVisibility = Hide(viewer.HorizontalScrollBarVisibility);
         });
+        return host;
     }
+
+    /// <summary>One rounded selection shape for every list row, as on macOS.</summary>
+    internal const double RowRadius = 10;
 
     private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ScrollViewer, IdleScrollbars> idleScrollbars = new();
 
@@ -294,6 +301,39 @@ internal static class Views
         if (vertical) line.Width = 1; else line.Height = 1;
         return line;
     }
+    /// <summary>A capsule grouping floating controls, kept fully rounded at any height.</summary>
+    internal static Border Capsule(UIElement child)
+    {
+        var capsule = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" Padding=\"4\" BorderThickness=\"1\" Background=\"{ThemeResource AcrylicInAppFillColorDefaultBrush}\" BorderBrush=\"{ThemeResource SurfaceStrokeColorFlyoutBrush}\" />");
+        capsule.Child = child;
+        capsule.SizeChanged += (_, args) => capsule.CornerRadius = new CornerRadius(args.NewSize.Height / 2);
+        return capsule;
+    }
+    /// <summary>
+    /// A footer control: a label and its outlined key, lit in a capsule under the
+    /// pointer. It never takes focus, so typing stays in the search field.
+    /// </summary>
+    internal static Button KeyHint(string title, string key, Action action)
+    {
+        var label = LocalizedText(title, 12); label.TextWrapping = TextWrapping.NoWrap; label.VerticalAlignment = VerticalAlignment.Center;
+        ThemeForeground(label, "TextFillColorSecondaryBrush");
+        var glyph = new TextBlock { Text = key, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        ThemeForeground(glyph, "TextFillColorSecondaryBrush");
+        var cap = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" MinWidth=\"18\" Height=\"18\" Padding=\"3,0,3,0\" CornerRadius=\"6\" BorderThickness=\"1\" VerticalAlignment=\"Center\" BorderBrush=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\" />");
+        cap.Child = glyph;
+        var content = Row(label, cap); content.Spacing = 6;
+        var button = new Button
+        {
+            Content = content, Height = 28, MinWidth = 0, Padding = new Thickness(10, 0, 10, 0),
+            CornerRadius = new CornerRadius(14), BorderThickness = new Thickness(0),
+            Background = new SolidColorBrush(Colors.Transparent),
+            AllowFocusOnInteraction = false, IsTabStop = false,
+        };
+        Localized.Name(button, title);
+        button.IsEnabledChanged += (_, _) => button.Opacity = button.IsEnabled ? 1 : .5;
+        button.Click += (_, _) => action();
+        return button;
+    }
     internal static ListViewItem LibraryItem(Library library, bool current = false, bool sidebar = false)
     {
         var row = new Grid { ColumnSpacing = 9, Padding = new Thickness(10, 5, 10, 5) };
@@ -313,7 +353,7 @@ internal static class Views
             var marker = new SvgIcon(sidebar ? "pin" : "check", 13) { VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(marker, 2); row.Children.Add(marker);
         }
-        var item = new ListViewItem { Content = row, Tag = library, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0) };
+        var item = new ListViewItem { Content = row, Tag = library, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0), CornerRadius = new CornerRadius(RowRadius) };
         if (!sidebar) item.Height = 58;
         AutomationProperties.SetName(item, library.Name); return item;
     }
@@ -356,7 +396,7 @@ internal static class Views
         if (!citeKeyCopies) { ((TextBlock)key).ClearValue(TextBlock.ForegroundProperty); ThemeForeground(key, "SystemControlForegroundAccentBrush"); }
         Grid.SetColumn(key, citeKeyCopies ? 1 : 2); row.Children.Add(key);
 
-        var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(RowRadius) };
         // Keep helper content inside the native selection indicator's gutter.
         if (!citeKeyCopies) { item.MinHeight = 82; item.Padding = new Thickness(12, 0, 12, 0); }
         if (citeKeyCopies && copy is not null)

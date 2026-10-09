@@ -2,7 +2,7 @@ use crate::icons::icon;
 use crate::{editor::LibraryEditor, preferences::Preferences};
 use bibcitex_service::{self as service, ChunkRecord, LibraryRecord, ReferenceRecord};
 use gpui_kit::component::{
-    ActiveTheme, Sizable, TitleBar,
+    ActiveTheme, Disableable, Sizable, TitleBar,
     button::{Button, ButtonVariants},
     input::{self, Input, InputEvent, InputState},
     menu::{ContextMenuExt, DropdownMenu, PopupMenuItem},
@@ -31,6 +31,16 @@ const FIELDS: &[(&str, &str)] = &[
     ("journal", "期刊"),
     ("year", "年份"),
 ];
+
+/// Kept in step with the macOS helper and tray metrics.
+const HELPER_HEADER: f32 = 64.;
+const HELPER_RADIUS: f32 = 26.;
+const TRAY_RADIUS: f32 = 20.;
+const TRAY_DETAIL_RADIUS: f32 = 16.;
+/// One rounded selection shape for every list row.
+const ROW_RADIUS: f32 = 10.;
+/// The floating helper controls overlay the list and take no height of their own.
+const HELPER_BOTTOM_BAR: f32 = 52.;
 
 pub fn chunks(chunks: &[ChunkRecord]) -> String {
     chunks
@@ -721,19 +731,125 @@ impl Workbench {
             } else {
                 (count as f32 * if self.choosing_library { 58. } else { 82. } + 16.).min(460.)
             };
-            let height = 56. + list_height + if self.error.is_some() { 40. } else { 0. };
+            let height = HELPER_HEADER + list_height + if self.error.is_some() { 40. } else { 0. };
             let available = window.display(cx).map(|display| display.bounds().size);
             let width = available.map_or(px(720.), |bounds| {
                 px(720.).min((bounds.width - px(40.)).max(px(320.)))
             });
             let height = available.map_or(px(height), |bounds| {
-                px(height).min((bounds.height - px(120.)).max(px(56.)))
+                px(height).min((bounds.height - px(120.)).max(px(HELPER_HEADER)))
             });
             let desired = size(width, height);
             if window.viewport_size() != desired {
                 window.resize(desired);
             }
         }
+    }
+
+    fn shows_bottom_bar(&self, cx: &App) -> bool {
+        self.helper
+            && !self.loading
+            && !self.choosing_library
+            && !self.references.is_empty()
+            && !self.search.read(cx).value().trim().is_empty()
+    }
+
+    /// Ghosts rows passing beneath the floating controls.
+    fn bottom_dissolve(&self, cx: &Context<Self>) -> impl IntoElement {
+        let background = cx.theme().background;
+        div()
+            .absolute()
+            .left_0()
+            .right_0()
+            .bottom_0()
+            .h(px(HELPER_BOTTOM_BAR))
+            .bg(linear_gradient(
+                180.,
+                linear_color_stop(
+                    Hsla {
+                        a: 0.,
+                        ..background
+                    },
+                    0.,
+                ),
+                linear_color_stop(background, 1.),
+            ))
+    }
+
+    /// Floating controls, no bar: Enter (cross-app paste) and Tab as clickable
+    /// hints, grouped in one capsule at the trailing edge.
+    fn bottom_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .absolute()
+            .right(px(12.))
+            .bottom(px(8.))
+            .flex()
+            .items_center()
+            .gap(px(2.))
+            .p(px(4.))
+            .rounded_full()
+            .bg(cx.theme().popover)
+            .border_1()
+            .border_color(cx.theme().border)
+            .shadow_sm()
+            .child(
+                self.key_hint("helper-paste", "粘贴引用键", "↵", cx)
+                    .disabled(self.selected.is_none())
+                    .on_click(
+                        cx.listener(|this, _, window, cx| this.activate_selected(window, cx)),
+                    ),
+            )
+            .child(
+                self.key_hint("helper-switch", "切换文献库", "⇥", cx)
+                    .on_click(
+                        cx.listener(|this, _, window, cx| {
+                            this.toggle_library_selection(window, cx)
+                        }),
+                    ),
+            )
+    }
+
+    /// A footer control: a label and its outlined key.
+    fn key_hint(
+        &self,
+        id: &'static str,
+        label: &'static str,
+        key: &'static str,
+        cx: &App,
+    ) -> Button {
+        let muted = cx.theme().muted_foreground;
+        Button::new(id)
+            .ghost()
+            .small()
+            .rounded_full()
+            .accessibility_label(self.text(label, cx))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .child(
+                        div()
+                            .text_size(px(12.))
+                            .text_color(muted)
+                            .child(self.text(label, cx)),
+                    )
+                    .child(
+                        div()
+                            .min_w(px(18.))
+                            .h(px(18.))
+                            .px(px(3.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .rounded(px(6.))
+                            .border_1()
+                            .border_color(cx.theme().border)
+                            .text_size(px(11.))
+                            .text_color(muted)
+                            .child(key),
+                    ),
+            )
     }
 
     fn filter(&self, types: bool, cx: &Context<Self>) -> impl IntoElement {
@@ -785,7 +901,7 @@ impl Workbench {
                     .flex()
                     .items_center()
                     .gap_1()
-                    .rounded_md()
+                    .rounded(px(ROW_RADIUS))
                     .when(selected, |e| e.bg(cx.theme().muted))
                     .when_some(rename_input.clone(), |row, input| {
                         row.child(Input::new(&input).disabled(self.saving_name).flex_1())
@@ -994,7 +1110,7 @@ impl Workbench {
             .py_2()
             .flex()
             .gap_2()
-            .rounded_md()
+            .rounded(px(ROW_RADIUS))
             .when(self.selected == Some(index), |e| e.bg(cx.theme().muted))
             .hover(|e| e.bg(cx.theme().muted))
             .when(self.helper, |e| e.text_size(px(13.)))
@@ -1138,6 +1254,10 @@ impl Workbench {
         .min_h_0()
         .px_2()
         .when(self.helper, |list| list.py_2())
+        // An inset rather than a row: the last result can still scroll clear of the controls.
+        .when(self.shows_bottom_bar(cx), |list| {
+            list.pb(px(HELPER_BOTTOM_BAR))
+        })
         .into_any_element()
     }
 
@@ -1225,50 +1345,65 @@ impl Workbench {
                             .gap_2()
                             .child(div().font_weight(FontWeight::SEMIBOLD).child("BibCiTeX"))
                             .child(div().flex_1())
+                            // One capsule for the toolbar, as on the macOS tray.
                             .child(
-                                Button::new("tray-detail")
-                                    .ghost()
-                                    .small()
-                                    .icon(icon(if self.tray_detail {
-                                        "panelRightClose"
-                                    } else {
-                                        "panelRightOpen"
-                                    }))
-                                    .accessibility_label(prefs.text("文献详情"))
-                                    .tooltip(prefs.text("文献详情"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.tray_detail = !this.tray_detail;
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(
-                                Button::new("tray-refresh")
-                                    .ghost()
-                                    .small()
-                                    .icon(icon("refresh"))
-                                    .accessibility_label(prefs.text("刷新"))
-                                    .tooltip(prefs.text("刷新"))
-                                    .on_click(cx.listener(|this, _, _, cx| this.reload(cx))),
-                            )
-                            .child(
-                                Button::new("tray-main")
-                                    .ghost()
-                                    .small()
-                                    .icon(icon("externalLink"))
-                                    .accessibility_label(prefs.text("显示窗口"))
-                                    .tooltip(prefs.text("显示窗口"))
-                                    .on_click(|_, _, cx| {
-                                        crate::application::send(bibcitex_linux::Command::Main, cx)
-                                    }),
-                            )
-                            .child(
-                                Button::new("tray-close")
-                                    .ghost()
-                                    .small()
-                                    .icon(icon("x"))
-                                    .accessibility_label(prefs.text("关闭"))
-                                    .tooltip(prefs.text("关闭"))
-                                    .on_click(|_, window, _| window.remove_window()),
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .p_1()
+                                    .rounded_full()
+                                    .bg(cx.theme().muted)
+                                    .child(
+                                        Button::new("tray-detail")
+                                            .ghost()
+                                            .small()
+                                            .icon(icon(if self.tray_detail {
+                                                "panelRightClose"
+                                            } else {
+                                                "panelRightOpen"
+                                            }))
+                                            .accessibility_label(prefs.text("文献详情"))
+                                            .tooltip(prefs.text("文献详情"))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.tray_detail = !this.tray_detail;
+                                                cx.notify();
+                                            })),
+                                    )
+                                    .child(
+                                        Button::new("tray-refresh")
+                                            .ghost()
+                                            .small()
+                                            .icon(icon("refresh"))
+                                            .accessibility_label(prefs.text("刷新"))
+                                            .tooltip(prefs.text("刷新"))
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| this.reload(cx)),
+                                            ),
+                                    )
+                                    .child(
+                                        Button::new("tray-main")
+                                            .ghost()
+                                            .small()
+                                            .icon(icon("externalLink"))
+                                            .accessibility_label(prefs.text("显示窗口"))
+                                            .tooltip(prefs.text("显示窗口"))
+                                            .on_click(|_, _, cx| {
+                                                crate::application::send(
+                                                    bibcitex_linux::Command::Main,
+                                                    cx,
+                                                )
+                                            }),
+                                    )
+                                    .child(
+                                        Button::new("tray-close")
+                                            .ghost()
+                                            .small()
+                                            .icon(icon("x"))
+                                            .accessibility_label(prefs.text("关闭"))
+                                            .tooltip(prefs.text("关闭"))
+                                            .on_click(|_, window, _| window.remove_window()),
+                                    ),
                             ),
                     )
                     .child(
@@ -1370,7 +1505,7 @@ impl Workbench {
                                 .right_3()
                                 .bottom_3()
                                 .w(px(282.))
-                                .rounded_lg()
+                                .rounded(px(TRAY_DETAIL_RADIUS))
                                 .border_1()
                                 .border_color(cx.theme().border)
                                 .bg(cx.theme().background)
@@ -1709,10 +1844,14 @@ impl Render for Workbench {
             .text_color(cx.theme().foreground)
             .text_sm()
             .when(self.helper || self.tray, |root| {
-                root.rounded(px(12.))
-                    .overflow_hidden()
-                    .border_1()
-                    .border_color(cx.theme().border)
+                root.rounded(px(if self.helper {
+                    HELPER_RADIUS
+                } else {
+                    TRAY_RADIUS
+                }))
+                .overflow_hidden()
+                .border_1()
+                .border_color(cx.theme().border)
             })
             .capture_action(cx.listener(|this, _: &input::IndentInline, window, cx| {
                 if this.helper && this.search_navigation(window, cx) {
@@ -1792,22 +1931,22 @@ impl Render for Workbench {
             root =
                 root.child(
                     div()
-                        .h(px(56.))
+                        .h(px(HELPER_HEADER))
                         .flex_none()
-                        .px(px(22.))
+                        .px(px(18.))
                         .flex()
                         .items_center()
                         .gap(px(14.))
                         .child(
                             icon("search")
-                                .size(px(22.))
+                                .size(px(18.))
                                 .text_color(cx.theme().muted_foreground),
                         )
                         .child(
                             Input::new(&self.search)
                                 .appearance(false)
                                 .focus_bordered(false)
-                                .text_size(px(22.))
+                                .text_size(px(20.))
                                 .cleanable(false)
                                 .flex_1(),
                         )
@@ -1865,6 +2004,7 @@ impl Render for Workbench {
                             .ghost()
                             .h(px(56.))
                             .mb(px(2.))
+                            .rounded(px(ROW_RADIUS))
                             .when(i == self.library_cursor, |button| {
                                 button.bg(cx.theme().muted)
                             })
@@ -1908,13 +2048,18 @@ impl Render for Workbench {
             } else if !self.search.read(cx).value().trim().is_empty() {
                 root = root.child(
                     div()
+                        .relative()
                         .border_t_1()
                         .border_color(cx.theme().border)
                         .flex_1()
                         .min_h_0()
                         .flex()
                         .flex_col()
-                        .child(self.results(cx)),
+                        .child(self.results(cx))
+                        .when(self.shows_bottom_bar(cx), |area| {
+                            area.child(self.bottom_dissolve(cx))
+                                .child(self.bottom_bar(cx))
+                        }),
                 );
             }
         } else if self.tray {
