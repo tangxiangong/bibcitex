@@ -1,2 +1,5 @@
 # Keep Just's platform-independent formatter stable on Windows checkouts.
 Justfile text eol=lf
+
+# Exclude vendored macOS packages from GitHub language statistics.
+macos/Packages/** linguist-vendored
