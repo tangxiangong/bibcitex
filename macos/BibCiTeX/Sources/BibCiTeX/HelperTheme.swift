@@ -11,10 +11,6 @@ enum ThemeStyle: Equatable {
     var isDark: Bool {
         self == .mocha
     }
-
-    var panelMaterial: String {
-        isDark ? "ultraThickMaterial" : "thickMaterial"
-    }
 }
 
 enum HelperError: LocalizedError, LocalizedMessageProviding {

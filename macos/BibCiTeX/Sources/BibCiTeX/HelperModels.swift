@@ -4,13 +4,19 @@ import Foundation
 /// One source of truth for the helper surface metrics: the view draws these
 /// heights and `HelperViewModel` sizes the panel from them.
 enum HelperMetrics {
-    static let header: CGFloat = 56
+    /// A 44pt search row centred in 10pt of slack above and below.
+    static let header: CGFloat = 64
+    static let panelRadius: CGFloat = 26
+    static let rowRadius: CGFloat = 10
     /// Title (two lines), authors and the metadata line, plus the row padding.
     static let referenceRow: CGFloat = 80
     static let libraryRow: CGFloat = 56
     static let listPadding: CGFloat = 16
     static let emptyRow: CGFloat = 112
     static let errorBar: CGFloat = 40
+    static let bottomBar: CGFloat = 52
+    static let barButton: CGFloat = 28
+    static let keyCap: CGFloat = 18
 }
 
 enum TextChunkKind: Int32, Sendable {

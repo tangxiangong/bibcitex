@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// Tray surface metrics; colours come from `PanelPalette`, shared with the helper.
+enum TrayMetrics {
+    static let panelRadius: CGFloat = 20
+    static let detailRadius: CGFloat = 16
+    static let fieldRadius: CGFloat = 8
+}
+
 /// A purpose-built tray browser: library controls above a list and a compact reading pane.
 struct TrayWorkbenchView: View {
     @AppStorage("language") private var language = "system"
@@ -28,7 +35,7 @@ struct TrayWorkbenchView: View {
                 }
                 .overlay(alignment: .trailing) {
                     HStack(spacing: 10) {
-                        SystemSeparator(vertical: true).frame(height: 16)
+                        PanelSeparator(vertical: true).frame(height: 16)
                         Menu {
                             Picker(L10n.text("文献库"), selection: $model.libraryName) {
                                 ForEach(model.libraries) { library in
@@ -51,10 +58,10 @@ struct TrayWorkbenchView: View {
                     }
                 }
                 .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                .background(PanelPalette.controlSurface, in: RoundedRectangle(cornerRadius: TrayMetrics.fieldRadius, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(searchFocused ? Color.accentColor.opacity(0.6) : Color(nsColor: .separatorColor), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: TrayMetrics.fieldRadius, style: .continuous)
+                        .strokeBorder(searchFocused ? Color.accentColor.opacity(0.6) : PanelPalette.border, lineWidth: 1)
                         .allowsHitTesting(false)
                 }
                 HStack(spacing: 8) {
@@ -69,7 +76,7 @@ struct TrayWorkbenchView: View {
                     Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)
                 }.controlSize(.small)
             }.padding(16)
-            Divider()
+            PanelSeparator()
             results.frame(maxWidth: .infinity)
                 .overlay(alignment: .trailing) {
                     if model.detailVisible {
@@ -81,16 +88,16 @@ struct TrayWorkbenchView: View {
                                     model.detailVisible = false
                                 }.focused($detailCloseFocused)
                             }.padding(.horizontal, 14).padding(.vertical, 8)
-                            Divider()
+                            PanelSeparator()
                             detail
                         }
                         .frame(width: 282)
                         .frame(maxHeight: .infinity)
-                        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: TrayMetrics.detailRadius, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: TrayMetrics.detailRadius, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: TrayMetrics.detailRadius, style: .continuous)
+                                .strokeBorder(PanelPalette.border, lineWidth: 1)
                                 .allowsHitTesting(false)
                         }
                         .shadow(color: .black.opacity(0.18), radius: 12, x: -3, y: 4)
@@ -98,7 +105,7 @@ struct TrayWorkbenchView: View {
                     }
                 }
             if let error = model.error {
-                Divider()
+                PanelSeparator()
                 HStack {
                     NativeIcon("alert", size: 14)
                     Text(error).font(.caption).lineLimit(3)
@@ -107,22 +114,22 @@ struct TrayWorkbenchView: View {
                 }.foregroundStyle(.red).padding(10)
             }
         }
-        .background(AutoHidingScrollbars())
+        .background(PanelPalette.scrim)
+        .background(PanelMaterial(radius: TrayMetrics.panelRadius, fallback: .popover))
+        .clipShape(RoundedRectangle(cornerRadius: TrayMetrics.panelRadius, style: .continuous))
+        // Like the helper, the tray never shows scrollers.
+        .scrollIndicators(.never)
+        .background(AutoHidingScrollbars(alwaysHidden: true))
+        .background(NeutralListSelection())
         .onAppear { searchFocused = true }
         .onChange(of: model.detailVisible) { visible in
             if visible { detailCloseFocused = true } else { detailToggleFocused = true }
         }
     }
     @ViewBuilder private var toolbarButtons: some View {
-        if #available(macOS 26.0, *) {
-            toolbarButtonGroup
-                .padding(4)
-                .glassEffect(.regular.interactive(), in: Capsule())
-        } else {
-            toolbarButtonGroup
-                .padding(4)
-                .background(.regularMaterial, in: Capsule())
-        }
+        toolbarButtonGroup
+            .padding(4)
+            .panelGlassCapsule()
     }
     private var toolbarButtonGroup: some View {
         HStack(spacing: 8) {
@@ -154,9 +161,10 @@ struct TrayWorkbenchView: View {
                             .filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }.padding(.vertical, 7).tag(reference.citeKey).id(reference.citeKey)
+                    .foregroundStyle(Color(nsColor: .labelColor))
+                    .listRowBackground(RowSelectionBackground(selected: model.selection == reference.citeKey))
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
-                .accentColor(.gray)
                 .overlay {
                     if model.references.isEmpty && !model.loading {
                         Text(L10n.text("暂无可显示的文献")).font(.callout).foregroundStyle(.secondary)
@@ -176,7 +184,7 @@ struct TrayWorkbenchView: View {
             }
             .foregroundStyle(copied ? Color.green : Color.accentColor)
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(.primary.opacity(0.06), in: Capsule())
+            .background(PanelPalette.controlSurface, in: Capsule())
         }
         .buttonStyle(.plain)
         .help(L10n.text("复制引用键"))
@@ -205,7 +213,7 @@ struct TrayWorkbenchView: View {
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(14)
                 }
-                Divider()
+                PanelSeparator()
                 HStack(spacing: 8) {
                     copyButton(reference.citeKey, L10n.text("复制引用键"))
                     copyButton(reference.source, L10n.text("复制 BibTeX"))

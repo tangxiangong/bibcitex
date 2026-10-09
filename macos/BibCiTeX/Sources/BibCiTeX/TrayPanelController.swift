@@ -32,8 +32,13 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         isVisible = true
         presentation += 1
         let current = presentation
-        panel?.makeKeyAndOrderFront(nil)
-        panel?.orderFrontRegardless()
+        if let panel {
+            let alpha = panel.isVisible ? panel.alphaValue : 0
+            panel.makeKeyAndOrderFront(nil)
+            panel.orderFrontRegardless()
+            PanelSurface.refreshShadow(panel)
+            PanelSurface.fadeIn(panel, from: alpha)
+        }
         installMonitors()
         Task {
             guard isVisible, presentation == current else { return }
@@ -45,7 +50,10 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         isVisible = false
         presentation += 1
         model.suspend()
-        panel?.orderOut(nil)
+        if let panel {
+            // A re-show during the fade owns the panel again.
+            PanelSurface.fadeOut(panel) { [weak self] in self?.isVisible == false }
+        }
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor) }
         keyMonitor = nil; outsideMonitor = nil
@@ -59,30 +67,14 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
         panel.isOpaque = false; panel.hasShadow = true
         panel.isReleasedWhenClosed = false; panel.backgroundColor = .clear
-        panel.animationBehavior = .utilityWindow; panel.delegate = self
+        panel.animationBehavior = .none; panel.delegate = self
         let host = NSHostingController(rootView: TrayWorkbenchView(model: model,
             showMain: { [weak self] in self?.dismiss(); self?.showMain?() },
             dismiss: { [weak self] in self?.dismiss() }))
         host.sizingOptions = []
-        host.view.translatesAutoresizingMaskIntoConstraints = false
-        let surface: NSView
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView()
-            glass.style = .regular; glass.cornerRadius = 12; glass.contentView = host.view
-            surface = glass
-        } else {
-            let material = NSVisualEffectView()
-            material.material = .popover; material.blendingMode = .behindWindow; material.state = .active
-            material.wantsLayer = true; material.layer?.cornerRadius = 12; material.layer?.masksToBounds = true
-            material.addSubview(host.view); surface = material
-        }
-        panel.contentView = surface
-        NSLayoutConstraint.activate([
-            host.view.leadingAnchor.constraint(equalTo: surface.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: surface.trailingAnchor),
-            host.view.topAnchor.constraint(equalTo: surface.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
-        ])
+        // The hosting view is the whole content; TrayWorkbenchView draws and clips the material.
+        host.view.wantsLayer = true
+        panel.contentView = host.view
         self.panel = panel; self.host = host
     }
     private func installMonitors() {
@@ -119,7 +111,10 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
             x = window.convertToScreen(button.convert(button.bounds, to: nil)).midX - width / 2
         }
         x = min(max(x, screen.minX + 8), screen.maxX - width - 8)
-        panel.setFrame(NSRect(x: x, y: screen.maxY - height - 6, width: width, height: height), display: true)
+        let frame = NSRect(x: x, y: screen.maxY - height - 6, width: width, height: height)
+        guard panel.frame != frame else { return }
+        panel.setFrame(frame, display: true)
+        PanelSurface.refreshShadow(panel)
     }
     func windowDidResignKey(_ notification: Notification) { dismiss() }
 }

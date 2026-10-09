@@ -13,7 +13,9 @@ struct WorkbenchView: View {
 
     var body: some View {
         panes
-            .background(AutoHidingScrollbars())
+            // Like the helper and the tray, the workbench never shows scrollers.
+            .scrollIndicators(.never)
+            .background(AutoHidingScrollbars(alwaysHidden: true))
             .background(NeutralListSelection())
             // Below ~1240pt with the inspector shown, the macOS 26+ split view never
             // settles its column sizes and AppKit aborts with an endless Update
@@ -140,8 +142,8 @@ struct WorkbenchView: View {
                             editingLibrary = library
                         }.tag(library.name)
                         .foregroundStyle(Color(nsColor: .labelColor))
-                        .listRowBackground(model.selectedLibrary == library.name
-                            ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear)
+                        .listRowBackground(RowSelectionBackground(selected: model.selectedLibrary == library.name,
+                            fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor)))
                     }
                 }.listStyle(.sidebar)
             }
@@ -212,8 +214,8 @@ struct WorkbenchView: View {
                                 ListCiteKey(reference: reference, model: model)
                             }.padding(.vertical, 8).tag(reference.citeKey).id(reference.citeKey)
                             .foregroundStyle(Color(nsColor: .labelColor))
-                            .listRowBackground(model.selectedReference == reference.citeKey
-                                ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear)
+                            .listRowBackground(RowSelectionBackground(selected: model.selectedReference == reference.citeKey,
+                                fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor)))
                             .contextMenu {
                                 Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
                                 Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
@@ -306,7 +308,7 @@ private struct ListCiteKey: View {
             }
             .foregroundStyle(copied ? Color.green : Color.accentColor)
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(.primary.opacity(0.06), in: Capsule())
+            .background(PanelPalette.controlSurface, in: Capsule())
         }
         .buttonStyle(.plain)
         .help(L10n.text("复制引用键"))

@@ -22,7 +22,7 @@ final class HelperViewModel: ObservableObject {
     @Published private(set) var isSelectingBibliography = true
     @Published private(set) var selectedBibliographyIndex: Int?
     @Published private(set) var selectedReferenceIndex: Int?
-    @Published private(set) var preferredHeight: CGFloat = 56
+    @Published private(set) var preferredHeight: CGFloat = HelperMetrics.header
 
     @Published var focusRequest = 0
     @Published private(set) var isSearching = false
@@ -403,6 +403,12 @@ final class HelperViewModel: ObservableObject {
         searchVersion += 1
     }
 
+    /// The floating key hints belong to a result list, where Return and Tab both apply.
+    var showsBottomBar: Bool {
+        !isLoading && !isSelectingBibliography && !searchResults.isEmpty
+            && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     func recalcHeight() {
         let listHeight: CGFloat
 
@@ -419,6 +425,7 @@ final class HelperViewModel: ObservableObject {
             if searchResults.isEmpty {
                 listHeight = HelperMetrics.emptyRow
             } else {
+                // The floating controls overlay the list and take no height of their own.
                 listHeight = min(CGFloat(searchResults.count) * (rowHeightSearch + 2) + HelperMetrics.listPadding, maxListHeight)
             }
         }

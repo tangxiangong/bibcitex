@@ -16,10 +16,15 @@ struct HelperView: View {
                 errorBar(error)
             }
             if showsList {
-                Divider()
+                PanelSeparator()
                 content
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(PanelPalette.scrim)
+        .background(PanelMaterial(radius: HelperMetrics.panelRadius, fallback: .hudWindow,
+            fallbackState: .followsWindowActiveState))
+        .clipShape(RoundedRectangle(cornerRadius: HelperMetrics.panelRadius, style: .continuous))
         .ignoresSafeArea()
         .scrollIndicators(.never)
         .onAppear { searchFocused = true }
@@ -38,11 +43,12 @@ struct HelperView: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            NativeIcon("search", size: 22)
+            NativeIcon("search", size: 18)
+                .fontWeight(.medium)
                 .foregroundStyle(.secondary)
             TextField(placeholder,
                 text: Binding(get: { model.query }, set: { model.requestQuery($0) }))
-                .font(.system(size: 22))
+                .font(.system(size: 20))
                 .textFieldStyle(.plain)
                 .focused($searchFocused)
                 .accessibilityLabel(L10n.text("搜索"))
@@ -51,7 +57,8 @@ struct HelperView: View {
             }
             libraryButton
         }
-        .padding(.horizontal, 22)
+        // Aligns the search glyph with the row glyphs: list padding plus row padding.
+        .padding(.horizontal, 18)
         .frame(height: HelperMetrics.header)
     }
 
@@ -68,12 +75,45 @@ struct HelperView: View {
                 }
                 .font(.system(size: 11, weight: .medium))
                 .padding(.horizontal, 10).padding(.vertical, 6)
-                .background(.quaternary, in: Capsule())
+                .background(PanelPalette.controlSurface, in: Capsule())
             }
             .buttonStyle(.plain)
             .help(L10n.text("切换文献库 (Tab)"))
             .frame(maxWidth: 160)
             .accessibilityLabel(L10n.text("切换文献库"))
+        }
+    }
+
+    /// Floating controls, no bar: Return (cross-app paste) and Tab as clickable
+    /// hints, grouped in one capsule at the trailing edge.
+    private var bottomBar: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            HStack(spacing: 2) {
+                HelperBarButton(action: { model.activateSelection(onSuccess: onHidePanel) }) {
+                    barHint(L10n.text("粘贴引用键"), key: "↵")
+                }
+                .disabled(model.selectedReferenceIndex == nil)
+                HelperBarButton(action: {
+                    model.startSelectMode()
+                    searchFocused = true
+                }) {
+                    barHint(L10n.text("切换文献库"), key: "⇥")
+                }
+            }
+            .padding(4)
+            .panelGlassCapsule()
+        }
+        .padding(.horizontal, 12)
+        .frame(height: HelperMetrics.bottomBar)
+    }
+
+    private func barHint(_ title: String, key: String) -> some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            HelperKeyCap(text: key)
         }
     }
 
@@ -146,14 +186,39 @@ struct HelperView: View {
                                 .accessibilityElement(children: .contain)
                                 .accessibilityAddTraits(model.selectedReferenceIndex == index ? .isSelected : [])
                         }
-                    }.frame(maxWidth: .infinity).padding(8)
+                    }
+                    .frame(maxWidth: .infinity).padding(8)
                 }
                 .scrollIndicators(.never)
+                .mask(bottomDissolve)
+                // An inset rather than an overlay: rows scroll beneath the controls,
+                // while keyboard scrolling still lands the selection clear of them.
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if model.showsBottomBar { bottomBar }
+                }
                 .onChange(of: model.selectedReferenceIndex) { index in
                     if let index { proxy.scrollTo(index) }
                 }
             }
         }
+    }
+
+    /// Ghosts rows passing beneath the floating controls. The ramp stays inside the
+    /// bottom inset, so a list resting against its end is never faded.
+    private var bottomDissolve: some View {
+        GeometryReader { geo in
+            let band = model.showsBottomBar ? min(HelperMetrics.bottomBar / max(geo.size.height, 1), 1) : 0
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 1 - band),
+                    .init(color: .black.opacity(0.25), location: 1 - band / 2),
+                    .init(color: .black.opacity(0), location: 1),
+                ],
+                startPoint: .top, endPoint: .bottom)
+        }
+        // Spans the scroll view's full frame, including the controls' inset.
+        .ignoresSafeArea()
     }
 
     /// Same fields as the workbench sidebar: name first, path as the secondary line.
@@ -221,8 +286,8 @@ struct HelperView: View {
     }
 
     private func selection(_ selected: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 7)
-            .fill(selected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : .clear)
+        RoundedRectangle(cornerRadius: HelperMetrics.rowRadius, style: .continuous)
+            .fill(selected ? PanelPalette.selection : .clear)
     }
 
     private func emptyState(_ text: String, symbol: String) -> some View {
@@ -230,6 +295,44 @@ struct HelperView: View {
             NativeIcon(symbol, size: 24)
             Text(text).font(.system(size: 12))
         }.foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: HelperMetrics.emptyRow)
+    }
+}
+
+/// A footer control: text and keycap that light up in a capsule under the pointer.
+private struct HelperBarButton<Label: View>: View {
+    let action: () -> Void
+    @ViewBuilder let label: Label
+    @State private var hovered = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Button(action: action) {
+            label
+                .padding(.horizontal, 10)
+                .frame(height: HelperMetrics.barButton)
+                .background(hovered && isEnabled ? PanelPalette.rowHover : .clear, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .opacity(isEnabled ? 1 : 0.5)
+        .onHover { hovered = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovered)
+    }
+}
+
+/// An outlined key, sized to sit beside a footer label.
+private struct HelperKeyCap: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(minWidth: HelperMetrics.keyCap, minHeight: HelperMetrics.keyCap)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(PanelPalette.border, lineWidth: 1)
+            )
     }
 }
 

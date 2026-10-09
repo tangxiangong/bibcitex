@@ -306,6 +306,139 @@ final class ScrollbarConfigurationView: NSView {
     }
 }
 
+/// Neutral colours shared by the floating glass panels (helper and tray).
+/// `primary` is white ink in dark appearances and black ink in light ones, so
+/// these adapt through SwiftUI itself rather than a dynamic-provider NSColor.
+enum PanelPalette {
+    /// Laid over the glass so the panel keeps its contrast whatever is behind it.
+    static let scrim = Color(nsColor: .windowBackgroundColor).opacity(0.5)
+    static let selection = Color.primary.opacity(0.10)
+    static let rowHover = Color.primary.opacity(0.05)
+    static let border = Color.primary.opacity(0.20)
+    static let separator = Color.primary.opacity(0.10)
+    static let controlSurface = Color.primary.opacity(0.08)
+}
+
+/// A one-point rule in the panel separator colour.
+struct PanelSeparator: View {
+    var vertical = false
+
+    var body: some View {
+        Rectangle()
+            .fill(PanelPalette.separator)
+            .frame(width: vertical ? 1 : nil, height: vertical ? nil : 1)
+    }
+}
+
+/// A list row's selection: one rounded, inset shape for every list, so a
+/// selected row reads the same in the helper, the tray and the main window.
+struct RowSelectionBackground: View {
+    var selected: Bool
+    var fill: Color = PanelPalette.selection
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(selected ? fill : .clear)
+            .padding(.horizontal, 6)
+    }
+}
+
+/// The panel material as a SwiftUI background, so the hosting view is the window's
+/// whole content and the SwiftUI clip alone shapes what the window draws — and so
+/// its shadow — with no rectangular platform view underneath.
+struct PanelMaterial: NSViewRepresentable {
+    var radius: CGFloat
+    var fallback: NSVisualEffectView.Material
+    var fallbackState: NSVisualEffectView.State = .active
+
+    func makeNSView(context: Context) -> NSView {
+        if #available(macOS 26.0, *) {
+            let glass = NSGlassEffectView()
+            glass.style = .regular
+            glass.cornerRadius = radius
+            return glass
+        }
+        let material = NSVisualEffectView()
+        material.material = fallback
+        material.blendingMode = .behindWindow
+        material.state = fallbackState
+        material.maskImage = PanelSurface.roundedMask(radius: radius)
+        return material
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// Window chrome shared by the borderless glass panels.
+@MainActor
+enum PanelSurface {
+    /// Arrives a beat slower than it leaves, so dismissal feels immediate.
+    static let enter: TimeInterval = 0.18
+    static let exit: TimeInterval = 0.12
+
+    /// A stretchable rounded mask for the pre-glass material, which has no corner radius.
+    static func roundedMask(radius: CGFloat) -> NSImage {
+        let side = radius * 2 + 1
+        let image = NSImage(size: NSSize(width: side, height: side), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        image.resizingMode = .stretch
+        return image
+    }
+
+    /// A borderless shadow follows the drawn content's alpha; without a fresh pass it
+    /// keeps the rectangle of a frame drawn before the rounded content. SwiftUI may
+    /// settle a layout pass later, so the shadow is taken again on the next turn.
+    static func refreshShadow(_ panel: NSWindow) {
+        panel.display()
+        panel.invalidateShadow()
+        DispatchQueue.main.async { [weak panel] in panel?.invalidateShadow() }
+    }
+
+    /// Fades in a panel that was just ordered front from hidden (or mid fade-out).
+    static func fadeIn(_ panel: NSWindow, from alpha: CGFloat) {
+        guard alpha < 1 else { panel.alphaValue = 1; return }
+        panel.alphaValue = alpha
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = enter
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+        } completionHandler: { [weak panel] in
+            // The shadow is cached from the frame it was drawn at mid-fade.
+            MainActor.assumeIsolated { panel?.invalidateShadow() }
+        }
+    }
+
+    /// Fades a panel out; `shouldOrderOut` lets a re-show during the fade keep it.
+    static func fadeOut(_ panel: NSWindow, shouldOrderOut: @escaping @MainActor () -> Bool) {
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = exit
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+        } completionHandler: { [weak panel] in
+            MainActor.assumeIsolated {
+                guard let panel, shouldOrderOut() else { return }
+                panel.orderOut(nil)
+                panel.alphaValue = 1
+            }
+        }
+    }
+}
+
+extension View {
+    /// Interactive Liquid Glass where available; a quiet filled capsule before it.
+    @ViewBuilder func panelGlassCapsule() -> some View {
+        if #available(macOS 26.0, *) {
+            glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            background(PanelPalette.controlSurface, in: Capsule())
+        }
+    }
+}
+
 /// Panel boundaries expressed with system semantics rather than paired opaque
 /// fills. A separator is one hairline of `separatorColor`, whose alpha adapts to
 /// light, dark and high-contrast appearances on its own — no `colorScheme` branch.

@@ -142,10 +142,13 @@ final class HelperPanelController: NSObject {
     }
 
     private func showWithoutActivatingApplication(_ panel: NSPanel) {
+        let alpha = panel.isVisible ? panel.alphaValue : 0
         // Order just this nonactivating panel, then give it keyboard focus.
         // Do not unhide/activate the app, which would restore its other windows.
         panel.orderFrontRegardless()
         panel.makeKey()
+        PanelSurface.refreshShadow(panel)
+        PanelSurface.fadeIn(panel, from: alpha)
     }
 
     func hidePanel() {
@@ -156,8 +159,10 @@ final class HelperPanelController: NSObject {
             panel.endSheet(sheet, returnCode: .cancel)
         }
         failureAlert = nil
-        panel?.orderOut(nil)
         removeKeyMonitor()
+        guard let panel, panel.isVisible else { return }
+        // A re-show during the fade owns the panel again.
+        PanelSurface.fadeOut(panel) { [weak self] in self?.isVisible == false }
     }
 
     func isPanelVisible() -> Bool {
@@ -175,10 +180,11 @@ final class HelperPanelController: NSObject {
         }
 
         let frame = NSRect(x: 0, y: 0, width: 720, height: model.preferredHeight)
+        // Borderless: the rounded content alone shapes the panel and its shadow.
         let style: NSWindow.StyleMask = [
+            .borderless,
             .nonactivatingPanel,
             .fullSizeContentView,
-            .titled,
         ]
 
         let panel = HelperPanel(
@@ -197,12 +203,8 @@ final class HelperPanelController: NSObject {
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
         panel.isOpaque = false
         panel.hasShadow = true
+        panel.animationBehavior = .none
         panel.isReleasedWhenClosed = false
-        panel.titlebarAppearsTransparent = true
-        panel.titleVisibility = .hidden
-        panel.standardWindowButton(.closeButton)?.isHidden = true
-        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.delegate = self
         panel.appearance = nil
 
@@ -212,31 +214,10 @@ final class HelperPanelController: NSObject {
             // The model owns the panel height, including shrinking back to search-only.
             host.sizingOptions = []
         }
-        host.view.translatesAutoresizingMaskIntoConstraints = false
         panel.minSize = NSSize(width: 0, height: HelperMetrics.header)
-
-        let surface: NSView
-        if #available(macOS 26.0, *) {
-            let glass = NSGlassEffectView()
-            glass.style = .regular
-            glass.cornerRadius = 18
-            glass.contentView = host.view
-            surface = glass
-        } else {
-            let material = NSVisualEffectView()
-            material.material = .hudWindow
-            material.blendingMode = .behindWindow
-            material.state = .followsWindowActiveState
-            material.addSubview(host.view)
-            surface = material
-        }
-        panel.contentView = surface
-        NSLayoutConstraint.activate([
-            host.view.leadingAnchor.constraint(equalTo: surface.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: surface.trailingAnchor),
-            host.view.topAnchor.constraint(equalTo: surface.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: surface.bottomAnchor),
-        ])
+        // The hosting view is the whole content; HelperView draws and clips the material.
+        host.view.wantsLayer = true
+        panel.contentView = host.view
         panel.backgroundColor = .clear
 
         self.panel = panel
@@ -286,6 +267,7 @@ final class HelperPanelController: NSObject {
         frame.origin = CGPoint(x: x, y: y)
         if panel.frame != frame {
             panel.setFrame(frame, display: true, animate: false)
+            PanelSurface.refreshShadow(panel)
         }
     }
 }
