@@ -1,5 +1,6 @@
 pub mod cos;
 pub mod linux;
+pub mod notes;
 
 use base64::Engine;
 use ed25519_dalek::{Signature, VerifyingKey};

@@ -201,8 +201,7 @@ jobs:
           RELEASE_REVISION: ${{ needs.prepare.outputs.revision }}
         run: |
           test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_REVISION"
-          cp "release-notes/$VERSION/zh-Hans.md" release-assets/notes-zh-Hans.md
-          cp "release-notes/$VERSION/en.md" release-assets/notes-en.md
+          cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- release-notes "release-notes/$VERSION" release-assets
           cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-release
       - name: Publish verified artifacts and channel feeds to COS
         env:

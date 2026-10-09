@@ -35,9 +35,12 @@ if (-not (Test-Path (Join-Path $Tools 'vpk.exe'))) {
     if ($LASTEXITCODE -ne 0) { throw 'Velopack tool installation failed.' }
 }
 New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
+$FilteredNotes = Join-Path $Publish 'platform-notes'
+& cargo run --locked --manifest-path (Join-Path $Repo 'Cargo.toml') -p xtask -- release-notes $Notes $FilteredNotes
+if ($LASTEXITCODE -ne 0) { throw 'Release note platform selection failed.' }
 $Combined = Join-Path $Publish 'release-notes.md'
-$Text = "<!-- locale:zh-Hans -->`n" + (Get-Content -Raw (Join-Path $Notes 'zh-Hans.md')) + "`n<!-- /locale -->`n<!-- locale:en -->`n" + (Get-Content -Raw (Join-Path $Notes 'en.md')) + "`n<!-- /locale -->"
-[IO.File]::WriteAllText($Combined, $Text)
+Move-Item (Join-Path $FilteredNotes 'notes-windows.md') $Combined
+Remove-Item -Recurse -Force $FilteredNotes
 # MSI has numeric versions; the CI run sequence is independent from display SemVer.
 $MsiVersion = "1.$([math]::Floor($BuildNumber / 65536)).$($BuildNumber % 65536)"
 if ($BuildNumber -ge 16777216) { throw 'MSI build sequence exhausted.' }

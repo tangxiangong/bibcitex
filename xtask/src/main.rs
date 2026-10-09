@@ -8,6 +8,7 @@ fn run() -> Result<()> {
         .collect::<Vec<_>>()
         .as_slice()
     {
+        ["release-notes", source, destination] => xtask::notes::generate(Path::new(source), Path::new(destination)),
         ["package-linux", binary, directory, arch] => xtask::linux::package(Path::new(binary), Path::new(directory), arch),
         ["sign-linux", directory, arch] => xtask::linux::sign(Path::new(directory), arch),
         ["release-metadata"] => {
@@ -47,7 +48,7 @@ fn run() -> Result<()> {
             &env::var("SPARKLE_PUBLIC_ED_KEY")?,
         ),
         _ => Err(
-            "Usage: xtask release-metadata | verify-release <directory> | publish-release | publish-cos | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
+            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
         ),
     }
 }
