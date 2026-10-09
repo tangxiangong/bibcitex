@@ -42,8 +42,6 @@
 
 Linux 客户端目前是**半成品，仍有许多未解决的问题，不代表可用性或功能对齐已经完成**。当前使用 GPUI Kit，以 macOS 界面为基准，正在实现工作台、托盘、快捷助手与签名更新；构建安装方法、桌面权限要求和验证范围见 [Linux 开发说明](linux/README.md)。
 
-**0.7.3 仅发布 macOS 和 Windows。Linux Release CI 暂时停用，不构建或上传 Linux 发布产物，待 Linux 版本完善后恢复；普通 Linux 检查 CI 保留。**
-
 v0.7.3 更新内容：[中文发布说明](release-notes/0.7.3/zh-Hans.md) · [English release notes](release-notes/0.7.3/en.md)。
 
 ### 核心特性
@@ -75,23 +73,6 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 > **提示**: 这是由于 macOS 的安全机制导致的，执行上述命令后即可正常使用。
 
-### 支持的文献类型
-
-<div align="center">
-
-|     类型      |  状态  |     类型     |  状态  |
-| :-----------: | :----: | :----------: | :----: |
-|    Article    |   ✓    |     Book     |   ✓    |
-|    Thesis     |   ✓    |   Booklet    |   ✓    |
-|    InBook     |   ✓    | InCollection |   ✓    |
-|     Misc      |   ✓    |  TechReport  |   ✓    |
-| InProceedings |   ✓    |    Manual    | 进行中 |
-|  Proceedings  | 进行中 | Unpublished  | 进行中 |
-
-</div>
-
-> ✓ 已支持 &nbsp;&nbsp; 进行中 开发中
-
 ## 界面功能预览
 
 以下动图来自历史版本。
@@ -121,6 +102,17 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 </div>
 
 </div>
+
+## TODO
+
+以下为后续规划，尚未实施；详细待办见 [TODO.md](./TODO.md)。
+
+- [ ] **普通搜索增强**：多关键词、模糊匹配、相关性排序与性能优化。
+- [ ] **高级搜索**：支持字段查询、精确短语、排除条件及年份范围。
+- [ ] **Tag 功能**：标签管理、批量添加与移除，以及标签筛选。
+- [ ] **Helper 筛选指令**：输入 `@`、`$`、`#` 分别显示文献类型、字段、标签候选，并提供小输入框完成筛选。
+- [ ] **多选功能**：主窗口与 helper 支持多篇选择及批量操作。
+- [ ] **复制与粘贴格式**：支持裸 cite key、LaTeX 和 Typst 引用预设，以及多篇引用组合。
 
 ## 第三方代码版权声明 (Third-Party Code Attribution**)
 
