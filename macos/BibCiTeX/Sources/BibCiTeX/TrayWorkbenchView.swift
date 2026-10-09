@@ -39,7 +39,8 @@ struct TrayWorkbenchView: View {
                         Menu {
                             Picker(L10n.text("文献库"), selection: $model.libraryName) {
                                 ForEach(model.libraries) { library in
-                                    Text(library.name).tag(Optional(library.name))
+                                    Text(library.available ? library.name : "\(library.name) · \(L10n.text("不可用"))")
+                                        .tag(Optional(library.name)).disabled(!library.available)
                                 }
                             }
                         } label: {

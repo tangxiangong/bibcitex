@@ -131,7 +131,8 @@ final class WorkbenchModel: ObservableObject {
             libraries = loaded
             if !loaded.contains(where: { $0.name == requested.library }) {
                 let saved = preferences.string(forKey: "mainLibrary")
-                requested.library = loaded.first(where: { $0.name == saved })?.name ?? loaded.first?.name
+                // A missing saved library stays selected as unavailable; never substitute another.
+                requested.library = loaded.first(where: { $0.name == saved })?.name ?? loaded.first(where: \.available)?.name
             }
             scheduleSearch()
         } catch {
@@ -164,7 +165,8 @@ final class WorkbenchModel: ObservableObject {
         if query != request.query { query = request.query }
         if field != request.field { field = request.field }
         if type != request.type { type = request.type }
-        guard let library else {
+        guard let library, library.available else {
+            searchTask?.cancel()
             if !references.isEmpty { references = []; referencesRevision += 1 }
             referencesLibraryPath = nil
             if selectedReference != nil { selectedReference = nil }

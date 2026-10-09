@@ -264,4 +264,5 @@ struct Bibliography: Identifiable, Equatable, Sendable {
     let updatedAt: String
     let descriptionText: String?
     var pinned: Bool = false
+    var available: Bool = true
 }

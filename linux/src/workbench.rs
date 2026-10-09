@@ -208,6 +208,7 @@ impl Workbench {
                         if let Some(name) = this
                             .matching_libraries(cx)
                             .get(this.library_cursor)
+                            .filter(|l| l.available)
                             .map(|l| l.name.clone())
                         {
                             this.select_library(name, cx);
@@ -334,6 +335,7 @@ impl Workbench {
             let current = if helper {
                 service::helper_current()
                     .map_err(|e| e.to_string())?
+                    .filter(|l| l.available)
                     .map(|l| l.name)
             } else {
                 None
@@ -355,10 +357,14 @@ impl Workbench {
                             .map(|l| l.path.clone());
                         this.libraries = libraries;
                         if helper {
-                            this.selected_library = current
-                                .filter(|name| this.libraries.iter().any(|l| &l.name == name));
+                            this.selected_library = current.filter(|name| {
+                                this.libraries
+                                    .iter()
+                                    .any(|l| &l.name == name && l.available)
+                            });
                             this.choosing_library = this.selected_library.is_none();
                         }
+                        // A missing saved library stays selected as unavailable; never substitute another.
                         if !helper
                             && !this
                                 .libraries
@@ -369,7 +375,7 @@ impl Workbench {
                                 .libraries
                                 .iter()
                                 .find(|l| Some(&l.path) == selected_path.as_ref())
-                                .or_else(|| this.libraries.first())
+                                .or_else(|| this.libraries.iter().find(|l| l.available))
                                 .map(|l| l.name.clone());
                             this.preferences.update(cx, |p, cx| {
                                 if this.tray {
@@ -417,7 +423,7 @@ impl Workbench {
         let path = self
             .libraries
             .iter()
-            .find(|l| Some(&l.name) == self.selected_library.as_ref())
+            .find(|l| Some(&l.name) == self.selected_library.as_ref() && l.available)
             .map(|l| l.path.clone());
         self.loading = false;
         if self.choosing_library || (self.helper && query.trim().is_empty()) {
@@ -462,6 +468,9 @@ impl Workbench {
     }
 
     fn select_library(&mut self, name: String, cx: &mut Context<Self>) {
+        if self.helper && !self.libraries.iter().any(|l| l.name == name && l.available) {
+            return;
+        }
         if self.selected_library.as_ref() != Some(&name) {
             self.references.clear();
             self.selected = None;
@@ -927,7 +936,22 @@ impl Workbench {
                                         .min_w_0()
                                         .items_start()
                                         .gap_1()
-                                        .child(div().truncate().child(name.clone()))
+                                        .child(
+                                            div()
+                                                .truncate()
+                                                .when(!library.available, |e| {
+                                                    e.text_color(cx.theme().muted_foreground)
+                                                })
+                                                .child(name.clone()),
+                                        )
+                                        .when(!library.available, |e| {
+                                            e.child(
+                                                div()
+                                                    .text_xs()
+                                                    .text_color(cx.theme().muted_foreground)
+                                                    .child(prefs.text("不可用")),
+                                            )
+                                        })
                                         .when_some(
                                             library
                                                 .description
@@ -1328,6 +1352,7 @@ impl Workbench {
         let prefs = self.preferences.read(cx).clone();
         let owner = cx.weak_entity();
         let libraries = self.libraries.clone();
+        let unavailable = prefs.text("不可用").to_string();
         div()
             .flex()
             .flex_col()
@@ -1451,15 +1476,18 @@ impl Workbench {
                                         for library in &libraries {
                                             let owner = owner.clone();
                                             let name = library.name.clone();
-                                            menu = menu.item(
-                                                PopupMenuItem::new(name.clone()).on_click(
-                                                    move |_, _, cx| {
-                                                        let _ = owner.update(cx, |this, cx| {
-                                                            this.select_library(name.clone(), cx)
-                                                        });
-                                                    },
-                                                ),
-                                            );
+                                            let label = if library.available {
+                                                name.clone()
+                                            } else {
+                                                format!("{name} · {unavailable}")
+                                            };
+                                            menu = menu.item(PopupMenuItem::new(label).on_click(
+                                                move |_, _, cx| {
+                                                    let _ = owner.update(cx, |this, cx| {
+                                                        this.select_library(name.clone(), cx)
+                                                    });
+                                                },
+                                            ));
                                         }
                                         menu
                                     }),
@@ -2002,6 +2030,7 @@ impl Render for Workbench {
                     libraries = libraries.child(
                         Button::new(("helper-library", i))
                             .ghost()
+                            .disabled(!library.available)
                             .h(px(56.))
                             .mb(px(2.))
                             .rounded(px(ROW_RADIUS))
@@ -2020,13 +2049,29 @@ impl Render for Workbench {
                                     .flex_col()
                                     .items_start()
                                     .gap(px(3.))
-                                    .child(div().text_size(px(13.)).truncate().child(name.clone()))
+                                    .child(
+                                        div()
+                                            .text_size(px(13.))
+                                            .truncate()
+                                            .when(!library.available, |e| {
+                                                e.text_color(cx.theme().muted_foreground)
+                                            })
+                                            .child(name.clone()),
+                                    )
                                     .child(
                                         div()
                                             .text_size(px(11.))
                                             .text_color(cx.theme().muted_foreground)
                                             .truncate()
-                                            .child(library.path.clone()),
+                                            .child(if library.available {
+                                                library.path.clone()
+                                            } else {
+                                                format!(
+                                                    "{} · {}",
+                                                    self.text("不可用", cx),
+                                                    library.path
+                                                )
+                                            }),
                                     ),
                             )
                             .when(self.selected_library.as_ref() == Some(&name), |button| {

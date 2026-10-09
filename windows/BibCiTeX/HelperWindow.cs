@@ -145,7 +145,7 @@ internal sealed class HelperWindow : Window, IDisposable
             var saved = await RustCore.HelperCurrent();
             if (showVersion != lifecycle) return;
             libraries = rows; current = saved;
-            if (current is not null && !libraries.Any(x => x.Name == current.Name && x.Path == current.Path)) current = null;
+            if (current is not null && !libraries.Any(x => x.Name == current.Name && x.Path == current.Path && x.Available)) current = null;
             selecting = current is null;
             busy = false; SetSearching(false);
             await Refresh();
@@ -231,6 +231,7 @@ internal sealed class HelperWindow : Window, IDisposable
         var request = ++version;
         try
         {
+            if (item.Tag is Library { Available: false }) return;
             if (item.Tag is Library library)
             {
                 busy = true;

@@ -227,11 +227,14 @@ struct HelperView: View {
             NativeIcon("library", size: 15).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 3) {
                 Text(bib.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    .foregroundStyle(bib.available ? .primary : .secondary)
                 Text(bib.path).font(.system(size: 11)).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 8)
-            if model.currentBibliography?.id == bib.id {
+            if !bib.available {
+                Text(L10n.text("不可用")).font(.system(size: 11)).foregroundStyle(.secondary)
+            } else if model.currentBibliography?.id == bib.id {
                 NativeIcon("check", size: 13).foregroundStyle(Color.accentColor)
             }
         }

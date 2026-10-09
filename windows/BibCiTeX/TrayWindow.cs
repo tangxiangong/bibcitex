@@ -213,7 +213,7 @@ internal sealed class TrayWindow : Window
                 ?? NativeSettings.Values["trayLibrary"] as string;
             updating = true;
             library.ItemsSource = rows; library.IsEnabled = rows.Count > 0;
-            library.SelectedItem = rows.FirstOrDefault(x => x.Name == saved) ?? rows.FirstOrDefault();
+            library.SelectedItem = rows.FirstOrDefault(x => x.Name == saved) ?? rows.FirstOrDefault(x => x.Available);
             Localized.Bind(library, LibraryPicker.PlaceholderTextProperty, rows.Count == 0 ? "暂无文献库" : "文献库");
             updating = false;
             await Search();
@@ -233,6 +233,7 @@ internal sealed class TrayWindow : Window
         SetBusy(true); ShowDetail(null); SetError(null);
         if (current is null) { ClearResults(); SetBusy(false); return; }
         NativeSettings.Values["trayLibrary"] = current.Name;
+        if (!current.Available) { ClearResults(); SetBusy(false); return; }
         try
         {
             if (debounce) await Task.Delay(100);

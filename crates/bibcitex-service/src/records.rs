@@ -10,6 +10,8 @@ pub struct LibraryRecord {
     pub updated_at: String,
     pub description: Option<String>,
     pub pinned: bool,
+    /// Whether the registered file existed when the record was read.
+    pub available: bool,
 }
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug)]

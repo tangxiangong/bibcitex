@@ -21,6 +21,7 @@ internal sealed class LibraryPicker : UserControl
             foreach (var library in items)
             {
                 var option = new ToggleMenuFlyoutItem { Text = library.Name, Tag = library };
+                if (!library.Available) Localized.BindValue(option, MenuFlyoutItem.TextProperty, () => $"{library.Name} · {L10n.Text("不可用")}");
                 option.Click += (_, _) => { SelectedItem = library; Refresh(); }; menu.Items.Add(option);
             }
             IsEnabled = items.Count > 0; Refresh();

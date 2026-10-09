@@ -116,7 +116,7 @@ final class HelperViewModel: ObservableObject {
                 bibliographies = state.bibs.sorted {
                     $0.updatedAt.localizedStandardCompare($1.updatedAt) == .orderedDescending
                 }
-                if let current = state.current,
+                if let current = state.current, current.available,
                     let index = bibliographies.firstIndex(where: { $0.id == current.id }) {
                     currentBibliography = bibliographies[index]
                     isSelectingBibliography = false
@@ -228,6 +228,10 @@ final class HelperViewModel: ObservableObject {
     }
 
     func selectBibliography(_ bibliography: Bibliography, at index: Int? = nil) {
+        guard bibliography.available else {
+            if let index { selectedBibliographyIndex = index }
+            return
+        }
         invalidateSearch()
         stateVersion += 1
         let version = stateVersion

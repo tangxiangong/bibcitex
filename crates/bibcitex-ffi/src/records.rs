@@ -14,6 +14,7 @@ pub struct LibraryRecord {
     pub updated_at: String,
     pub description: Option<String>,
     pub pinned: bool,
+    pub available: bool,
 }
 #[uniffi::remote(Enum)]
 pub enum ChunkKind {

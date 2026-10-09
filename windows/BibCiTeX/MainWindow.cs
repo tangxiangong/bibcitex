@@ -322,7 +322,7 @@ internal sealed class MainWindow : Window
             referenceHeader.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
             librariesEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             brand.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            if (libraries.SelectedItem is null && libraries.Items.Count > 0) libraries.SelectedIndex = 0;
+            if (libraries.SelectedItem is null) libraries.SelectedItem = libraries.Items.OfType<ListViewItem>().FirstOrDefault(x => x.Tag is Library { Available: true });
             reloading = false;
             current = (libraries.SelectedItem as ListViewItem)?.Tag as Library;
             if (current is { } selected)
@@ -340,7 +340,7 @@ internal sealed class MainWindow : Window
     private async Task Search(bool debounce = false)
     {
         var version = ++searchVersion; var library = current;
-        if (library is null) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
+        if (library is not { Available: true }) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         SetBusy(true);
         try

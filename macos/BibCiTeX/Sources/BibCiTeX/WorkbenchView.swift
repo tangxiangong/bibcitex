@@ -417,13 +417,14 @@ private struct LibrarySidebarRow: View {
                         .task { renameFocused = true }
                     if let renameError { Text(renameError).font(.caption).foregroundStyle(.red) }
                 } else {
-                    Text(library.name).lineLimit(1)
+                    Text(library.name).lineLimit(1).foregroundStyle(library.available ? .primary : .secondary)
                 }
                 if let description = library.descriptionText, !description.isEmpty {
                     Text(description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
+            if !library.available { Text(L10n.text("不可用")).font(.caption).foregroundStyle(.secondary) }
             if library.pinned { NativeIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel(L10n.text("已置顶")) }
             Menu { actions } label: { NativeIcon("more", size: 16).frame(width: 24, height: 24) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()

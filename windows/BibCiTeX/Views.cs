@@ -348,11 +348,15 @@ internal static class Views
             else stack.Children.Add(new MiddleEllipsisText { Value = PathDisplay.Format(library.Path), Opacity = .6, HorizontalAlignment = HorizontalAlignment.Stretch });
         }
         Grid.SetColumn(stack, 1); row.Children.Add(stack);
-        if (sidebar ? library.Pinned : current)
+        var markers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        if (!library.Available)
         {
-            var marker = new SvgIcon(sidebar ? "pin" : "check", 13) { VerticalAlignment = VerticalAlignment.Center };
-            Grid.SetColumn(marker, 2); row.Children.Add(marker);
+            title.Opacity = .5;
+            var unavailable = new TextBlock { FontSize = 11, Opacity = .6, VerticalAlignment = VerticalAlignment.Center };
+            Localized.Bind(unavailable, TextBlock.TextProperty, "不可用"); markers.Children.Add(unavailable);
         }
+        if (sidebar ? library.Pinned : current) markers.Children.Add(new SvgIcon(sidebar ? "pin" : "check", 13) { VerticalAlignment = VerticalAlignment.Center });
+        if (markers.Children.Count > 0) { Grid.SetColumn(markers, 2); row.Children.Add(markers); }
         var item = new ListViewItem { Content = row, Tag = library, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0), CornerRadius = new CornerRadius(RowRadius) };
         if (!sidebar) item.Height = 58;
         AutomationProperties.SetName(item, library.Name); return item;

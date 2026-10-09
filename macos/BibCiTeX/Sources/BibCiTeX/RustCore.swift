@@ -36,7 +36,7 @@ actor RustCore {
         }
     }
     private func library(_ record: LibraryRecord) -> Bibliography {
-        Bibliography(name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description, pinned: record.pinned)
+        Bibliography(name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description, pinned: record.pinned, available: record.available)
     }
     private func chunks(_ records: [ChunkRecord]) -> [TextChunk] {
         records.map {

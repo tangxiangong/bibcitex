@@ -48,7 +48,7 @@ final class TrayWorkbenchModel: ObservableObject {
             guard version == reloadVersion else { return }
             libraries = rows
             let preferred = libraryName ?? preferences.string(forKey: "trayLibrary")
-            let selected = rows.first { $0.name == preferred }?.name ?? rows.first?.name
+            let selected = rows.first { $0.name == preferred }?.name ?? rows.first(where: \.available)?.name
             if libraryName != selected { libraryName = selected } else { search() }
         } catch {
             guard version == reloadVersion else { return }
@@ -68,7 +68,7 @@ final class TrayWorkbenchModel: ObservableObject {
             guard let self, !Task.isCancelled else { return }
             loading = true
             error = nil
-            guard let library else {
+            guard let library, library.available else {
                 references = []; selection = nil; loading = false
                 return
             }

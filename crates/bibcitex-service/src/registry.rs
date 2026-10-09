@@ -78,10 +78,12 @@ fn write(document: &Value) -> Result<()> {
 fn info(name: &str, value: &Value) -> Result<Value> {
     let parsed: BibliographyInfo =
         serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
+    let available = parsed.path.is_file();
     Ok(
         json!({"name": name, "path": parsed.path, "created_at": parsed.created_at,
         "updated_at": parsed.updated_at, "description": parsed.description,
-        "pinned": value["pinned"].as_bool().unwrap_or(false)}),
+        "pinned": value["pinned"].as_bool().unwrap_or(false),
+        "available": available}),
     )
 }
 pub fn libraries() -> Result<Value> {
@@ -228,6 +230,7 @@ mod tests {
         let file = bibliography();
         let path = file.path().to_str().unwrap();
         let library = add("Work", path, Some("description".into())).unwrap();
+        assert_eq!(library["available"], true);
         assert!(current().unwrap().is_null());
         select("Work", library["path"].as_str().unwrap()).unwrap();
         assert_eq!(current().unwrap(), library);
@@ -289,6 +292,7 @@ mod tests {
         drop(file);
         let renamed = update("Alpha", "Offline", None, None).unwrap();
         assert_eq!(renamed["name"], "Offline");
+        assert_eq!(renamed["available"], false);
     }
     #[test]
     fn pinning_persists_and_unpinning_restores_name_order() {
