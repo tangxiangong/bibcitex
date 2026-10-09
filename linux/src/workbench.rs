@@ -1968,6 +1968,26 @@ impl Render for Workbench {
                                 .on_click(cx.listener(|this, _, _, cx| this.reload(cx))),
                         )
                         .child(
+                            Button::new("settings")
+                                .when(update_available, |button| button.label(prefs.text("更新")))
+                                .ghost()
+                                .icon(icon("settings"))
+                                .accessibility_label(prefs.text("设置"))
+                                .tooltip(prefs.text("设置"))
+                                .on_click(cx.listener(|this, _, _, cx| this.open_settings(cx))),
+                        )
+                        .child(
+                            Button::new("about")
+                                .ghost()
+                                .icon(icon("info"))
+                                .accessibility_label(prefs.text("关于 BibCiTeX"))
+                                .tooltip(prefs.text("关于 BibCiTeX"))
+                                .on_click(|_, _, cx| {
+                                    crate::application::send(bibcitex_linux::Command::About, cx);
+                                }),
+                        )
+                        .child(div().mx_1().w_px().h(px(20.)).bg(cx.theme().border))
+                        .child(
                             Button::new("inspector")
                                 .ghost()
                                 .icon(icon(if prefs.inspector {
@@ -1984,25 +2004,6 @@ impl Render for Workbench {
                                     });
                                     this.persist(cx);
                                 })),
-                        )
-                        .child(
-                            Button::new("about")
-                                .ghost()
-                                .icon(icon("info"))
-                                .accessibility_label(prefs.text("关于 BibCiTeX"))
-                                .tooltip(prefs.text("关于 BibCiTeX"))
-                                .on_click(|_, _, cx| {
-                                    crate::application::send(bibcitex_linux::Command::About, cx);
-                                }),
-                        )
-                        .child(
-                            Button::new("settings")
-                                .when(update_available, |button| button.label(prefs.text("更新")))
-                                .ghost()
-                                .icon(icon("settings"))
-                                .accessibility_label(prefs.text("设置"))
-                                .tooltip(prefs.text("设置"))
-                                .on_click(cx.listener(|this, _, _, cx| this.open_settings(cx))),
                         ),
                 )
                 .child(

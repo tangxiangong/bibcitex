@@ -75,8 +75,8 @@ internal sealed class MainWindow : Window
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var primary = Views.Row(Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
-            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), inspectorToggle, Views.Button("settings", "设置", ShowSettings),
-            Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()));
+            Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), Views.Button("settings", "设置", ShowSettings),
+            Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()), GroupSeparator(), inspectorToggle);
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
         chrome.Children.Add(toolbar); chrome.Children.Add(Views.Divider());
         Grid.SetColumnSpan(chrome, 5); root.Children.Add(chrome);
@@ -180,6 +180,12 @@ internal sealed class MainWindow : Window
         Add(VirtualKey.K, () => _ = App.Helper!.Toggle(), VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
         Add(VirtualKey.C, () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = Copy(selected.Key); }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
         Add(VirtualKey.R, () => _ = ReloadLibraries());
+    }
+    /// Sets the pane toggle apart as its own trailing group, as in Xcode.
+    private static Border GroupSeparator()
+    {
+        var line = Views.Divider(vertical: true); line.Height = 20; line.Margin = new Thickness(4, 0, 4, 0); line.VerticalAlignment = VerticalAlignment.Center;
+        return line;
     }
     private static ToggleButton PaneToggle(string icon, string label, Action action)
     {

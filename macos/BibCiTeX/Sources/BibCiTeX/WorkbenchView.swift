@@ -15,7 +15,10 @@ struct WorkbenchView: View {
         panes
             .background(AutoHidingScrollbars())
             .background(NeutralListSelection())
-            .frame(minWidth: 800, minHeight: 520)
+            // Below ~1240pt with the inspector shown, the macOS 26+ split view never
+            // settles its column sizes and AppKit aborts with an endless Update
+            // Constraints loop, so the window stays above that width.
+            .frame(minWidth: 1280, minHeight: 520)
             .toolbar {
                 // NavigationSplitView supplies its own sidebar toggle, so the
                 // hand-written one is only needed by the 13 fallback layout.
@@ -35,6 +38,7 @@ struct WorkbenchView: View {
                         Spacer()
                         toolbarActions
                     }
+                    ToolbarItem { inspectorToggle }
                 }
             }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
@@ -48,8 +52,12 @@ struct WorkbenchView: View {
     @ViewBuilder private var toolbarActions: some View {
         Button { HelperPanelController.shared.showPanel() } label: { NativeIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
         Button { Task { await model.reload() } } label: { NativeIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
-        Button { model.showInspector.toggle() } label: { NativeIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
         Button { openWindow(id: "settings") } label: { NativeIcon("settings") }.help(L10n.text("设置")).accessibilityLabel(L10n.text("设置"))
+    }
+
+    /// Kept out of `toolbarActions` so it forms its own trailing group, as in Xcode.
+    private var inspectorToggle: some View {
+        Button { model.showInspector.toggle() } label: { NativeIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
     }
 
     /// The standard three-pane idiom where the system provides it. On macOS 14+
@@ -74,6 +82,10 @@ struct WorkbenchView: View {
                             if #unavailable(macOS 26.0) { Spacer() }
                             toolbarActions
                         }
+                        if #available(macOS 26.0, *) {
+                            ToolbarSpacer(.fixed)
+                        }
+                        ToolbarItem { inspectorToggle }
                     }
             }
         } else {
