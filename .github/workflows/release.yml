@@ -34,7 +34,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
           cargo run --locked -p xtask -- release-metadata
-          if test -f linux/Cargo.toml; then echo 'linux=true' >> "$GITHUB_OUTPUT"; else echo 'linux=false' >> "$GITHUB_OUTPUT"; fi
+          # Keep Linux release builds disabled until the client is ready for release.
+          echo 'linux=false' >> "$GITHUB_OUTPUT"
           git show-ref --verify "refs/tags/$RELEASE_TAG"
           printf 'tag=%s\n' "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           printf 'revision=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -186,7 +187,18 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
-          pattern: release-*
+          pattern: release-macos-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-windows-*
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/download-artifact@v8
+        if: needs.prepare.outputs.linux == 'true'
+        with:
+          pattern: release-linux-*
           path: release-assets
           merge-multiple: true
       - uses: dtolnay/rust-toolchain@stable
@@ -199,9 +211,13 @@ jobs:
           BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
           VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_REVISION: ${{ needs.prepare.outputs.revision }}
+          INCLUDE_LINUX: ${{ needs.prepare.outputs.linux }}
         run: |
           test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_REVISION"
           cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- release-notes "release-notes/$VERSION" release-assets
+          if test "$INCLUDE_LINUX" != true; then
+            rm -f release-assets/notes-linux-en.md release-assets/notes-linux-zh-Hans.md
+          fi
           cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- publish-release
       - name: Publish verified artifacts and channel feeds to COS
         env:

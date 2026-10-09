@@ -653,14 +653,14 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-bindgen"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "uniffi",
 ]
 
 [[package]]
 name = "bibcitex-core"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "biblatex",
  "chrono",
@@ -676,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-csharp"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "bibcitex-service",
  "interoptopus",
@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-csharp-bindgen"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "bibcitex-csharp",
  "interoptopus_csharp",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-ffi"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "bibcitex-service",
  "uniffi",
@@ -701,7 +701,7 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-linux"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "ashpd",
  "async-channel",
@@ -733,7 +733,7 @@ dependencies = [
 
 [[package]]
 name = "bibcitex-service"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "bibcitex-core",
  "biblatex",
@@ -9514,7 +9514,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xpaste"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "arboard",
  "dispatch2",
@@ -9526,7 +9526,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "base64 0.23.1",
  "ed25519-dalek",

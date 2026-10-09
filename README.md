@@ -19,16 +19,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.2/BibCiTeX-0.7.2-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.2/BibCiTeX-0.7.2-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.2/BibCiTeX-0.7.2-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.2/BibCiTeX-0.7.2-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -42,7 +42,9 @@
 
 Linux 客户端目前是**半成品，仍有许多未解决的问题，不代表可用性或功能对齐已经完成**。当前使用 GPUI Kit，以 macOS 界面为基准，正在实现工作台、托盘、快捷助手与签名更新；构建安装方法、桌面权限要求和验证范围见 [Linux 开发说明](linux/README.md)。
 
-v0.7.2 更新内容：[中文发布说明](release-notes/0.7.2/zh-Hans.md) · [English release notes](release-notes/0.7.2/en.md)。
+**0.7.3 仅发布 macOS 和 Windows。Linux Release CI 暂时停用，不构建或上传 Linux 发布产物，待 Linux 版本完善后恢复；普通 Linux 检查 CI 保留。**
+
+v0.7.3 更新内容：[中文发布说明](release-notes/0.7.3/zh-Hans.md) · [English release notes](release-notes/0.7.3/en.md)。
 
 ### 核心特性
 

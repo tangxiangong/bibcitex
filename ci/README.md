@@ -71,13 +71,20 @@ there is no need to rebuild or republish release assets.
 
 ## Linux releases
 
-Linux uses native Ubuntu 24.04 x86-64 and ARM64 runners with GPUI Kit. The release
+Linux Release CI is temporarily disabled until the client is ready for release.
+The Release workflow explicitly emits `linux=false`; restore platform detection there
+only after Linux release acceptance. Ordinary Check CI, including Linux client builds
+and tests, remains enabled. While Release CI is disabled, publication collects only
+macOS and Windows artifacts, excludes Linux announcement assets, and does not build,
+sign, upload, or publish Linux packages to GitHub or COS.
+
+When re-enabled, Linux uses native Ubuntu 24.04 x86-64 and ARM64 runners with GPUI Kit. The release
 job builds a portable `.tar.gz` and a `.deb`, plus `linux-ARCH.json` and its detached
 Ed25519 signature. `xtask package-linux` generates packages without launching the
 app; `xtask sign-linux` signs metadata; release verification validates both Linux
 architectures and both payload hashes whenever Linux assets are present.
 
-The `release` environment must provide:
+Before re-enabling Linux releases, the `release` environment must provide:
 
 - Variable `BIBCITEX_LINUX_UPDATE_PUBLIC_KEY`: base64 32-byte Ed25519 public key,
   embedded in the Linux release binary and used by publication verification.

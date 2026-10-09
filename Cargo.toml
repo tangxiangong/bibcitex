@@ -17,7 +17,7 @@ resolver = "3"
 authors = ["tangxiangong <tangxiangong@gmail.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
-version = "0.7.2"
+version = "0.7.3"
 
 [workspace.dependencies]
 async-channel = "2"

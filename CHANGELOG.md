@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.3] - 2026-10-09
+
+### Features and interface
+
+- Mark libraries with missing files as unavailable, preserve the saved default, and guide quick citation back to library selection.
+- Use reference titles as detail headers, keep BibTeX expanded, and place copy actions beside their fields.
+- Make URL, DOI, and main-window file values directly clickable.
+- Unify rounded selections across the workbench, tray, and helper; refine helper controls and move the details toggle to the toolbar's right edge.
+- Refine macOS glass panels, shadows, corners, and transitions, with materials compatible with older macOS versions.
+- Refine Windows tray panels, toolbars, and scrollbar visibility.
+
+### Bug fixes
+
+- Restore macOS library action menu icons and prevent layout loops when restoring narrow main windows with reference details visible.
+- Restore Windows search pointers and insertion carets, and improve focus visibility and high-contrast styling.
+
+### Updates and release scope
+
+- Filter in-app release notes to common and matching platform updates; generate a complete bilingual GitHub announcement with platform labels.
+- Publish macOS and Windows only. Temporarily disable Linux Release CI, including builds, signing, artifact upload, and publication, until the client is ready; retain ordinary Linux Check CI.
+- Update the Homebrew tap after successful publication.
+
+Release notes: [简体中文](release-notes/0.7.3/zh-Hans.md) · [English](release-notes/0.7.3/en.md) · [GitHub announcement](release-notes/0.7.3/release-body.md).
+
 ## [0.7.2] - 2026-10-07
 
 ### Bug fixes

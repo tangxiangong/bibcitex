@@ -152,10 +152,11 @@ variable and a `LINUX_UPDATE_PRIVATE_KEY` secret containing the base64 32-byte
 private seed. No private key is compiled into the client. Builds without a public
 key can run, but cannot accept updates.
 
-The release workflow builds Linux x86-64 and ARM64 packages, signs each architecture's
-metadata, verifies both architectures and both payload formats before publication,
-and mirrors the artifacts to COS alongside the existing platform releases. Older
-release repair workflows remain compatible with tags that have no Linux client.
+Linux Release CI is temporarily disabled until the client is ready. Version 0.7.3
+ships only macOS and Windows: no Linux release binaries or packages are built,
+signed, uploaded, or published to GitHub/COS. Ordinary Linux Check CI remains
+enabled. See [release configuration](../ci/README.md#linux-releases) for the
+conditions for restoring Linux publication.
 
 Portable updates verify Ed25519 metadata, exact version/architecture/file names,
 size and SHA-256, then replace only `bin/bibcitex` atomically. Settings offer restart
@@ -170,4 +171,5 @@ package-content/portable-install checks cover compilation, service semantics,
 single-instance IPC, signing, version policy, and installation mechanics. These
 checks do not launch the GPUI application and do not prove GNOME/KDE desktop
 interaction, real cross-application paste, or signed production update delivery.
-The check/release workflows include native Ubuntu x86-64 and ARM64 jobs.
+The Check workflow includes native Ubuntu x86-64 and ARM64 jobs; Linux Release
+jobs remain disabled.
