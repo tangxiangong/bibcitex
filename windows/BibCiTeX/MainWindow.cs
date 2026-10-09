@@ -529,18 +529,23 @@ internal sealed class MainWindow : Window
         detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题");
         if (reference is null) return;
         var libraryPath = current?.Path;
-        var actions = Views.Row(Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key)), Views.CopyButton("clipboard", "复制 BibTeX", () => Copy(reference.Text("source"))));
-        if (reference.Text("file") is { Length: > 0 } file) actions.Children.Add(Views.Button("folderOpen", "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(file, libraryPath, attachment: true); }));
-        if (reference.Text("url") is { Length: > 0 } url) actions.Children.Add(Views.Button("externalLink", "打开 URL", () => _ = OpenUrl(url)));
-        if (reference.Text("doi") is { Length: > 0 } doi) actions.Children.Add(Views.Button("link", "打开 DOI", () => _ = OpenUrl(doi.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? doi : "https://doi.org/" + doi)));
-        detail.Children.Add(Views.HideScrollbars(new ScrollViewer { Content = actions, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         foreach (var (key, label) in Metadata)
         {
             var value = key == "cite_key" ? reference.Key : key == "type" ? reference.TypeLabel : reference.Text(key); if (value.Length == 0) continue;
+            var raw = value;
             if (key == "file") value = PathDisplay.Format(value);
             var section = new StackPanel { Spacing = 4 };
-            var caption = Views.LocalizedText(label, 12); caption.Opacity = .6; section.Children.Add(caption);
+            var caption = Views.LocalizedText(label, 12); caption.Opacity = .6;
+            section.Children.Add(key switch
+            {
+                "cite_key" => Views.Caption(caption, Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key), compact: true)),
+                "source" => Views.Caption(caption, Views.CopyButton("clipboard", "复制 BibTeX", () => Copy(raw), compact: true)),
+                _ => caption,
+            });
             if (key is "title" or "note" or "abstract_" or "book_title" or "issue") section.Children.Add(new ChunkText(reference.Chunks(key), 14, value));
+            else if (key == "file") section.Children.Add(Views.Link(value, 14, "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(raw, libraryPath, attachment: true); }));
+            else if (key == "url") section.Children.Add(Views.Link(value, 14, "打开 URL", () => _ = OpenUrl(raw)));
+            else if (key == "doi") section.Children.Add(Views.Link(value, 14, "打开 DOI", () => _ = OpenUrl(raw.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? raw : "https://doi.org/" + raw)));
             else section.Children.Add(Views.SelectableText(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = key == "source" ? new FontFamily("Cascadia Mono") : new FontFamily("Segoe UI Variable") }));
             if (key == "type" && section.Children[1] is TextBlock typeText) Localized.BindValue(typeText, TextBlock.TextProperty, () => reference.TypeLabel);
             detail.Children.Add(section);

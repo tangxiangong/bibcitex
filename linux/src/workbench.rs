@@ -8,9 +8,35 @@ use gpui_kit::component::{
     menu::{ContextMenuExt, DropdownMenu, PopupMenuItem},
     resizable::{h_resizable, resizable_panel},
     spinner::Spinner,
+    tooltip::Tooltip,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
+
+type LinkAction = Box<dyn Fn(&mut Workbench, &mut Context<Workbench>)>;
+
+enum LinkTarget {
+    /// An HTTP(S) address; `None` when the value is not one, so it stays plain text.
+    Url(&'static str, Option<url::Url>),
+    Action(&'static str, LinkAction),
+}
+
+fn external_target(label: &str, value: &str) -> LinkTarget {
+    let (name, address) = if label == "DOI" {
+        let address = if value.starts_with("https://") || value.starts_with("http://") {
+            value.to_string()
+        } else {
+            format!("https://doi.org/{value}")
+        };
+        ("打开 DOI", address)
+    } else {
+        ("打开 URL", value.to_string())
+    };
+    let url = url::Url::parse(&address)
+        .ok()
+        .filter(|url| matches!(url.scheme(), "http" | "https"));
+    LinkTarget::Url(name, url)
+}
 
 pub const TYPES: &[(&str, &str)] = &[
     ("all", "全部类型"),
@@ -1543,6 +1569,84 @@ impl Workbench {
             )
     }
 
+    /// A detail field: its caption, an optional trailing action on the same line, and its value.
+    fn detail_field(
+        &self,
+        label: SharedString,
+        accessory: Option<Button>,
+        content: AnyElement,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .flex_col()
+            .gap_1()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap_2()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(label),
+                    )
+                    .children(accessory),
+            )
+            .child(content)
+    }
+
+    fn detail_copy(
+        &self,
+        id: &'static str,
+        label: &'static str,
+        symbol: &'static str,
+        value: String,
+        cx: &mut Context<Self>,
+    ) -> Button {
+        let copied = self.copied_detail.as_ref() == Some(&value);
+        Button::new(id)
+            .ghost()
+            .xsmall()
+            .icon(icon(if copied { "check" } else { symbol }).size(px(12.)))
+            .when(copied, |button| button.label(self.text("已复制", cx)))
+            .accessibility_label(self.text(label, cx))
+            .tooltip(self.text(label, cx))
+            .on_click(cx.listener(move |this, _, _, cx| this.copy_detail(value.clone(), cx)))
+    }
+
+    /// A detail value that opens its target when clicked.
+    fn detail_link(
+        &self,
+        id: impl Into<ElementId>,
+        value: &str,
+        target: LinkTarget,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let (label, action): (&'static str, LinkAction) = match target {
+            LinkTarget::Url(label, Some(url)) => (
+                label,
+                Box::new(move |_: &mut Self, cx: &mut Context<Self>| cx.open_url(url.as_str())),
+            ),
+            LinkTarget::Url(_, None) => {
+                return selectable_text(id, value).into_any_element();
+            }
+            LinkTarget::Action(label, action) => (label, action),
+        };
+        let tooltip = self.text(label, cx);
+        div()
+            .id(id)
+            .cursor_pointer()
+            .text_color(cx.theme().link)
+            .hover(|style| style.underline())
+            .child(value.to_string())
+            .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
+            .on_click(cx.listener(move |this, _, _, cx| action(this, cx)))
+            .into_any_element()
+    }
+
     fn tray_inspector(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let selected = self.selected.and_then(|i| self.references.get(i));
         let heading = match selected {
@@ -1599,63 +1703,34 @@ impl Workbench {
                 {
                     continue;
                 }
-                body = body.child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(cx.theme().muted_foreground)
-                                .child(self.text(label, cx)),
-                        )
-                        .child(if label == "摘要" {
-                            crate::math::rich(&record.abstract_text, cx)
-                        } else {
-                            selectable_text(("tray-meta", i), &value).into_any_element()
-                        }),
-                );
-            }
-            body = body.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_1()
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(cx.theme().muted_foreground)
-                            .child("BibTeX"),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .child(selectable_text("tray-source", &record.source)),
+                let accessory = (label == "引用键").then(|| {
+                    self.detail_copy("tray-copy-key", "复制引用键", "copy", value.clone(), cx)
+                });
+                let content = match label {
+                    "摘要" => crate::math::rich(&record.abstract_text, cx),
+                    "DOI" | "URL" => self.detail_link(
+                        ("tray-link", i),
+                        &value,
+                        external_target(label, &value),
+                        cx,
                     ),
-            );
-            let mut actions = div()
-                .p_3()
-                .flex()
-                .gap_2()
-                .border_t_1()
-                .border_color(cx.theme().border);
-            for (id, label, value) in [
-                ("tray-copy-key", "复制引用键", record.cite_key.clone()),
-                ("tray-copy-source", "复制 BibTeX", record.source.clone()),
-            ] {
-                let copied = self.copied_detail.as_ref() == Some(&value);
-                actions = actions.child(
-                    Button::new(id)
-                        .small()
-                        .icon(icon(if copied { "check" } else { "copy" }).size(px(12.)))
-                        .label(self.text(if copied { "已复制" } else { label }, cx))
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.copy_detail(value.clone(), cx)),
-                        ),
-                );
+                    _ => selectable_text(("tray-meta", i), &value).into_any_element(),
+                };
+                body = body.child(self.detail_field(self.text(label, cx), accessory, content, cx));
             }
-            panel = panel.child(body).child(actions);
+            let copy = self.detail_copy(
+                "tray-copy-source",
+                "复制 BibTeX",
+                "clipboard",
+                record.source.clone(),
+                cx,
+            );
+            let source = div()
+                .text_xs()
+                .child(selectable_text("tray-source", &record.source))
+                .into_any_element();
+            body = body.child(self.detail_field("BibTeX".into(), Some(copy), source, cx));
+            panel = panel.child(body);
         } else {
             panel = panel.child(
                 div()
@@ -1685,129 +1760,77 @@ impl Workbench {
             .flex_col()
             .gap_4();
         if let Some(record) = self.selected.and_then(|i| self.references.get(i)) {
-            let key = record.cite_key.clone();
-            let source = record.source.clone();
-            let mut actions = div().flex().items_center().gap_2();
-            for (id, label, symbol, value) in [
-                ("detail-key", "复制引用键", "copy", key),
-                ("detail-bib", "复制 BibTeX", "clipboard", source),
-            ] {
-                let copied = self.copied_detail.as_ref() == Some(&value);
-                actions = actions.child(
-                    Button::new(id)
-                        .small()
-                        .icon(icon(if copied { "check" } else { symbol }).size(px(14.)))
-                        .when(copied, |button| button.label(self.text("已复制", cx)))
-                        .accessibility_label(self.text(label, cx))
-                        .tooltip(self.text(label, cx))
-                        .on_click(
-                            cx.listener(move |this, _, _, cx| this.copy_detail(value.clone(), cx)),
-                        ),
-                );
-            }
-            if let Some(file) = record.file.clone().filter(|file| !file.is_empty()) {
-                let generation = self.generation;
-                let bibliography = self
-                    .libraries
-                    .iter()
-                    .find(|library| Some(&library.name) == self.selected_library.as_ref())
-                    .map(|library| library.path.clone());
-                actions = actions.child(
-                    Button::new("open-file")
-                        .small()
-                        .icon(icon("folderOpen"))
-                        .accessibility_label(self.text("打开文件", cx))
-                        .tooltip(self.text("打开文件", cx))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            if this.generation != generation {
-                                return;
-                            }
-                            if let Some(bibliography) = &bibliography {
-                                match bibcitex_linux::files::attachment_path(
-                                    &file,
-                                    std::path::Path::new(bibliography),
-                                    dirs::home_dir().as_deref(),
-                                ) {
-                                    Ok(path) => cx.open_with_system(&path),
-                                    Err(error) => this.report_error(error, cx),
-                                }
-                            }
-                        })),
-                );
-            }
-            for (label, symbol, target) in [
-                ("打开 URL", "externalLink", record.url.clone()),
-                (
-                    "打开 DOI",
-                    "link",
-                    record.doi.as_ref().map(|doi| {
-                        if doi.starts_with("https://") || doi.starts_with("http://") {
-                            doi.clone()
-                        } else {
-                            format!("https://doi.org/{doi}")
-                        }
-                    }),
-                ),
-            ] {
-                if let Some(url) = target
-                    .and_then(|url| url::Url::parse(&url).ok())
-                    .filter(|url| matches!(url.scheme(), "http" | "https"))
-                {
-                    actions = actions.child(
-                        Button::new(label)
-                            .small()
-                            .icon(icon(symbol))
-                            .accessibility_label(self.text(label, cx))
-                            .tooltip(self.text(label, cx))
-                            .on_click(move |_, _, cx| cx.open_url(url.as_str())),
-                    );
-                }
-            }
-            body = body.child(actions);
+            let generation = self.generation;
+            let bibliography = self
+                .libraries
+                .iter()
+                .find(|library| Some(&library.name) == self.selected_library.as_ref())
+                .map(|library| library.path.clone());
             for (field_index, (label, value)) in
                 crate::metadata::fields(record).into_iter().enumerate()
             {
                 if value.is_empty() {
                     continue;
                 }
-                body = body.child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap_1()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(cx.theme().muted_foreground)
-                                .child(self.text(label, cx)),
-                        )
-                        .child(match label {
-                            "摘要" => crate::math::rich(&record.abstract_text, cx),
-                            "书名" => crate::math::rich(&record.book_title, cx),
-                            "期号" => crate::math::rich(&record.issue, cx),
-                            "备注" => crate::math::rich(&record.note, cx),
-                            _ => selectable_text(("metadata", field_index), &value)
-                                .into_any_element(),
-                        }),
-                );
-            }
-            body = body.child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_1()
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(cx.theme().muted_foreground)
-                            .child("BibTeX"),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .child(selectable_text("bibtex", &record.source)),
+                let accessory = (label == "引用键").then(|| {
+                    self.detail_copy("detail-key", "复制引用键", "copy", value.clone(), cx)
+                });
+                let content = match label {
+                    "摘要" => crate::math::rich(&record.abstract_text, cx),
+                    "书名" => crate::math::rich(&record.book_title, cx),
+                    "期号" => crate::math::rich(&record.issue, cx),
+                    "备注" => crate::math::rich(&record.note, cx),
+                    "DOI" | "URL" => self.detail_link(
+                        ("metadata", field_index),
+                        &value,
+                        external_target(label, &value),
+                        cx,
                     ),
+                    "文件" => {
+                        let file = value.clone();
+                        let bibliography = bibliography.clone();
+                        self.detail_link(
+                            ("metadata", field_index),
+                            &value,
+                            LinkTarget::Action(
+                                "打开文件",
+                                Box::new(
+                                    move |this: &mut Workbench, cx: &mut Context<Workbench>| {
+                                        if this.generation != generation {
+                                            return;
+                                        }
+                                        if let Some(bibliography) = &bibliography {
+                                            match bibcitex_linux::files::attachment_path(
+                                                &file,
+                                                std::path::Path::new(bibliography),
+                                                dirs::home_dir().as_deref(),
+                                            ) {
+                                                Ok(path) => cx.open_with_system(&path),
+                                                Err(error) => this.report_error(error, cx),
+                                            }
+                                        }
+                                    },
+                                ),
+                            ),
+                            cx,
+                        )
+                    }
+                    _ => selectable_text(("metadata", field_index), &value).into_any_element(),
+                };
+                body = body.child(self.detail_field(self.text(label, cx), accessory, content, cx));
+            }
+            let copy = self.detail_copy(
+                "detail-bib",
+                "复制 BibTeX",
+                "clipboard",
+                record.source.clone(),
+                cx,
             );
+            let source = div()
+                .text_xs()
+                .child(selectable_text("bibtex", &record.source))
+                .into_any_element();
+            body = body.child(self.detail_field("BibTeX".into(), Some(copy), source, cx));
         } else {
             body = body.child(self.text("选择一条文献查看字段和操作", cx));
         }

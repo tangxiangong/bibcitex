@@ -330,18 +330,21 @@ struct ReferenceInspector: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
-                    copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
-                    if !reference.file.isEmpty { Button { model.openFile(reference, context: context) } label: { NativeIcon("folderOpen") }.help(L10n.text("打开文件")).accessibilityLabel(L10n.text("打开文件")) }
-                    if !reference.url.isEmpty { Button { model.openURL(reference.url) } label: { NativeIcon("externalLink") }.help(L10n.text("打开 URL")).accessibilityLabel(L10n.text("打开 URL")) }
-                    if !reference.doi.isEmpty { Button { model.openURL(reference.doi.hasPrefix("http") ? reference.doi : "https://doi.org/" + reference.doi) } label: { NativeIcon("link") }.help(L10n.text("打开 DOI")).accessibilityLabel(L10n.text("打开 DOI")) }
-                }.buttonStyle(.bordered)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.0).font(.caption).foregroundStyle(.secondary)
-                            Text(item.1).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                            HStack {
+                                Text(item.0).font(.caption).foregroundStyle(.secondary)
+                                if item.0 == L10n.text("引用键") {
+                                    Spacer()
+                                    copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
+                                }
+                            }
+                            if let open = opener(for: item.0) {
+                                DetailLink(text: item.1, label: open.label, action: open.action)
+                            } else {
+                                Text(item.1).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
                     }
                 }
@@ -350,7 +353,11 @@ struct ReferenceInspector: View {
                 rich(L10n.text("期号"), reference.issue)
                 rich(L10n.text("备注"), reference.note)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("BibTeX").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Text("BibTeX").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
+                    }
                     Text(reference.source).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.padding(16)
@@ -365,17 +372,27 @@ struct ReferenceInspector: View {
         } label: {
             if copied {
                 HStack(spacing: 4) {
-                    NativeIcon("check", size: 14)
+                    NativeIcon("check", size: 12)
                     Text(L10n.text("已复制")).font(.caption)
                 }
             } else {
-                NativeIcon(icon)
+                NativeIcon(icon, size: 14)
             }
         }
+        .buttonStyle(.borderless)
         .help(label)
         .accessibilityLabel(label)
     }
 
+    /// File, URL and DOI values open their target directly instead of through a separate button.
+    private func opener(for label: String) -> (label: String, action: () -> Void)? {
+        switch label {
+        case L10n.text("文件"): return (L10n.text("打开文件"), { model.openFile(reference, context: context) })
+        case "URL": return (L10n.text("打开 URL"), { model.openURL(reference.url) })
+        case "DOI": return (L10n.text("打开 DOI"), { model.openURL(reference.doiURL) })
+        default: return nil
+        }
+    }
     @ViewBuilder private func rich(_ label: String, _ chunks: [TextChunk]) -> some View {
         if !chunks.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
@@ -394,6 +411,33 @@ struct ReferenceInspector: View {
          ("DOI", reference.doi), ("ISBN", reference.isbn), (L10n.text("MR 分类"), reference.mrclass), ("URL", reference.url), (L10n.text("文件"), reference.file),
          ("Eprint", reference.eprint), ("Archive Prefix", reference.archivePrefix), (L10n.text("arXiv 分类"), reference.arxivPrimaryClass), (L10n.text("发表方式"), reference.howPublished)]
     }
+}
+
+/// A detail value that opens its target when clicked.
+struct DetailLink: View {
+    let text: String
+    let label: String
+    let action: () -> Void
+    var body: some View {
+        // The frame stays outside the button so only the text is clickable.
+        Button(action: action) {
+            Text(verbatim: text).multilineTextAlignment(.leading)
+        }
+        .buttonStyle(.link)
+        .help(label)
+        .accessibilityLabel(label)
+        .onHover { inside in
+            if inside { NSCursor.pointingHand.push() } else if hovering { NSCursor.pop() }
+            hovering = inside
+        }
+        .onDisappear { if hovering { NSCursor.pop(); hovering = false } }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    @State private var hovering = false
+}
+
+extension Reference {
+    var doiURL: String { doi.hasPrefix("http") ? doi : "https://doi.org/" + doi }
 }
 
 private struct LibrarySidebarRow: View {

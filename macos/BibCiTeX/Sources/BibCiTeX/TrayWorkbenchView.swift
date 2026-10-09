@@ -200,50 +200,70 @@ struct TrayWorkbenchView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        metadata(L10n.text("引用键"), reference.citeKey)
+                        metadata(L10n.text("引用键"), reference.citeKey) {
+                            copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
+                        }
                         metadata(L10n.text("作者"), reference.author.joined(separator: ", "))
                         metadata(L10n.text("类型"), reference.displayType)
                         metadata(L10n.text("年份"), reference.year.map(String.init) ?? "")
                         metadata(L10n.text("期刊"), reference.venueText)
-                        metadata("DOI", reference.doi)
-                        metadata("URL", reference.url)
+                        link("DOI", reference.doi, L10n.text("打开 DOI")) { model.openURL(reference.doiURL) }
+                        link("URL", reference.url, L10n.text("打开 URL")) { model.openURL(reference.url) }
                         if !reference.abstractChunks.isEmpty {
                             Text(L10n.text("摘要")).font(.caption).foregroundStyle(.secondary)
                             MathChunkText(chunks: reference.abstractChunks).textSelection(.enabled)
                         }
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("BibTeX").font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                Text("BibTeX").font(.caption).foregroundStyle(.secondary)
+                                Spacer()
+                                copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
+                            }
                             Text(reference.source).font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(14)
                 }
-                PanelSeparator()
-                HStack(spacing: 8) {
-                    copyButton(reference.citeKey, L10n.text("复制引用键"))
-                    copyButton(reference.source, L10n.text("复制 BibTeX"))
-                }.controlSize(.small).padding(12)
             }
         } else {
             Text(L10n.text("选择一条文献查看字段和操作")).font(.callout).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity).padding(16)
         }
     }
-    @ViewBuilder private func metadata(_ label: String, _ value: String) -> some View {
+    @ViewBuilder private func metadata(_ label: String, _ value: String, @ViewBuilder accessory: () -> some View = { EmptyView() }) -> some View {
         if !value.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
-                Text(label).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Text(label).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    accessory()
+                }
                 Text(value).font(.callout).textSelection(.enabled)
             }
         }
     }
-    private func copyButton(_ value: String, _ label: String) -> some View {
-        Button { model.copy(value, surface: .detail) } label: {
-            HStack(spacing: 4) {
-                NativeIcon(model.copied[.detail] == value ? "check" : "copy", size: 12)
-                Text(model.copied[.detail] == value ? L10n.text("已复制") : label)
+    @ViewBuilder private func link(_ label: String, _ value: String, _ help: String, action: @escaping () -> Void) -> some View {
+        if !value.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(label).font(.caption).foregroundStyle(.secondary)
+                DetailLink(text: value, label: help, action: action).font(.callout)
             }
-        }.accessibilityLabel(label)
+        }
+    }
+    private func copyButton(_ value: String, icon: String, label: String) -> some View {
+        Button { model.copy(value, surface: .detail) } label: {
+            if model.copied[.detail] == value {
+                HStack(spacing: 4) {
+                    NativeIcon("check", size: 12)
+                    Text(L10n.text("已复制")).font(.caption)
+                }
+            } else {
+                NativeIcon(icon, size: 14)
+            }
+        }
+        .buttonStyle(.borderless)
+        .help(label)
+        .accessibilityLabel(label)
     }
     private func iconButton(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) { NativeIcon(icon, size: 16).frame(width: 24, height: 24) }

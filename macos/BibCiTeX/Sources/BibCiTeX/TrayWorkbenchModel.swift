@@ -95,6 +95,10 @@ final class TrayWorkbenchModel: ObservableObject {
             ?? (delta > 0 ? 0 : references.count - 1)
         selection = references[next].citeKey
     }
+    func openURL(_ string: String) {
+        guard let url = URL(string: string), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }
+        NSWorkspace.shared.open(url)
+    }
     func copy(_ value: String, surface: CopySurface = .list) {
         let currentSession = session
         copyTask[surface]?.cancel()

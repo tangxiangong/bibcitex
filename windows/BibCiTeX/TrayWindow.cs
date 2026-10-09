@@ -22,7 +22,6 @@ internal sealed class TrayWindow : Window
     private readonly ToggleButton detailToggle;
     private readonly Button closeDetail;
     private readonly StackPanel detail = new() { Spacing = 12, Padding = new Thickness(14) };
-    private readonly StackPanel actions = new() { Orientation = Orientation.Horizontal, Spacing = 8, Padding = new Thickness(12) };
     private readonly TextBlock count = Views.Text(L10n.References(0), 12);
     private readonly TextBlock empty = Views.LocalizedText("暂无可显示的文献");
     private readonly TextBlock error = new() { TextWrapping = TextWrapping.Wrap, MaxLines = 3, Visibility = Visibility.Collapsed };
@@ -122,11 +121,9 @@ internal sealed class TrayWindow : Window
         Grid.SetColumn(counter, 2); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
         var body = new Grid { ColumnSpacing = 0 };
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
-        var reading = new Grid(); reading.RowDefinitions.Add(new()); reading.RowDefinitions.Add(new() { Height = GridLength.Auto }); reading.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        var reading = new Grid();
         reading.Children.Add(Views.HideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }));
         detailEmpty.HorizontalAlignment = HorizontalAlignment.Center; detailEmpty.VerticalAlignment = VerticalAlignment.Center; detailEmpty.Margin = new Thickness(16); detailEmpty.Opacity = .65; reading.Children.Add(detailEmpty);
-        var actionRule = Views.Divider(); Grid.SetRow(actionRule, 1); reading.Children.Add(actionRule);
-        Grid.SetRow(actions, 2); reading.Children.Add(actions);
         var floatingContent = new Grid();
         floatingContent.RowDefinitions.Add(new() { Height = GridLength.Auto }); floatingContent.RowDefinitions.Add(new());
         var detailHeader = new Grid { Padding = new Thickness(14, 8, 8, 8) };
@@ -284,7 +281,7 @@ internal sealed class TrayWindow : Window
     }
     private void ShowDetail(Reference? reference)
     {
-        detail.Children.Clear(); actions.Children.Clear();
+        detail.Children.Clear();
         detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
         detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2);
         if (reference is null) return;
@@ -292,10 +289,14 @@ internal sealed class TrayWindow : Window
         {
             if (value.Length == 0) continue;
             var block = new StackPanel { Spacing = 3 };
-            var heading = Views.LocalizedText(label, 12); heading.Opacity = .65; block.Children.Add(heading);
+            var heading = Views.LocalizedText(label, 12); heading.Opacity = .65;
+            block.Children.Add(label == "引用键" ? Views.Caption(heading, CopyButton("copy", "复制引用键", reference.Key)) : heading);
+            detail.Children.Add(block);
+            if (label == "DOI") { block.Children.Add(Views.Link(value, 13, "打开 DOI", () => _ = OpenUrl(value.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? value : "https://doi.org/" + value))); continue; }
+            if (label == "URL") { block.Children.Add(Views.Link(value, 13, "打开 URL", () => _ = OpenUrl(value))); continue; }
             var text = Views.Text(value, 13);
             if (label == "类型") Localized.BindValue(text, TextBlock.TextProperty, () => reference.TypeLabel);
-            text.IsTextSelectionEnabled = true; Views.SelectableText(text); block.Children.Add(text); detail.Children.Add(block);
+            text.IsTextSelectionEnabled = true; Views.SelectableText(text); block.Children.Add(text);
         }
         if (reference.Text("abstract_").Length > 0)
         {
@@ -303,11 +304,9 @@ internal sealed class TrayWindow : Window
             detail.Children.Add(new ChunkText(reference.Chunks("abstract_"), 13, reference.Text("abstract_"), true));
         }
         var sourceBlock = new StackPanel { Spacing = 3 };
-        var sourceHeading = Views.Text("BibTeX", 12); sourceHeading.Opacity = .65; sourceBlock.Children.Add(sourceHeading);
+        var sourceHeading = Views.Text("BibTeX", 12); sourceHeading.Opacity = .65; sourceBlock.Children.Add(Views.Caption(sourceHeading, CopyButton("clipboard", "复制 BibTeX", reference.Text("source"))));
         var source = Views.Text(reference.Text("source"), 12); source.IsTextSelectionEnabled = true; Views.SelectableText(source); source.FontFamily = new FontFamily("Cascadia Mono");
         sourceBlock.Children.Add(source); detail.Children.Add(sourceBlock);
-        actions.Children.Add(CopyButton("复制引用键", reference.Key));
-        actions.Children.Add(CopyButton("复制 BibTeX", reference.Text("source")));
     }
     private async Task<bool> CopyValue(string value)
     {
@@ -315,8 +314,14 @@ internal sealed class TrayWindow : Window
         try { await RustCore.Copy(value); return visible && current == session; }
         catch (Exception ex) { if (visible && current == session) ShowError(ex); return false; }
     }
-    private Button CopyButton(string label, string value)
-        => Views.CopyButton("copy", label, () => CopyValue(value), showLabel: true);
+    private Button CopyButton(string icon, string label, string value)
+        => Views.CopyButton(icon, label, () => CopyValue(value), compact: true);
+    private async Task OpenUrl(string value)
+    {
+        var current = session;
+        try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
+        catch (Exception ex) { if (visible && current == session) ShowError(ex); }
+    }
     private void ClearResults() { references.Items.Clear(); Localized.Count(count, 0); empty.Visibility = Visibility.Visible; ShowDetail(null); }
     private void SetBusy(bool value) { loading = value; progress.IsActive = value; progress.Visibility = value ? Visibility.Visible : Visibility.Collapsed; empty.Visibility = !value && references.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed; }
     private void ShowError(Exception value) { Localized.Error(error, TextBlock.TextProperty, value); error.Visibility = errorBar.Visibility = Visibility.Visible; }

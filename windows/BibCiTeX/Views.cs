@@ -459,13 +459,31 @@ internal static class Views
         button.Unloaded += (_, _) => { confirmation++; Reset(); };
         return button;
     }
-    /// <summary>Native copy control with repeat-safe, local success feedback.</summary>
-    internal static Button CopyButton(string icon, string name, Func<Task<bool>> action, bool showLabel = false)
+    /// <summary>A detail value that opens its target when clicked.</summary>
+    internal static HyperlinkButton Link(string text, double size, string name, Action action)
     {
-        var glyph = new SvgIcon(icon, showLabel ? 12 : 16);
+        var button = new HyperlinkButton { Content = new TextBlock { Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap }, Padding = new Thickness(0), HorizontalAlignment = HorizontalAlignment.Left };
+        Localized.Tooltip(button, name); Localized.Name(button, name);
+        button.Click += (_, _) => action(); return button;
+    }
+    /// <summary>A detail caption with an action at the trailing edge of the same line.</summary>
+    internal static Grid Caption(TextBlock caption, FrameworkElement accessory)
+    {
+        var row = new Grid { ColumnSpacing = 8 };
+        row.ColumnDefinitions.Add(new()); row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        caption.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(caption);
+        Grid.SetColumn(accessory, 1); row.Children.Add(accessory);
+        return row;
+    }
+    /// <summary>Native copy control with repeat-safe, local success feedback.</summary>
+    internal static Button CopyButton(string icon, string name, Func<Task<bool>> action, bool showLabel = false, bool compact = false)
+    {
+        var glyph = new SvgIcon(icon, showLabel || compact ? 12 : 16);
         var label = LocalizedText(name, 12); label.Visibility = showLabel ? Visibility.Visible : Visibility.Collapsed;
         var content = Row(glyph, label); content.Spacing = 4;
-        var button = new Button { Content = content, Padding = new Thickness(8, 6, 8, 6), MinWidth = 32, MinHeight = 32 };
+        var button = compact
+            ? new Button { Content = content, Padding = new Thickness(6, 3, 6, 3), MinWidth = 24, MinHeight = 24, Background = new SolidColorBrush(Colors.Transparent), BorderThickness = new Thickness(0) }
+            : new Button { Content = content, Padding = new Thickness(8, 6, 8, 6), MinWidth = 32, MinHeight = 32 };
         Localized.Tooltip(button, name); Localized.Name(button, name);
         var confirmation = 0;
         void Reset()
