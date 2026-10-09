@@ -426,7 +426,7 @@ private struct LibrarySidebarRow: View {
             Spacer(minLength: 0)
             if !library.available { Text(L10n.text("不可用")).font(.caption).foregroundStyle(.secondary) }
             if library.pinned { NativeIcon("pin", size: 13).foregroundStyle(.secondary).accessibilityLabel(L10n.text("已置顶")) }
-            Menu { actions } label: { NativeIcon("more", size: 16).frame(width: 24, height: 24) }
+            Menu { actions.labelStyle(.titleAndIcon) } label: { NativeIcon("more", size: 16).frame(width: 24, height: 24) }
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .focused($menuFocused)
                 .opacity(!renaming && (hovered || menuFocused) ? 1 : 0)
@@ -435,7 +435,7 @@ private struct LibrarySidebarRow: View {
         }
         .padding(.vertical, 5).contentShape(Rectangle())
         .onHover { hovered = $0 }
-        .contextMenu { actions }
+        .contextMenu { actions.labelStyle(.titleAndIcon) }
     }
 
     private func saveName() {
@@ -460,8 +460,8 @@ private struct LibrarySidebarRow: View {
     }
 
     @ViewBuilder private var actions: some View {
-        Button(action: edit) { Label { Text(L10n.text("编辑")) } icon: { if let image = NativeImages.image(named: "settings") { image } } }
-        Button { draftName = library.name; renameErrorDetails = nil; renaming = true } label: { Label { Text(L10n.text("重命名")) } icon: { if let image = NativeImages.image(named: "rename") { image } } }
+        Button(action: edit) { MenuLabel(Text(L10n.text("编辑")), icon: "settings") }
+        Button { draftName = library.name; renameErrorDetails = nil; renaming = true } label: { MenuLabel(Text(L10n.text("重命名")), icon: "rename") }
         Button {
             Task {
                 do {
@@ -469,10 +469,10 @@ private struct LibrarySidebarRow: View {
                     await model.reload()
                 } catch { model.reportError(error) }
             }
-        } label: { Label { Text(library.pinned ? L10n.text("取消置顶") : L10n.text("置顶")) } icon: { if let image = NativeImages.image(named: "pin") { image } } }
+        } label: { MenuLabel(Text(library.pinned ? L10n.text("取消置顶") : L10n.text("置顶")), icon: "pin") }
         Divider()
-        Button(L10n.text("打开文件")) { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) }
-        Button(role: .destructive) { model.remove(library) } label: { Label { Text(L10n.text("移除")) } icon: { if let image = NativeImages.image(named: "x") { image } } }
+        Button { NSWorkspace.shared.open(URL(fileURLWithPath: library.path)) } label: { MenuLabel(Text(L10n.text("打开文件")), icon: "folderOpen") }
+        Button(role: .destructive) { model.remove(library) } label: { MenuLabel(Text(L10n.text("移除")), icon: "x") }
     }
 }
 

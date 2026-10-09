@@ -30,6 +30,22 @@ struct NativeIcon: View {
     }
 }
 
+/// Menu label with a concrete image so AppKit menus render the icon.
+struct MenuLabel: View {
+    let title: Text
+    let icon: String
+
+    init(_ title: Text, icon: String) {
+        self.title = title
+        self.icon = icon
+    }
+
+    var body: some View {
+        Label { title } icon: { NativeImages.image(named: icon) ?? Image(nsImage: NSImage()) }
+            .labelStyle(.titleAndIcon)
+    }
+}
+
 enum NativeImages {
     // Resolve each symbol independently: newer symbols may be absent on older macOS.
     static let symbols: [String: String] = {
