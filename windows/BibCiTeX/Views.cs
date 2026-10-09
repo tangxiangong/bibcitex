@@ -284,6 +284,20 @@ internal static class Views
         box.ContextFlyout = CreateMenu(false);
         box.SelectionFlyout = CreateMenu(true);
     }
+    /// <summary>Strips the template's surface and border, matching macOS `.textFieldStyle(.plain)`.</summary>
+    /// The template's PointerOver and Focused states repaint Background and
+    /// BorderThickness on BorderElement, so the property setters on the control
+    /// cannot reach them; overriding the theme resources per control does.
+    internal static void PlainTextBox(TextBox box)
+    {
+        var transparent = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        foreach (var key in new[] { "TextControlBackgroundFocused", "TextControlBackgroundPointerOver" })
+            box.Resources[key] = transparent;
+        foreach (var key in new[] { "TextControlBorderThemeThicknessFocused", "TextControlBorderThemeThickness" })
+            box.Resources[key] = new Thickness(0);
+        foreach (var key in new[] { "TextControlBorderBrushFocused", "TextControlBorderBrushPointerOver" })
+            box.Resources[key] = transparent;
+    }
     internal static StackPanel Row(params UIElement[] children)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };

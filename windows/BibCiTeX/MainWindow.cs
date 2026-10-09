@@ -25,7 +25,7 @@ internal sealed class MainWindow : Window
         Width = 96, Height = 96, Stretch = Stretch.Uniform, Visibility = Visibility.Collapsed
     };
     private readonly TextBlock librariesEmpty = Views.LocalizedText("暂无文献库");
-    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinWidth = 160 };
+    private readonly SearchTextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinWidth = 160 };
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };

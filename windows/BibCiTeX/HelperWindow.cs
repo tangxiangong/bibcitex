@@ -24,7 +24,7 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double BottomBar = 52;
 
     private readonly Grid root = new();
-    private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 20, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
+    private readonly SearchTextBox search = new() { PlaceholderText = L10n.Text("搜索文献、作者、标题"), FontSize = 20, BorderThickness = new Thickness(0), Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), Padding = new Thickness(0, 8, 0, 8), VerticalAlignment = VerticalAlignment.Center };
     private readonly ListView results = new() { SelectionMode = ListViewSelectionMode.Single, IsItemClickEnabled = true, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly TextBlock status = Views.Text("");
     private readonly Button chooseLibrary;

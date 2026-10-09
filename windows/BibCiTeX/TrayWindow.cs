@@ -44,6 +44,8 @@ internal sealed class TrayWindow : Window
         root.RequestedTheme = App.Theme;
         Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
         Views.LocalizeTextBox(search);
+        // searchBorder already carries the field's surface and focus ring.
+        Views.PlainTextBox(search);
         for (var i = 0; i < 3; i++) root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var header = new Grid { ColumnSpacing = 10 };
