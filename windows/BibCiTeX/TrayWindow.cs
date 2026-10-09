@@ -28,6 +28,7 @@ internal sealed class TrayWindow : Window
     private readonly TextBlock error = new() { TextWrapping = TextWrapping.Wrap, MaxLines = 3, Visibility = Visibility.Collapsed };
     private readonly Grid errorBar = new() { ColumnSpacing = 8, Visibility = Visibility.Collapsed };
     private readonly TextBlock detailEmpty = Views.LocalizedText("选择一条文献查看字段和操作", 13);
+    private readonly Border detailTitle = new() { VerticalAlignment = VerticalAlignment.Center, Child = Views.LocalizedText("文献详情", 14) };
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
     private int version, reloadVersion, session, loadedVersion = -1;
     private bool visible, disposed, composing, updating, loading;
@@ -130,7 +131,7 @@ internal sealed class TrayWindow : Window
         floatingContent.RowDefinitions.Add(new() { Height = GridLength.Auto }); floatingContent.RowDefinitions.Add(new());
         var detailHeader = new Grid { Padding = new Thickness(14, 8, 8, 8) };
         detailHeader.ColumnDefinitions.Add(new()); detailHeader.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        var detailTitle = Views.LocalizedText("文献详情", 12); detailTitle.VerticalAlignment = VerticalAlignment.Center; detailHeader.Children.Add(detailTitle);
+        detailHeader.Children.Add(detailTitle);
         closeDetail = Views.Button("x", "关闭", () => SetDetailVisible(false)); Grid.SetColumn(closeDetail, 1); detailHeader.Children.Add(closeDetail);
         floatingContent.Children.Add(detailHeader); Grid.SetRow(reading, 1); floatingContent.Children.Add(reading);
         detailPanel = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
@@ -285,8 +286,8 @@ internal sealed class TrayWindow : Window
     {
         detail.Children.Clear(); actions.Children.Clear();
         detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
+        detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2);
         if (reference is null) return;
-        detail.Children.Add(new ChunkText(reference.Chunks("title"), 16, reference.Title, true, "暂无标题"));
         foreach (var (label, value) in new[] { ("引用键", reference.Key), ("作者", reference.Authors), ("类型", reference.TypeLabel), ("年份", reference.Text("year")), ("期刊", reference.Venue), ("DOI", reference.Text("doi")), ("URL", reference.Text("url")) })
         {
             if (value.Length == 0) continue;
@@ -301,8 +302,10 @@ internal sealed class TrayWindow : Window
             detail.Children.Add(Views.LocalizedText("摘要", 12));
             detail.Children.Add(new ChunkText(reference.Chunks("abstract_"), 13, reference.Text("abstract_"), true));
         }
+        var sourceBlock = new StackPanel { Spacing = 3 };
+        var sourceHeading = Views.Text("BibTeX", 12); sourceHeading.Opacity = .65; sourceBlock.Children.Add(sourceHeading);
         var source = Views.Text(reference.Text("source"), 12); source.IsTextSelectionEnabled = true; Views.SelectableText(source); source.FontFamily = new FontFamily("Cascadia Mono");
-        detail.Children.Add(new Expander { Header = "BibTeX", Content = source, HorizontalAlignment = HorizontalAlignment.Stretch });
+        sourceBlock.Children.Add(source); detail.Children.Add(sourceBlock);
         actions.Children.Add(CopyButton("复制引用键", reference.Key));
         actions.Children.Add(CopyButton("复制 BibTeX", reference.Text("source")));
     }

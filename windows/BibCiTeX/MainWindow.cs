@@ -32,6 +32,7 @@ internal sealed class MainWindow : Window
     private readonly Grid sidebar = new() { Padding = new Thickness(10, 12, 10, 8) };
     private readonly Grid inspector = new();
     private readonly TextBlock detailEmpty = Views.LocalizedText("选择一条文献查看字段和操作");
+    private readonly Border detailHeading = new() { Margin = new Thickness(16), Child = Views.LocalizedText("文献详情", 16) };
     private bool showSidebar = bool.TryParse(NativeSettings.Values["mainShowSidebar"] as string, out var left) ? left : true;
     private bool showInspector = bool.TryParse(NativeSettings.Values["mainShowInspector"] as string, out var right) && right;
     private bool loading, reloading;
@@ -124,7 +125,7 @@ internal sealed class MainWindow : Window
         Grid.SetRow(emptyState, 1); center.Children.Add(emptyState);
         Grid.SetRow(center, 1); Grid.SetColumn(center, 2); root.Children.Add(center);
         inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new() { Height = GridLength.Auto }); inspector.RowDefinitions.Add(new());
-        var detailHeading = Views.LocalizedText("文献详情", 16); detailHeading.Margin = new Thickness(16); inspector.Children.Add(detailHeading);
+        inspector.Children.Add(detailHeading);
         var rule = Views.Divider(); Grid.SetRow(rule, 1); inspector.Children.Add(rule);
         var scroll = Views.HideScrollbars(new ScrollViewer { Content = detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         Grid.SetRow(scroll, 2); inspector.Children.Add(scroll);
@@ -525,8 +526,8 @@ internal sealed class MainWindow : Window
     private void ShowDetail(Reference? reference)
     {
         detail.Children.Clear(); detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
+        detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题");
         if (reference is null) return;
-        detail.Children.Add(new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题"));
         var libraryPath = current?.Path;
         var actions = Views.Row(Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key)), Views.CopyButton("clipboard", "复制 BibTeX", () => Copy(reference.Text("source"))));
         if (reference.Text("file") is { Length: > 0 } file) actions.Children.Add(Views.Button("folderOpen", "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(file, libraryPath, attachment: true); }));
@@ -542,11 +543,9 @@ internal sealed class MainWindow : Window
             if (key is "title" or "note" or "abstract_" or "book_title" or "issue") section.Children.Add(new ChunkText(reference.Chunks(key), 14, value));
             else section.Children.Add(Views.SelectableText(new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true, FontFamily = key == "source" ? new FontFamily("Cascadia Mono") : new FontFamily("Segoe UI Variable") }));
             if (key == "type" && section.Children[1] is TextBlock typeText) Localized.BindValue(typeText, TextBlock.TextProperty, () => reference.TypeLabel);
-            if (key == "source") detail.Children.Add(new Expander { Header = "BibTeX", Content = section.Children[1] is UIElement source ? Detach(section, source) : null, HorizontalAlignment = HorizontalAlignment.Stretch });
-            else detail.Children.Add(section);
+            detail.Children.Add(section);
         }
     }
-    private static UIElement Detach(Panel parent, UIElement child) { parent.Children.Remove(child); return child; }
     // Mirrors the macOS inspector: same labels, same order. Backslash-free keys are
     // Rust field names; the label column is the macOS wording and must not drift.
     private static readonly (string Key, string Label)[] Metadata = [

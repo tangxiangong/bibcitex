@@ -80,7 +80,6 @@ pub struct Workbench {
     copy_task: Option<Task<()>>,
     copy_detail_task: Option<Task<()>>,
     scroll: UniformListScrollHandle,
-    show_source: bool,
     helper: bool,
     tray: bool,
     tray_detail: bool,
@@ -271,7 +270,6 @@ impl Workbench {
             copy_task: None,
             copy_detail_task: None,
             scroll: UniformListScrollHandle::new(),
-            show_source: false,
             helper,
             tray: false,
             tray_detail: false,
@@ -1546,6 +1544,11 @@ impl Workbench {
     }
 
     fn tray_inspector(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let selected = self.selected.and_then(|i| self.references.get(i));
+        let heading = match selected {
+            Some(record) => crate::math::rich(&record.title, cx),
+            None => self.text("文献详情", cx).into_any_element(),
+        };
         let mut panel = div().size_full().flex().flex_col().child(
             div()
                 .px(px(14.))
@@ -1555,11 +1558,13 @@ impl Workbench {
                 .justify_between()
                 .border_b_1()
                 .border_color(cx.theme().border)
+                .gap_2()
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(cx.theme().muted_foreground)
-                        .child(self.text("文献详情", cx)),
+                        .flex_1()
+                        .min_w_0()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(heading),
                 )
                 .child(
                     Button::new("tray-close-detail")
@@ -1575,7 +1580,7 @@ impl Workbench {
                         })),
                 ),
         );
-        if let Some(record) = self.selected.and_then(|i| self.references.get(i)) {
+        if let Some(record) = selected {
             let mut body = div()
                 .id("tray-detail-body")
                 .overflow_y_scroll()
@@ -1584,12 +1589,7 @@ impl Workbench {
                 .p(px(14.))
                 .flex()
                 .flex_col()
-                .gap_3()
-                .child(
-                    div()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(crate::math::rich(&record.title, cx)),
-                );
+                .gap_3();
             for (i, (label, value)) in crate::metadata::fields(record).into_iter().enumerate() {
                 if value.is_empty()
                     || !matches!(
@@ -1618,27 +1618,22 @@ impl Workbench {
                 );
             }
             body = body.child(
-                Button::new("tray-source-toggle")
-                    .ghost()
-                    .justify_start()
-                    .icon(icon(if self.show_source {
-                        "chevronDown"
-                    } else {
-                        "chevronRight"
-                    }))
-                    .label("BibTeX")
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.show_source = !this.show_source;
-                        cx.notify();
-                    })),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("BibTeX"),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .child(selectable_text("tray-source", &record.source)),
+                    ),
             );
-            if self.show_source {
-                body = body.child(
-                    div()
-                        .text_xs()
-                        .child(selectable_text("tray-source", &record.source)),
-                );
-            }
             let mut actions = div()
                 .p_3()
                 .flex()
@@ -1677,6 +1672,10 @@ impl Workbench {
     }
 
     fn inspector(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let heading = match self.selected.and_then(|i| self.references.get(i)) {
+            Some(record) => crate::math::rich(&record.title, cx),
+            None => self.text("文献详情", cx).into_any_element(),
+        };
         let mut body = div()
             .id("inspector-body")
             .flex_1()
@@ -1764,13 +1763,7 @@ impl Workbench {
                     );
                 }
             }
-            body = body
-                .child(
-                    div()
-                        .text_size(px(17.))
-                        .child(crate::math::rich(&record.title, cx)),
-                )
-                .child(actions);
+            body = body.child(actions);
             for (field_index, (label, value)) in
                 crate::metadata::fields(record).into_iter().enumerate()
             {
@@ -1799,26 +1792,22 @@ impl Workbench {
                 );
             }
             body = body.child(
-                Button::new("toggle-bibtex")
-                    .ghost()
-                    .label("BibTeX")
-                    .icon(if self.show_source {
-                        icon("chevronDown")
-                    } else {
-                        icon("chevronRight")
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.show_source = !this.show_source;
-                        cx.notify();
-                    })),
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("BibTeX"),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .child(selectable_text("bibtex", &record.source)),
+                    ),
             );
-            if self.show_source {
-                body = body.child(
-                    div()
-                        .text_xs()
-                        .child(selectable_text("bibtex", &record.source)),
-                );
-            }
         } else {
             body = body.child(self.text("选择一条文献查看字段和操作", cx));
         }
@@ -1832,7 +1821,8 @@ impl Workbench {
                     .p_4()
                     .border_b_1()
                     .border_color(cx.theme().border)
-                    .child(self.text("文献详情", cx)),
+                    .text_size(px(17.))
+                    .child(heading),
             )
             .child(body)
     }

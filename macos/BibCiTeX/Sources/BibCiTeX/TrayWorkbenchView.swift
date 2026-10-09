@@ -83,8 +83,12 @@ struct TrayWorkbenchView: View {
                     if model.detailVisible {
                         VStack(spacing: 0) {
                             HStack {
-                                Text(L10n.text("文献详情")).font(.caption).foregroundStyle(.secondary)
-                                Spacer()
+                                if let reference = model.reference {
+                                    MathChunkText(chunks: reference.title).font(.headline).lineLimit(2)
+                                } else {
+                                    Text(L10n.text("文献详情")).font(.headline)
+                                }
+                                Spacer(minLength: 8)
                                 iconButton("x", L10n.text("关闭")) {
                                     model.detailVisible = false
                                 }.focused($detailCloseFocused)
@@ -196,7 +200,6 @@ struct TrayWorkbenchView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        MathChunkText(chunks: reference.title).font(.headline)
                         metadata(L10n.text("引用键"), reference.citeKey)
                         metadata(L10n.text("作者"), reference.author.joined(separator: ", "))
                         metadata(L10n.text("类型"), reference.displayType)
@@ -208,7 +211,8 @@ struct TrayWorkbenchView: View {
                             Text(L10n.text("摘要")).font(.caption).foregroundStyle(.secondary)
                             MathChunkText(chunks: reference.abstractChunks).textSelection(.enabled)
                         }
-                        DisclosureGroup("BibTeX") {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("BibTeX").font(.caption).foregroundStyle(.secondary)
                             Text(reference.source).font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                         }

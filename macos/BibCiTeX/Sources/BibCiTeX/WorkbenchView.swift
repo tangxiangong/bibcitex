@@ -231,7 +231,13 @@ struct WorkbenchView: View {
     }
     private var inspector: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.text("文献详情")).font(.headline).padding(16)
+            Group {
+                if let reference = model.reference {
+                    MathChunkText(chunks: reference.title).font(.title3)
+                } else {
+                    Text(L10n.text("文献详情")).font(.title3)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             Divider()
             if let reference = model.reference {
                 ReferenceInspector(reference: reference, context: model.referenceSelectionContext, model: model)
@@ -324,7 +330,6 @@ struct ReferenceInspector: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                MathChunkText(chunks: reference.title).font(.title3)
                 HStack {
                     copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
                     copyButton(reference.source, icon: "clipboard", label: L10n.text("复制 BibTeX"))
@@ -344,8 +349,9 @@ struct ReferenceInspector: View {
                 rich(L10n.text("书名"), reference.bookTitle)
                 rich(L10n.text("期号"), reference.issue)
                 rich(L10n.text("备注"), reference.note)
-                DisclosureGroup("BibTeX") {
-                    Text(reference.source).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("BibTeX").font(.caption).foregroundStyle(.secondary)
+                    Text(reference.source).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.padding(16)
         }
