@@ -73,8 +73,9 @@ there is no need to rebuild or republish release assets.
 
 Linux Release CI is temporarily disabled until the client is ready for release.
 The Release workflow explicitly emits `linux=false`; restore platform detection there
-only after Linux release acceptance. Ordinary Check CI, including Linux client builds
-and tests, remains enabled. While Release CI is disabled, publication collects only
+only after Linux release acceptance. Release passes that switch to the reusable Check
+workflow, so Linux client checks cannot block macOS/Windows publication while disabled.
+Ordinary Check CI, including Linux client builds and tests, remains enabled. While Release CI is disabled, publication collects only
 macOS and Windows artifacts, excludes Linux announcement assets, and does not build,
 sign, upload, or publish Linux packages to GitHub or COS.
 

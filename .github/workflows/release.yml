@@ -50,6 +50,7 @@ jobs:
     uses: ./.github/workflows/check.yml
     with:
       revision: ${{ needs.prepare.outputs.revision }}
+      skip_linux: ${{ needs.prepare.outputs.linux != 'true' }}
   macos:
     needs: [prepare, checks]
     environment: release

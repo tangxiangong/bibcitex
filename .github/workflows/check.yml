@@ -6,6 +6,11 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
+      skip_linux:
+        description: Skip Linux client checks (shared Rust checks remain enabled)
+        type: boolean
+        required: false
+        default: false
       revision:
         type: string
         required: false
@@ -17,6 +22,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   linux:
+    if: ${{ !inputs.skip_linux }}
     strategy:
       fail-fast: false
       matrix:
