@@ -112,9 +112,9 @@ The animations below show earlier versions of the app.
 
 ## TODO
 
-The following features are planned and have not yet been implemented. See [TODO.md](./TODO.md) for the detailed roadmap.
+See [TODO.md](./TODO.md) for the detailed roadmap.
 
-- [ ] **Search improvements**: Multiple keywords, fuzzy matching, relevance ranking, and performance optimization.
+- [x] **Search improvements**: Multiple keywords, fuzzy matching, relevance ranking, and performance optimization.
 - [ ] **Advanced search**: Field queries, exact phrases, exclusions, and year ranges.
 - [ ] **Tags**: Tag management, bulk addition and removal, and tag filtering.
 - [ ] **Helper filter commands**: Type `@`, `$`, or `#` to show reference type, field, or tag suggestions, respectively, and use a compact input field to complete the filter.

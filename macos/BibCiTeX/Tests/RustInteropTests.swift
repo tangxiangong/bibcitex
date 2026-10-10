@@ -39,6 +39,27 @@ struct RustInteropTests {
         let missingAuthors = try BibCiTeXCore.search(path: file.path, query: " ", field: "author", typeFilter: "all")
         precondition(missingAuthors.count == 3)
 
+        let combined = try BibCiTeXCore.search(path: file.path, query: "Zhang 中文研究", field: "all", typeFilter: "Article")
+        precondition(combined.map(\.citeKey) == ["unicode2025"])
+        let bounded = try BibCiTeXCore.search(path: file.path, query: "Zhang 中文研究", field: "title", typeFilter: "all")
+        precondition(bounded.isEmpty)
+        let fuzzy = try BibCiTeXCore.search(path: file.path, query: "Dissertatoin", field: "title", typeFilter: "Thesis")
+        precondition(fuzzy.map(\.citeKey) == ["thesis2024"])
+
+        let searchFile = directory.appendingPathComponent("ordinary-search.bib")
+        try """
+        @misc{accent, title={Gödel machine-learning}}
+        @misc{godel, title={Unrelated}}
+        @misc{plain, title={Godel}}
+        """.write(to: searchFile, atomically: true, encoding: .utf8)
+        let ranked = try BibCiTeXCore.search(path: searchFile.path, query: "godel", field: "all", typeFilter: "all")
+        precondition(ranked.map(\.citeKey) == ["godel", "plain", "accent"])
+        let punctuation = try BibCiTeXCore.search(path: searchFile.path, query: "machine learning", field: "title", typeFilter: "all")
+        precondition(punctuation.map(\.citeKey) == ["accent"])
+        try "@misc{changed,title={New graph methods}}".write(to: searchFile, atomically: true, encoding: .utf8)
+        let refreshed = try BibCiTeXCore.search(path: searchFile.path, query: "new graph", field: "title", typeFilter: "all")
+        precondition(refreshed.map(\.citeKey) == ["changed"])
+
         for _ in 0..<100 {
             let roundTrip = try BibCiTeXCore.search(path: file.path, query: "", field: "all", typeFilter: "all")
             precondition(roundTrip.count == 3 && roundTrip.first?.id == records.first?.id)

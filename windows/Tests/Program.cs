@@ -95,6 +95,15 @@ try
     Assert((await RustCore.Search(bibliography, "Jane", "author")).Count == 2, "author search");
     Assert((await RustCore.Search(bibliography, "", "all", "Book")).Single().Key == "book2025", "type filter");
     Assert((await RustCore.Search(bibliography, "", "author")).Count == 3, "empty field search includes missing fields");
+    Assert((await RustCore.Search(bibliography, "Jane 研究", "all", "Article")).Single().Key == reference.Key, "AND search combines ordinary fields");
+    Assert((await RustCore.Search(bibliography, "Jane 研究", "title")).Count == 0, "ordinary field selector bounds all terms");
+    var ordinaryFile = Path.Combine(directory, "ordinary-search.bib");
+    await File.WriteAllTextAsync(ordinaryFile, "@misc{accent,title={Gödel machine-learning network}}\n@misc{godel,title={Unrelated}}\n@misc{plain,title={Godel}}");
+    Assert((await RustCore.Search(ordinaryFile, "godel")).Select(x => x.Key).SequenceEqual(new[] { "godel", "plain", "accent" }), "shared relevance ordering crosses generated C# bindings");
+    Assert((await RustCore.Search(ordinaryFile, "machine learning", "title")).Single().Key == "accent", "hyphen tolerance and AND title search");
+    Assert((await RustCore.Search(ordinaryFile, "netwrok", "title")).Single().Key == "accent", "limited ordinary spelling tolerance");
+    await File.WriteAllTextAsync(ordinaryFile, "@misc{changed,title={New graph methods}}");
+    Assert((await RustCore.Search(ordinaryFile, "new graph", "title")).Single().Key == "changed", "search text cache refresh crosses C# bindings");
     Assert((await RustCore.Search(bibliography, "no-such-title")).Count == 0, "empty search response");
     await Throws(() => RustCore.Search(bibliography, "", "invalid"), "Unknown search field");
     await Throws(() => RustCore.Search(bibliography, "", "all", "invalid"), "Unknown bibliography type filter");

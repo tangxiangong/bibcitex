@@ -70,6 +70,23 @@ limit. Empty/whitespace queries preserve references with missing fields. Fields:
 `Thesis` (including MastersThesis and PhdThesis), `Booklet`, `InBook`,
 `InCollection`, `InProceedings`, `Misc`, `TechReport`.
 
+Ordinary search treats whitespace-separated terms as AND conditions. In `all`,
+each term may match a different existing field; a selected field bounds every
+term. Short and full journal names are both searched. Matching tolerates case,
+Unicode representation, accents and common punctuation while preserving symbols
+such as `C++` and `C#`. Years require complete matches. Titles and notes are
+searched across their original chunk boundaries without changing those chunks;
+formula operators are preserved during punctuation folding. Repeated keywords
+do not change relevance ordering.
+Nonempty results use deterministic relevance ordering: exact cite keys and
+strong text matches precede partial matches. Small result sets may be supplemented
+with one-edit spelling matches for Latin words of 5–64 letters in titles, authors
+and journals; all AND terms still apply. Query text has no advanced-search syntax.
+Parsed records and preprocessed search texts share one file-version snapshot;
+the cache keeps up to eight libraries and 64 MiB of estimated search allocations,
+evicting the least recently used snapshots. Returned record IDs and metadata are
+unchanged.
+
 Records preserve every original metadata field. `ReferenceRecord.id` is path +
 U+001F + cite key. `entryType` contains enum names such as Article/InBook, not
 BibTeX's lowercase Display representation. `abstractText` replaces the Rust core's
