@@ -59,9 +59,9 @@ objc2-app-kit = "0.3"
 quick-xml = "0.42"
 raw-window-handle = "0.6"
 rayon = "1"
-reqwest = { version = "0.12", default-features = false, features = [
+reqwest = { version = "0.13", default-features = false, features = [
     "blocking",
-    "rustls-tls",
+    "rustls",
 ] }
 semver = "1"
 serde = { version = "1", features = ["derive"] }
@@ -79,5 +79,5 @@ wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
 windows = "0.62"
-x11rb = { version = "0.13", features = ["xtest"] }
+x11rb = { version = "0.14", features = ["xtest"] }
 xpaste = { path = "crates/xpaste" }
