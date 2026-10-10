@@ -1,8 +1,10 @@
 <div align="center">
   <img src="public/transparent_logo.png" width="120" alt="BibCiTeX">
 
+  <p>English | <a href="README-zh.md">简体中文</a></p>
+
   <p>
-    BibTeX 文献快捷引用工具
+    A quick citation tool for BibTeX bibliographies
   </p>
 
   <p>
@@ -15,7 +17,7 @@
   </p>
 
   <p>
-    <strong>快速下载</strong>
+    <strong>Quick Downloads</strong>
   </p>
 
   <p>
@@ -34,113 +36,118 @@
   </p>
 </div>
 
-## 简介
+## Introduction
 
-**BibCiTeX** 是一个以 **Rust** 为核心的 **BibTeX** 文献快捷引用工具。
+**BibCiTeX** is a quick citation tool for **BibTeX** bibliographies, powered by a shared **Rust** core.
 
-支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
+It supports macOS and Windows, with bibliography search, citation copying, and cross-application pasting.
 
-Linux 客户端目前是**半成品，仍有许多未解决的问题，不代表可用性或功能对齐已经完成**。当前使用 GPUI Kit，以 macOS 界面为基准，正在实现工作台、托盘、快捷助手与签名更新；构建安装方法、桌面权限要求和验证范围见 [Linux 开发说明](linux/README.md)。
+What's new in v0.7.3: [English release notes](release-notes/0.7.3/en.md) · [Chinese release notes](release-notes/0.7.3/zh-Hans.md).
 
-v0.7.3 更新内容：[中文发布说明](release-notes/0.7.3/zh-Hans.md) · [English release notes](release-notes/0.7.3/en.md)。
+### Core Features
 
-### 核心特性
+- **One-click copying**: Copy citations with ease.
+- **Cross-application pasting**: Paste citations directly into your workflow.
 
-- **一键复制**: 便捷的引用复制功能
-- **跨应用粘贴**: 无缝集成到您的工作流程
+## Installation
 
-## 安装指南
+### Supported Systems
 
-### 下载
+| Platform | Supported OS Versions | Architectures |
+| --- | --- | --- |
+| macOS | macOS 13 (Ventura) or later | Apple Silicon (ARM64), Intel (x86_64) |
+| Windows | Windows 10 version 1809 (OS build 17763) or later, including Windows 11 | x64, ARM64 |
 
-从 [**Release 页面**](https://github.com/tangxiangong/bibcitex/releases) 下载对应平台架构的最新版本安装包。
+### Downloads
 
-### macOS 安装说明
+Download the latest installer for your platform and architecture from the [**Releases page**](https://github.com/tangxiangong/bibcitex/releases).
 
-也可以通过项目维护的 [Homebrew tap](https://github.com/tangxiangong/homebrew-tap) 安装，支持 macOS 13 及以上的 Apple Silicon 和 Intel Mac：
+### macOS Installation
+
+You can also install through the project's [Homebrew tap](https://github.com/tangxiangong/homebrew-tap), which supports Apple Silicon and Intel Macs running macOS 13 or later:
 
 ```bash
 brew install --cask tangxiangong/tap/bibcitex
 ```
 
-应用支持内置更新。如需通过 Homebrew 更新，执行 `brew update` 后运行 `brew upgrade --cask --greedy bibcitex`。
+The app supports built-in updates. To update through Homebrew, run `brew update`, followed by `brew upgrade --cask --greedy bibcitex`.
 
-若提示 `BibCiTeX` 已损坏，请打开终端执行以下命令：
+If macOS reports that `BibCiTeX` is damaged, open Terminal and run:
 
 ```bash
 sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 ```
 
-> **提示**: 这是由于 macOS 的安全机制导致的，执行上述命令后即可正常使用。
+> **Tip**: This message is caused by macOS security restrictions. The command above removes the app's quarantine attribute so you can open it.
 
-## 界面功能预览
+## Interface Preview
 
-以下动图来自历史版本。
+The animations below show earlier versions of the app.
 
 <div align="center">
 
-### 核心功能展示
+### Core Features
 
-|                          添加 `.bib` 文件                          |                                   文献列表                                   |                             智能搜索                             |
+|                          Add `.bib` Files                          |                              Bibliography List                               |                           Smart Search                           |
 | :----------------------------------------------------------------: | :--------------------------------------------------------------------------: | :--------------------------------------------------------------: |
 | [<img src="assets/add_bib.gif" width="120">](./assets/add_bib.gif) | [<img src="assets/show_details.gif" width="120">](./assets/show_details.gif) | [<img src="assets/search.gif" width="120">](./assets/search.gif) |
-|                       *快速导入 BibTeX 文件*                       |                              *查看文献详细信息*                              |                          *实时搜索过滤*                          |
+|                   *Quickly import BibTeX files*                    |                           *View reference details*                           |                   *Filter results as you type*                   |
 
-|                             侧边详情                             |                          外部链接                          |                           复制引用                           |
+|                         Details Sidebar                          |                       External Links                       |                        Copy Citations                        |
 | :--------------------------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------: |
 | [<img src="assets/drawer.gif" width="120">](./assets/drawer.gif) | [<img src="assets/url.gif" width="120">](./assets/url.gif) | [<img src="assets/copy.gif" width="120">](./assets/copy.gif) |
-|                         *侧边栏详情展示*                         |                     *快速访问外部资源*                     |                      *一键复制引用格式*                      |
+|                  *View details in the sidebar*                   |            *Quickly access external resources*             |          *Copy formatted citations with one click*           |
 
-### 特色功能
+### Featured Functionality
 
 <div style="margin: 20px 0;">
-  <h4>跨应用粘贴</h4>
+  <h4>Cross-Application Pasting</h4>
   <a href="assets/cross_paste.gif">
-    <img src="assets/cross_paste.gif" alt="跨应用粘贴演示">
+    <img src="assets/cross_paste.gif" alt="Cross-application paste demo">
   </a>
-  <p><em>无缝集成到您的工作流程，支持跨应用程序粘贴功能</em></p>
+  <p><em>Paste citations across applications for seamless integration into your workflow.</em></p>
 </div>
 
 </div>
 
 ## TODO
 
-以下为后续规划，尚未实施；详细待办见 [TODO.md](./TODO.md)。
+The following features are planned and have not yet been implemented. See [TODO.md](./TODO.md) for the detailed roadmap.
 
-- [ ] **普通搜索增强**：多关键词、模糊匹配、相关性排序与性能优化。
-- [ ] **高级搜索**：支持字段查询、精确短语、排除条件及年份范围。
-- [ ] **Tag 功能**：标签管理、批量添加与移除，以及标签筛选。
-- [ ] **Helper 筛选指令**：输入 `@`、`$`、`#` 分别显示文献类型、字段、标签候选，并提供小输入框完成筛选。
-- [ ] **多选功能**：主窗口与 helper 支持多篇选择及批量操作。
-- [ ] **复制与粘贴格式**：支持裸 cite key、LaTeX 和 Typst 引用预设，以及多篇引用组合。
+- [ ] **Search improvements**: Multiple keywords, fuzzy matching, relevance ranking, and performance optimization.
+- [ ] **Advanced search**: Field queries, exact phrases, exclusions, and year ranges.
+- [ ] **Tags**: Tag management, bulk addition and removal, and tag filtering.
+- [ ] **Helper filter commands**: Type `@`, `$`, or `#` to show reference type, field, or tag suggestions, respectively, and use a compact input field to complete the filter.
+- [ ] **Multiple selection**: Select multiple references and perform bulk operations in the main window and helper.
+- [ ] **Copy and paste formats**: Bare citation keys, LaTeX and Typst citation presets, and combined citations for multiple references.
 
-## 第三方代码版权声明 (Third-Party Code Attribution**)
+## Third-Party Code Attribution
 
 ### [crates/xpaste](./crates/xpaste)
-- **来源(Source)**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
-- **作者(Author)**: EcoPasteHub
-- **许可协议(License)**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
-- **用途(Usage)**: 实现跨应用的粘贴功能 (Cross-application paste functionality)
-- **版权声明(Copyright)**:
+
+- **Source**: [EcoPasteHub/EcoPaste](https://github.com/EcoPasteHub/EcoPaste)
+- **Author**: EcoPasteHub
+- **License**: [Apache 2.0](https://github.com/EcoPasteHub/EcoPaste/blob/master/LICENSE)
+- **Usage**: Cross-application paste functionality.
+- **Copyright**:
   ```
   Copyright (c) EcoPasteHub
   ```
-- **主要修改(Modifications)**:
-  -  macOS: 将过时的 `objc` 和 `cocoa` 替换为 `objc2` 相关的 API (Replace deprecated `objc` and `cocoa` with `objc2` related APIs)
-  - Windows: 将过时的 `winapi` 替换为 `windows-sys` 相关的 API (Replace deprecated `winapi` with `windows-sys` related APIs)
-  - Linux: 移除对 Linux 平台的支持 (Remove Linux support)
+- **Modifications**:
+  - macOS: Replaced deprecated `objc` and `cocoa` APIs with `objc2` APIs.
+  - Windows: Replaced deprecated `winapi` APIs with `windows-sys` APIs.
 
 ---
 
-> **详细信息**: 完整的归属信息请参阅 [**NOTICE**](./NOTICE) 文件
-> **Detailed Info**: For complete attribution information, please refer to the [**NOTICE**](./NOTICE) file
+> **Details**: See [**NOTICE**](./NOTICE) for complete attribution information.
 
-## 许可协议
+## License
 
-本项目采用双重许可协议，您可以选择其中任意一种：
+This project is dual-licensed under either of the following, at your option:
 
-* **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) 或 https://www.apache.org/licenses/LICENSE-2.0)
-* **MIT License** ([LICENSE-MIT](LICENSE-MIT) 或 https://opensource.org/licenses/MIT)
+* **Apache License, Version 2.0** ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
+* **MIT License** ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
 
-### 贡献声明
-除非您明确声明，否则根据 Apache-2.0 许可协议的定义，您有意提交的任何贡献都将按照上述双重许可协议进行许可，不附加任何额外条款或条件。
+### Contributions
+
+Unless you explicitly state otherwise, any contribution you intentionally submit for inclusion in this project, as defined in the Apache-2.0 license, will be dual-licensed as above, without any additional terms or conditions.

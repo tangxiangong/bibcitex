@@ -20,7 +20,6 @@ Usage && Modifications:
 - Modify API interfaces for BibCiTeX application requirements
   - `cocoa` && `objc` -> `objc2` && `objc2-foundation` for macOS
   - `winapi` -> `windows` for Windows
-  - Remove Linux support and its corresponding deps
 
 ================================================================================
 
