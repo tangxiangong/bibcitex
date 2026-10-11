@@ -2,7 +2,7 @@ use super::super::{SearchField, SearchIndex, query};
 use super::*;
 fn references(source: &str) -> Vec<Reference> {
     let bib = biblatex::Bibliography::parse(source).unwrap();
-    crate::core::utils::read_bibliography(bib)
+    crate::utils::read_bibliography(bib)
 }
 fn hits(index: &AdvancedIndex, text: &str, field: &str) -> Vec<usize> {
     let analysis = query::analyze(text);

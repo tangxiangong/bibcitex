@@ -1,4 +1,4 @@
-use crate::core::{Error, Result, bib::parse};
+use crate::{Error, Result, bib::parse};
 use biblatex::Bibliography;
 use chrono::{DateTime, Local};
 use fs_err as fs;

@@ -3,7 +3,7 @@
 pub mod advanced;
 /// Advanced-query grammar, typed arena, diagnostics, and canonical serialization.
 pub mod query;
-use crate::core::bib::Reference;
+use crate::bib::Reference;
 use biblatex::Chunk;
 use rayon::prelude::*;
 use std::{cmp::Reverse, collections::HashSet, mem::size_of, ops::Range};

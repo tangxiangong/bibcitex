@@ -1,5 +1,5 @@
 //! Shared desktop operations used by platform-specific binding libraries.
-pub use bibcitex_core::core;
+pub use bibcitex_core as core;
 mod api;
 mod records;
 mod registry;

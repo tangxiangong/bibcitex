@@ -2,7 +2,7 @@
 #![deny(missing_docs)]
 use super::query::{Diagnostic, Document, NodeKind, validate_document, year_bounds};
 use super::{FieldKind, Rank, SearchText, chunk_text, collapse_spaces, normalize, word_character};
-use crate::core::bib::Reference;
+use crate::bib::Reference;
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use unicode_casefold::UnicodeCaseFold;

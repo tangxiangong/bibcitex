@@ -1,4 +1,4 @@
-use crate::core::bib::Reference;
+use crate::bib::Reference;
 use biblatex::{Bibliography, Chunk, Chunks};
 use rayon::prelude::*;
 

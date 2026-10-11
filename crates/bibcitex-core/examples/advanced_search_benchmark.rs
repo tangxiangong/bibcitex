@@ -1,6 +1,6 @@
 //! Release-only, non-UI search measurements on one deterministic data set.
 //! Run with `cargo run --release -p bibcitex-core --example advanced_search_benchmark`.
-use bibcitex_core::core::{
+use bibcitex_core::{
     search::{SearchField, SearchIndex, advanced::AdvancedIndex, query},
     utils::read_bibliography,
 };

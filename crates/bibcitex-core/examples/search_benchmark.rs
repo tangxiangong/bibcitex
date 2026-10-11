@@ -1,6 +1,6 @@
 //! Run with `cargo run --locked --release -p bibcitex-core --example search_benchmark`.
 //! Synthetic, non-GUI measurements; not a timing assertion or a device acceptance test.
-use bibcitex_core::core::{
+use bibcitex_core::{
     search::{SearchField, SearchIndex},
     utils::read_bibliography,
 };
