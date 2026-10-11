@@ -425,7 +425,9 @@ mod tests {
             contender.try_lock(),
             Err(fs::TryLockError::WouldBlock)
         ));
-        drop(guard);
+        // Parallel process tests can briefly inherit this descriptor on Unix.
+        // Explicitly unlock instead of depending on when those copies close.
+        guard.unlock().unwrap();
         contender.try_lock().unwrap();
     }
 
