@@ -1,4 +1,8 @@
 //! Ordinary, whitespace-separated AND search with deterministic relevance ranking.
+/// Extended field index and Boolean execution with positive match evidence.
+pub mod advanced;
+/// Advanced-query grammar, typed arena, diagnostics, and canonical serialization.
+pub mod query;
 use crate::core::bib::Reference;
 use biblatex::Chunk;
 use rayon::prelude::*;
@@ -206,61 +210,80 @@ impl SearchDocument {
         Self { fields }
     }
     fn score(&self, query: &Query, field: SearchField, fuzzy: bool) -> Option<Rank> {
-        let mut rank = Rank {
-            weakest: 10,
-            ..Rank::default()
-        };
-        for term in &query.terms {
-            let mut best = None;
-            for f in self.fields.iter().filter(|f| f.kind.selected(field)) {
-                let quality =
-                    f.text.exact(term, f.kind).map(|m| m.quality).or_else(|| {
-                        (fuzzy && f.kind.fuzzy() && f.text.fuzzy_match(term)).then_some(1)
-                    });
-                if let Some(quality) = quality {
-                    best = best.max(Some((quality, f.kind.weight())));
-                }
-            }
-            let (quality, weight) = best?;
-            rank.weakest = rank.weakest.min(quality);
-            rank.field_score = rank.field_score.saturating_add(weight * u64::from(quality));
-        }
-        for f in self.fields.iter().filter(|f| f.kind.selected(field)) {
-            if f.kind == FieldKind::Key {
-                rank.exact_key = if f.text.normal == query.whole.normal {
-                    2
-                } else if f.text.folded() == query.whole.folded() {
-                    1
-                } else {
-                    0
-                };
-            }
-            if let Some(m) = f.text.exact(&query.whole, f.kind) {
-                rank.phrase = rank.phrase.max(m.quality);
-            }
-            if query.terms.len() > 1 && f.kind != FieldKind::Year {
-                let mut start = usize::MAX;
-                let mut end = 0;
-                let mut same_field = true;
-                for term in &query.terms {
-                    if let Some(m) = f.text.exact(term, f.kind) {
-                        start = start.min(m.start);
-                        end = end.max(m.end);
-                    } else {
-                        same_field = false;
-                        break;
-                    }
-                }
-                if same_field {
-                    rank.same_field = true;
-                    rank.proximity = rank.proximity.max(usize::MAX - end.saturating_sub(start));
-                }
-            }
-        }
-        Some(rank)
+        rank_fields(
+            self.fields
+                .iter()
+                .filter(|f| f.kind.selected(field))
+                .map(|f| (f.kind, &f.text)),
+            &query.whole,
+            query.terms.iter().map(|term| (term, true)),
+            query.terms.len(),
+            fuzzy,
+        )
     }
 }
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord)]
+// Both ordinary search and semantically equivalent advanced AND contributions
+// use this calculator. Callers select fields and query-wide fuzzy eligibility.
+fn rank_fields<'a>(
+    fields: impl Iterator<Item = (FieldKind, &'a SearchText)> + Clone,
+    whole: &SearchText,
+    terms: impl Iterator<Item = (&'a SearchText, bool)> + Clone,
+    term_count: usize,
+    fuzzy: bool,
+) -> Option<Rank> {
+    let mut rank = Rank {
+        weakest: 10,
+        ..Rank::default()
+    };
+    for (term, allow_fuzzy) in terms.clone() {
+        let mut best = None;
+        for (kind, text) in fields.clone() {
+            let quality = text.exact(term, kind).map(|m| m.quality).or_else(|| {
+                (fuzzy && allow_fuzzy && kind.fuzzy() && text.fuzzy_match(term)).then_some(1)
+            });
+            if let Some(quality) = quality {
+                best = best.max(Some((quality, kind.weight())));
+            }
+        }
+        let (quality, weight) = best?;
+        rank.weakest = rank.weakest.min(quality);
+        rank.field_score = rank.field_score.saturating_add(weight * u64::from(quality));
+    }
+    for (kind, text) in fields.clone() {
+        if kind == FieldKind::Key {
+            rank.exact_key = if text.normal == whole.normal {
+                2
+            } else if text.folded() == whole.folded() {
+                1
+            } else {
+                0
+            };
+        }
+        if let Some(m) = text.exact(whole, kind) {
+            rank.phrase = rank.phrase.max(m.quality);
+        }
+        if term_count > 1 && kind != FieldKind::Year {
+            let mut start = usize::MAX;
+            let mut end = 0;
+            let mut same_field = true;
+            for (term, _) in terms.clone() {
+                if let Some(m) = text.exact(term, kind) {
+                    start = start.min(m.start);
+                    end = end.max(m.end);
+                } else {
+                    same_field = false;
+                    break;
+                }
+            }
+            if same_field {
+                rank.same_field = true;
+                rank.proximity = rank.proximity.max(usize::MAX - end.saturating_sub(start));
+            }
+        }
+    }
+    Some(rank)
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 struct Rank {
     exact_key: u8,
     weakest: u8,

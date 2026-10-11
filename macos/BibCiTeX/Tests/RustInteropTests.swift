@@ -60,6 +60,35 @@ struct RustInteropTests {
         let refreshed = try BibCiTeXCore.search(path: searchFile.path, query: "new graph", field: "title", typeFilter: "all")
         precondition(refreshed.map(\.citeKey) == ["changed"])
 
+        let incomplete = BibCiTeXCore.analyzeQuery(text: "author:")
+        precondition(incomplete.status == .incomplete && incomplete.document == nil)
+        let invalid = BibCiTeXCore.analyzeQuery(text: "year:abc author:")
+        precondition(invalid.status == .invalid && !invalid.diagnostics.isEmpty)
+        let condition = BibCiTeXCore.buildCondition(condition: QueryCondition(fieldName: "title", textValue: "Collected Works", phrase: false, exclude: false, tagId: nil))
+        precondition(condition.status == .valid)
+        let rendered = BibCiTeXCore.renderQuery(document: condition.document!)
+        precondition(rendered.text == condition.text)
+        let advanced = try BibCiTeXCore.advancedSearch(request: AdvancedSearchRequest(
+            path: file.path, mode: .advanced, inputKind: .bound, text: condition.text,
+            document: condition.document, expectedTagRevision: nil, defaultField: "all", typeFilter: "all", queryVersion: 42))
+        precondition(advanced.references.map(\.citeKey) == ["emptyfields"])
+        precondition(advanced.context?.queryVersion == 42)
+        precondition(advanced.evidence.first?.ranges.isEmpty == false)
+        let supplemented = try BibCiTeXCore.advancedSearch(request: AdvancedSearchRequest(
+            path: file.path, mode: .advanced, inputKind: .text, text: "Dissertatoin",
+            document: nil, expectedTagRevision: nil, defaultField: "title", typeFilter: "Thesis", queryVersion: 43))
+        precondition(supplemented.evidence.first?.fuzzyTerms == ["Dissertatoin"])
+        let contextValid = try BibCiTeXCore.validateSearchContext(context: advanced.context!)
+        precondition(contextValid)
+        let catalog = BibCiTeXCore.searchCatalog()
+        precondition(catalog.fields.contains("tag") && catalog.types.contains("phdthesis"))
+        for _ in 0..<32 {
+            let result = try BibCiTeXCore.advancedSearch(request: AdvancedSearchRequest(
+                path: file.path, mode: .advanced, inputKind: .text, text: "year:2024 OR type:book",
+                document: nil, expectedTagRevision: nil, defaultField: "all", typeFilter: "all", queryVersion: 1))
+            precondition(result.analysis.status == .valid && result.references.count == 2)
+        }
+
         for _ in 0..<100 {
             let roundTrip = try BibCiTeXCore.search(path: file.path, query: "", field: "all", typeFilter: "all")
             precondition(roundTrip.count == 3 && roundTrip.first?.id == records.first?.id)
@@ -69,6 +98,23 @@ struct RustInteropTests {
             preconditionFailure("Expected a typed Rust error")
         } catch let CoreError.Operation(message) {
             precondition(!message.isEmpty)
+        }
+        if ProcessInfo.processInfo.environment["BIBCITEX_SEARCH_BENCHMARK"] == "1" {
+            for count in [1_000, 10_000, 50_000] {
+                let input = (0..<count).map { "@article{item\($0),title={Graph neural network},author={Smith, Jane},year={2026}}" }.joined(separator: "\n")
+                let fixture = directory.appendingPathComponent("payload-\(count).bib")
+                try input.write(to: fixture, atomically: true, encoding: .utf8)
+                _ = try BibCiTeXCore.search(path: fixture.path, query: "", field: "all", typeFilter: "all")
+                var samples: [Double] = []
+                for _ in 0..<10 {
+                    let start = DispatchTime.now().uptimeNanoseconds
+                    let payload = try BibCiTeXCore.search(path: fixture.path, query: "", field: "all", typeFilter: "all")
+                    precondition(payload.count == count)
+                    samples.append(Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000)
+                }
+                samples.sort()
+                print("BINDING,swift,\(count),\(samples[5]),\(samples[9])")
+            }
         }
         print("PASS UniFFI Swift/Rust Unicode, math chunks, optional metadata, type/field search, stable IDs, repeated ownership and typed errors")
     }

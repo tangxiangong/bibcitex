@@ -33,7 +33,7 @@ Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `re
 
 `BibCiTeX.exe --prepare-runtime` provisions Windows App Runtime without opening the UI and returns a nonzero exit code on failure. Only a missing compatible framework triggers a download; other bootstrap failures are reported without reinstalling the runtime.
 
-Channel preferences are stable/beta/alpha, independent of x64/arm64. Selecting stable does not downgrade an installed preview. Markdown notes use the application's selected language and native WinUI text controls. See [the release protocol](../docs/updates.md).
+Channel preferences are stable/beta/alpha, independent of x64/arm64. Selecting stable does not downgrade an installed preview. Markdown notes use the application's selected language and native WinUI text controls.
 
 ## 资源
 

@@ -15,7 +15,8 @@ struct HelperView: View {
             if let error = model.errorMessage {
                 errorBar(error)
             }
-            if showsList {
+            QueryDiagnostics(analysis: model.queryAnalysis, compact: true)
+            if showsList && model.candidateKind == nil {
                 PanelSeparator()
                 content
             }
@@ -27,6 +28,12 @@ struct HelperView: View {
         .clipShape(RoundedRectangle(cornerRadius: HelperMetrics.panelRadius, style: .continuous))
         .ignoresSafeArea()
         .scrollIndicators(.never)
+        .sheet(isPresented: $model.showConditionEditor) {
+            AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyEditorQuery($0, draft: $1) }
+        }
+        .sheet(isPresented: $model.showTagManager) { TagManagerView(path: "", citeKey: "") }
+        .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in model.refreshSearch() }
+        .onChange(of: model.showConditionEditor) { visible in if !visible { model.refreshSearch(); searchFocused = true } }
         .onAppear { searchFocused = true }
         .onChange(of: model.focusRequest) { _ in searchFocused = true }
     }
@@ -46,14 +53,58 @@ struct HelperView: View {
             NativeIcon("search", size: 18)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
-            TextField(placeholder,
-                text: Binding(get: { model.query }, set: { model.requestQuery($0) }))
-                .font(.system(size: 20))
-                .textFieldStyle(.plain)
-                .focused($searchFocused)
-                .accessibilityLabel(L10n.text("搜索"))
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 7) {
+                        ForEach(model.capsules) { capsule in
+                            HStack(spacing: 5) {
+                                Button { model.editCapsule(capsule.id) } label: { Text(capsule.text).lineLimit(1) }
+                                    .buttonStyle(.plain).help(L10n.text("搜索条件"))
+                                Button { model.removeCapsule(capsule.id) } label: { NativeIcon("x", size: 9) }
+                                    .buttonStyle(.plain).accessibilityLabel(L10n.text("移除"))
+                            }.font(.system(size: 12, weight: .medium))
+                                .padding(.horizontal, 9).padding(.vertical, 6)
+                                .background(PanelPalette.controlSurface, in: Capsule())
+                                .contextMenu { Button(L10n.text("搜索条件")) { model.expandCapsulesToText() } }
+                        }
+                        SearchInput(text: model.inputText, placeholder: model.capsules.isEmpty && model.candidateKind == nil ? placeholder : "", fontSize: 20,
+                            focusRequest: model.focusRequest, caretAtEndOnFocus: true, isEditable: model.candidateKind == nil,
+                            changed: { model.editInput($0, start: $1, end: $2, replacement: $3, full: $4) }, compositionChanged: model.suspendForComposition, triggerInserted: { symbol, before, after in
+                                guard !model.isSelectingBibliography, !model.editingCondition else { return false }
+                                model.beginCandidates(symbol, nativeBefore: before, nativeAfter: after); return true
+                            }, deleteBackwardAtStart: model.deletePreviousCapsule)
+                            .frame(width: model.candidateKind != nil ? (model.inputText.isEmpty ? 0 : min(CGFloat(model.inputText.count) * 11 + 12, 430)) : max(model.capsules.isEmpty ? 190 : 90, min(CGFloat(model.inputText.count) * 11 + 24, 430)), height: 26)
+                            .clipped().opacity(model.candidateKind != nil && model.inputText.isEmpty ? 0 : 1)
+                            .id("helper-tail")
+                        if let symbol = model.candidateKind {
+                            Text(symbol).font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
+                            SearchInput(text: model.editingOptionalFieldValue ? model.candidateValue : model.candidateFilter,
+                                placeholder: L10n.text(model.editingOptionalFieldValue ? "字段值（可选）" : "筛选候选"), fontSize: 15,
+                                focusRequest: model.candidateFocusRequest, caretAtEndOnFocus: true,
+                                changed: { text, _, _, _, _ in
+                                    if model.editingOptionalFieldValue { model.candidateValue = text }
+                                    else { model.candidateFilter = text; model.candidateSelection = 0 }
+                                }, move: { delta in
+                                    if !model.editingOptionalFieldValue { model.moveCandidate(delta) }
+                                })
+                                .frame(width: 140, height: 21)
+                                .padding(.horizontal, 8).padding(.vertical, 5)
+                                .background(PanelPalette.controlSurface, in: RoundedRectangle(cornerRadius: 7))
+                                .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.accentColor, lineWidth: 1))
+                                .background(HelperCandidateAnchor(model: model))
+                                .id("helper-condition")
+                        }
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                    .onChange(of: model.focusRequest) { _ in proxy.scrollTo("helper-tail", anchor: .trailing) }
+                    .onChange(of: model.candidateFocusRequest) { _ in if model.candidateKind != nil { proxy.scrollTo("helper-condition", anchor: .trailing) } }
+            }
             if model.isSearching || model.isLoading {
                 ProgressView().controlSize(.small).accessibilityLabel(L10n.text("正在搜索"))
+            }
+            if !model.isSelectingBibliography, !model.query.isEmpty {
+                Button { model.showConditionEditor = true; model.refreshSearch() } label: { NativeIcon("tag", size: 14) }
+                    .buttonStyle(.plain).help(L10n.text("搜索条件")).accessibilityLabel(L10n.text("搜索条件"))
             }
             libraryButton
         }
@@ -252,10 +303,10 @@ struct HelperView: View {
         HStack(alignment: .top, spacing: 10) {
             NativeIcon("fileText", size: 15).foregroundStyle(.secondary).padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
-                MathChunkText(chunks: reference.title)
-                    .font(.system(size: 13, weight: .medium)).lineLimit(2)
+                MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title"))
+                    .help(model.matchEvidence[reference.citeKey] ?? "")                    .font(.system(size: 13, weight: .medium)).lineLimit(2)
                 if !reference.author.isEmpty {
-                    Text(reference.author.joined(separator: ", "))
+                    Text(SearchHighlight.authors(reference.author, matches: model.matchRanges[reference.citeKey] ?? []))
                         .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
                 }
                 HStack(spacing: 5) {
@@ -342,17 +393,139 @@ private struct HelperKeyCap: View {
 struct MathChunkText: View {
     @AppStorage("language") private var language = "system"
     let chunks: [TextChunk]
+    var highlightRanges: [Range<Int>] = []
     var body: some View {
         if chunks.isEmpty {
             Text(L10n.text("暂无标题")).foregroundStyle(.secondary)
         } else if !chunks.contains(where: { $0.kind == .math }) {
-            Text(verbatim: chunks.map(\.text).joined())
+            Text(SearchHighlight.attributed(chunks.map(\.text).joined(), ranges: highlightRanges))
         } else {
-            LaTeX(chunks.map { $0.kind == .math ? "$\($0.text)$" : $0.text }.joined())
+            let projection = SearchHighlight.latexProjection(chunks, ranges: highlightRanges)
+            LaTeX(projection.text)
                 .parsingMode(.onlyEquations)
                 .ignoreStringFormatting()
                 .script(.custom(1.1))
+                .decorateComponents { original, range, isEquation, rendered in
+                    let local = projection.ranges.compactMap { match -> Range<Int>? in
+                        let lower = max(range.lowerBound, match.lowerBound), upper = min(range.upperBound, match.upperBound)
+                        return lower < upper ? (lower - range.lowerBound)..<(upper - range.lowerBound) : nil
+                    }
+                    guard !local.isEmpty else { return rendered }
+                    // Keep the renderer's complete image and baseline; decorate
+                    // the atomic math run without splitting or rewriting TeX.
+                    if isEquation { return rendered.underline(true, color: .accentColor) }
+                    return Text(SearchHighlight.attributed(original, ranges: local))
+                }
 
         }
+    }
+}
+
+/// The candidate list is hosted in a real child window, never in the result stack.
+/// Showing it preserves the main editor's focus until Tab or a click selects its filter.
+private struct HelperCandidateAnchor: NSViewRepresentable {
+    @ObservedObject var model: HelperViewModel
+    func makeCoordinator() -> Coordinator { Coordinator(model) }
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ view: NSView, context: Context) {
+        let shouldShow = model.candidateKind != nil && model.candidateField == nil && !model.showTagManager
+        DispatchQueue.main.async { [weak view, weak coordinator = context.coordinator] in
+            guard let view else { return }; coordinator?.update(anchor: view, visible: shouldShow)
+        }
+    }
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) { coordinator.close() }
+    @MainActor final class Coordinator: NSObject, NSWindowDelegate {
+        let model: HelperViewModel
+        var panel: CandidatePanel?
+        init(_ model: HelperViewModel) { self.model = model }
+        func update(anchor: NSView, visible: Bool) {
+            guard visible, model.candidateKind != nil, model.candidateField == nil, !model.showTagManager, let parent = anchor.window, parent.isVisible else { close(); return }
+            let child: CandidatePanel
+            if let panel { child = panel }
+            else {
+                child = CandidatePanel(contentRect: NSRect(x: 0, y: 0, width: model.candidatePopupSize.width, height: model.candidatePopupSize.height), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+                child.isOpaque = false; child.backgroundColor = .clear; child.hasShadow = true
+                child.isFloatingPanel = true; child.hidesOnDeactivate = false; child.level = parent.level
+                child.contentView = NSHostingView(rootView: candidateSnapshot())
+                child.delegate = self; panel = child
+            }
+            let local = anchor.convert(anchor.bounds, to: nil)
+            let rect = parent.convertToScreen(local)
+            let screen = parent.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? parent.frame
+            let size = CGSize(width: min(model.candidatePopupSize.width, screen.width), height: min(model.candidatePopupSize.height, screen.height))
+            let x = min(max(rect.minX, screen.minX), screen.maxX - size.width)
+            let below = rect.minY - size.height - 8
+            let y = below >= screen.minY ? below : min(rect.maxY + 8, screen.maxY - size.height)
+            // Update rows, selection, and geometry from the same committed snapshot.
+            // A separately observed hosting tree must not resize around stale rows.
+            if let hosting = child.contentView as? NSHostingView<HelperFloatingCandidates> {
+                hosting.rootView = candidateSnapshot()
+                hosting.frame = NSRect(origin: .zero, size: size)
+                hosting.layoutSubtreeIfNeeded()
+            }
+            child.setFrame(NSRect(origin: CGPoint(x: x, y: y), size: size), display: true)
+            if child.parent !== parent { parent.addChildWindow(child, ordered: .above) }
+            child.orderFront(nil)
+
+        }
+        private func candidateSnapshot() -> HelperFloatingCandidates {
+            let rows = model.candidates
+            let selected = rows.indices.contains(model.candidateSelection) ? rows[model.candidateSelection].id : nil
+            return HelperFloatingCandidates(rows: rows, selectedID: selected,
+                filterIdentity: (model.candidateKind ?? "") + "\u{1f}" + model.candidateFilter,
+                size: model.candidatePopupSize) { [weak model] id in
+                    guard let model, let index = model.candidates.firstIndex(where: { $0.id == id }) else { return }
+                    model.candidateSelection = index; model.confirmCandidate()
+                }
+        }
+        func close() {
+            guard let panel else { return }
+            let parent = panel.parent
+            let wasKey = panel.isKeyWindow
+            parent?.removeChildWindow(panel); panel.orderOut(nil)
+            self.panel = nil
+            if wasKey, parent?.isVisible == true { parent?.makeKey() }
+        }
+        func windowDidResignKey(_ notification: Notification) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let panel = self.panel, let parent = panel.parent,
+                      !parent.isKeyWindow, !panel.isKeyWindow else { return }
+                HelperPanelController.shared.hidePanel()
+            }
+        }
+    }
+    @MainActor final class CandidatePanel: NSPanel {
+        override var canBecomeKey: Bool { true }
+        override var canBecomeMain: Bool { false }
+    }
+}
+
+private struct HelperFloatingCandidates: View {
+    let rows: [HelperViewModel.Candidate]
+    let selectedID: String?
+    let filterIdentity: String
+    let size: CGSize
+    let select: (String) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if rows.isEmpty { Text(L10n.text("无候选")).foregroundStyle(.secondary) }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(rows, id: \.id) { candidate in
+                            Button { select(candidate.id) } label: {
+                                HStack { Text(candidate.name).lineLimit(1); Spacer(minLength: 0) }.font(.system(size: 13)).padding(.horizontal, 7).frame(height: 28)
+                                    .background(selectedID == candidate.id ? Color.accentColor.opacity(0.18) : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                            }.buttonStyle(.plain).id(candidate.id)
+                                .accessibilityAddTraits(selectedID == candidate.id ? .isSelected : [])
+                        }
+                    }
+                }.scrollIndicators(.never)
+                    .onChange(of: selectedID) { if let id = $0 { proxy.scrollTo(id) } }
+                    .onChange(of: rows.map(\.id)) { _ in if let first = rows.first { proxy.scrollTo(first.id, anchor: .top) } }
+            }.id(filterIdentity)
+        }.padding(6).frame(width: size.width, height: size.height)
+            .background(PanelMaterial(radius: 12, fallback: .popover))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

@@ -29,6 +29,60 @@ actor RustCore {
     func search(path: String, query: String, field: String = "all", type: String = "all") throws -> [Reference] {
         try translated { try BibCiTeXCore.search(path: path, query: query, field: field, typeFilter: type) }.map(reference)
     }
+    /// Applies a native UTF-8 edit range while retaining untouched tag IDs.
+    /// Edits the shared ordered tree, preserving group semantics and tag identity.
+    func editQueryText(_ edit: QueryTextEdit) -> QueryAnalysis { BibCiTeXCore.editQueryText(edit: edit) }
+    /// Returns the shared field/type vocabulary; clients never duplicate parser rules.
+    func searchCatalog() -> SearchCatalog { BibCiTeXCore.searchCatalog() }
+    /// Analyzes text without executing a bibliography search.
+    func analyzeQuery(_ text: String) -> QueryAnalysis { BibCiTeXCore.analyzeQuery(text: text) }
+    /// Serializes a validated typed tree without changing tag bindings.
+    func renderQuery(_ document: QueryDocumentRecord) -> QueryAnalysis { BibCiTeXCore.renderQuery(document: document) }
+    /// Constructs a validated typed condition, including optional stable tag binding.
+    func buildCondition(_ condition: QueryCondition) -> QueryAnalysis { BibCiTeXCore.buildCondition(condition: condition) }
+    func editQuery(_ edit: QueryEdit) -> QueryAnalysis { BibCiTeXCore.editQuery(edit: edit) }
+    /// Refreshes bound tags by ID; deleted bindings remain errors.
+    func refreshQuery(_ document: QueryDocumentRecord) throws -> QueryAnalysis { try translated { try BibCiTeXCore.refreshQuery(document: document) } }
+    /// Reads one revision of the tag directory and optional reference assignments.
+    func tagSnapshot(path: String, citeKey: String) throws -> TagSnapshot { try translated { try BibCiTeXCore.tagSnapshot(path: path, citeKey: citeKey) } }
+    /// Mutates tags with optimistic revision checking; never edits BibTeX.
+    func mutateTag(_ mutation: TagMutation) throws -> TagSnapshot { try translated { try BibCiTeXCore.mutateTag(mutation: mutation) } }
+    /// Checks file and tag revisions immediately before acting on a result.
+    func validateContext(_ context: SearchContext) throws -> Bool { try translated { try BibCiTeXCore.validateSearchContext(context: context) } }
+    /// Executes an explicit mode and refreshes stale bound IDs before one retry.
+    func searchExplicit(path: String, query: String, field: String = "all", type: String = "all", advanced: Bool, draft: SearchDraft = SearchDraft(), version: UInt64) throws -> NativeSearchResult {
+        var request = AdvancedSearchRequest(path: path, mode: advanced ? .advanced : .ordinary,
+            inputKind: advanced && draft.document != nil ? .bound : .text, text: query, document: advanced ? draft.document : nil,
+            expectedTagRevision: advanced ? draft.tagRevision : nil, defaultField: field, typeFilter: type, queryVersion: version)
+        var refreshedText: String?
+        var refreshedDraft: SearchDraft?
+        var result = try translated { try BibCiTeXCore.advancedSearch(request: request) }
+        if result.analysis.status == .staleQuery, let document = request.document {
+            let refreshed = try refreshQuery(document)
+            if refreshed.status == .valid {
+                request.document = refreshed.document; request.text = refreshed.text; request.expectedTagRevision = refreshed.tagRevision
+                result = try translated { try BibCiTeXCore.advancedSearch(request: request) }
+                if result.analysis.status == .valid {
+                    refreshedText = refreshed.text
+                    refreshedDraft = SearchDraft(document: refreshed.document, tagRevision: refreshed.tagRevision)
+                }
+            } else {
+                result.analysis = refreshed; result.references = []; result.context = nil
+            }
+        }
+        let keys = Dictionary(uniqueKeysWithValues: result.references.map { ($0.id, $0.citeKey) })
+        let evidence = Dictionary(result.evidence.compactMap { item -> (String, String)? in
+            guard let key = keys[item.referenceId] else { return nil }
+            let spelling = item.fuzzyTerms.isEmpty ? "" : L10n.text("拼写补充") + ": " + item.fuzzyTerms.joined(separator: ", ")
+            return (key, [item.fields.joined(separator: ", "), spelling].filter { !$0.isEmpty }.joined(separator: " · "))
+        }, uniquingKeysWith: { first, _ in first })
+        let ranges = Dictionary(result.evidence.compactMap { item -> (String, [SearchMatchRange])? in
+            guard let key = keys[item.referenceId] else { return nil }; return (key, item.ranges)
+        }, uniquingKeysWith: { $0 + $1 })
+        let valid = result.analysis.status == .valid
+        return NativeSearchResult(references: valid ? result.references.map(reference) : [], analysis: result.analysis,
+            context: valid ? result.context : nil, evidence: evidence, matchRanges: ranges, refreshedText: refreshedText, refreshedDraft: refreshedDraft)
+    }
     private func translated<T>(_ operation: () throws -> T) throws -> T {
         do { return try operation() }
         catch let error as CoreError {

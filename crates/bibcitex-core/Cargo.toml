@@ -9,6 +9,7 @@ description = "Shared bibliography core for BibCiTeX"
 [dependencies]
 biblatex = { workspace = true }
 chrono = { workspace = true }
+chumsky = { workspace = true }
 config = { workspace = true }
 dirs = { workspace = true }
 fs-err = { workspace = true }
@@ -16,7 +17,10 @@ rayon = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+unicode-casefold = { workspace = true }
 unicode-normalization = { workspace = true }
+unicode-script = { workspace = true }
+unicode-segmentation = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

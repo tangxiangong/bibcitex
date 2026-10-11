@@ -14,9 +14,22 @@ enum HelperKeyHandling {
     /// Returns nil to consume the event, or the event to let AppKit handle it.
     static func handle(_ event: NSEvent, model: HelperViewModel, dismiss: @escaping () -> Void) -> NSEvent? {
         // Let the field editor/input method finish composition before handling shortcuts.
-        if let editor = event.window?.firstResponder as? NSTextView, editor.hasMarkedText() {
+        if let editor = event.window?.firstResponder as? NSTextView, (editor.markedRange().location != NSNotFound && editor.markedRange().length > 0) || (editor as? SearchTextView)?.isComposing == true || (editor as? SearchTextView)?.keyWasComposing == true {
             return event
         }
+        if model.candidateKind != nil && event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty {
+            switch event.keyCode {
+            case 53: model.cancelCandidateLevel(); return nil
+            case 125: model.moveCandidate(1); return nil
+            case 126: model.moveCandidate(-1); return nil
+            case 36, 76: model.confirmCandidate(); return nil
+            case 48:
+                if model.editingOptionalFieldValue { model.skipOptionalFieldValue() } else { model.requestCandidateFocus() }
+                return nil
+            default: break
+            }
+        }
+        if model.showConditionEditor { return event }
         if !event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty {
             return event
         }
@@ -237,7 +250,7 @@ final class HelperPanelController: NSObject {
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            if event.window !== self.panel || self.panel?.isKeyWindow != true || self.failureAlert != nil || self.panel?.attachedSheet != nil {
+            if (event.window !== self.panel && event.window?.parent !== self.panel) || self.failureAlert != nil || self.panel?.attachedSheet != nil {
                 return event
             }
             return HelperKeyHandling.handle(event, model: self.model, dismiss: self.hidePanel)
@@ -275,6 +288,10 @@ final class HelperPanelController: NSObject {
 extension HelperPanelController: NSWindowDelegate {
     func windowDidResignKey(_ notification: Notification) {
         guard isVisible, !model.isPasting, failureAlert == nil, panel?.attachedSheet == nil else { return }
-        hidePanel()
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel, !panel.isKeyWindow,
+                  !((panel.childWindows ?? []).contains { $0.isKeyWindow }) else { return }
+            self.hidePanel()
+        }
     }
 }

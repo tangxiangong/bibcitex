@@ -94,25 +94,79 @@ fn request(source: &str, cx: &mut App) -> Option<Formula> {
     None
 }
 
+/// Render original text and mathematical chunks without search highlighting.
 pub fn rich(chunks: &[ChunkRecord], cx: &mut App) -> AnyElement {
+    rich_highlighted(chunks, &[], cx)
+}
+
+/// Render bibliography chunks with match ranges in the original concatenated
+/// UTF-8 source. Invalid ranges are ignored; formulas keep their native layout
+/// and are marked as a whole when a source range overlaps the formula.
+pub fn rich_highlighted(
+    chunks: &[ChunkRecord],
+    ranges: &[(usize, usize)],
+    cx: &mut App,
+) -> AnyElement {
     let mut line = div().flex().flex_wrap().items_center().gap_x_0().min_w_0();
+    let mut offset = 0;
     for chunk in chunks {
+        let end = offset + chunk.text.len();
+        let local: Vec<_> = ranges
+            .iter()
+            .filter_map(|&(start, finish)| {
+                let start = start.max(offset).saturating_sub(offset);
+                let finish = finish.min(end).saturating_sub(offset);
+                (start < finish
+                    && chunk.text.is_char_boundary(start)
+                    && chunk.text.is_char_boundary(finish))
+                .then_some(start..finish)
+            })
+            .collect();
+        offset = end;
         if matches!(chunk.kind, ChunkKind::Math) {
             if let Some(formula) = request(&chunk.text, cx) {
                 let key = asset_key(&chunk.text);
                 line = line.child(
-                    svg()
-                        .path(key)
-                        .text_color(cx.theme().foreground)
-                        .w(px(formula.width))
-                        .h(px(formula.height))
-                        .flex_shrink_0(),
+                    div()
+                        .when(!local.is_empty(), |node| {
+                            node.border_b_1().border_color(cx.theme().link)
+                        })
+                        .child(
+                            svg()
+                                .path(key)
+                                .text_color(cx.theme().foreground)
+                                .w(px(formula.width))
+                                .h(px(formula.height))
+                                .flex_shrink_0(),
+                        ),
                 );
             } else {
-                line = line.child(format!("${}$", chunk.text));
+                line = line.child(
+                    div()
+                        .when(!local.is_empty(), |node| {
+                            node.text_color(cx.theme().link)
+                                .font_weight(FontWeight::SEMIBOLD)
+                        })
+                        .child(format!("${}$", chunk.text)),
+                );
             }
         } else {
-            line = line.child(div().min_w_0().child(chunk.text.clone()));
+            let highlights = local.into_iter().map(|range| {
+                (
+                    range,
+                    HighlightStyle {
+                        color: Some(cx.theme().link),
+                        font_weight: Some(FontWeight::SEMIBOLD),
+                        ..Default::default()
+                    },
+                )
+            });
+            line =
+                line.child(div().min_w_0().child(
+                    StyledText::new(chunk.text.clone()).with_highlights(
+                        combine_highlights(vec![], highlights).collect::<Vec<_>>(),
+                    ),
+                ));
         }
     }
     line.when(chunks.is_empty(), |line| line.child("—"))

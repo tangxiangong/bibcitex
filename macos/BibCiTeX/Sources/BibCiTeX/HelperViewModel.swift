@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import BibCiTeXCore
 
 protocol HelperServing: Sendable {
     func loadBibliographyStateIfAvailable() async throws -> (bibs: [Bibliography], current: Bibliography?)
@@ -14,6 +15,407 @@ protocol HelperServing: Sendable {
 final class HelperViewModel: ObservableObject {
     var onPasteStart: (() -> Void)?
     var onPasteFailure: (() -> Void)?
+    @Published private(set) var matchRanges: [String: [SearchMatchRange]] = [:]
+    @Published private(set) var matchEvidence: [String: String] = [:]
+    @Published private(set) var queryAnalysis: QueryAnalysis?
+    @Published var candidateKind: String? { didSet { candidateOperation += 1 } }
+    @Published var candidateFilter = "" { didSet { candidateOperation += 1 } }
+    @Published var candidateSelection = 0 { didSet { candidateOperation += 1 } }
+    @Published var candidateField: String? { didSet { candidateOperation += 1 } }
+    @Published var candidateValue = "" { didSet { candidateOperation += 1 } }
+    @Published var candidatePhrase = false { didSet { candidateOperation += 1 } }
+    @Published var candidateExclude = false { didSet { candidateOperation += 1 } }
+    @Published var candidateFocusRequest = 0
+    @Published private(set) var candidateFilterFocus = false
+    @Published var showConditionEditor = false
+    @Published var showTagManager = false
+    @Published private(set) var candidateCatalog: SearchCatalog?
+    @Published private(set) var candidateTags: TagSnapshot?
+    private var candidateOperation = 0
+    private var candidateParentKind: String?
+    private var candidateOriginal = ""
+    private var candidateTrigger = ""
+    /// Confirmed semantic operands are displayed as capsules; only the tail is editable text.
+    struct Capsule: Identifiable {
+        let id: UUID
+        var text: String
+        var document: QueryDocumentRecord
+        var condition: QueryCondition?
+        var scopeField: String? = nil
+    }
+    @Published private(set) var capsules: [Capsule] = []
+    @Published private(set) var tailText = ""
+    private var editingCapsuleID: UUID?
+    private var capsuleRevision: UInt64?
+    private var activeKeywordField: String?
+    private var optionalScopeBefore: (String?, [(Int, Capsule)])?
+    var editingOptionalFieldValue: Bool { optionalScopeBefore != nil && candidateField != nil }
+    private var savedKeywordField: String?
+    private var candidateTail = ""
+    private var librarySwitchCapsules: ([Capsule], String, UInt64?)?
+    var inputText: String {
+        if candidateKind != nil { return candidateTail }
+        return isSelectingBibliography || capsules.isEmpty ? query : tailText
+    }
+
+    /// Edits the single tail operand; confirmed capsules never become duplicate filters.
+    func editInput(_ text: String, start: UInt32, end: UInt32, replacement: String, full: Bool) {
+        if capsules.isEmpty { editText(text, start: start, end: end, replacement: replacement, full: full); return }
+        if candidateKind != nil { candidateKind = nil; candidateField = nil; editingCapsuleID = nil }
+        tailText = text
+        rebuildCapsuleQuery()
+    }
+    /// Parses the unscoped keyword operand; the UI field is applied once at execution.
+    private func keywordOperand(_ text: String) -> QueryAnalysis { BibCiTeXCore.analyzeQuery(text: text) }
+    private func scopedProjection() -> QueryAnalysis {
+        let base = capsuleProjection()
+        guard base.status == .valid, let field = activeKeywordField, var document = base.document,
+              let root = document.root else { return base }
+        document.nodes.append(QueryNodeRecord(kind: .scope, textValue: field, tagId: nil, children: [root], start: 0, end: 0))
+        document.root = UInt32(document.nodes.count - 1)
+        return BibCiTeXCore.renderQuery(document: document)
+    }
+    private func preserveKeywordsBeforeSelection(_ text: String) -> Bool {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return true }
+        let words = keywordOperand(text)
+        guard words.status == .valid, let document = words.document else { queryAnalysis = words; return false }
+        capsules.append(Capsule(id: UUID(), text: words.text, document: document, condition: nil))
+        return true
+    }
+    private func capsuleProjection() -> QueryAnalysis {
+        var document = QueryDocumentRecord(nodes: [], root: nil)
+        for capsule in capsules where capsule.document.root != nil {
+            let joined = BibCiTeXCore.editQuery(edit: QueryEdit(document: document, action: .appendAnd, target: nil, operand: capsule.document))
+            guard joined.status == .valid, let next = joined.document else { return joined }
+            document = next
+        }
+        let tail = keywordOperand(tailText)
+        if tail.status == .valid, let operand = tail.document {
+            return operand.root == nil ? BibCiTeXCore.renderQuery(document: document) : BibCiTeXCore.editQuery(edit: QueryEdit(document: document, action: .appendAnd, target: nil, operand: operand))
+        }
+        // Ask the shared serializer to group the existing expression, then replace
+        // its final placeholder using an exact edit range. Invalid tail input is
+        // retained for editing together with untouched ById anchors, never executed.
+        let marker = "helperTail" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        let placeholder = BibCiTeXCore.buildCondition(condition: QueryCondition(fieldName: "", textValue: marker, phrase: false, exclude: false, tagId: nil))
+        let skeleton = BibCiTeXCore.editQuery(edit: QueryEdit(document: document, action: .appendAnd, target: nil, operand: placeholder.document))
+        guard skeleton.status == .valid, let bound = skeleton.document,
+              let leaf = bound.nodes.last(where: { $0.kind == .word && $0.textValue == marker }) else { return skeleton }
+        return BibCiTeXCore.editQueryText(edit: QueryTextEdit(document: bound, text: skeleton.text, start: leaf.start, end: leaf.end, replacement: tailText, fullReplace: false))
+    }
+    private func rebuildCapsuleQuery() {
+        let result = scopedProjection()
+        guard result.status == .valid else {
+            invalidateSearch(); searchContext = nil; searchResults = []; selectedReferenceIndex = nil
+            query = result.text; boundDraft = SearchDraft(document: result.document, tagRevision: capsuleRevision)
+            queryAnalysis = result; recalcHeight(); return
+        }
+        applyAdvancedQuery(result.text, draft: SearchDraft(document: result.document, tagRevision: capsuleRevision))
+    }
+    /// Removes exactly one confirmed semantic operand, then recomposes the query in source order.
+    func removeCapsule(_ id: UUID, refocusTail: Bool = true) {
+        if candidateKind != nil { cancelCandidates() }
+        if capsules.first(where: { $0.id == id })?.scopeField != nil { activeKeywordField = nil }
+        capsules.removeAll { $0.id == id }
+        if capsules.isEmpty { boundDraft = SearchDraft(); updateQuery(tailText) }
+        else { rebuildCapsuleQuery() }
+        if refocusTail { focusRequest += 1 }
+    }
+    /// Native Backspace at tail offset zero removes the adjacent operand and keeps
+    /// the caret at zero so repeated deletes walk backward through the capsules.
+    func deletePreviousCapsule() -> Bool {
+        guard !isSelectingBibliography, candidateKind == nil, !showConditionEditor,
+              let previous = capsules.last else { return false }
+        removeCapsule(previous.id, refocusTail: false)
+        return true
+    }
+    /// Reopens a simple condition inline; grouped or handwritten operands remain text-editable.
+    func editCapsule(_ id: UUID) {
+        guard let capsule = capsules.first(where: { $0.id == id }) else { return }
+        if capsule.scopeField != nil { beginCandidates("$"); editingCapsuleID = id; return }
+        guard let condition = capsule.condition else { expandCapsulesToText(); return }
+        beginCandidates(condition.fieldName == "tag" ? "#" : condition.fieldName == "type" ? "@" : "$")
+        editingCapsuleID = id
+        candidatePhrase = condition.phrase; candidateExclude = condition.exclude
+        if condition.fieldName == "tag" || condition.fieldName == "type" {
+            candidateFilter = condition.textValue
+        } else { cancelCandidates(); expandCapsulesToText(); return }
+        requestCandidateFocus()
+    }
+    /// Expands the exact shared projection for arbitrary grouped-expression editing.
+    func expandCapsulesToText() {
+        if candidateKind != nil { cancelCandidates() }
+        let projection = scopedProjection()
+        guard projection.status == .valid || !projection.text.isEmpty || projection.document != nil else {
+            queryAnalysis = projection; recalcHeight(); return
+        }
+        capsules = []; tailText = ""; editingCapsuleID = nil; activeKeywordField = nil
+        boundDraft = SearchDraft(document: projection.document, tagRevision: capsuleRevision)
+        if projection.status == .valid { updateQuery(projection.text) }
+        else { invalidateSearch(); searchContext = nil; searchResults = []; selectedReferenceIndex = nil; query = projection.text; queryAnalysis = projection; recalcHeight() }
+        focusRequest += 1
+    }
+    private var librarySwitchDraft: (String, SearchDraft)?
+    private(set) var boundDraft = SearchDraft()
+    private var searchContext: SearchContext?
+    var editingCondition: Bool { candidateKind != nil || showConditionEditor }
+    struct Candidate: Identifiable { let id: String; let name: String; var searchTerms: [String] = [] }
+    /// Chinese UI also accepts the English display label; English never indexes hidden Chinese keys.
+    private func catalogCandidate(name: String, labelKey: String) -> Candidate {
+        let display = L10n.text(labelKey)
+        var terms = [name, display]
+        if L10n.language == "zh-Hans" { terms.append(L10n.translate(labelKey, language: "en")) }
+        return Candidate(id: name, name: display, searchTerms: terms)
+    }
+    var candidates: [Candidate] {
+        let values: [Candidate]
+        switch candidateKind {
+        case "@": values = (candidateCatalog?.typeDescriptors ?? []).map { catalogCandidate(name: $0.name, labelKey: $0.labelKey) }
+        case "$": values = (candidateCatalog?.fieldDescriptors ?? []).map { catalogCandidate(name: $0.name, labelKey: $0.labelKey) }
+        case "#": values = (candidateTags?.tags ?? []).map { Candidate(id: $0.id, name: $0.name) }
+        default: values = []
+        }
+        return values.filter { item in
+            candidateFilter.isEmpty || (item.searchTerms.isEmpty ? [item.name] : item.searchTerms).contains { $0.localizedCaseInsensitiveContains(candidateFilter) }
+        }
+    }
+    /// Candidate geometry follows its labels and caps the scroll viewport at six rows.
+    var candidatePopupSize: CGSize {
+        let width = candidates.map { ($0.name as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width + 28 }.max() ?? 140
+        return CGSize(width: min(220, max(140, width)), height: CGFloat(max(1, min(6, candidates.count))) * 28 + 12)
+    }
+    /// Matching capabilities and labels come from the shared field catalog.
+    var candidateFieldDescriptor: SearchFieldDescriptor? { candidateCatalog?.fieldDescriptors.first { $0.name == candidateField } }
+    var candidateSupportsPhrase: Bool { candidateFieldDescriptor?.supportsPhrase == true }
+    var candidateFieldLabel: String { candidateFieldDescriptor.map { L10n.text($0.labelKey) } ?? candidateField ?? "" }
+    /// Opens a physical-key candidate session without executing its provisional trigger.
+    func beginCandidates(_ symbol: String, nativeBefore: String? = nil, nativeAfter: String? = nil) {
+        guard !isSelectingBibliography else { return }
+        if editingOptionalFieldValue { skipOptionalFieldValue() }
+        candidateParentKind = nil; candidateFilterFocus = false
+        candidateOriginal = capsules.isEmpty ? (nativeBefore ?? query) : query
+        candidateTrigger = symbol; candidateTail = nativeBefore ?? inputText
+        invalidateQueryEdit()
+        editingCapsuleID = nil
+        invalidateSearch(); searchContext = nil; searchResults = []; selectedReferenceIndex = nil
+        candidateKind = symbol; candidateField = nil; candidateValue = ""; candidateFilter = ""; candidateSelection = 0
+        candidatePhrase = false; candidateExclude = false
+        // Native insertion already placed the caret correctly. The trigger itself
+        // is replaced by the dedicated inline filter, not appended to query syntax.
+        if capsules.isEmpty { query = candidateTail } else { tailText = candidateTail }
+        requestCandidateFocus()
+        recalcHeight()
+        let version = searchVersion, session = sessionGeneration
+        Task {
+            let catalog = await RustCore.shared.searchCatalog()
+            guard version == searchVersion, session == sessionGeneration, candidateKind != nil else { return }
+            candidateCatalog = catalog
+            do {
+                let tags = try await RustCore.shared.tagSnapshot(path: "", citeKey: "")
+                guard version == searchVersion, session == sessionGeneration, candidateKind != nil else { return }
+                candidateTags = tags
+            } catch {
+                guard version == searchVersion, session == sessionGeneration, candidateKind != nil else { return }
+                errorDetails = LocalizedMessage(error: error)
+            }
+            recalcHeight()
+        }
+    }
+    /// Esc unwinds a field editor or nested catalog before closing the candidate session.
+    func cancelCandidateLevel() {
+        if editingOptionalFieldValue { skipOptionalFieldValue(); return }
+        if candidateField != nil {
+            candidateField = nil; candidateValue = ""; queryAnalysis = nil; requestCandidateFocus()
+        } else if let parent = candidateParentKind {
+            candidateParentKind = nil; candidateKind = parent; candidateFilter = ""; candidateSelection = 0
+            requestCandidateFocus()
+        } else { cancelCandidates() }
+    }
+    /// Cancels the candidate session and restores its exact pre-trigger draft.
+    func cancelCandidates() {
+        if editingOptionalFieldValue { skipOptionalFieldValue(); return }
+        guard candidateKind != nil else { return }
+        candidateKind = nil; candidateField = nil; editingCapsuleID = nil
+        tailText = candidateTail
+        updateQuery(candidateOriginal); focusRequest += 1
+    }
+    /// Transfers focus only after an explicit Tab or a field/catalog selection.
+    func requestCandidateFocus() {
+        candidateFilterFocus = candidateField == nil
+        candidateFocusRequest += 1
+    }
+    func moveCandidate(_ delta: Int) {
+        candidateSelection = max(0, min(candidateSelection + delta, candidates.count - 1))
+    }
+    func confirmCandidate() {
+        if editingOptionalFieldValue { commitOptionalFieldValue(); return }
+        guard candidates.indices.contains(candidateSelection) else { return }
+        let candidate = candidates[candidateSelection]
+        if candidateKind == "$" {
+            var keywords = candidateTail
+            // A structured text draft may already carry stable tag identities.
+            // Preserve that unscoped document instead of reparsing its display names.
+            if capsules.isEmpty, let document = boundDraft.document,
+               document.nodes.contains(where: { $0.tagId != nil }) {
+                let syntax = BibCiTeXCore.analyzeQuery(text: candidateOriginal)
+                guard syntax.status == .valid else { queryAnalysis = syntax; recalcHeight(); return }
+                let preserved = BibCiTeXCore.renderQuery(document: document)
+                guard preserved.status == .valid, let base = preserved.document else { queryAnalysis = preserved; recalcHeight(); return }
+                capsules.append(Capsule(id: UUID(), text: preserved.text, document: base, condition: nil))
+                capsuleRevision = boundDraft.tagRevision
+                keywords = ""
+            }
+            optionalScopeBefore = (activeKeywordField, capsules.enumerated().compactMap { $0.element.scopeField == nil ? nil : ($0.offset, $0.element) })
+            if let editingCapsuleID { capsules.removeAll { $0.id == editingCapsuleID } }
+            capsules.removeAll { $0.scopeField != nil }
+            activeKeywordField = candidate.id
+            capsules.append(Capsule(id: UUID(), text: candidate.name, document: QueryDocumentRecord(nodes: [], root: nil), condition: nil, scopeField: candidate.id))
+            candidateField = candidate.id; candidateValue = ""; editingCapsuleID = nil
+            candidateTail = keywords; tailText = keywords
+            queryAnalysis = nil; requestCandidateFocus(); recalcHeight()
+            return
+        }
+        commitCandidate(candidate)
+    }
+    /// Empty Enter, Escape, or Tab accepts only the selected range and resumes keywords.
+    func skipOptionalFieldValue() {
+        guard editingOptionalFieldValue else { return }
+        optionalScopeBefore = nil; candidateKind = nil; candidateField = nil; candidateValue = ""
+        tailText = candidateTail; rebuildCapsuleQuery(); focusRequest += 1
+    }
+    /// A supplied value is an explicit typed restriction; the previous UI range is restored.
+    private func commitOptionalFieldValue() {
+        guard let field = candidateField, let previous = optionalScopeBefore else { return }
+        if candidateValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { skipOptionalFieldValue(); return }
+        let condition = QueryCondition(fieldName: field, textValue: candidateValue, phrase: false, exclude: false, tagId: nil)
+        let built = BibCiTeXCore.buildCondition(condition: condition)
+        guard built.status == .valid, let operand = built.document else {
+            queryAnalysis = built; searchContext = nil; searchResults = []; selectedReferenceIndex = nil; recalcHeight(); return
+        }
+        // Validate the original keyword operand before changing any confirmed capsules.
+        let words = keywordOperand(candidateTail)
+        guard words.status == .valid else { queryAnalysis = words; recalcHeight(); return }
+        capsules.removeAll { $0.scopeField != nil }
+        for (index, capsule) in previous.1 { capsules.insert(capsule, at: min(index, capsules.count)) }
+        activeKeywordField = previous.0
+        if let document = words.document, document.root != nil {
+            capsules.append(Capsule(id: UUID(), text: words.text, document: document, condition: nil))
+        }
+        capsules.append(Capsule(id: UUID(), text: built.text, document: operand, condition: condition))
+        optionalScopeBefore = nil; candidateKind = nil; candidateField = nil; candidateValue = ""
+        tailText = ""; rebuildCapsuleQuery(); focusRequest += 1
+    }
+    private func commitCandidate(_ candidate: Candidate? = nil) {
+        candidateOperation += 1
+        let operation = candidateOperation, version = searchVersion, session = sessionGeneration
+        let kind = candidateKind
+        let field = candidateField ?? (kind == "@" ? "type" : "tag")
+        let value = candidate.map { kind == "@" ? $0.id : $0.name } ?? candidateValue
+        let condition = QueryCondition(fieldName: field, textValue: value,
+            phrase: candidateSupportsPhrase && candidatePhrase, exclude: candidateExclude,
+            tagId: kind == "#" ? candidate?.id : nil)
+        let originalText = candidateOriginal, document = boundDraft.document, revision = candidateTags?.revision
+        let replacing = editingCapsuleID, priorTail = candidateTail
+        func current() -> Bool { operation == candidateOperation && version == searchVersion && session == sessionGeneration }
+        Task {
+            let built = await RustCore.shared.buildCondition(condition)
+            guard current() else { return }
+            guard built.status == .valid, let operand = built.document else { queryAnalysis = built; recalcHeight(); return }
+            for index in capsules.indices where capsules[index].scopeField == nil {
+                let refreshed: QueryAnalysis
+                do { refreshed = try await RustCore.shared.refreshQuery(capsules[index].document) }
+                catch { guard current() else { return }; errorDetails = LocalizedMessage(error: error); return }
+                guard current() else { return }
+                guard refreshed.status == .valid, let refreshedDocument = refreshed.document else { continue }
+                capsules[index].document = refreshedDocument; capsules[index].text = refreshed.text
+                if var condition = capsules[index].condition, condition.tagId != nil,
+                   let tag = refreshedDocument.nodes.first(where: { $0.tagId != nil }) {
+                    condition.tagId = tag.tagId; condition.textValue = tag.textValue; capsules[index].condition = condition
+                }
+            }
+            if let replacing, let index = capsules.firstIndex(where: { $0.id == replacing }) {
+                capsules[index] = Capsule(id: replacing, text: built.text, document: operand, condition: condition)
+                candidateKind = nil; candidateField = nil; candidateParentKind = nil; editingCapsuleID = nil
+                tailText = priorTail; capsuleRevision = revision; rebuildCapsuleQuery(); focusRequest += 1
+                return
+            }
+            let syntax = await RustCore.shared.analyzeQuery(originalText)
+            guard current() else { return }
+            guard syntax.status == .valid else { queryAnalysis = syntax; recalcHeight(); return }
+            let original: QueryAnalysis
+            if let document {
+                do { original = try await RustCore.shared.refreshQuery(document) }
+                catch { guard current() else { return }; errorDetails = LocalizedMessage(error: error); return }
+            } else { original = syntax }
+            guard current() else { return }
+            guard original.status == .valid, let document = original.document else { queryAnalysis = original; return }
+            let result = await RustCore.shared.editQuery(QueryEdit(document: document, action: .appendAnd, target: nil, operand: operand))
+            guard current() else { return }
+            guard result.status == .valid else { queryAnalysis = result; return }
+            candidateKind = nil; candidateField = nil; candidateParentKind = nil
+            if let replacing, let index = capsules.firstIndex(where: { $0.id == replacing }) {
+                capsules[index] = Capsule(id: replacing, text: built.text, document: operand, condition: condition)
+                tailText = priorTail
+            } else {
+                if capsules.isEmpty, let originalDocument = original.document, originalDocument.root != nil {
+                    capsules.append(Capsule(id: UUID(), text: original.text, document: originalDocument, condition: nil))
+                } else if !capsules.isEmpty, !priorTail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    let prior = keywordOperand(priorTail)
+                    if prior.status == .valid, let priorDoc = prior.document { capsules.append(Capsule(id: UUID(), text: prior.text, document: priorDoc, condition: nil)) }
+                }
+                capsules.append(Capsule(id: UUID(), text: built.text, document: operand, condition: condition))
+                tailText = ""
+            }
+            editingCapsuleID = nil; capsuleRevision = revision
+            rebuildCapsuleQuery()
+            focusRequest += 1
+        }
+    }
+    /// A full expression edit replaces both token presentation and tail atomically.
+    func applyEditorQuery(_ text: String, draft: SearchDraft) {
+        capsules = []; tailText = ""; editingCapsuleID = nil; activeKeywordField = nil
+        optionalScopeBefore = nil; candidateKind = nil; candidateField = nil; candidateValue = ""
+        applyAdvancedQuery(text, draft: draft); focusRequest += 1
+    }
+    /// Commits a service-built tree and its tag snapshot as the helper’s one active query.
+    func applyAdvancedQuery(_ text: String, draft: SearchDraft) {
+        boundDraft = draft; updateQuery(text)
+    }
+    func suspendForComposition(_ composing: Bool) {
+        guard composing else { if capsules.isEmpty { updateQuery(query) } else { rebuildCapsuleQuery() }; return }
+        invalidateQueryEdit(); invalidateSearch(); searchContext = nil
+    }
+    /// Applies an actual native edit range; whole replacements deliberately resolve names anew.
+    func editText(_ text: String, start: UInt32, end: UInt32, replacement: String, full: Bool) {
+        if candidateKind != nil {
+            if let document = boundDraft.document {
+                let offset = UInt32(candidateOriginal.utf8.count)
+                let materialized = BibCiTeXCore.editQueryText(edit: QueryTextEdit(document: document, text: candidateOriginal,
+                    start: offset, end: offset, replacement: candidateTrigger, fullReplace: false))
+                boundDraft.document = materialized.document
+            }
+            candidateKind = nil; candidateField = nil
+        }
+        guard let document = boundDraft.document, !full else { requestQuery(text); return }
+        let result = BibCiTeXCore.editQueryText(edit: QueryTextEdit(document: document, text: query, start: start, end: end, replacement: replacement, fullReplace: false))
+        boundDraft.document = result.document; queryAnalysis = result; updateQuery(text)
+    }
+    func refreshSearch() {
+        updateQuery(query)
+        if candidateKind != nil {
+            let version = searchVersion, session = sessionGeneration
+            Task {
+                do {
+                    let tags = try await RustCore.shared.tagSnapshot(path: "", citeKey: "")
+                    guard version == searchVersion, session == sessionGeneration, candidateKind != nil else { return }
+                    candidateTags = tags
+                } catch {
+                    guard version == searchVersion, session == sessionGeneration, candidateKind != nil else { return }
+                    errorDetails = LocalizedMessage(error: error)
+                }
+            }
+        }
+    }
     @Published var isPasting = false
     @Published private(set) var isPasteOperationPending = false
     @Published private(set) var bibliographies: [Bibliography] = []
@@ -66,6 +468,9 @@ final class HelperViewModel: ObservableObject {
     @discardableResult
     func beginSession() -> Int {
         invalidateSession()
+        boundDraft = SearchDraft(); candidateKind = nil; candidateField = nil; showConditionEditor = false
+        queryAnalysis = nil; searchContext = nil; matchEvidence = [:]; librarySwitchDraft = nil
+        capsules = []; tailText = ""; capsuleRevision = nil; editingCapsuleID = nil; librarySwitchCapsules = nil; activeKeywordField = nil; savedKeywordField = nil; optionalScopeBefore = nil
         return sessionGeneration
     }
 
@@ -147,15 +552,9 @@ final class HelperViewModel: ObservableObject {
     func requestQuery(_ value: String) {
         invalidateQueryEdit()
         guard value != query else { return }
-        let edit = queryEditVersion
-        let session = sessionGeneration
-        let state = stateVersion
-        queryEditTask = Task { @MainActor [weak self] in
-            guard let self, !Task.isCancelled,
-                edit == queryEditVersion, session == sessionGeneration, state == stateVersion else { return }
-            queryEditTask = nil
-            updateQuery(value)
-        }
+        boundDraft = SearchDraft()
+        if candidateKind != nil { candidateKind = nil; candidateField = nil }
+        updateQuery(value)
     }
 
     private func invalidateQueryEdit() {
@@ -167,6 +566,7 @@ final class HelperViewModel: ObservableObject {
     func updateQuery(_ nextQuery: String) {
         invalidateQueryEdit()
         query = nextQuery
+        queryAnalysis = nil; matchEvidence = [:]; searchContext = nil
         errorMessage = nil
         failedPasteKey = nil
 
@@ -186,13 +586,13 @@ final class HelperViewModel: ObservableObject {
 
         let trimmed = nextQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         let version = searchVersion
-        if !trimmed.isEmpty {
+        if !trimmed.isEmpty && !editingCondition {
             isSearching = true
             searchTask = Task {
                 do {
                     try await Task.sleep(nanoseconds: 90_000_000)
                     try Task.checkCancellation()
-                    await performSearch(trimmed, version: version)
+                    await performSearch(nextQuery, version: version)
                 } catch {
                     // A new query or bibliography superseded this search.
                 }
@@ -203,6 +603,12 @@ final class HelperViewModel: ObservableObject {
     }
 
     func startSelectMode() {
+        if candidateKind != nil { cancelCandidates() }
+        if !isSelectingBibliography {
+            librarySwitchDraft = (query, boundDraft); librarySwitchCapsules = (capsules, tailText, capsuleRevision); savedKeywordField = activeKeywordField
+        }
+        capsules = []; tailText = ""
+        boundDraft = SearchDraft()
         isLoading = false
         invalidateSearch()
         stateVersion += 1
@@ -253,7 +659,11 @@ final class HelperViewModel: ObservableObject {
                 isSelectingBibliography = false
                 selectedReferenceIndex = nil
                 searchResults = []
-                updateQuery(query)
+                if let draft = librarySwitchDraft {
+                    boundDraft = draft.1; librarySwitchDraft = nil
+                    if let saved = librarySwitchCapsules { capsules = saved.0; tailText = saved.1; capsuleRevision = saved.2; librarySwitchCapsules = nil; activeKeywordField = savedKeywordField }
+                    updateQuery(draft.0)
+                } else { updateQuery(query) }
             } catch {
                 guard version == stateVersion else { return }
                 isLoading = false
@@ -310,22 +720,24 @@ final class HelperViewModel: ObservableObject {
     }
 
     private func paste(_ reference: Reference, onSuccess: @escaping () -> Void) {
-        guard !isPasteOperationPending else { return }
+        guard !isPasteOperationPending, !editingCondition, !isSearching, searchContext != nil, searchResults.contains(where: { $0.citeKey == reference.citeKey }) else { return }
         let key = reference.citeKey
+        let version = searchVersion
         let session = sessionGeneration
         isPasting = true
         isPasteOperationPending = true
         errorMessage = nil
         let hasPermission = requestPastePermission()
-        onPasteStart?()
 
         Task { @MainActor in
-            defer { isPasteOperationPending = false }
+            defer { isPasteOperationPending = false; if session == sessionGeneration { isPasting = false } }
             guard session == sessionGeneration else { return }
             do {
                 guard hasPermission else {
                     throw HelperError.ffiError("缺少辅助功能权限，无法控制其他应用")
                 }
+                guard let context = searchContext, try await RustCore.helper.validateContext(context), version == searchVersion, session == sessionGeneration else { refreshSearch(); return }
+                onPasteStart?()
                 try await service.copyAndPaste(citeKey: key)
                 guard session == sessionGeneration else { return }
                 isPasting = false
@@ -334,6 +746,7 @@ final class HelperViewModel: ObservableObject {
                 guard session == sessionGeneration else { return }
                 let pasteError = LocalizedMessage(error: error)
                 do {
+                    guard let context = searchContext, try await RustCore.helper.validateContext(context), version == searchVersion else { refreshSearch(); return }
                     try await service.copy(citeKey: key)
                     guard session == sessionGeneration else { return }
                     failedPasteKey = nil
@@ -352,10 +765,12 @@ final class HelperViewModel: ObservableObject {
     /// Copies an explicit key, for the paste surface's failure bar, where there is
     /// no row control to press.
     func copyKey(_ key: String) {
-        guard !key.isEmpty else { return }
+        guard !key.isEmpty, !editingCondition, let context = searchContext else { return }
         let session = sessionGeneration
+        let version = searchVersion
         Task { @MainActor in
             do {
+                guard try await RustCore.helper.validateContext(context), session == sessionGeneration, version == searchVersion else { refreshSearch(); return }
                 try await service.copy(citeKey: key)
                 guard session == sessionGeneration else { return }
                 confirmCopy(of: key)
@@ -382,9 +797,32 @@ final class HelperViewModel: ObservableObject {
 
     private func performSearch(_ queryText: String, version: Int) async {
         do {
-            let found = try await service.searchReferences(query: queryText)
+            guard let library = currentBibliography else { return }
+            let response = try await RustCore.helper.searchExplicit(path: library.path, query: queryText, advanced: true, draft: boundDraft, version: UInt64(version))
+            let found = response.references
             guard version == searchVersion, !Task.isCancelled, !isSelectingBibliography else { return }
             isSearching = false
+            if let text = response.refreshedText, let draft = response.refreshedDraft {
+                query = text; boundDraft = draft
+                if !capsules.isEmpty {
+                    for index in capsules.indices where capsules[index].scopeField == nil {
+                        let refreshed = try await RustCore.helper.refreshQuery(capsules[index].document)
+                        guard version == searchVersion, !Task.isCancelled else { return }
+                        guard refreshed.status == .valid, let document = refreshed.document else {
+                            queryAnalysis = refreshed; searchContext = nil; searchResults = []; selectedReferenceIndex = nil; recalcHeight(); return
+                        }
+                        capsules[index].document = document; capsules[index].text = refreshed.text
+                        if var condition = capsules[index].condition, let id = condition.tagId,
+                           let tag = document.nodes.first(where: { $0.tagId == id || $0.tagId != nil }) {
+                            condition.tagId = tag.tagId; condition.textValue = tag.textValue; capsules[index].condition = condition
+                        }
+                    }
+                    capsuleRevision = draft.tagRevision
+                }
+            }
+            matchRanges = response.matchRanges
+            matchEvidence = response.evidence
+            queryAnalysis = response.analysis; searchContext = response.context
             searchResults = found
             selectedReferenceIndex = found.isEmpty ? nil : 0
             errorMessage = nil
@@ -416,7 +854,9 @@ final class HelperViewModel: ObservableObject {
     func recalcHeight() {
         let listHeight: CGFloat
 
-        if isLoading {
+        if candidateKind != nil {
+            listHeight = 0
+        } else if isLoading {
             listHeight = HelperMetrics.emptyRow
         } else if isSelectingBibliography && filteredBibliographies.isEmpty {
             listHeight = HelperMetrics.emptyRow
@@ -437,7 +877,8 @@ final class HelperViewModel: ObservableObject {
         // The error bar is self-contained: any copy affordance lives on the row,
         // not in a second bar under the message.
         let errorHeight = (errorMessage == nil ? 0 : HelperMetrics.errorBar)
-        let height = max(minHeight, headerHeight + listHeight + errorHeight)
+        let diagnosticHeight = CGFloat(min(queryAnalysis?.diagnostics.count ?? 0, 3)) * 18
+        let height = max(minHeight, headerHeight + listHeight + errorHeight + diagnosticHeight)
         if preferredHeight != height { preferredHeight = height }
     }
 }

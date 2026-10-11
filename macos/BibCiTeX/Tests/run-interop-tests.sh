@@ -45,7 +45,7 @@ swiftc -parse-as-library -target "$architecture-apple-macosx13.0" \
 "$work/interop-tests" &
 test_pid=$!
 (
-    sleep 30
+    sleep "${BIBCITEX_INTEROP_TIMEOUT_SECONDS:-30}"
     if kill -0 "$test_pid" 2>/dev/null; then
         touch "$work/timed-out"
         kill -KILL "$test_pid" 2>/dev/null || true
@@ -59,7 +59,7 @@ kill "$watchdog" 2>/dev/null || true
 wait "$watchdog" 2>/dev/null || true
 watchdog=""
 if [[ -f "$work/timed-out" ]]; then
-    echo "Swift/Rust interop tests timed out after 30 seconds" >&2
+    echo "Swift/Rust interop tests timed out after ${BIBCITEX_INTEROP_TIMEOUT_SECONDS:-30} seconds" >&2
     exit 124
 fi
 exit "$status"

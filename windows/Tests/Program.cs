@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 using BibCiTeX;
+using BibCiTeX.Core;
 
 UpdatePolicyTests.Run();
 await UpdateSourceTests.Run();
@@ -111,11 +112,41 @@ try
     await File.WriteAllTextAsync(invalid, "@article{unfinished,");
     await Throws(() => RustCore.Search(invalid, ""), "");
     await Throws(() => RustCore.Search(Path.Combine(directory, "missing.bib"), ""), "");
+    var incompleteQuery = await RustCore.AnalyzeQuery(new TextRequest { text = "author:" });
+    Assert(incompleteQuery.status.IsIncomplete && incompleteQuery.document is null, "typed incomplete query");
+    var invalidQuery = await RustCore.AnalyzeQuery(new TextRequest { text = "year:abc author:" });
+    Assert(invalidQuery.status.IsInvalid && invalidQuery.diagnostics.Count > 0, "definite errors dominate incomplete suffix");
+    var condition = await RustCore.BuildCondition(new QueryCondition { field_name = "title", text_value = "A book", phrase = false, exclude = false, tag_id = null });
+    Assert(condition.status.IsValid && condition.document is not null, "typed condition construction");
+    var rendered = await RustCore.RenderQuery(condition.document!);
+    Assert(rendered.text == condition.text, "typed ordered arena serialization");
+    var advanced = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = bibliography, mode = SearchMode.Advanced, input_kind = QueryInputKind.Bound, text = condition.text, document = condition.document, expected_tag_revision = null, default_field = "all", type_filter = "all", query_version = 42 });
+    Assert(advanced.references.Single().cite_key == "book2025" && advanced.context?.query_version == 42, "bound query result and generation");
+    Assert(advanced.evidence.Single().ranges.Count > 0, "original source match ranges cross C# bindings");
+    var fuzzyFile = Path.Combine(directory, "fuzzy-evidence.bib");
+    await File.WriteAllTextAsync(fuzzyFile, "@article{A,title={netwrok graph}}");
+    var supplemented = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = fuzzyFile, mode = SearchMode.Advanced, input_kind = QueryInputKind.Text, text = "network graph", document = null, expected_tag_revision = null, default_field = "title", type_filter = "all", query_version = 43 });
+    Assert(supplemented.evidence.Single().fuzzy_terms.SequenceEqual(new[] { "network" }), "actual spelling terms cross C# bindings");
+    Assert((await RustCore.ValidateSearchContext(advanced.context!)).valid, "result snapshot validation");
+    for (var i = 0; i < 32; i++) {
+        var result = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = bibliography, mode = SearchMode.Advanced, input_kind = QueryInputKind.Text, text = "year:2025 OR type:article", document = null, expected_tag_revision = null, default_field = "all", type_filter = "all", query_version = (ulong)i });
+        Assert(result.analysis.status.IsValid && result.references.Count == 2, "repeated advanced wire ownership " + i);
+    }
     var parallel = await Task.WhenAll(Enumerable.Range(0, 32).Select(_ => RustCore.Search(bibliography, "研究", "title")));
     Assert(parallel.All(x => x.Single().Id == reference.Id), "parallel owned DTOs and stable identity");
     for (var i = 0; i < 64; i++) Assert((await RustCore.Search(bibliography, "")).Count == 3, "repeated wire ownership " + i);
     await File.AppendAllTextAsync(bibliography, "\n@misc{fresh, title={Newly added}}\n");
     Assert((await RustCore.Search(bibliography, "")).Count == 4, "file cache invalidates after content changes");
+    if (Environment.GetEnvironmentVariable("BIBCITEX_SEARCH_BENCHMARK") == "1") {
+        foreach (var count in new[] { 1_000, 10_000, 50_000 }) {
+            var fixture = Path.Combine(directory, $"payload-{count}.bib");
+            await File.WriteAllTextAsync(fixture, string.Join("\n", Enumerable.Range(0, count).Select(i => $"@article{{item{i},title={{Graph neural network}},author={{Smith, Jane}},year={{2026}}}}")));
+            int Payload() { using var input = new SearchRequest { path = fixture, query = "", search_field = "all", type_filter = "all" }.Wire(); using var wire = Interop.search(input).AsOk(); var response = wire.Unwire(); if (response.error is not null) throw new InvalidOperationException(response.error); return response.payload.Count; }
+            _ = Payload(); var samples = new List<double>();
+            for (var i = 0; i < 10; i++) { var timer = System.Diagnostics.Stopwatch.StartNew(); if (Payload() != count) throw new InvalidOperationException("Incomplete benchmark payload"); samples.Add(timer.Elapsed.TotalMilliseconds); }
+            samples.Sort(); Console.WriteLine(FormattableString.Invariant($"BINDING,csharp,{count},{samples[5]},{samples[9]}"));
+        }
+    }
     Console.WriteLine($"PASS: {assertions} assertions against the actual Rust dynamic library. No registry, clipboard, paste, or UI calls.");
 }
 finally { Directory.Delete(directory, recursive: true); }

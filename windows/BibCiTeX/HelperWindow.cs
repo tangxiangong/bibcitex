@@ -35,6 +35,12 @@ internal sealed class HelperWindow : Window, IDisposable
     private readonly TextBlock emptyLabel = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
     private readonly SvgIcon emptyIcon = new("search", 24);
     private readonly ProgressRing listProgress = new() { Width = 24, Height = 24, IsActive = false, Visibility = Visibility.Collapsed };
+    private readonly SearchSession searchSession = new();
+    private HelperCandidates candidates = null!;
+    private HelperQueryBar queryBar = null!;
+    private HelperInputGuard tailInput = null!;
+    private bool typedInput;
+    private string previousText = "";
     private bool searching;
     private readonly ProgressRing progress = new() { Width = 18, Height = 18, IsActive = false, Visibility = Visibility.Collapsed };
     private readonly Button fallback;
@@ -43,6 +49,9 @@ internal sealed class HelperWindow : Window, IDisposable
     private List<Library> libraries = [];
     private Library? current;
     private bool selecting;
+    private string librarySearchDraft = "";
+    private BibCiTeX.Core.QueryAnalysis? libraryBoundDraft;
+    private BibCiTeX.Core.SearchFieldDescriptor? libraryFieldDraft;
     private bool composing;
     private bool visible;
     private bool active;
@@ -62,7 +71,16 @@ internal sealed class HelperWindow : Window, IDisposable
         AppWindow.IsShownInSwitchers = false;
         root.RequestedTheme = App.Theme;
         Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
+        TagManager.Changed += TagsChanged;
+        Closed += (_, _) => TagManager.Changed -= TagsChanged;
         Views.LocalizeTextBox(search);
+        tailInput = new HelperInputGuard(search);
+        queryBar = new HelperQueryBar(search, searchSession, () => _ = Refresh(), SetErrorStatus, (editing, modal) =>
+        {
+            busy = editing; version++; searchSession.Invalidate(); results.Items.Clear();
+            if (modal) Resize(600);
+            if (!editing) _ = Refresh();
+        }, () => tailInput.IsComposing || candidates?.IsComposing == true, () => tailInput.Epoch + (candidates?.InputEpoch ?? 0), () => _ = candidates.Begin(search.Text, '$'));
         root.RowDefinitions.Add(new() { Height = new GridLength(Header) });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new());
@@ -70,7 +88,7 @@ internal sealed class HelperWindow : Window, IDisposable
 
         var header = new Grid { Padding = new Thickness(18, 0, 18, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        header.Children.Add(new SvgIcon("search", 18) { VerticalAlignment = VerticalAlignment.Center }); Grid.SetColumn(search, 1); header.Children.Add(search);
+        header.Children.Add(new SvgIcon("search", 18) { VerticalAlignment = VerticalAlignment.Center }); Grid.SetColumn(queryBar.View, 1); header.Children.Add(queryBar.View);
         Localized.Name(search, "搜索");
         Grid.SetColumn(progress, 2); header.Children.Add(progress);
         chooseLibrary = new Button { Content = Views.Row(new SvgIcon("library", 14), libraryName, new SvgIcon("chevronDown", 9)), CornerRadius = new CornerRadius(16), Padding = new Thickness(10, 6, 10, 6), MaxWidth = 160, BorderThickness = new Thickness(0) };
@@ -91,7 +109,27 @@ internal sealed class HelperWindow : Window, IDisposable
         // grouped in one capsule at the trailing edge. Rows scroll beneath them.
         pasteHint = Views.KeyHint("粘贴引用键", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
         var switchHint = Views.KeyHint("切换文献库", "⇥", () => { if (!busy && !pasting) _ = StartSelecting(); });
-        var hints = Views.Row(pasteHint, switchHint); hints.Spacing = 2;
+        var editHint = Views.Button("settings", "高级搜索", async () =>
+        {
+            if (composing || pasting) return;
+            version++; results.Items.Clear(); busy = true; Resize(600);
+            try
+            {
+                var draft = await queryBar.AnalyzeBase(search.Text);
+                if (!draft.status.IsValid) { SetStatus(SearchSession.Diagnostic(draft)); queryBar.FocusTail(); }
+                else if (await AdvancedSearchEditor.Show(root.XamlRoot, draft.text, draft) is { } query) queryBar.Accept(query);
+            }
+            catch (Exception ex) { SetErrorStatus(ex); }
+            finally { busy = false; await Refresh(); }
+        });
+        var tagsHint = Views.Button("settings", "标签", async () =>
+        {
+            version++; results.Items.Clear(); busy = true; Resize(600);
+            try { await TagManager.Show(root.XamlRoot); }
+            catch (Exception ex) { SetErrorStatus(ex); }
+            finally { busy = false; await Refresh(); }
+        });
+        var hints = Views.Row(pasteHint, switchHint, editHint, tagsHint); hints.Spacing = 2;
         bottomBar = Views.Capsule(hints);
         bottomBar.HorizontalAlignment = HorizontalAlignment.Right; bottomBar.VerticalAlignment = VerticalAlignment.Bottom;
         bottomBar.Margin = new Thickness(0, 0, 12, 8); bottomBar.Visibility = Visibility.Collapsed;
@@ -111,15 +149,54 @@ internal sealed class HelperWindow : Window, IDisposable
         Views.HideScrollbars(results);
         Views.HideScrollbars(search);
         Content = root;
-        search.TextCompositionStarted += (_, _) => composing = true;
+        candidates = new HelperCandidates(search, () => _ = Refresh(), open =>
+        {
+            version++; searchSession.Invalidate(); failedKey = null; fallback.Visibility = Visibility.Collapsed;
+            Localized.Bind(search, TextBox.PlaceholderTextProperty, open ? "" : "搜索文献、作者、标题");
+            search.MinWidth = open ? 0 : 140;
+            if (open)
+            {
+                var textSize = new TextBlock { Text = search.Text, FontSize = search.FontSize };
+                textSize.Measure(new Windows.Foundation.Size(double.PositiveInfinity, Header));
+                search.Width = search.Text.Length == 0 ? 0 : textSize.DesiredSize.Width + 12;
+            }
+            else search.Width = double.NaN;
+            search.IsTabStop = !open;
+            results.Items.Clear(); SetSearching(false); pasteHint.IsEnabled = false;
+        }, queryBar.AnalyzeBase, queryBar.Accept, queryBar.SelectField, () =>
+        {
+            var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
+            double scale = root.XamlRoot.RasterizationScale;
+            return new Windows.Foundation.Rect((area.X - AppWindow.Position.X) / scale, (area.Y - AppWindow.Position.Y) / scale, area.Width / scale, area.Height / scale);
+        }, () => tailInput.IsComposing, () => queryBar.Field);
+        queryBar.SetInlineEditor(candidates.InlineEditor);
+        search.Paste += (_, _) => typedInput = false;
+        search.TextCompositionStarted += (_, _) => { composing = true; typedInput = false; queryBar.BeginComposition(); candidates.BeginMainComposition(); searchSession.Invalidate(); version++; results.Items.Clear(); failedKey = null; fallback.Visibility = Visibility.Collapsed; };
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Refresh(); };
-        search.TextChanged += (_, _) => { if (!composing) _ = Refresh(true); };
+        search.TextChanged += async (_, _) =>
+        {
+            var old = previousText; previousText = search.Text;
+            if (queryBar.Updating) return;
+            bool trigger = typedInput && !composing && !selecting && HelperCandidates.IsTrigger(old, search.Text, search.SelectionStart);
+            typedInput = false;
+            candidates.MainTextChanged();
+            if (trigger) { await candidates.Begin(old, search.Text[^1]); return; }
+            searchSession.Invalidate(); if (!composing && !candidates.Open) _ = Refresh(true);
+        };
         search.PreviewKeyDown += KeyDown;
         results.PreviewKeyDown += KeyDown;
         results.ItemClick += async (_, e) => await Execute(e.ClickedItem as ListViewItem);
-        Activated += (_, args) => { active = args.WindowActivationState != WindowActivationState.Deactivated; if (!active && !opening && !pasting) Hide(); };
+        Activated += (_, args) => { active = args.WindowActivationState != WindowActivationState.Deactivated; if (!active && !opening && !pasting && !busy) Hide(); };
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };
         Resize(Header);
+    }
+
+    private async void TagsChanged()
+    {
+        searchSession.Invalidate(); version++; results.Items.Clear();
+        if (!visible) return;
+        try { libraries = await RustCore.Libraries(); current = await RustCore.HelperCurrent(); await Refresh(); }
+        catch (Exception error) { SetErrorStatus(error); }
     }
 
     private void LocalizeTitle() => Title = L10n.Text("快捷助手");
@@ -139,7 +216,8 @@ internal sealed class HelperWindow : Window, IDisposable
             await RustCore.CapturePasteTarget();
             if (showVersion != lifecycle) return;
             failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
-            search.Text = ""; results.Items.Clear(); chooseLibrary.Visibility = Visibility.Collapsed; Resize(Header); Position(); visible = true;
+            librarySearchDraft = ""; libraryBoundDraft = null; libraryFieldDraft = null;
+            queryBar.Reset(); results.Items.Clear(); chooseLibrary.Visibility = Visibility.Collapsed; Resize(Header); Position(); visible = true;
             Activate(); search.Focus(FocusState.Programmatic); SetSearching(true);
             var rows = await RustCore.Libraries();
             var saved = await RustCore.HelperCurrent();
@@ -158,7 +236,7 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     internal void Hide()
     {
-        visible = false; version++; lifecycle++; composing = false; SetSearching(false); pasteFailureDialog?.Hide(); AppWindow.Hide();
+        visible = false; candidates.Close(false); version++; lifecycle++; composing = false; SetSearching(false); pasteFailureDialog?.Hide(); AppWindow.Hide();
     }
     private static ListViewItem FullWidthRow(ListViewItem item)
     {
@@ -170,15 +248,17 @@ internal sealed class HelperWindow : Window, IDisposable
 
     private async Task Refresh(bool debounce = false)
     {
-        if (!visible || busy || pasting) return;
+        if (!visible || busy || pasting || composing || candidates.Open || searchSession.Restoring) return;
+        searchSession.Invalidate();
         var request = ++version;
+        results.Items.Clear();
         failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
         Localized.Bind(search, TextBox.PlaceholderTextProperty, selecting ? "搜索或选择文献库" : "搜索文献、作者、标题");
         chooseLibrary.Visibility = !selecting && current is not null ? Visibility.Visible : Visibility.Collapsed;
         libraryName.Text = current?.Name ?? "";
         emptyState.Visibility = Visibility.Collapsed;
         var query = search.Text; var selectedPath = current?.Path;
-        SetSearching(!selecting && query.Trim().Length > 0);
+        SetSearching(!selecting && (query.Trim().Length > 0 || queryBar.HasPrefix));
         try
         {
             if (debounce) await Task.Delay(90);
@@ -189,11 +269,16 @@ internal sealed class HelperWindow : Window, IDisposable
                 foreach (var library in libraries.Where(x => x.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Path.Contains(query, StringComparison.CurrentCultureIgnoreCase) || PathDisplay.Format(x.Path).Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.Description.Contains(query, StringComparison.CurrentCultureIgnoreCase) || x.UpdatedAt.Contains(query, StringComparison.CurrentCultureIgnoreCase))) results.Items.Add(FullWidthRow(Views.LibraryItem(library, current?.Name == library.Name && current?.Path == library.Path)));
                 if (results.Items.Count == 0) SetEmpty("未找到文献库，请先到主窗口添加文献库", "library");
             }
-            else if (query.Trim().Length > 0 && selectedPath is not null)
+            else if ((query.Trim().Length > 0 || queryBar.HasPrefix) && selectedPath is not null)
             {
                 progress.Visibility = Visibility.Visible; progress.IsActive = true;
-                var references = await RustCore.Search(selectedPath, query);
+                var analysis = await queryBar.Analyze(query);
                 if (request != version) return;
+                searchSession.Accept(analysis);
+                var response = await searchSession.Search(selectedPath, analysis.text, "all", "all", request);
+                var references = response.references.Select(x => new Reference(x) { Evidence = response.evidence.FirstOrDefault(e => e.reference_id == x.id) }).ToList();
+                if (request != version) return;
+                searchSession.Publish(response); queryBar.RefreshProjection(searchSession.Bound); SetStatus(SearchSession.Diagnostic(response.analysis));
                 foreach (var reference in references) results.Items.Add(FullWidthRow(Views.ReferenceItem(reference)));
                 if (references.Count == 0) SetEmpty("未找到匹配记录", "search");
             }
@@ -205,7 +290,23 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     private async void KeyDown(object sender, KeyRoutedEventArgs args)
     {
-        if (pasting || pasteFailureDialog is not null || composing || (busy && args.Key != VirtualKey.Escape)) return;
+        if (args.Handled) return;
+        if (tailInput.Consumes(args.Key)) { args.Handled = true; return; }
+        if (pasting || pasteFailureDialog is not null || composing) return;
+        if (ReferenceEquals(sender, search) && !selecting && !candidates.Open && (!busy || queryBar.DeletingPrevious) && args.Key == VirtualKey.Back && search.SelectionStart == 0 && search.SelectionLength == 0 && queryBar.CanDeletePrevious)
+        {
+            var modifiers = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control)
+                | Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu)
+                | Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift)
+                | Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows)
+                | Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.RightWindows);
+            if ((modifiers & Windows.UI.Core.CoreVirtualKeyStates.Down) == 0)
+            { args.Handled = true; await queryBar.DeletePrevious(); return; }
+        }
+        if (busy && args.Key != VirtualKey.Escape) return;
+        if (await candidates.Handle(args.Key)) { args.Handled = true; return; }
+        typedInput = (int)args.Key is >= 48 and <= 90 or >= 186;
+        if ((Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0) typedInput = false;
         var control = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
         var alt = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Menu);
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
@@ -214,7 +315,11 @@ internal sealed class HelperWindow : Window, IDisposable
         if (((control | alt | shift | winLeft | winRight) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0) return;
         switch (args.Key)
         {
-            case VirtualKey.Escape: args.Handled = true; Hide(); break;
+            case VirtualKey.Escape:
+                args.Handled = true;
+                if (selecting && current is not null) { selecting = false; queryBar.Restore(libraryBoundDraft, librarySearchDraft, libraryFieldDraft); await Refresh(); }
+                else Hide();
+                break;
             case VirtualKey.Tab: args.Handled = true; await StartSelecting(); break;
             case VirtualKey.Down:
             case VirtualKey.Up:
@@ -229,23 +334,25 @@ internal sealed class HelperWindow : Window, IDisposable
         if (pasting || busy || searching || item is null) return;
         var session = lifecycle;
         var request = ++version;
+        bool attemptedPaste = false;
         try
         {
             if (item.Tag is Library { Available: false }) return;
             if (item.Tag is Library library)
             {
                 busy = true;
-                var initialQuery = search.Text;
                 var selected = await RustCore.HelperSelect(library.Name, library.Path);
                 if (request != version) return;
-                current = selected; selecting = false; if (search.Text == initialQuery) search.Text = ""; busy = false; await Refresh(); search.Focus(FocusState.Programmatic);
+                current = selected; selecting = false; queryBar.Restore(libraryBoundDraft, librarySearchDraft, libraryFieldDraft); busy = false; await Refresh(); search.Focus(FocusState.Programmatic);
             }
             else if (item.Tag is Reference reference)
             {
+                if (!await searchSession.Validate()) { await Refresh(); return; }
                 pasting = true;
                 // Release keyboard focus without invalidating this paste session.
                 visible = false;
                 AppWindow.Hide();
+                attemptedPaste = true;
                 await RustCore.Paste(reference.Key);
                 if (session == lifecycle) Hide();
             }
@@ -253,7 +360,7 @@ internal sealed class HelperWindow : Window, IDisposable
         catch (Exception error)
         {
             if (request != version) return;
-            if (item.Tag is Reference reference)
+            if (attemptedPaste && item.Tag is Reference reference)
             {
                 // Copy automatically, even when key injection failed before writing
                 // the clipboard. The dialog reports only the original paste error.
@@ -295,7 +402,8 @@ internal sealed class HelperWindow : Window, IDisposable
     }
     private async Task StartSelecting()
     {
-        selecting = true; search.Text = ""; await Refresh(); search.Focus(FocusState.Programmatic);
+        if (!selecting) { librarySearchDraft = search.Text; libraryBoundDraft = queryBar.Prefix; libraryFieldDraft = queryBar.Field; }
+        selecting = true; queryBar.Reset(); await Refresh(); search.Focus(FocusState.Programmatic);
     }
     private void SetErrorStatus(Exception value) { Localized.Error(status, TextBlock.TextProperty, value); errorBar.Visibility = Visibility.Visible; ResizeContent(); }
     private void SetEmpty(string key, string icon)
@@ -318,7 +426,7 @@ internal sealed class HelperWindow : Window, IDisposable
         var rows = results.Items.Count;
         var list = searching || emptyState.Visibility == Visibility.Visible ? EmptyRow : rows == 0 ? 0 : Math.Min(MaxList, rows * ((selecting ? LibraryRow : ReferenceRow) + 2) + ListPadding);
         listArea.Visibility = list > 0 ? Visibility.Visible : Visibility.Collapsed;
-        var bar = !selecting && !searching && !busy && rows > 0 && search.Text.Trim().Length > 0;
+        var bar = !selecting && !searching && !busy && rows > 0 && (search.Text.Trim().Length > 0 || queryBar.HasPrefix);
         bottomBar.Visibility = bar ? Visibility.Visible : Visibility.Collapsed;
         // An inset rather than a row: the last result can still scroll clear of the controls.
         results.Padding = new Thickness(0, 0, 0, bar ? BottomBar : 0);

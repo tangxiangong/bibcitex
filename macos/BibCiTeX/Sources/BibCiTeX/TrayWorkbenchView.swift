@@ -13,6 +13,9 @@ struct TrayWorkbenchView: View {
     @ObservedObject var model: TrayWorkbenchModel
     let showMain: () -> Void
     let dismiss: () -> Void
+    @State private var searchEditor = false
+    @State private var showTagManager = false
+    @State private var taggingReference: TagAssignmentTarget?
     @FocusState private var searchFocused: Bool
     @FocusState private var detailToggleFocused: Bool
     @FocusState private var detailCloseFocused: Bool
@@ -29,8 +32,7 @@ struct TrayWorkbenchView: View {
                 }
                 HStack(spacing: 8) {
                     NativeIcon("search", size: 15).foregroundStyle(.secondary)
-                    TextField(L10n.text("搜索文献"), text: $model.query)
-                        .textFieldStyle(.plain).focused($searchFocused)
+                    SearchInput(text: model.query, placeholder: L10n.text("搜索文献"), changed: { model.editText($0, start: $1, end: $2, replacement: $3, full: $4) }, move: model.move, compositionChanged: model.suspendForComposition).frame(height: 18)
                         .padding(.trailing, 174)
                 }
                 .overlay(alignment: .trailing) {
@@ -66,6 +68,9 @@ struct TrayWorkbenchView: View {
                         .allowsHitTesting(false)
                 }
                 HStack(spacing: 8) {
+                    Toggle(L10n.text("高级搜索"), isOn: Binding(get: { model.advancedSearchEnabled }, set: model.setAdvancedSearch))
+                        .toggleStyle(.switch).fixedSize()
+                    if model.advancedSearchEnabled { Button(L10n.text("搜索条件")) { searchEditor = true } }
                     Picker(L10n.text("类型筛选"), selection: $model.type) {
                         ForEach(types, id: \.0) { Text($0.1).tag($0.0) }
                     }.labelsHidden().accessibilityLabel(L10n.text("类型筛选"))
@@ -76,6 +81,7 @@ struct TrayWorkbenchView: View {
                     if model.loading { ProgressView().controlSize(.small) }
                     Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)
                 }.controlSize(.small)
+                QueryDiagnostics(analysis: model.queryAnalysis)
             }.padding(16)
             PanelSeparator()
             results.frame(maxWidth: .infinity)
@@ -84,7 +90,7 @@ struct TrayWorkbenchView: View {
                         VStack(spacing: 0) {
                             HStack {
                                 if let reference = model.reference {
-                                    MathChunkText(chunks: reference.title).font(.headline).lineLimit(2)
+                                    MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).font(.headline).lineLimit(2)
                                 } else {
                                     Text(L10n.text("文献详情")).font(.headline)
                                 }
@@ -126,6 +132,10 @@ struct TrayWorkbenchView: View {
         .scrollIndicators(.never)
         .background(AutoHidingScrollbars(alwaysHidden: true))
         .background(NeutralListSelection())
+        .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyAdvancedQuery($0, draft: $1) } }
+        .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
+        .sheet(item: $taggingReference) { reference in TagManagerView(path: reference.path, citeKey: reference.citeKey) }
+        .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .onAppear { searchFocused = true }
         .onChange(of: model.detailVisible) { visible in
             if visible { detailCloseFocused = true } else { detailToggleFocused = true }
@@ -138,6 +148,7 @@ struct TrayWorkbenchView: View {
     }
     private var toolbarButtonGroup: some View {
         HStack(spacing: 8) {
+            iconButton("tag", L10n.text("标签管理")) { showTagManager = true }
             iconButton(model.detailVisible ? "panelRightClose" : "panelRightOpen", L10n.text("文献详情")) {
                 model.detailVisible.toggle()
             }
@@ -149,23 +160,25 @@ struct TrayWorkbenchView: View {
         }
     }
     private var results: some View {
-        ScrollViewReader { proxy in
+        let libraryPath = model.libraries.first { $0.name == model.libraryName }?.path ?? ""
+        return ScrollViewReader { proxy in
             List(selection: $model.selection) {
                 ForEach(model.references) { reference in
                     VStack(alignment: .leading, spacing: 5) {
                         HStack(alignment: .top, spacing: 12) {
-                            MathChunkText(chunks: reference.title).lineLimit(2)
+                            MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).lineLimit(2).help(model.matchEvidence[reference.citeKey] ?? "")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             citeKeyButton(reference.citeKey)
                                 .frame(maxWidth: 180, alignment: .trailing)
                         }
                         if !reference.author.isEmpty {
-                            Text(reference.author.joined(separator: ", ")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Text(SearchHighlight.authors(reference.author, matches: model.matchRanges[reference.citeKey] ?? [])).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Text([reference.displayType, reference.year.map(String.init) ?? "", reference.venueText]
                             .filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }.padding(.vertical, 7).tag(reference.citeKey).id(reference.citeKey)
+                    .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey) } }
                     .foregroundStyle(Color(nsColor: .labelColor))
                     .listRowBackground(RowSelectionBackground(selected: model.selection == reference.citeKey))
                 }

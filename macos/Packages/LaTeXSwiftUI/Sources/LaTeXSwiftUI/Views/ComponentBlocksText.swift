@@ -66,14 +66,13 @@ internal struct ComponentBlocksText: View {
   /// The accessibility mode for equation images.
   @Environment(\.imageAccessibilityMode) private var imageAccessibilityMode
 
+  @Environment(\.componentDecoration) private var componentDecoration
+
   // MARK: View body
 
   @ViewBuilder var body: some View {
-    let textView = blocks.map { block in
-      return block.isEquationBlock && !forceInline ?
-      Text("\n") + text(for: block) + Text("\n") :
-      text(for: block)
-    }.reduce(Text(""), +)
+    let textView = decoratedText()
+
     if #available(iOS 18.0, macOS 15.0, *) {
       textView.textRenderer(LineSpacingNormalizer())
     } else {
@@ -91,7 +90,16 @@ extension ComponentBlocksText {
   ///
   /// - Parameter block: The component block.
   /// - Returns: A `Text` view.
-  @MainActor private func text(for block: ComponentBlock) -> Text {
+  @MainActor private func decoratedText() -> Text {
+    var offset = 0
+    return blocks.map { block in
+      let rendered = text(for: block, sourceOffset: offset)
+      offset += block.components.reduce(0) { $0 + $1.originalText.utf8.count }
+      return block.isEquationBlock && !forceInline ? Text("\n") + rendered + Text("\n") : rendered
+    }.reduce(Text(""), +)
+  }
+
+  @MainActor private func text(for block: ComponentBlock, sourceOffset: Int) -> Text {
     block.toText(
       xHeight: (platformFont?.effectiveXHeight(for: script) ?? font?.effectiveXHeight(for: script, sizeCategory: dynamicTypeSize)) ?? Font.body.effectiveXHeight(for: script, sizeCategory: dynamicTypeSize),
       displayScale: displayScale,
@@ -99,7 +107,9 @@ extension ComponentBlocksText {
       errorMode: errorMode,
       blockRenderingMode: blockMode,
       ignoreStringFormatting: ignoreStringFormatting,
-      imageAccessibilityMode: imageAccessibilityMode)
+      imageAccessibilityMode: imageAccessibilityMode,
+      sourceOffset: sourceOffset,
+      decoration: componentDecoration)
   }
   
 }

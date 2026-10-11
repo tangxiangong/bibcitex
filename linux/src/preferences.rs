@@ -15,6 +15,26 @@ pub struct Preferences {
     pub appearance: String,
     pub update_channel: String,
     pub automatic_updates: bool,
+    #[serde(
+        rename = "mainAdvancedSearchEnabled",
+        deserialize_with = "boolean_preference"
+    )]
+    /// Main search mode only; per-mode query drafts stay in memory.
+    pub main_advanced_search_enabled: bool,
+    #[serde(
+        rename = "trayAdvancedSearchEnabled",
+        deserialize_with = "boolean_preference"
+    )]
+    /// Tray search mode, persisted independently from the main window.
+    pub tray_advanced_search_enabled: bool,
+    #[serde(flatten)]
+    extra: HashMap<String, serde_json::Value>,
+}
+
+fn boolean_preference<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
+    Ok(serde_json::Value::deserialize(deserializer)?
+        .as_bool()
+        .unwrap_or(false))
 }
 
 impl Default for Preferences {
@@ -28,6 +48,9 @@ impl Default for Preferences {
             appearance: "system".into(),
             update_channel: "stable".into(),
             automatic_updates: false,
+            main_advanced_search_enabled: false,
+            tray_advanced_search_enabled: false,
+            extra: HashMap::new(),
         }
     }
 }

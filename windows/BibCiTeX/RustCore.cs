@@ -29,6 +29,83 @@ internal static class RustCore
         var response = wire.Unwire(); Check(response.error);
         return response.payload.Select(x => new Reference(x)).ToList();
     });
+    /// <summary>Executes an explicit-mode request against one immutable library snapshot. Bound tag nodes require their expected revision; invalid or incomplete queries return diagnostics without actionable references.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<AdvancedSearchResponse> AdvancedSearch(AdvancedSearchRequest value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.advanced_search(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing search response");
+    });
+    /// <summary>Parses advanced query text in the shared Rust grammar and returns its status, source spans and editable tree. An incomplete query is data, not a storage exception.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> AnalyzeQuery(TextRequest value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.analyze_query(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Applies an actual UTF-8 source edit to a bound document, preserving untouched tag identities. Full replacements deliberately resolve names again.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> EditQueryText(QueryTextEdit value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.edit_query_text(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing query response");
+    });
+    /// <summary>Serializes a validated ordered query tree without changing field provenance or tag identity. Invalid trees return diagnostics.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> RenderQuery(QueryDocumentRecord value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.render_query(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Applies a semantic operation to the requested node, or the root when target is absent. Append and replace operations require an operand.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> EditQuery(QueryEdit value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.edit_query(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Constructs and validates one typed condition. A tag ID binds a catalog identity; ordinary text and phrase matching remain distinct.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> BuildCondition(QueryCondition value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.build_condition(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Refreshes tag names and merge redirects while retaining bound identities. Deleted bindings return diagnostics and must be removed or reselected.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<QueryAnalysis> RefreshQuery(QueryDocumentRecord value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.refresh_query(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Reads the global tag catalog and pending records; a path and exact cite key additionally request the selected reference associations.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<TagSnapshot> TagSnapshot(TagSnapshotRequest value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.tag_snapshot(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Applies one metadata mutation only at its expected revision. Conflicts and storage failures throw and never silently overwrite newer metadata.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<TagSnapshot> MutateTag(TagMutation value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.mutate_tag(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Checks that a displayed result still belongs to the current file and tag snapshots before copy, paste or opening an attachment.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<ContextValidity> ValidateSearchContext(SearchContext value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.validate_search_context(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    /// <summary>Returns the supported field and type names used by native condition editors and helper candidates.</summary>
+    /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<SearchCatalog> SearchCatalog() => Task.Run(() =>
+    {
+        using var wire = Interop.search_catalog().AsOk(); var result = wire.Unwire();
+        Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing catalog");
+    });
     internal static Task AddLibrary(string name, string path, string? description) => Task.Run(() =>
     {
         using var request = new AddLibraryRequest { name = name, path = path, description = description }.Wire();
@@ -94,6 +171,8 @@ internal sealed record Chunk(string Kind, string Text);
 internal sealed class Reference(ReferenceRecord data)
 {
     internal ReferenceRecord Data { get; } = data;
+    /// <summary>Matched positive fields from the service; never inferred from normalized display text.</summary>
+    internal SearchEvidence? Evidence { get; set; }
     internal string Id => Data.id;
     internal string Key => Data.cite_key;
     internal string Type => Data.entry_type;

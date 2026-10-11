@@ -27,6 +27,13 @@ import MathJaxSwift
 import SwiftUI
 
 public extension View {
+  /// Adds presentation-only decoration using original component UTF-8 ranges.
+  /// Return the supplied `Text` for equations to retain their image, baseline,
+  /// accessibility label, and the renderer's normal line-breaking behavior.
+  func decorateComponents(_ decoration: @escaping LaTeX.ComponentDecoration) -> some View {
+    environment(\.componentDecoration, decoration)
+  }
+
   
   /// Preloads a `LaTeX` view's SVG and image data.
   ///

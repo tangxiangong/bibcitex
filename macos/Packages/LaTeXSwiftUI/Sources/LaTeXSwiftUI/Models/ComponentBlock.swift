@@ -75,10 +75,16 @@ extension ComponentBlock {
     errorMode: LaTeX.ErrorMode,
     blockRenderingMode: LaTeX.BlockMode,
     ignoreStringFormatting: Bool,
-    imageAccessibilityMode: LaTeX.ImageAccessibilityMode = .sre
+    imageAccessibilityMode: LaTeX.ImageAccessibilityMode = .sre,
+    sourceOffset: Int = 0,
+    decoration: LaTeX.ComponentDecoration? = nil
   ) -> Text {
-    components.enumerated().map { i, component in
-      return component.convertToText(
+    var offset = sourceOffset
+    return components.map { component in
+      let original = component.originalText
+      let range = offset..<(offset + original.utf8.count)
+      offset = range.upperBound
+      let rendered = component.convertToText(
         xHeight: xHeight,
         displayScale: displayScale,
         renderingMode: renderingMode,
@@ -87,6 +93,7 @@ extension ComponentBlock {
         isInEquationBlock: isEquationBlock,
         ignoreStringFormatting: ignoreStringFormatting,
         imageAccessibilityMode: imageAccessibilityMode)
+      return decoration?(original, range, component.type.isEquation, rendered) ?? rendered
     }.reduce(Text(""), +)
   }
   

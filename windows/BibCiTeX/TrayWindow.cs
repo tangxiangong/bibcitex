@@ -15,6 +15,7 @@ internal sealed class TrayWindow : Window
     private readonly Grid root = new() { Padding = new Thickness(16), RowSpacing = 12 };
     private readonly LibraryPicker library = new() { Width = 150, PlaceholderText = L10n.Text("文献库"), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinHeight = 34 };
+    private readonly SearchSession searchSession = new("trayAdvancedSearch");
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Single };
@@ -43,7 +44,10 @@ internal sealed class TrayWindow : Window
         AppWindow.SetPresenter(presenter); AppWindow.IsShownInSwitchers = false;
         root.RequestedTheme = App.Theme;
         Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
+        TagManager.Changed += TagsChanged;
+        Closed += (_, _) => TagManager.Changed -= TagsChanged;
         Views.LocalizeTextBox(search);
+        searchSession.Attach(search);
         // searchBorder already carries the field's surface and focus ring.
         Views.PlainTextBox(search);
         for (var i = 0; i < 3; i++) root.RowDefinitions.Add(new() { Height = GridLength.Auto });
@@ -119,8 +123,33 @@ internal sealed class TrayWindow : Window
         var filters = new Grid { ColumnSpacing = 8 };
         filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new());
         filters.Children.Add(type); Grid.SetColumn(field, 1); filters.Children.Add(field);
+        var advanced = new ToggleButton { Content = L10n.Text("高级搜索"), IsChecked = searchSession.Advanced };
+        Localized.Name(advanced, "高级搜索");
+        var conditions = new Button { Content = L10n.Text("条件"), IsEnabled = searchSession.Advanced };
+        conditions.Click += async (_, _) =>
+        {
+            try
+            {
+                version++; references.Items.Clear(); ShowDetail(null);
+                if (await AdvancedSearchEditor.Show(root.XamlRoot, search.Text, await searchSession.AnalyzeDraft(search.Text)) is { } query)
+                { searchSession.Accept(query); search.Text = query.text; }
+                await Search();
+            }
+            catch (Exception ex) { ShowError(ex); }
+        };
+        var manageTags = new Button { Content = L10n.Text("标签") };
+        manageTags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } };
+        advanced.Click += async (_, _) =>
+        {
+            try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
+            catch (Exception ex) { advanced.IsChecked = searchSession.Advanced; ShowError(ex); }
+        };
+        filters.ColumnDefinitions.Insert(2, new() { Width = GridLength.Auto });
+        var advancedTools = Views.Row(advanced, conditions, manageTags);
+        filters.RowDefinitions.Add(new() { Height = GridLength.Auto }); filters.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        Grid.SetRow(advancedTools, 1); Grid.SetColumnSpan(advancedTools, 4); advancedTools.Margin = new Thickness(0, 8, 0, 0); filters.Children.Add(advancedTools);
         var counter = Views.Row(progress, count); counter.HorizontalAlignment = HorizontalAlignment.Right; counter.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(counter, 2); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
+        Grid.SetColumn(counter, 3); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
         var body = new Grid { ColumnSpacing = 0 };
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
         var reading = new Grid();
@@ -161,9 +190,9 @@ internal sealed class TrayWindow : Window
         Content = root; ShowDetail(null);
         library.SelectionChanged += () => { Localized.BindValue(library, ToolTipService.ToolTipProperty, () => (library.SelectedItem as Library)?.Name ?? L10n.Text("文献库")); if (!updating) _ = Search(); };
         type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
-        search.TextCompositionStarted += (_, _) => composing = true;
+        search.TextCompositionStarted += (_, _) => { composing = true; searchSession.Invalidate(); version++; loadedVersion = -1; references.Items.Clear(); ShowDetail(null); };
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Search(); };
-        search.TextChanged += (_, _) => { if (!composing) _ = Search(true); };
+        search.TextChanged += (_, _) => { searchSession.TextEdited(search.Text); if (!composing) _ = Search(true); };
         search.PreviewKeyDown += SearchKeyDown;
         root.PreviewKeyDown += (_, args) => { if (!composing && args.Key == VirtualKey.Escape && !Modified()) { args.Handled = true; if (detailPanel.Visibility == Visibility.Visible) SetDetailVisible(false); else Hide(); } };
         references.SelectionChanged += (_, _) => ShowDetail(loadedVersion == version ? (references.SelectedItem as ListViewItem)?.Tag as Reference : null);
@@ -221,10 +250,14 @@ internal sealed class TrayWindow : Window
         catch (Exception ex) { if (visible && request == reloadVersion) { ClearResults(); ShowError(ex); SetBusy(false); } }
         finally { updating = false; }
     }
+    private void TagsChanged() { searchSession.Invalidate(); version++; references.Items.Clear(); ShowDetail(null); if (visible) _ = Reload(); }
+
     private async Task Search(bool debounce = false)
     {
-        if (!visible || updating) return;
+        if (!visible || updating || searchSession.Restoring) return;
+        searchSession.Invalidate();
         var request = ++version;
+        loadedVersion = -1; references.Items.Clear();
         var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
         var current = library.SelectedItem as Library;
         var query = search.Text;
@@ -238,8 +271,11 @@ internal sealed class TrayWindow : Window
         {
             if (debounce) await Task.Delay(100);
             if (!visible || request != version) return;
-            var rows = await RustCore.Search(current.Path, query, selectedField, selectedType);
+            var response = await searchSession.Search(current.Path, query, selectedField, selectedType, request);
+            var rows = response.references.Select(x => new Reference(x) { Evidence = response.evidence.FirstOrDefault(e => e.reference_id == x.id) }).ToList();
             if (!visible || request != version) return;
+            searchSession.Publish(response); searchSession.SyncProjection(search);
+            SetError(SearchSession.Diagnostic(response.analysis));
             references.Items.Clear(); loadedVersion = request;
             foreach (var reference in rows)
             {
@@ -258,17 +294,18 @@ internal sealed class TrayWindow : Window
         var heading = new Grid { ColumnSpacing = 12 };
         heading.ColumnDefinitions.Add(new());
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        heading.Children.Add(new ChunkText(reference.Chunks("title"), 14, reference.Title, false, "暂无标题", maxLines: 2));
+        heading.Children.Add(new ChunkText(reference.Chunks("title"), 14, reference.Title, false, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title)));
         var key = Views.CiteKey(reference.Key, CopyValue);
         key.HorizontalAlignment = HorizontalAlignment.Right;
         // Keep unusually long keys from consuming the title's column.
         if (key.Content is StackPanel keyContent)
             foreach (var label in keyContent.Children.OfType<TextBlock>()) label.MaxWidth = 150;
         Grid.SetColumn(key, 1); heading.Children.Add(key); row.Children.Add(heading);
-        if (reference.Authors.Length > 0) row.Children.Add(new TextBlock { Text = reference.Authors, FontSize = 12, Opacity = .7, TextTrimming = TextTrimming.CharacterEllipsis });
+        if (reference.Authors.Length > 0) row.Children.Add(SearchHighlights.Authors(reference, 12));
         var metadata = new TextBlock { FontSize = 11, Opacity = .6, TextTrimming = TextTrimming.CharacterEllipsis };
         Localized.BindValue(metadata, TextBlock.TextProperty, () => string.Join(" · ", new[] { reference.TypeLabel, reference.Text("year"), reference.Venue }.Where(x => x.Length > 0)));
         row.Children.Add(metadata);
+        if (reference.Evidence is { } evidence) ToolTipService.SetToolTip(row, (evidence.fuzzy ? L10n.Text("拼写补充") + " (" + string.Join(", ", evidence.fuzzy_terms) + ") · " : "") + string.Join(" · ", evidence.fields.Select(x => L10n.Text(x))));
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(Views.RowRadius) };
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Key + " " + reference.Title);
         return item;
@@ -285,8 +322,11 @@ internal sealed class TrayWindow : Window
     {
         detail.Children.Clear();
         detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
-        detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2);
+        detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
+        var tags = new Button { Content = L10n.Text("标签") };
+        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, (library.SelectedItem as Library)?.Path ?? "", reference.Key); } catch (Exception ex) { ShowError(ex); } };
+        detail.Children.Add(tags);
         foreach (var (label, value) in new[] { ("引用键", reference.Key), ("作者", reference.Authors), ("类型", reference.TypeLabel), ("年份", reference.Text("year")), ("期刊", reference.Venue), ("DOI", reference.Text("doi")), ("URL", reference.Text("url")) })
         {
             if (value.Length == 0) continue;
@@ -313,7 +353,7 @@ internal sealed class TrayWindow : Window
     private async Task<bool> CopyValue(string value)
     {
         var current = session;
-        try { await RustCore.Copy(value); return visible && current == session; }
+        try { if (loadedVersion != version || !await searchSession.Validate()) { await Search(); return false; } await RustCore.Copy(value); return visible && current == session; }
         catch (Exception ex) { if (visible && current == session) ShowError(ex); return false; }
     }
     private Button CopyButton(string icon, string label, string value)
@@ -321,13 +361,13 @@ internal sealed class TrayWindow : Window
     private async Task OpenUrl(string value)
     {
         var current = session;
-        try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
+        try { if (!await searchSession.Validate()) { await Search(); return; } var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
         catch (Exception ex) { if (visible && current == session) ShowError(ex); }
     }
     private void ClearResults() { references.Items.Clear(); Localized.Count(count, 0); empty.Visibility = Visibility.Visible; ShowDetail(null); }
     private void SetBusy(bool value) { loading = value; progress.IsActive = value; progress.Visibility = value ? Visibility.Visible : Visibility.Collapsed; empty.Visibility = !value && references.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed; }
     private void ShowError(Exception value) { Localized.Error(error, TextBlock.TextProperty, value); error.Visibility = errorBar.Visibility = Visibility.Visible; }
-    private void SetError(string? value) { Localized.BindValue(error, TextBlock.TextProperty, () => value ?? ""); error.Visibility = errorBar.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible; }
+    private void SetError(string? value) { Localized.BindValue(error, TextBlock.TextProperty, () => value ?? ""); error.Visibility = errorBar.Visibility = string.IsNullOrEmpty(value) ? Visibility.Collapsed : Visibility.Visible; }
     private static bool Modified() => new[] { VirtualKey.Control, VirtualKey.Menu, VirtualKey.Shift, VirtualKey.LeftWindows, VirtualKey.RightWindows }
         .Any(key => (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0);
     private void SearchKeyDown(object sender, KeyRoutedEventArgs args)

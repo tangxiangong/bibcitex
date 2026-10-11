@@ -13,6 +13,10 @@ use gpui_kit::component::{
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use std::time::Duration;
 
+#[path = "search_ui.rs"]
+mod search_ui;
+use search_ui::{CandidatePicker, ConditionEditor, OptionalFieldValue, TagManager};
+
 type LinkAction = Box<dyn Fn(&mut Workbench, &mut Context<Workbench>)>;
 
 enum LinkTarget {
@@ -87,7 +91,42 @@ fn selectable_text(id: impl Into<ElementId>, value: &str) -> impl IntoElement {
     gpui_kit::component::text::TextView::html(id, format!("<div>{escaped}</div>")).selectable(true)
 }
 
+#[derive(Default)]
+struct SearchDraft {
+    text: String,
+    content: Option<input::InputContent>,
+    editor: Option<ConditionEditor>,
+    field: usize,
+    kind: usize,
+    document: Option<service::QueryDocumentRecord>,
+    tag_revision: Option<u64>,
+}
+
 pub struct Workbench {
+    advanced: bool,
+    inactive_draft: SearchDraft,
+    library_draft: Option<SearchDraft>,
+    condition_editor: Option<ConditionEditor>,
+    query_document: Option<service::QueryDocumentRecord>,
+    tag_revision: Option<u64>,
+    result_context: Option<service::SearchContext>,
+    evidence: Vec<service::SearchEvidence>,
+    tag_manager: Option<TagManager>,
+    candidates: Option<CandidatePicker>,
+    candidate_window: Option<AnyWindowHandle>,
+    helper_scope: Option<String>,
+    optional_field_value: Option<OptionalFieldValue>,
+    pending_trigger: Option<(char, String)>,
+    pending_query_projection: Option<(u64, String)>,
+    search_composing: bool,
+    ime_active: std::collections::HashSet<EntityId>,
+    ime_settling: std::collections::HashSet<EntityId>,
+    ime_watch_task: Option<Task<()>>,
+    query_diagnostics: Vec<service::QueryDiagnostic>,
+    query_diagnostic_text: String,
+    query_notice: Option<String>,
+    native_tag_bindings: std::collections::HashMap<String, String>,
+    native_tag_serial: u64,
     pub preferences: Entity<Preferences>,
     search: Entity<InputState>,
     libraries: Vec<LibraryRecord>,
@@ -213,6 +252,9 @@ impl Workbench {
                 "搜索文献"
             }))
         });
+        let ime_subscription = cx.observe_in(&search, window, |this, _, window, cx| {
+            this.synchronize_ime(window, cx)
+        });
         let appearance_subscription = cx.observe_window_appearance(window, |this, _, cx| {
             let prefs = this.preferences.read(cx).clone();
             if prefs.appearance == "system" {
@@ -222,13 +264,38 @@ impl Workbench {
         let input_subscription =
             cx.subscribe_in(&search, window, |this, _, event, window, cx| match event {
                 InputEvent::Change => {
+                    this.search_composing = this.search.update(cx, |input, cx| {
+                        input.marked_text_range(window, cx).is_some()
+                    });
+                    if !this.search_composing
+                        && this.pending_trigger.is_none()
+                        && !this.choosing_library
+                    {
+                        this.rebind_native_tokens(cx);
+                    }
                     this.library_cursor = 0;
                     this.failed_paste_key = None;
                     this.error = None;
+                    if !this.search_composing {
+                        this.handle_candidate_change(window, cx);
+                    }
                     this.schedule_search(cx);
                     this.resize_helper(window, cx);
                 }
                 InputEvent::PressEnter { .. } if this.helper => {
+                    if this.input_is_composing(window, cx) {
+                        return;
+                    }
+                    if this.candidates.is_some() {
+                        this.confirm_candidate(window, cx);
+                        return;
+                    }
+                    if this.condition_editor.is_some()
+                        || this.optional_field_value.is_some()
+                        || this.tag_manager.is_some()
+                    {
+                        return;
+                    }
                     if this.choosing_library {
                         if let Some(name) = this
                             .matching_libraries(cx)
@@ -240,8 +307,8 @@ impl Workbench {
                             let placeholder = this.text("搜索文献、作者、标题", cx);
                             this.search.update(cx, |input, cx| {
                                 input.set_placeholder(placeholder, window, cx);
-                                input.set_value("", window, cx);
                             });
+                            this.restore_library_draft(window, cx);
                             this.resize_helper(window, cx);
                         }
                     } else {
@@ -252,7 +319,10 @@ impl Workbench {
             });
         let preference_subscription = cx.observe_in(&preferences, window, |this, _, window, cx| {
             let placeholder = this.text(
-                if this.choosing_library {
+                if this.helper && (this.candidates.is_some() || this.optional_field_value.is_some())
+                {
+                    ""
+                } else if this.choosing_library {
                     "搜索或选择文献库"
                 } else if this.helper {
                     "搜索文献、作者、标题"
@@ -264,6 +334,7 @@ impl Workbench {
             this.search.update(cx, |input, cx| {
                 input.set_placeholder(placeholder, window, cx)
             });
+            this.schedule_search(cx);
             cx.notify();
         });
         if helper {
@@ -271,13 +342,71 @@ impl Workbench {
         }
         let updater = cx.global::<crate::application::Services>().updater.clone();
         let update_subscription = cx.observe(&updater, |_, _, cx| cx.notify());
-        let activation_subscription = cx.observe_window_activation(window, |this, window, _| {
-            if (this.helper || this.tray) && !window.is_window_active() && !this.pasting {
+        let activation_subscription = cx.observe_window_activation(window, |this, window, cx| {
+            if this.input_is_composing(window, cx) {
+                return;
+            }
+            if this.helper && !window.is_window_active() && this.candidates.is_some() {
+                cx.spawn_in(window, async move |this, cx| {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(30))
+                        .await;
+                    let _ = this.update_in(cx, |this, window, cx| {
+                        if this.input_is_composing(window, cx) {
+                            return;
+                        }
+                        let popup_active = this.candidate_window.is_some_and(|handle| {
+                            handle
+                                .update(cx, |_, popup, _| popup.is_window_active())
+                                .unwrap_or(false)
+                        });
+                        if !window.is_window_active() && !popup_active {
+                            this.candidates = None;
+                            this.close_candidate_window(cx);
+                            window.remove_window();
+                        }
+                    });
+                })
+                .detach();
+                return;
+            }
+            if (this.helper || this.tray)
+                && !window.is_window_active()
+                && !this.pasting
+                && this.tag_manager.is_none()
+                && this.condition_editor.is_none()
+                && this.candidates.is_none()
+            {
                 window.remove_window();
             }
         });
         let selected_library = preferences.read(cx).library.clone();
+        let advanced = helper || preferences.read(cx).main_advanced_search_enabled;
         let mut this = Self {
+            advanced,
+            inactive_draft: SearchDraft::default(),
+            library_draft: None,
+            condition_editor: None,
+            query_document: None,
+            tag_revision: None,
+            result_context: None,
+            evidence: vec![],
+            tag_manager: None,
+            candidates: None,
+            candidate_window: None,
+            helper_scope: None,
+            optional_field_value: None,
+            pending_trigger: None,
+            pending_query_projection: None,
+            search_composing: false,
+            ime_active: std::collections::HashSet::new(),
+            ime_settling: std::collections::HashSet::new(),
+            ime_watch_task: None,
+            query_diagnostics: vec![],
+            query_diagnostic_text: String::new(),
+            query_notice: None,
+            native_tag_bindings: std::collections::HashMap::new(),
+            native_tag_serial: 0,
             preferences,
             search,
             libraries: vec![],
@@ -311,12 +440,16 @@ impl Workbench {
             placeholder_selecting: false,
             _subscriptions: vec![
                 input_subscription,
+                ime_subscription,
                 preference_subscription,
                 appearance_subscription,
                 update_subscription,
                 activation_subscription,
             ],
         };
+        this._subscriptions.push(cx.on_release(|this, cx| {
+            this.close_candidate_window(cx);
+        }));
         this.reload(cx);
         this
     }
@@ -328,6 +461,7 @@ impl Workbench {
     ) -> Self {
         let mut view = Self::new(preferences, false, window, cx);
         view.tray = true;
+        view.advanced = view.preferences.read(cx).tray_advanced_search_enabled;
         view.selected_library = view.preferences.read(cx).tray_library.clone();
         view.reload(cx);
         view.focus_search(window, cx);
@@ -433,6 +567,61 @@ impl Workbench {
         crate::application::send(bibcitex_linux::Command::RefreshLibraries, cx);
     }
 
+    fn toggle_advanced(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let previous = SearchDraft {
+            text: self.search.read(cx).value().to_string(),
+            content: Some(self.search.read(cx).content()),
+            editor: self.condition_editor.take(),
+            field: self.field,
+            kind: self.kind,
+            document: self.query_document.take(),
+            tag_revision: self.tag_revision.take(),
+        };
+        let restored = std::mem::replace(&mut self.inactive_draft, previous);
+        self.condition_editor = restored.editor;
+        self.advanced = !self.advanced;
+        self.field = restored.field;
+        self.kind = restored.kind;
+        self.query_document = restored.document;
+        self.tag_revision = restored.tag_revision;
+        self.search.update(cx, |input, cx| {
+            input.set_value(
+                restored
+                    .content
+                    .unwrap_or_else(|| input::InputContent::new(restored.text)),
+                window,
+                cx,
+            )
+        });
+        if !self.helper {
+            self.preferences.update(cx, |preferences, cx| {
+                if self.tray {
+                    preferences.tray_advanced_search_enabled = self.advanced;
+                } else {
+                    preferences.main_advanced_search_enabled = self.advanced;
+                }
+                cx.notify();
+            });
+            self.persist(cx);
+        }
+        self.schedule_search(cx);
+    }
+
+    fn advanced_toggle(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        Button::new("advanced-search-mode")
+            .ghost()
+            .small()
+            .label(if self.preferences.read(cx).chinese() {
+                "高级搜索"
+            } else {
+                "Advanced search"
+            })
+            .when(self.advanced, |button| {
+                button.bg(cx.theme().muted).icon(icon("check"))
+            })
+            .on_click(cx.listener(|this, _, window, cx| this.toggle_advanced(window, cx)))
+    }
+
     fn schedule_search(&mut self, cx: &mut Context<Self>) {
         self.generation += 1;
         let generation = self.generation;
@@ -441,6 +630,10 @@ impl Workbench {
             .selected
             .and_then(|i| self.references.get(i))
             .map(|r| r.cite_key.clone());
+        self.result_context = None;
+        self.query_notice = None;
+        self.query_diagnostics.clear();
+        self.evidence.clear();
         self.references.clear();
         self.selected = None;
         let query = self.search.read(cx).value().to_string();
@@ -450,7 +643,14 @@ impl Workbench {
             .find(|l| Some(&l.name) == self.selected_library.as_ref() && l.available)
             .map(|l| l.path.clone());
         self.loading = false;
-        if self.choosing_library || (self.helper && query.trim().is_empty()) {
+        if self.search_composing
+            || self.condition_editor.is_some()
+            || self.candidates.is_some()
+            || self.optional_field_value.is_some()
+            || self.tag_manager.is_some()
+            || self.choosing_library
+            || (self.helper && query.trim().is_empty())
+        {
             cx.notify();
             return;
         }
@@ -461,11 +661,80 @@ impl Workbench {
         self.loading = true;
         let field = FIELDS[self.field].0.to_owned();
         let kind = TYPES[self.kind].0.to_owned();
+        let mut document = self.query_document.clone();
+        let mut request_text = document
+            .clone()
+            .map(service::render_query)
+            .filter(|analysis| analysis.status == service::QueryStatus::Valid)
+            .map(|analysis| analysis.text)
+            .unwrap_or(query.clone());
+        if self.helper
+            && let Some(field) = self.helper_scope.clone()
+        {
+            let analysis = document
+                .clone()
+                .map(service::render_query)
+                .unwrap_or_else(|| service::analyze_query(query.clone()));
+            if analysis.status == service::QueryStatus::Valid
+                && let Some(mut base) = analysis.document
+                && let Some(root) = base.root
+            {
+                let index = base.nodes.len() as u32;
+                base.nodes.push(service::QueryNodeRecord {
+                    kind: service::QueryNodeKind::Scope,
+                    text_value: field,
+                    tag_id: None,
+                    children: vec![root],
+                    start: 0,
+                    end: 0,
+                });
+                base.root = Some(index);
+                let scoped = service::render_query(base);
+                if scoped.status != service::QueryStatus::Valid {
+                    self.loading = false;
+                    self.query_diagnostic_text = scoped.text;
+                    self.query_diagnostics = scoped.diagnostics;
+                    self.error = Some(
+                        self.query_diagnostics
+                            .iter()
+                            .map(|d| self.text(&d.code, cx).to_string())
+                            .collect::<Vec<_>>()
+                            .join("; "),
+                    );
+                    cx.notify();
+                    return;
+                }
+                document = scoped.document;
+                request_text = scoped.text;
+            }
+        }
+        let request = service::AdvancedSearchRequest {
+            path,
+            mode: if self.advanced {
+                service::SearchMode::Advanced
+            } else {
+                service::SearchMode::Ordinary
+            },
+            input_kind: if self.advanced && document.is_some() {
+                service::QueryInputKind::Bound
+            } else {
+                service::QueryInputKind::Text
+            },
+            text: request_text,
+            expected_tag_revision: document
+                .as_ref()
+                .filter(|doc| doc.nodes.iter().any(|node| node.tag_id.is_some()))
+                .and(self.tag_revision),
+            document,
+            default_field: field,
+            type_filter: kind,
+            query_version: generation,
+        };
         let executor = cx.background_executor().clone();
         self.search_task = Some(cx.spawn(async move |this, cx| {
             executor.timer(Duration::from_millis(100)).await;
             let result = executor
-                .spawn(async move { service::search(path, query, field, kind) })
+                .spawn(async move { service::advanced_search(request) })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 if this.generation != generation {
@@ -473,8 +742,73 @@ impl Workbench {
                 }
                 this.loading = false;
                 match result {
-                    Ok(records) => {
-                        this.references = records;
+                    Ok(response) => {
+                        if response.analysis.status == service::QueryStatus::StaleQuery {
+                            if let Some(document) = this.query_document.clone() {
+                                match service::refresh_query(document) {
+                                    Ok(analysis)
+                                        if analysis.status == service::QueryStatus::Valid =>
+                                    {
+                                        this.query_document = analysis.document;
+                                        this.tag_revision = analysis.tag_revision;
+                                        this.schedule_search(cx);
+                                        this.pending_query_projection =
+                                            Some((this.generation, analysis.text));
+                                        return;
+                                    }
+                                    Ok(analysis) => {
+                                        this.error = Some(
+                                            analysis
+                                                .diagnostics
+                                                .iter()
+                                                .map(|diagnostic| {
+                                                    this.text(&diagnostic.code, cx).to_string()
+                                                })
+                                                .collect::<Vec<_>>()
+                                                .join("; "),
+                                        )
+                                    }
+                                    Err(error) => this.error = Some(error.to_string()),
+                                }
+                            } else {
+                                this.error = Some(
+                                    if this.preferences.read(cx).chinese() {
+                                        "数据已变化，请刷新搜索结果"
+                                    } else {
+                                        "The data changed. Refresh the search results."
+                                    }
+                                    .into(),
+                                );
+                            }
+                            cx.notify();
+                            return;
+                        }
+                        this.query_diagnostic_text = response.analysis.text.clone();
+                        this.query_diagnostics = response.analysis.diagnostics.clone();
+                        if response.analysis.status != service::QueryStatus::Valid {
+                            this.error = Some(
+                                this.query_diagnostics
+                                    .iter()
+                                    .map(|diagnostic| this.text(&diagnostic.code, cx).to_string())
+                                    .collect::<Vec<_>>()
+                                    .join("; "),
+                            );
+                            cx.notify();
+                            return;
+                        }
+                        this.query_notice =
+                            (!response.analysis.diagnostics.is_empty()).then(|| {
+                                response
+                                    .analysis
+                                    .diagnostics
+                                    .iter()
+                                    .map(|diagnostic| this.text(&diagnostic.code, cx).to_string())
+                                    .collect::<Vec<_>>()
+                                    .join("; ")
+                            });
+                        this.result_context = response.context;
+                        this.evidence = response.evidence;
+                        this.references = response.references;
                         this.selected = selected_key
                             .as_ref()
                             .and_then(|key| this.references.iter().position(|r| &r.cite_key == key))
@@ -563,6 +897,9 @@ impl Workbench {
         cx.notify();
     }
     fn copy_detail(&mut self, value: String, cx: &mut Context<Self>) {
+        if !self.current_results_valid(cx) {
+            return;
+        }
         cx.write_to_clipboard(ClipboardItem::new_string(value.clone()));
         self.copied_detail = Some(value);
         self.copy_detail_task = Some(cx.spawn(async move |this, cx| {
@@ -601,7 +938,10 @@ impl Workbench {
     }
 
     fn activate_selected(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.pasting {
+        if self.input_is_composing(window, cx) {
+            return;
+        }
+        if self.pasting || !self.current_results_valid(cx) {
             return;
         }
         let Some(key) = self
@@ -620,6 +960,7 @@ impl Workbench {
             };
             self.pasting = true;
             let revision = self.generation;
+            let search_context = self.result_context.clone();
             let events = cx.global::<crate::application::Services>().events.clone();
             cx.spawn_in(window, async move |this, cx| {
                 if let Err(error) = desktop.prepare().await {
@@ -632,7 +973,7 @@ impl Workbench {
                 // Closing our surface lets the compositor restore its previous focus.
                 if !this
                     .update_in(cx, |this, window, cx| {
-                        if this.generation != revision {
+                        if this.generation != revision || !this.current_results_valid(cx) {
                             this.pasting = false;
                             return false;
                         }
@@ -647,6 +988,22 @@ impl Workbench {
                 cx.background_executor()
                     .timer(Duration::from_millis(180))
                     .await;
+                if let Some(context) = search_context {
+                    if !service::validate_search_context(context).unwrap_or(false) {
+                        let _ = events
+                            .send(bibcitex_linux::Command::Error(
+                                "Search results changed; search again before pasting".into(),
+                            ))
+                            .await;
+                        let _ = this.update(cx, |this, cx| {
+                            this.pasting = false;
+                            cx.notify();
+                        });
+                        return;
+                    }
+                } else {
+                    return;
+                }
                 let result = desktop.paste().await;
                 let _ = this.update(cx, |this, cx| {
                     this.pasting = false;
@@ -675,8 +1032,52 @@ impl Workbench {
             .collect()
     }
 
+    fn restore_library_draft(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.choosing_library = false;
+        if let Some(draft) = self.library_draft.take() {
+            self.query_document = draft.document;
+            self.tag_revision = draft.tag_revision;
+            self.condition_editor = draft.editor;
+            self.field = draft.field;
+            self.kind = draft.kind;
+            self.search.update(cx, |input, cx| {
+                input.set_value(
+                    draft
+                        .content
+                        .unwrap_or_else(|| input::InputContent::new(draft.text)),
+                    window,
+                    cx,
+                )
+            });
+        } else {
+            self.search
+                .update(cx, |input, cx| input.set_value("", window, cx));
+        }
+        let placeholder = self.text("搜索文献、作者、标题", cx);
+        self.search.update(cx, |input, cx| {
+            input.set_placeholder(placeholder, window, cx);
+            input.focus(window, cx);
+        });
+        self.schedule_search(cx);
+        self.resize_helper(window, cx);
+    }
+
     fn toggle_library_selection(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.choosing_library = !self.choosing_library;
+        if self.choosing_library {
+            self.choosing_library = false;
+            self.restore_library_draft(window, cx);
+            return;
+        }
+        self.library_draft = Some(SearchDraft {
+            text: self.search.read(cx).value().to_string(),
+            content: Some(self.search.read(cx).content()),
+            editor: self.condition_editor.take(),
+            field: self.field,
+            kind: self.kind,
+            document: self.query_document.take(),
+            tag_revision: self.tag_revision.take(),
+        });
+        self.choosing_library = true;
         self.library_cursor = 0;
         self.library_scroll.scroll_to_item(0);
         let placeholder = self.text(
@@ -755,7 +1156,9 @@ impl Workbench {
             } else {
                 self.references.len()
             };
-            let list_height = if self.loading {
+            let list_height = if self.candidates.is_some() || self.optional_field_value.is_some() {
+                0.
+            } else if self.loading {
                 112.
             } else if !self.choosing_library && self.search.read(cx).value().trim().is_empty() {
                 0.
@@ -764,7 +1167,14 @@ impl Workbench {
             } else {
                 (count as f32 * if self.choosing_library { 58. } else { 82. } + 16.).min(460.)
             };
-            let height = HELPER_HEADER + list_height + if self.error.is_some() { 40. } else { 0. };
+            let height = HELPER_HEADER
+                + list_height
+                + if self.error.is_some() { 40. } else { 0. }
+                + if self.condition_editor.is_some() || self.tag_manager.is_some() {
+                    350.
+                } else {
+                    0.
+                };
             let available = window.display(cx).map(|display| display.bounds().size);
             let width = available.map_or(px(720.), |bounds| {
                 px(720.).min((bounds.width - px(40.)).max(px(320.)))
@@ -1110,10 +1520,42 @@ impl Workbench {
     }
 
     fn row(&self, index: usize, cx: &mut Context<Self>) -> impl IntoElement + use<> {
+        let generation = self.generation;
         let record = &self.references[index];
         let key = record.cite_key.clone();
-        let author = record.author.join(", ");
-        let title = crate::math::rich(&record.title, cx);
+        let evidence = self.evidence.iter().find(|e| e.reference_id == record.id);
+        let title_ranges: Vec<_> = evidence
+            .into_iter()
+            .flat_map(|e| &e.ranges)
+            .filter(|range| range.field_name == "title" && range.entry_index == 0)
+            .map(|range| (range.start as usize, range.end as usize))
+            .collect();
+        let title = crate::math::rich_highlighted(&record.title, &title_ranges, cx);
+        let mut author_offset = 0;
+        let mut author_highlights = Vec::new();
+        for (index, name) in record.author.iter().enumerate() {
+            for range in evidence
+                .into_iter()
+                .flat_map(|e| &e.ranges)
+                .filter(|range| range.field_name == "author" && range.entry_index as usize == index)
+            {
+                let start = range.start as usize;
+                let end = range.end as usize;
+                if start < end && name.get(start..end).is_some() {
+                    author_highlights.push((
+                        author_offset + start..author_offset + end,
+                        HighlightStyle {
+                            color: Some(cx.theme().link),
+                            font_weight: Some(FontWeight::SEMIBOLD),
+                            ..Default::default()
+                        },
+                    ));
+                }
+            }
+            author_offset += name.len() + 2;
+        }
+        let author = StyledText::new(record.author.join(", "))
+            .with_highlights(combine_highlights(vec![], author_highlights).collect::<Vec<_>>());
         let kind = TYPES
             .iter()
             .find(|(kind, _)| *kind == record.entry_type)
@@ -1134,6 +1576,19 @@ impl Workbench {
             self.text(kind, cx).to_string(),
             record.year.map(|y| y.to_string()).unwrap_or_default(),
             venue,
+            evidence
+                .map(|e| {
+                    format!(
+                        "{}{}",
+                        e.fields.join(", "),
+                        if e.fuzzy {
+                            format!(" · ~ {}", e.fuzzy_terms.join(", "))
+                        } else {
+                            String::new()
+                        }
+                    )
+                })
+                .unwrap_or_default(),
         ]
         .into_iter()
         .filter(|s| !s.is_empty())
@@ -1144,8 +1599,31 @@ impl Workbench {
         let owner = cx.weak_entity();
         let copy_label = self.text("复制引用键", cx);
         let source_label = self.text("复制 BibTeX", cx);
+        let evidence_summary = evidence.map(|e| {
+            format!(
+                "{}{}{}",
+                e.fields.join(", "),
+                if e.fuzzy {
+                    if self.preferences.read(cx).chinese() {
+                        " · 拼写补充"
+                    } else {
+                        " · Spelling supplement"
+                    }
+                } else {
+                    ""
+                },
+                if e.fuzzy && !e.fuzzy_terms.is_empty() {
+                    format!(": {}", e.fuzzy_terms.join(", "))
+                } else {
+                    String::new()
+                }
+            )
+        });
         let row = div()
             .id(("reference", index))
+            .when_some(evidence_summary, |row, summary| {
+                row.tooltip(move |window, cx| Tooltip::new(summary.clone()).build(window, cx))
+            })
             .w_full()
             .h(px(if self.helper {
                 82.
@@ -1163,6 +1641,9 @@ impl Workbench {
             .hover(|e| e.bg(cx.theme().muted))
             .when(self.helper, |e| e.text_size(px(13.)))
             .on_click(cx.listener(move |this, _, window, cx| {
+                if this.generation != generation || !this.current_results_valid(cx) {
+                    return;
+                }
                 this.selected = Some(index);
                 if this.helper {
                     this.activate_selected(window, cx);
@@ -1227,7 +1708,9 @@ impl Workbench {
                         .tooltip(self.text("复制引用键", cx))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             cx.stop_propagation();
-                            this.copy(key.clone(), cx);
+                            if this.generation == generation && this.current_results_valid(cx) {
+                                this.copy(key.clone(), cx);
+                            }
                         })),
                 )
             })
@@ -1250,12 +1733,20 @@ impl Workbench {
             let source = menu_source.clone();
             menu.item(
                 PopupMenuItem::new(copy_label.clone()).on_click(move |_, _, cx| {
-                    let _ = key_owner.update(cx, |this, cx| this.copy(key.clone(), cx));
+                    let _ = key_owner.update(cx, |this, cx| {
+                        if this.generation == generation && this.current_results_valid(cx) {
+                            this.copy(key.clone(), cx);
+                        }
+                    });
                 }),
             )
             .item(
                 PopupMenuItem::new(source_label.clone()).on_click(move |_, _, cx| {
-                    let _ = source_owner.update(cx, |this, cx| this.copy(source.clone(), cx));
+                    let _ = source_owner.update(cx, |this, cx| {
+                        if this.generation == generation && this.current_results_valid(cx) {
+                            this.copy(source.clone(), cx);
+                        }
+                    });
                 }),
             )
         })
@@ -1351,6 +1842,9 @@ impl Workbench {
                         )
                         .child(
                             Input::new(&self.search)
+                                .disabled(
+                                    self.condition_editor.is_some() || self.tag_manager.is_some(),
+                                )
                                 .prefix(icon("search").size(px(15.)))
                                 .appearance(false)
                                 .focus_bordered(false)
@@ -1364,11 +1858,14 @@ impl Workbench {
                             div()
                                 .flex()
                                 .gap_2()
+                                .child(self.advanced_toggle(cx))
+                                .child(self.condition_controls(cx))
                                 .child(self.filter(true, cx))
                                 .child(self.filter(false, cx)),
                         ),
                 )
             })
+            .child(self.condition_panel(cx))
             .child(self.results(cx))
     }
 
@@ -1473,6 +1970,10 @@ impl Workbench {
                             )
                             .child(
                                 Input::new(&self.search)
+                                    .disabled(
+                                        self.condition_editor.is_some()
+                                            || self.tag_manager.is_some(),
+                                    )
                                     .appearance(false)
                                     .focus_bordered(false)
                                     .flex_1(),
@@ -1522,6 +2023,8 @@ impl Workbench {
                             .flex()
                             .items_center()
                             .gap_2()
+                            .child(self.advanced_toggle(cx))
+                            .child(self.condition_controls(cx))
                             .child(self.filter(true, cx))
                             .child(self.filter(false, cx))
                             .child(div().flex_1())
@@ -1606,6 +2109,7 @@ impl Workbench {
         value: String,
         cx: &mut Context<Self>,
     ) -> Button {
+        let generation = self.generation;
         let copied = self.copied_detail.as_ref() == Some(&value);
         Button::new(id)
             .ghost()
@@ -1614,7 +2118,11 @@ impl Workbench {
             .when(copied, |button| button.label(self.text("已复制", cx)))
             .accessibility_label(self.text(label, cx))
             .tooltip(self.text(label, cx))
-            .on_click(cx.listener(move |this, _, _, cx| this.copy_detail(value.clone(), cx)))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if this.generation == generation {
+                    this.copy_detail(value.clone(), cx);
+                }
+            }))
     }
 
     /// A detail value that opens its target when clicked.
@@ -1635,6 +2143,7 @@ impl Workbench {
             }
             LinkTarget::Action(label, action) => (label, action),
         };
+        let generation = self.generation;
         let tooltip = self.text(label, cx);
         div()
             .id(id)
@@ -1643,7 +2152,11 @@ impl Workbench {
             .hover(|style| style.underline())
             .child(value.to_string())
             .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx))
-            .on_click(cx.listener(move |this, _, _, cx| action(this, cx)))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if this.generation == generation && this.current_results_valid(cx) {
+                    action(this, cx);
+                }
+            }))
             .into_any_element()
     }
 
@@ -1853,6 +2366,13 @@ impl Workbench {
 
 impl Render for Workbench {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.synchronize_ime(window, cx);
+        if !self.input_is_composing(window, cx)
+            && let Some((generation, text)) = self.pending_query_projection.take()
+            && generation == self.generation
+        {
+            self.install_bound_text(text, window, cx);
+        }
         if self.helper {
             self.resize_helper(window, cx);
             if self.placeholder_selecting != self.choosing_library {
@@ -1894,26 +2414,90 @@ impl Render for Workbench {
                 .border_1()
                 .border_color(cx.theme().border)
             })
+            .capture_action(cx.listener(|this, _: &input::Backspace, window, cx| {
+                if this.backspace_scope_capsule(window, cx) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(|this, _: &input::Paste, _, _| {
+                this.pending_trigger = None;
+            }))
+            .capture_action(cx.listener(|this, _: &input::Undo, _, _| {
+                this.pending_trigger = None;
+            }))
+            .capture_action(cx.listener(|this, _: &input::Redo, _, _| {
+                this.pending_trigger = None;
+            }))
             .capture_action(cx.listener(|this, _: &input::IndentInline, window, cx| {
-                if this.helper && this.search_navigation(window, cx) {
+                if this.input_is_composing(window, cx) {
+                    return;
+                }
+                if this.optional_field_value.is_some() {
+                    this.finish_optional_field(true, window, cx);
+                    cx.stop_propagation();
+                } else if this.candidates.is_some() {
+                    this.focus_candidates(window, cx);
+                    cx.stop_propagation();
+                } else if this.helper && this.search_navigation(window, cx) {
                     this.toggle_library_selection(window, cx);
                     cx.stop_propagation();
                 }
             }))
             .capture_action(cx.listener(|this, _: &input::MoveUp, window, cx| {
-                if this.search_navigation(window, cx) {
+                if this.input_is_composing(window, cx) {
+                    return;
+                }
+                if this.candidates.is_some() {
+                    this.candidate_navigation(-1, cx);
+                    cx.stop_propagation();
+                } else if this.search_navigation(window, cx) {
                     this.move_selection(-1, cx);
                     cx.stop_propagation();
                 }
             }))
             .capture_action(cx.listener(|this, _: &input::MoveDown, window, cx| {
-                if this.search_navigation(window, cx) {
+                if this.input_is_composing(window, cx) {
+                    return;
+                }
+                if this.candidates.is_some() {
+                    this.candidate_navigation(1, cx);
+                    cx.stop_propagation();
+                } else if this.search_navigation(window, cx) {
                     this.move_selection(1, cx);
                     cx.stop_propagation();
                 }
             }))
             .capture_action(cx.listener(|this, _: &input::Escape, window, cx| {
-                if this.renaming.is_some() && !this.saving_name {
+                if this.input_is_composing(window, cx) {
+                    return;
+                }
+                if this.candidates.is_some() {
+                    this.cancel_candidate(window, cx);
+                    cx.stop_propagation();
+                } else if this.optional_field_value.is_some() {
+                    this.finish_optional_field(true, window, cx);
+                    cx.stop_propagation();
+                } else if this.tag_manager.is_some() {
+                    if let Some(manager) = this.tag_manager.as_mut()
+                        && manager.cancel_confirmation()
+                    {
+                        cx.notify();
+                        cx.stop_propagation();
+                        return;
+                    }
+                    this.tag_manager = None;
+                    this.reload(cx);
+                    this.focus_search(window, cx);
+                    cx.stop_propagation();
+                } else if this.choosing_library {
+                    this.restore_library_draft(window, cx);
+                    cx.stop_propagation();
+                } else if this.condition_editor.is_some() {
+                    this.condition_editor = None;
+                    this.schedule_search(cx);
+                    this.focus_search(window, cx);
+                    cx.stop_propagation();
+                } else if this.renaming.is_some() && !this.saving_name {
                     this.renaming = None;
                     this.rename_subscription = None;
                     this.focus_search(window, cx);
@@ -1925,15 +2509,64 @@ impl Render for Workbench {
                 }
             }))
             .capture_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                this.pending_trigger = None;
                 let focused = this.search.read(cx).focus_handle(cx).is_focused(window);
-                let composing = focused
-                    && this.search.update(cx, |input, cx| {
-                        input.marked_text_range(window, cx).is_some()
-                    });
+                let composing = this.input_is_composing(window, cx);
                 if composing {
                     return;
                 }
+                if focused
+                    && !event.keystroke.modifiers.control
+                    && !event.keystroke.modifiers.platform
+                {
+                    this.prepare_candidate_trigger(
+                        event
+                            .keystroke
+                            .key_char
+                            .as_deref()
+                            .unwrap_or(&event.keystroke.key),
+                        window,
+                        cx,
+                    );
+                }
                 match event.keystroke.key.as_str() {
+                    "up" if this.candidates.is_some() => {
+                        this.candidate_navigation(-1, cx);
+                        cx.stop_propagation();
+                    }
+                    "down" if this.candidates.is_some() => {
+                        this.candidate_navigation(1, cx);
+                        cx.stop_propagation();
+                    }
+                    "tab" if this.optional_field_value.is_some() => {
+                        this.finish_optional_field(true, window, cx);
+                        cx.stop_propagation();
+                    }
+                    "tab" if this.candidates.is_some() => {
+                        this.focus_candidates(window, cx);
+                        cx.stop_propagation();
+                    }
+                    "escape" if this.candidates.is_some() => {
+                        this.cancel_candidate(window, cx);
+                        cx.stop_propagation();
+                    }
+                    "escape" if this.optional_field_value.is_some() => {
+                        this.finish_optional_field(true, window, cx);
+                        cx.stop_propagation();
+                    }
+                    "escape" if this.tag_manager.is_some() => {
+                        if let Some(manager) = this.tag_manager.as_mut()
+                            && manager.cancel_confirmation()
+                        {
+                            cx.notify();
+                            cx.stop_propagation();
+                            return;
+                        }
+                        this.tag_manager = None;
+                        this.reload(cx);
+                        this.focus_search(window, cx);
+                        cx.stop_propagation();
+                    }
                     "up" if focused => {
                         this.move_selection(-1, cx);
                         cx.stop_propagation();
@@ -1948,6 +2581,16 @@ impl Render for Workbench {
                     }
                     "q" if event.keystroke.modifiers.control => {
                         crate::application::send(bibcitex_linux::Command::Quit, cx);
+                        cx.stop_propagation();
+                    }
+                    "escape" if this.choosing_library => {
+                        this.restore_library_draft(window, cx);
+                        cx.stop_propagation();
+                    }
+                    "escape" if this.condition_editor.is_some() => {
+                        this.condition_editor = None;
+                        this.schedule_search(cx);
+                        this.focus_search(window, cx);
                         cx.stop_propagation();
                     }
                     "escape" if this.helper || this.tray => {
@@ -1983,16 +2626,38 @@ impl Render for Workbench {
                                 .size(px(18.))
                                 .text_color(cx.theme().muted_foreground),
                         )
+                        .child(self.helper_scope_control(cx))
                         .child(
                             Input::new(&self.search)
+                                .disabled(
+                                    self.candidates.is_some()
+                                        || self.optional_field_value.is_some()
+                                        || self.condition_editor.is_some()
+                                        || self.tag_manager.is_some(),
+                                )
                                 .appearance(false)
                                 .focus_bordered(false)
                                 .text_size(px(20.))
                                 .cleanable(false)
+                                .on_token_click({
+                                    let owner = cx.weak_entity();
+                                    move |event, window, cx| {
+                                        let range = event.range();
+                                        let _ = owner.update(cx, |this, cx| {
+                                            this.edit_inline_token(range, window, cx)
+                                        });
+                                    }
+                                })
+                                .min_w_0()
                                 .flex_1(),
                         )
+                        .child(self.helper_filter_control(cx))
+                        .child(self.optional_field_control(cx))
                         .when(
-                            !self.choosing_library && self.selected_library.is_some(),
+                            !self.choosing_library
+                                && self.candidates.is_none()
+                                && self.optional_field_value.is_none()
+                                && self.selected_library.is_some(),
                             |header| {
                                 header.child(
                                     Button::new("choose-library")
@@ -2095,9 +2760,9 @@ impl Render for Workbench {
                                 let placeholder = this.text("搜索文献、作者、标题", cx);
                                 this.search.update(cx, |input, cx| {
                                     input.set_placeholder(placeholder, window, cx);
-                                    input.set_value("", window, cx);
                                     input.focus(window, cx);
                                 });
+                                this.restore_library_draft(window, cx);
                                 this.resize_helper(window, cx);
                             })),
                     );
@@ -2231,6 +2896,43 @@ impl Render for Workbench {
                                 .child(self.inspector(cx)),
                         ),
                 );
+        }
+        if self.helper || self.tray {
+            root = root.child(self.condition_panel(cx));
+        }
+        if let Some(diagnostic) = self.query_diagnostics.first().cloned() {
+            let generation = self.generation;
+            root = root.child(
+                Button::new("locate-query-diagnostic")
+                    .ghost()
+                    .small()
+                    .label(self.text(&diagnostic.code, cx))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        if generation != this.generation {
+                            return;
+                        }
+                        let text = this.search.read(cx).value();
+                        if text.as_ref() != this.query_diagnostic_text {
+                            return;
+                        }
+                        let range = diagnostic.start as usize..diagnostic.end as usize;
+                        if text.get(range.clone()).is_some() {
+                            this.search.update(cx, |input, cx| {
+                                input.set_selected_range(range, cx);
+                                input.focus(window, cx);
+                            });
+                        }
+                    })),
+            );
+        }
+        if let Some(notice) = &self.query_notice {
+            root = root.child(
+                div()
+                    .p_2()
+                    .text_xs()
+                    .text_color(cx.theme().muted_foreground)
+                    .child(notice.clone()),
+            );
         }
         if let Some(error) = &self.error {
             root = root.child(

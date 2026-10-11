@@ -26,8 +26,10 @@ internal sealed class MainWindow : Window
     };
     private readonly TextBlock librariesEmpty = Views.LocalizedText("暂无文献库");
     private readonly SearchTextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinWidth = 160 };
+    private readonly SearchSession searchSession = new("mainAdvancedSearch");
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ComboBox type = new() { MinWidth = 110 };
+    private readonly TextBlock queryDiagnostic = new() { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
     private readonly Grid sidebar = new() { Padding = new Thickness(10, 12, 10, 8) };
     private readonly Grid inspector = new();
@@ -62,6 +64,7 @@ internal sealed class MainWindow : Window
         root.RequestedTheme = App.Theme;
         Localized.BindValue(root, FrameworkElement.LanguageProperty, () => L10n.Language);
         Views.LocalizeTextBox(search);
+        searchSession.Attach(search);
         root.ColumnDefinitions.Add(new() { Width = new GridLength(220) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(5) });
         root.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star), MinWidth = 330 });
@@ -117,7 +120,30 @@ internal sealed class MainWindow : Window
         searchRow.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); searchRow.ColumnDefinitions.Add(new());
         searchRow.Children.Add(new SvgIcon("search", 15) { VerticalAlignment = VerticalAlignment.Center });
         Grid.SetColumn(search, 1); searchRow.Children.Add(search); referenceHeader.Children.Add(searchRow);
-        var filters = Views.Row(type, field); referenceHeader.Children.Add(filters);
+        var advanced = new ToggleButton { Content = L10n.Text("高级搜索"), IsChecked = searchSession.Advanced };
+        Localized.Name(advanced, "高级搜索");
+        var conditions = new Button { Content = L10n.Text("条件"), IsEnabled = searchSession.Advanced };
+        conditions.Click += async (_, _) =>
+        {
+            try
+            {
+                searchVersion++; references.Items.Clear(); ShowDetail(null);
+                if (await AdvancedSearchEditor.Show(root.XamlRoot, search.Text, await searchSession.AnalyzeDraft(search.Text)) is { } query)
+                { searchSession.Accept(query); search.Text = query.text; }
+                await Search();
+            }
+            catch (Exception ex) { await Report(ex); }
+        };
+        var manageTags = new Button { Content = L10n.Text("标签") };
+        manageTags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } };
+        advanced.Click += async (_, _) =>
+        {
+            try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
+            catch (Exception error) { advanced.IsChecked = searchSession.Advanced; await Report(error); }
+        };
+        var filters = new StackPanel { Spacing = 8 };
+        filters.Children.Add(Views.Row(type, field)); filters.Children.Add(Views.Row(advanced, conditions, manageTags));
+        referenceHeader.Children.Add(filters); referenceHeader.Children.Add(queryDiagnostic);
         Grid.SetRow(references, 1); center.Children.Add(references);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(brand, "BibCiTeX");
         empty.HorizontalAlignment = HorizontalAlignment.Center; empty.Opacity = .65;
@@ -154,16 +180,20 @@ internal sealed class MainWindow : Window
             _ = Search();
         };
         references.SelectionChanged += (_, _) => ShowDetail((references.SelectedItem as ListViewItem)?.Tag as Reference);
-        search.TextCompositionStarted += (_, _) => searchComposing = true;
+        search.TextCompositionStarted += (_, _) => { searchComposing = true; searchSession.Invalidate(); searchVersion++; resultsVersion = -1; references.Items.Clear(); ShowDetail(null); };
         search.TextCompositionEnded += (_, _) => { searchComposing = false; _ = Search(); };
         search.PreviewKeyDown += SearchKeyDown;
-        search.TextChanged += (_, _) => { if (!searchComposing) _ = Search(true); }; type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
+        search.TextChanged += (_, _) => { searchSession.TextEdited(search.Text); if (!searchComposing) _ = Search(true); }; type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
         root.Loaded += async (_, _) => { SetMinimumSize(); root.XamlRoot.Changed += (_, _) => SetMinimumSize(); if (!initialized) { initialized = true; await ReloadLibraries(); } };
         AppWindow.Closing += (_, args) => { if (!quitting && tray is not null) { args.Cancel = true; AppWindow.Hide(); } };
         Closed += (_, _) => { aboutWindow?.Close(); Settings?.Close(); shortcut?.Dispose(); tray?.Dispose(); };
+        TagManager.Changed += TagsChanged;
+        Closed += (_, _) => TagManager.Changed -= TagsChanged;
         root.SizeChanged += (_, _) => LayoutPanes();
         LayoutPanes();
     }
+
+    private void TagsChanged() { searchSession.Invalidate(); searchVersion++; references.Items.Clear(); ShowDetail(null); _ = ReloadLibraries(); }
 
     private static void SetPaneBackground(Grid pane, string resource) =>
         pane.Style = (Style)Application.Current.Resources[resource];
@@ -340,7 +370,10 @@ internal sealed class MainWindow : Window
     }
     private async Task Search(bool debounce = false)
     {
+        if (searchSession.Restoring) return;
+        searchSession.Invalidate();
         var version = ++searchVersion; var library = current;
+        resultsVersion = -1; references.Items.Clear(); ShowDetail(null);
         if (library is not { Available: true }) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         SetBusy(true);
@@ -348,8 +381,12 @@ internal sealed class MainWindow : Window
         {
             if (debounce) await Task.Delay(100);
             if (version != searchVersion) return;
-            var rows = await RustCore.Search(library.Path, query, searchField, searchType);
+            var response = await searchSession.Search(library.Path, query, searchField, searchType, version);
+            var rows = response.references.Select(x => new Reference(x) { Evidence = response.evidence.FirstOrDefault(e => e.reference_id == x.id) }).ToList();
             if (version != searchVersion) return;
+            searchSession.Publish(response); searchSession.SyncProjection(search);
+            queryDiagnostic.Text = SearchSession.Diagnostic(response.analysis);
+            queryDiagnostic.Visibility = queryDiagnostic.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
             var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true, copy: Copy); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
@@ -526,8 +563,11 @@ internal sealed class MainWindow : Window
     private void ShowDetail(Reference? reference)
     {
         detail.Children.Clear(); detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
-        detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题");
+        detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题", highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
+        var tags = new Button { Content = L10n.Text("标签") };
+        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, current?.Path ?? "", reference.Key); } catch (Exception ex) { await Report(ex); } };
+        detail.Children.Add(tags);
         var libraryPath = current?.Path;
         foreach (var (key, label) in Metadata)
         {
@@ -542,7 +582,8 @@ internal sealed class MainWindow : Window
                 "source" => Views.Caption(caption, Views.CopyButton("clipboard", "复制 BibTeX", () => Copy(raw), compact: true)),
                 _ => caption,
             });
-            if (key is "title" or "note" or "abstract_" or "book_title" or "issue") section.Children.Add(new ChunkText(reference.Chunks(key), 14, value));
+            if (key is "title" or "note" or "abstract_" or "book_title" or "issue") section.Children.Add(new ChunkText(reference.Chunks(key), 14, value, highlights: SearchHighlights.Ranges(reference, key == "abstract_" ? "abstract" : key == "book_title" ? "booktitle" : key, value)));
+            else if (key == "author") section.Children.Add(SearchHighlights.Authors(reference, 14));
             else if (key == "file") section.Children.Add(Views.Link(value, 14, "打开文件", () => { if (current?.Path == libraryPath) _ = OpenFile(raw, libraryPath, attachment: true); }));
             else if (key == "url") section.Children.Add(Views.Link(value, 14, "打开 URL", () => _ = OpenUrl(raw)));
             else if (key == "doi") section.Children.Add(Views.Link(value, 14, "打开 DOI", () => _ = OpenUrl(raw.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? raw : "https://doi.org/" + raw)));
@@ -563,18 +604,19 @@ internal sealed class MainWindow : Window
         ("book_title", "书名"), ("issue", "期号"), ("note", "备注"), ("source", "BibTeX") ];
     private async Task<bool> Copy(string text)
     {
-        try { await RustCore.Copy(text); return true; }
+        try { if (resultsVersion != searchVersion || !await searchSession.Validate()) { await Search(); return false; } await RustCore.Copy(text); return true; }
         catch (Exception error) { await Report(error); return false; }
     }
     private async Task OpenUrl(string value)
     {
-        try { var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
+        try { if (!await searchSession.Validate()) { await Search(); return; } var uri = new Uri(value); if (uri.Scheme is not ("http" or "https")) throw new LocalizedException("仅支持 HTTP/HTTPS 链接"); if (!await Launcher.LaunchUriAsync(uri)) throw new IOException(value); }
         catch (Exception error) { await Report(error); }
     }
     private async Task OpenFile(string value, string? libraryPath = null, bool attachment = false)
     {
         try
         {
+            if (attachment && !await searchSession.Validate()) { await Search(); return; }
             var path = attachment ? AttachmentPath.Resolve(value, libraryPath) : System.IO.Path.GetFullPath(value);
             if (!await Launcher.LaunchFileAsync(await StorageFile.GetFileFromPathAsync(path))) throw new IOException(path);
         }

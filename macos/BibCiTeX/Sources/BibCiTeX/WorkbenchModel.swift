@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import BibCiTeXCore
 
 enum CopySurface: Hashable {
     case list, detail
@@ -18,11 +19,13 @@ final class WorkbenchModel: ObservableObject {
         let library: String?
         let revision: Int
     }
-    private struct Request: Equatable {
+    private struct Request {
         var library: String?
         var query = ""
         var field = "all"
         var type = "all"
+        var advanced = false
+        var draft = SearchDraft()
     }
 
     @Published private(set) var libraries: [Bibliography] = []
@@ -32,6 +35,14 @@ final class WorkbenchModel: ObservableObject {
     @Published private(set) var query = ""
     @Published private(set) var field = "all"
     @Published private(set) var type = "all"
+    @Published private(set) var matchRanges: [String: [SearchMatchRange]] = [:]
+    @Published private(set) var matchEvidence: [String: String] = [:]
+    @Published private(set) var queryAnalysis: QueryAnalysis?
+    private var searchContext: SearchContext?
+    var searchDraft: SearchDraft { requested.draft }
+    @Published private(set) var advancedSearchEnabled = false
+    private var ordinaryDraft = Request()
+    private var advancedDraft = Request(advanced: true)
     @Published private(set) var loading = false
     @Published private(set) var errorDetails: LocalizedMessage?
     var error: String? {
@@ -65,6 +76,8 @@ final class WorkbenchModel: ObservableObject {
     init(service: any WorkbenchServing, preferences: UserDefaults = .standard) {
         self.service = service
         self.preferences = preferences
+        advancedSearchEnabled = advancedSearchPreference(preferences, key: "mainAdvancedSearchEnabled")
+        requested.advanced = advancedSearchEnabled
         showSidebar = preferences.object(forKey: "mainShowSidebar") as? Bool ?? true
         showInspector = preferences.object(forKey: "mainShowInspector") as? Bool ?? false
     }
@@ -83,10 +96,40 @@ final class WorkbenchModel: ObservableObject {
         requested.library = name
         scheduleSearch()
     }
+    /// Switches independent in-session drafts while persisting only this surface’s mode.
+    func setAdvancedSearch(_ enabled: Bool) {
+        guard requested.advanced != enabled else { return }
+        if requested.advanced { advancedDraft = requested } else { ordinaryDraft = requested }
+        let library = requested.library
+        requested = enabled ? advancedDraft : ordinaryDraft
+        requested.library = library
+        requested.advanced = enabled
+        advancedSearchEnabled = enabled
+        preferences.set(enabled, forKey: "mainAdvancedSearchEnabled")
+        scheduleSearch()
+    }
     func setQuery(_ value: String) {
         guard requested.query != value else { return }
         requested.query = value
+        requested.draft = SearchDraft()
         scheduleSearch()
+    }
+    /// Replaces the query with a validated visual edit, retaining stable tag IDs.
+    func applyAdvancedQuery(_ text: String, draft: SearchDraft) {
+        requested.query = text; requested.draft = draft
+        scheduleSearch()
+    }
+    func refreshSearch() { scheduleSearch() }
+    func suspendForComposition(_ composing: Bool) {
+        guard composing else { scheduleSearch(); return }
+        generation += 1; searchTask?.cancel(); inputCommit?.cancel(); searchContext = nil; referencesLibraryPath = nil
+    }
+    /// Uses native UTF-8 edit ranges to preserve untouched bound tag nodes.
+    func editText(_ text: String, start: UInt32, end: UInt32, replacement: String, full: Bool) {
+        guard requested.advanced, let document = requested.draft.document, !full else { setQuery(text); return }
+        let result = BibCiTeXCore.editQueryText(edit: QueryTextEdit(document: document, text: requested.query, start: start, end: end, replacement: replacement, fullReplace: false))
+        requested.query = text; requested.draft.document = result.document
+        queryAnalysis = result; scheduleSearch()
     }
     func setField(_ value: String) {
         guard requested.field != value else { return }
@@ -143,6 +186,9 @@ final class WorkbenchModel: ObservableObject {
 
     private func scheduleSearch() {
         generation += 1
+        referencesRevision += 1
+        referencesLibraryPath = nil
+        searchContext = nil
         let version = generation
         let request = requested
         searchTask?.cancel()
@@ -154,6 +200,9 @@ final class WorkbenchModel: ObservableObject {
         }
     }
     private func commit(_ request: Request, version: Int) {
+        queryAnalysis = nil; matchEvidence = [:]
+        references = []
+        selectedReference = nil
         if selectedLibrary != request.library {
             // Clear the old result context together with its library selection.
             referencesRevision += 1
@@ -179,9 +228,17 @@ final class WorkbenchModel: ObservableObject {
             guard let self else { return }
             do {
                 try await Task.sleep(nanoseconds: 100_000_000)
-                let found = try await service.search(path: library.path, query: request.query, field: request.field, type: request.type)
+                let response = try await RustCore.shared.searchExplicit(path: library.path, query: request.query, field: request.field, type: request.type, advanced: request.advanced, draft: request.draft, version: UInt64(version))
+                let found = response.references
                 guard !Task.isCancelled, generation == version else { return }
-                referencesLibraryPath = library.path
+                if let text = response.refreshedText, let draft = response.refreshedDraft {
+                    requested.query = text; requested.draft = draft; query = text
+                }
+                matchRanges = response.matchRanges
+                matchEvidence = response.evidence
+                queryAnalysis = response.analysis
+                searchContext = response.context
+                referencesLibraryPath = response.analysis.status == .valid ? library.path : nil
                 referencesRevision += 1
                 references = found
                 if !found.contains(where: { $0.citeKey == self.selectedReference }) { selectedReference = found.first?.citeKey }
@@ -205,11 +262,14 @@ final class WorkbenchModel: ObservableObject {
         }
     }
     func copy(_ text: String, surface: CopySurface = .list) {
+        guard !loading, referencesLibraryPath != nil, references.contains(where: { $0.citeKey == text || $0.source == text }) else { return }
+        let version = generation
         copyConfirmation[surface]?.cancel()
         copied[surface] = nil
         copyConfirmation[surface] = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
+                guard let context = searchContext, try await RustCore.shared.validateContext(context), version == generation else { scheduleSearch(); return }
                 try await service.copy(text)
                 guard !Task.isCancelled else { return }
                 copied[surface] = text
@@ -223,8 +283,9 @@ final class WorkbenchModel: ObservableObject {
         }
     }
     func openURL(_ string: String) {
-        guard let url = URL(string: string), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }
-        NSWorkspace.shared.open(url)
+        guard let context = searchContext, let url = URL(string: string), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }
+        let version = generation
+        Task { do { guard try await RustCore.shared.validateContext(context), version == generation else { scheduleSearch(); return }; NSWorkspace.shared.open(url) } catch { reportError(error) } }
     }
     func attachmentURL(for reference: Reference, context: ReferenceSelectionContext) -> URL? {
         // An inspector can still deliver an event while a new library is being
@@ -245,7 +306,14 @@ final class WorkbenchModel: ObservableObject {
     }
     func openFile(_ reference: Reference, context: ReferenceSelectionContext) {
         guard let url = attachmentURL(for: reference, context: context) else { return }
-        if !NSWorkspace.shared.open(url) { errorDetails = LocalizedMessage(key: "无法打开文件：{0}", arguments: [LocalizedMessage(literal: url.path)]) }
+        guard let searchContext else { return }
+        let version = generation
+        Task {
+            do {
+                guard try await RustCore.shared.validateContext(searchContext), version == generation else { scheduleSearch(); return }
+                if !NSWorkspace.shared.open(url) { errorDetails = LocalizedMessage(key: "无法打开文件：{0}", arguments: [LocalizedMessage(literal: url.path)]) }
+            } catch { reportError(error) }
+        }
     }
 }
 

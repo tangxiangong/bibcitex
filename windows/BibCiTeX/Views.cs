@@ -385,8 +385,8 @@ internal static class Views
     internal static ListViewItem ReferenceItem(Reference reference, bool citeKeyCopies = false, Func<string, Task<bool>>? copy = null)
     {
         var details = new StackPanel { Spacing = citeKeyCopies ? 4 : 3, Padding = new Thickness(4, 8, 4, 8) };
-        details.Children.Add(new ChunkText(reference.Chunks("title"), citeKeyCopies ? 14 : 13, reference.Title, false, "暂无标题", maxLines: 2));
-        if (reference.Authors.Length > 0) details.Children.Add(new TextBlock { Text = reference.Authors, FontSize = citeKeyCopies ? 12 : 11, TextTrimming = TextTrimming.CharacterEllipsis, Opacity = .75 });
+        details.Children.Add(new ChunkText(reference.Chunks("title"), citeKeyCopies ? 14 : 13, reference.Title, false, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title)));
+        if (reference.Authors.Length > 0) details.Children.Add(SearchHighlights.Authors(reference, citeKeyCopies ? 12 : 11));
         var meta = string.Join(" · ", new[] { reference.TypeLabel, reference.Text("year"), reference.Venue }.Where(x => x.Length > 0));
         if (meta.Length > 0)
         {
@@ -395,6 +395,12 @@ internal static class Views
             details.Children.Add(metadata);
         }
 
+        if (reference.Evidence is { } evidence && (evidence.fields.Count > 0 || evidence.fuzzy))
+        {
+            var matched = string.Join(" · ", evidence.fields.Select(x => L10n.Text(x)));
+            if (evidence.fuzzy) matched = L10n.Text("拼写补充") + " (" + string.Join(", ", evidence.fuzzy_terms) + ") · " + matched;
+            ToolTipService.SetToolTip(details, matched);
+        }
         var row = new Grid { ColumnSpacing = 8 };
         row.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -540,14 +546,16 @@ internal static class Views
 internal sealed class ChunkText : UserControl
 {
     private readonly List<Chunk> chunks;
+    private readonly IReadOnlyList<(int Start, int End)> highlights;
     private readonly string? fallbackKey;
     private readonly RichTextBlock text = new() { IsTextSelectionEnabled = true, TextWrapping = TextWrapping.Wrap };
     private int generation;
     private double lastScale;
     private double lastWidth;
     private XamlRoot? observedRoot;
-    internal ChunkText(List<Chunk> chunks, double size, string fallback = "", bool selectable = true, string? fallbackKey = null, int maxLines = 0)
+    internal ChunkText(List<Chunk> chunks, double size, string fallback = "", bool selectable = true, string? fallbackKey = null, int maxLines = 0, IReadOnlyList<(int Start, int End)>? highlights = null)
     {
+        this.highlights = highlights ?? [];
         this.fallbackKey = chunks.Count == 0 ? fallbackKey : null;
         this.chunks = chunks.Count == 0 ? [new("normal", fallback)] : chunks;
         FontSize = size; text.FontSize = size; text.MaxLines = maxLines; text.TextTrimming = maxLines > 0 ? TextTrimming.CharacterEllipsis : TextTrimming.None; text.IsTextSelectionEnabled = selectable; Content = text;
@@ -566,10 +574,12 @@ internal sealed class ChunkText : UserControl
         var dark = ActualTheme == ElementTheme.Dark;
         var scale = lastScale = XamlRoot?.RasterizationScale ?? 1;
         var availableWidth = lastWidth = ActualWidth > 0 ? ActualWidth : 640;
+        int offset = 0;
         foreach (var chunk in fallbackKey is { } key ? new List<Chunk> { new("normal", L10n.Text(key)) } : chunks)
         {
             if (version != generation) return;
-            if (chunk.Kind != "math") { paragraph.Inlines.Add(new Run { Text = chunk.Text }); continue; }
+            int chunkOffset = offset; offset += chunk.Text.Length;
+            if (chunk.Kind != "math") { SearchHighlights.Append(paragraph.Inlines, chunk.Text, highlights, chunkOffset); continue; }
             try
             {
                 var fontSize = FontSize;
@@ -598,9 +608,12 @@ internal sealed class ChunkText : UserControl
                 var mathLine = new Paragraph();
                 mathLine.Inlines.Add(new InlineUIContainer { Child = canvas });
                 inline.Blocks.Add(mathLine);
-                paragraph.Inlines.Add(new InlineUIContainer { Child = inline });
+                UIElement math = inline;
+                if (highlights.Any(x => x.Start < offset && x.End > chunkOffset))
+                    math = new Border { Child = inline, BorderThickness = new Thickness(0, 0, 0, 1), BorderBrush = Views.Brush("SystemControlForegroundAccentBrush") };
+                paragraph.Inlines.Add(new InlineUIContainer { Child = math });
             }
-            catch { if (version == generation) paragraph.Inlines.Add(new Run { Text = chunk.Text }); }
+            catch { if (version == generation) SearchHighlights.Append(paragraph.Inlines, chunk.Text, highlights, chunkOffset); }
         }
     }
 }

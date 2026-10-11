@@ -253,6 +253,17 @@ pub fn inventory() -> RustInventory {
         .register(function!(update_library))
         .register(function!(set_library_pinned))
         .register(function!(search))
+        .register(function!(advanced::advanced_search))
+        .register(function!(advanced::analyze_query))
+        .register(function!(advanced::render_query))
+        .register(function!(advanced::edit_query))
+        .register(function!(advanced::build_condition))
+        .register(function!(advanced::refresh_query))
+        .register(function!(advanced::edit_query_text))
+        .register(function!(advanced::search_catalog))
+        .register(function!(advanced::tag_snapshot))
+        .register(function!(advanced::mutate_tag))
+        .register(function!(advanced::validate_search_context))
         .register(function!(helper_current))
         .register(function!(helper_select))
         .register(function!(capture_paste_target))
@@ -314,3 +325,5 @@ mod tests {
         assert!(matches!(result, ffi::Result::Panic));
     }
 }
+
+mod advanced;

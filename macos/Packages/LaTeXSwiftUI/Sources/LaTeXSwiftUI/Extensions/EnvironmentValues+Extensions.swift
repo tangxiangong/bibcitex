@@ -26,6 +26,10 @@
 import MathJaxSwift
 import SwiftUI
 
+private struct ComponentDecorationKey: EnvironmentKey {
+  static let defaultValue: LaTeX.ComponentDecoration? = nil
+}
+
 private struct ImageRenderingModeKey: EnvironmentKey {
   static let defaultValue: Image.TemplateRenderingMode = .template
 }
@@ -91,6 +95,12 @@ private struct PlatformFontKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
+  /// Optional presentation-only decoration of rendered inline components.
+  var componentDecoration: LaTeX.ComponentDecoration? {
+    get { self[ComponentDecorationKey.self] }
+    set { self[ComponentDecorationKey.self] = newValue }
+  }
+
   
   /// The image rendering mode of this environment.
   var imageRenderingMode: Image.TemplateRenderingMode {

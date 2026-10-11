@@ -7,6 +7,9 @@ struct WorkbenchView: View {
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var model: WorkbenchModel
     @FocusState private var searchFocused: Bool
+    @State private var searchEditor = false
+    @State private var showTagManager = false
+    @State private var taggingReference: TagAssignmentTarget?
     @State private var editingLibrary: Bibliography?
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
@@ -43,6 +46,10 @@ struct WorkbenchView: View {
                     ToolbarItem { inspectorToggle }
                 }
             }
+        .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.searchDraft) { model.applyAdvancedQuery($0, draft: $1) } }
+        .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
+        .sheet(item: $taggingReference) { reference in TagManagerView(path: reference.path, citeKey: reference.citeKey) }
+        .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
         .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
         .alert(L10n.text("错误"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
@@ -52,6 +59,7 @@ struct WorkbenchView: View {
     }
 
     @ViewBuilder private var toolbarActions: some View {
+        Button { showTagManager = true } label: { NativeIcon("tag") }.help(L10n.text("标签管理")).accessibilityLabel(L10n.text("标签管理"))
         Button { HelperPanelController.shared.showPanel() } label: { NativeIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
         Button { Task { await model.reload() } } label: { NativeIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
         Button { openWindow(id: "settings") } label: { NativeIcon("settings") }.help(L10n.text("设置")).accessibilityLabel(L10n.text("设置"))
@@ -151,6 +159,7 @@ struct WorkbenchView: View {
     }
     private var references: some View {
         let selectionContext = model.referenceSelectionContext
+        let libraryPath = model.library?.path ?? ""
         return VStack(spacing: 0) {
             if !model.libraries.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
@@ -162,18 +171,18 @@ struct WorkbenchView: View {
                     }
                     HStack(spacing: 8) {
                         NativeIcon("search", size: 15).foregroundStyle(.secondary)
-                        TextField(L10n.text("搜索文献"), text: Binding(get: { model.query }, set: model.setQuery)).textFieldStyle(.plain)
-                            .focused($searchFocused)
-                            .background {
-                                WorkbenchSearchNavigation(enabled: searchFocused, move: model.moveReference)
-                            }
+                        SearchInput(text: model.query, placeholder: L10n.text("搜索文献"), changed: { model.editText($0, start: $1, end: $2, replacement: $3, full: $4) }, move: model.moveReference, compositionChanged: model.suspendForComposition).frame(height: 18)
                     }.padding(.horizontal, 8).padding(.vertical, 7).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 7))
                     HStack(spacing: 8) {
+                        Toggle(L10n.text("高级搜索"), isOn: Binding(get: { model.advancedSearchEnabled }, set: model.setAdvancedSearch))
+                            .toggleStyle(.switch).fixedSize()
+                        if model.advancedSearchEnabled { Button(L10n.text("搜索条件")) { searchEditor = true } }
                         Picker(L10n.text("类型筛选"), selection: Binding(get: { model.type }, set: model.setType)) { ForEach(types, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
                             .accessibilityLabel(L10n.text("类型筛选"))
                         Picker(L10n.text("字段筛选"), selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
                             .accessibilityLabel(L10n.text("字段筛选"))
                     }.controlSize(.small)
+                    QueryDiagnostics(analysis: model.queryAnalysis)
                 }.padding(16)
                 Divider()
             }
@@ -197,9 +206,9 @@ struct WorkbenchView: View {
                             // metadata lines, where it competed with the title for width.
                             HStack(alignment: .top, spacing: 10) {
                                 VStack(alignment: .leading, spacing: 5) {
-                                    MathChunkText(chunks: reference.title).lineLimit(2)
+                                    MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).lineLimit(2).help(model.matchEvidence[reference.citeKey] ?? "")
                                     if !reference.author.isEmpty {
-                                        Text(reference.author.joined(separator: ", ")).font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                                        Text(SearchHighlight.authors(reference.author, matches: model.matchRanges[reference.citeKey] ?? [])).font(.callout).foregroundStyle(.secondary).lineLimit(1)
                                     }
                                     HStack(spacing: 6) {
                                         Text(reference.displayType)
@@ -217,6 +226,7 @@ struct WorkbenchView: View {
                             .listRowBackground(RowSelectionBackground(selected: model.selectedReference == reference.citeKey,
                                 fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor)))
                             .contextMenu {
+                                Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey) }
                                 Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
                                 Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
                             }
@@ -233,7 +243,7 @@ struct WorkbenchView: View {
         VStack(alignment: .leading, spacing: 0) {
             Group {
                 if let reference = model.reference {
-                    MathChunkText(chunks: reference.title).font(.title3)
+                    MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).font(.title3)
                 } else {
                     Text(L10n.text("文献详情")).font(.title3)
                 }

@@ -13,7 +13,7 @@ use std::{
     collections::HashMap,
     fs,
     path::PathBuf,
-    sync::{Arc, LazyLock, Mutex},
+    sync::{Arc, LazyLock, Mutex, OnceLock},
     time::{Instant, SystemTime},
 };
 
@@ -28,25 +28,63 @@ impl From<String> for CoreError {
     }
 }
 #[derive(Clone, PartialEq)]
-struct Fingerprint {
+pub(crate) struct Fingerprint {
+    digest: String,
+    identity: String,
     modified: Option<SystemTime>,
     length: u64,
+}
+impl Fingerprint {
+    fn version(&self) -> String {
+        format!(
+            "{}:{}:{:?}:{}",
+            self.digest, self.identity, self.modified, self.length
+        )
+    }
 }
 struct Cached {
     fingerprint: Fingerprint,
     data: Arc<LibraryData>,
     last_used: Instant,
+    bytes: usize,
 }
-struct LibraryData {
-    references: Vec<Reference>,
+pub(crate) struct LibraryData {
+    advanced: OnceLock<Arc<core::search::advanced::AdvancedIndex>>,
+    pub(crate) version: String,
+    pub(crate) references: Vec<Reference>,
     search: SearchIndex,
     search_bytes: usize,
 }
 impl LibraryData {
+    pub(crate) fn advanced(&self) -> Arc<core::search::advanced::AdvancedIndex> {
+        if let Some(index) = self.advanced.get() {
+            return Arc::clone(index);
+        }
+        let index = Arc::new(core::search::advanced::AdvancedIndex::new(&self.references));
+        // Keep ordinary preprocessing reusable even when an extended index is
+        // too large for the cache. The caller owns the oversized index only for
+        // the current request; it cannot turn the OnceLock into unbounded storage.
+        if self.search_bytes.saturating_add(index.allocated_bytes()) <= MAX_SEARCH_BYTES {
+            let _ = self.advanced.set(Arc::clone(&index));
+            self.advanced.get().cloned().unwrap_or(index)
+        } else {
+            index
+        }
+    }
+    fn allocated_bytes(&self) -> usize {
+        self.search_bytes
+            + self
+                .advanced
+                .get()
+                .map_or(0, |index| index.allocated_bytes())
+    }
     fn new(references: Vec<Reference>) -> Self {
+        let advanced = OnceLock::new();
         let search = SearchIndex::new(&references);
         let search_bytes = search.allocated_bytes();
         Self {
+            advanced,
+            version: String::new(),
             references,
             search,
             search_bytes,
@@ -71,12 +109,12 @@ impl SearchCache {
     }
     fn remove(&mut self, path: &PathBuf) {
         if let Some(cached) = self.entries.remove(path) {
-            self.search_bytes -= cached.data.search_bytes;
+            self.search_bytes -= cached.bytes;
         }
     }
     fn insert(&mut self, path: PathBuf, fingerprint: Fingerprint, data: Arc<LibraryData>) {
         self.remove(&path);
-        let bytes = data.search_bytes;
+        let bytes = data.allocated_bytes();
         if bytes > MAX_SEARCH_BYTES {
             return;
         }
@@ -100,19 +138,69 @@ impl SearchCache {
                 fingerprint,
                 data,
                 last_used: Instant::now(),
+                bytes,
             },
         );
     }
 }
 static CACHE: LazyLock<Mutex<SearchCache>> = LazyLock::new(|| Mutex::new(SearchCache::default()));
-fn fingerprint(path: &PathBuf) -> Result<Fingerprint, String> {
+/// Account for lazily initialized extended indexes and evict oversized snapshots.
+pub(crate) fn account_advanced_index() -> Result<(), String> {
+    let mut cache = CACHE.lock().map_err(|_| "Cache lock poisoned")?;
+    for cached in cache.entries.values_mut() {
+        cached.bytes = cached.data.allocated_bytes();
+    }
+    cache.search_bytes = cache.entries.values().map(|c| c.bytes).sum();
+    while cache.search_bytes > MAX_SEARCH_BYTES {
+        let oldest = cache
+            .entries
+            .iter()
+            .min_by_key(|(_, c)| c.last_used)
+            .map(|(p, _)| p.clone());
+        if let Some(path) = oldest {
+            cache.remove(&path);
+        } else {
+            break;
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn fingerprint(path: &PathBuf) -> Result<Fingerprint, String> {
     let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
+    #[cfg(unix)]
+    let identity = {
+        use std::os::unix::fs::MetadataExt;
+        format!(
+            "{}-{}-{}-{}",
+            metadata.dev(),
+            metadata.ino(),
+            metadata.ctime(),
+            metadata.ctime_nsec()
+        )
+    };
+    #[cfg(windows)]
+    let identity = {
+        use std::os::windows::fs::MetadataExt;
+        format!(
+            "{}-{}",
+            metadata.creation_time(),
+            metadata.file_attributes()
+        )
+    };
+    #[cfg(not(any(unix, windows)))]
+    let identity = format!("{:?}", metadata.created().ok());
     Ok(Fingerprint {
+        identity,
+        digest: crate::tags::digest(&fs::read(path).map_err(|e| e.to_string())?),
         modified: metadata.modified().ok(),
         length: metadata.len(),
     })
 }
-fn references(path: &str) -> Result<Arc<LibraryData>, String> {
+pub(crate) fn file_version(path: &str) -> Result<String, String> {
+    fingerprint(&fs::canonicalize(path).map_err(|e| e.to_string())?).map(|f| f.version())
+}
+pub(crate) fn references(path: &str) -> Result<Arc<LibraryData>, String> {
     let path = fs::canonicalize(path).map_err(|e| e.to_string())?;
     let before = fingerprint(&path)?;
     {
@@ -122,9 +210,13 @@ fn references(path: &str) -> Result<Arc<LibraryData>, String> {
         }
     }
     // Parse outside the shared lock: a large main-window library must not block the helper.
-    let parsed =
-        core::utils::read_bibliography(core::bib::parse(&path).map_err(|e| e.to_string())?);
-    let data = Arc::new(LibraryData::new(parsed));
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    let text = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
+    let bibliography = biblatex::Bibliography::parse(text).map_err(|e| e.to_string())?;
+    let parsed = core::utils::read_bibliography(bibliography);
+    let mut data = LibraryData::new(parsed);
+    data.version = before.version();
+    let data = Arc::new(data);
     if fingerprint(&path)? != before {
         return Err("Bibliography changed while reading; retry search".into());
     }
@@ -136,7 +228,7 @@ fn references(path: &str) -> Result<Arc<LibraryData>, String> {
     cache.insert(path, before, Arc::clone(&data));
     Ok(data)
 }
-fn search_type(type_filter: &str) -> Result<Option<EntryType>, String> {
+pub(crate) fn search_type(type_filter: &str) -> Result<Option<EntryType>, String> {
     match type_filter {
         "all" => Ok(None),
         "Article" => Ok(Some(EntryType::Article)),
@@ -382,6 +474,8 @@ mod tests {
     fn cache_reuses_snapshots_and_evicts_only_the_least_recently_used_library() {
         let mut cache = SearchCache::default();
         let fingerprint = Fingerprint {
+            digest: "fixture".into(),
+            identity: "fixture".into(),
             modified: None,
             length: 1,
         };

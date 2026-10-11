@@ -66,6 +66,8 @@ internal struct ComponentBlocksViews: View {
   /// The accessibility mode for equation images.
   @Environment(\.imageAccessibilityMode) private var imageAccessibilityMode
   
+  @Environment(\.componentDecoration) private var componentDecoration
+
   // MARK: View body
   
   var body: some View {
@@ -102,7 +104,9 @@ internal struct ComponentBlocksViews: View {
             errorMode: errorMode,
             blockRenderingMode: blockMode,
             ignoreStringFormatting: ignoreStringFormatting,
-            imageAccessibilityMode: imageAccessibilityMode)
+            imageAccessibilityMode: imageAccessibilityMode,
+            sourceOffset: blocks.prefix { $0.id != block.id }.reduce(0) { $0 + $1.components.reduce(0) { $0 + $1.originalText.utf8.count } },
+            decoration: componentDecoration)
           if #available(iOS 18.0, macOS 15.0, *) {
             textView.textRenderer(LineSpacingNormalizer())
           } else {

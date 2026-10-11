@@ -36,6 +36,14 @@ public struct LaTeX: View {
   /// A closure that takes an equation number and returns a string to display in
   /// the view.
   public typealias FormatEquationNumber = @Sendable (_ n: Int) -> String
+
+  /// Decorates one rendered component without replacing equation images or layout.
+  /// `sourceRange` is its UTF-8 range in the LaTeX input, including equation
+  /// delimiters; `isEquation` identifies an indivisible rendered formula.
+  public typealias ComponentDecoration = @MainActor @Sendable (
+    _ originalText: String, _ sourceRange: Range<Int>, _ isEquation: Bool, _ rendered: Text
+  ) -> Text
+
   
   /// The view's block rendering mode.
   public enum BlockMode: Sendable {

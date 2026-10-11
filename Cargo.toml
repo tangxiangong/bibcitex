@@ -34,6 +34,7 @@ bibcitex-csharp = { path = "crates/bibcitex-csharp" }
 bibcitex-service = { path = "crates/bibcitex-service" }
 biblatex = { version = "0.12", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+chumsky = "0.13"
 config = "0.15"
 dirs = "7"
 dispatch2 = "0.3"
@@ -72,9 +73,13 @@ smol = "2"
 tar = "0.4"
 tempfile = "3"
 thiserror = "2"
+unicode-casefold = "0.2"
 unicode-normalization = "0.1"
+unicode-script = "0.5"
+unicode-segmentation = "1"
 uniffi = "0.32"
 url = "2"
+uuid = { version = "1", features = ["v4"] }
 wayland-backend = { version = "0.3", features = ["client_system", "dlopen"] }
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
