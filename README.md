@@ -9,11 +9,21 @@
 
   <p>
     <a href="https://github.com/tangxiangong/bibcitex/releases">
-      <img src="https://img.shields.io/github/v/release/tangxiangong/bibcitex?style=for-the-badge&logo=github&color=blue" alt="GitHub Release">
+      <img src="https://img.shields.io/github/v/release/tangxiangong/bibcitex?style=flat-square&logo=github&color=blue" alt="GitHub Release">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/blob/main/LICENSE-MIT">
-      <img src="https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=for-the-badge" alt="License">
+      <img src="https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=flat-square" alt="License">
     </a>
+  </p>
+
+  <p>
+    <strong>System Requirements</strong>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/macOS-13%2B-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 13 (Ventura) or later" title="macOS 13 (Ventura) or later">
+    <img src="https://img.shields.io/badge/Windows-10%201809%2B-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10 version 1809 (OS build 17763) or later" title="Windows 10 version 1809 (OS build 17763) or later">
+    <img src="https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 11" title="Windows 11">
   </p>
 
   <p>
@@ -22,16 +32,16 @@
 
   <p>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-arm64.dmg">
-      <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
+      <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-x86_64.dmg">
-      <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
+      <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-arm64.exe">
-      <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
+      <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-x64.exe">
-      <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
+      <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
 </div>
@@ -50,13 +60,6 @@ What's new in v0.7.3: [English release notes](release-notes/0.7.3/en.md) · [Chi
 - **Cross-application pasting**: Paste citations directly into your workflow.
 
 ## Installation
-
-### Supported Systems
-
-| Platform | Supported OS Versions | Architectures |
-| --- | --- | --- |
-| macOS | macOS 13 (Ventura) or later | Apple Silicon (ARM64), Intel (x86_64) |
-| Windows | Windows 10 version 1809 (OS build 17763) or later, including Windows 11 | x64, ARM64 |
 
 ### Downloads
 
@@ -118,18 +121,18 @@ macOS, Windows and Linux share the Rust advanced search engine, explicitly using
 
 Type a query directly or open the condition editor to add conditions, AND/OR groups and exclusions. Both entry methods use the same query rules.
 
-| Find | Query |
-| --- | --- |
-| Both keywords, including across default fields | `graph network` |
-| A continuous phrase | `"machine learning"` |
-| An author and a year constraint | `author:Knuth year:>=2020` |
-| A title term, excluding another term | `title:graph -survey` |
-| Either keyword, with the same author constraint | `(graph OR network) author:Smith` |
-| Articles or books | `type:(article OR book)` |
-| Years 2020–2024, inclusive | `year:2020..2024` |
-| Both tags | `tag:unread tag:math` |
-| Either tag, excluding read references | `tag:(math OR algorithms) -tag:read` |
-| A complete citation key | `key:Smith2024` |
+| Find                                            | Query                                |
+| ----------------------------------------------- | ------------------------------------ |
+| Both keywords, including across default fields  | `graph network`                      |
+| A continuous phrase                             | `"machine learning"`                 |
+| An author and a year constraint                 | `author:Knuth year:>=2020`           |
+| A title term, excluding another term            | `title:graph -survey`                |
+| Either keyword, with the same author constraint | `(graph OR network) author:Smith`    |
+| Articles or books                               | `type:(article OR book)`             |
+| Years 2020–2024, inclusive                      | `year:2020..2024`                    |
+| Both tags                                       | `tag:unread tag:math`                |
+| Either tag, excluding read references           | `tag:(math OR algorithms) -tag:read` |
+| A complete citation key                         | `key:Smith2024`                      |
 
 Spaces imply AND; explicit `AND` works too. Only uppercase `AND`, `OR` and `NOT` are Boolean operators; lowercase forms are ordinary text. Precedence is parentheses → `NOT` / `-` → AND → OR. `graph OR network author:Smith` means `graph OR (network AND author:Smith)`; use the parenthesized example above to constrain both branches. `NOT survey` equals `-survey`, with no space after the minus. Exclusion-only queries are valid. The selected library and external filters constrain the entire expression.
 
@@ -137,20 +140,20 @@ Spaces imply AND; explicit `AND` works too. Only uppercase `AND`, `OR` and `NOT`
 
 Field names are case-insensitive. Values or opening parentheses must immediately follow the colon: `author:Knuth` is valid; `author: Knuth` is not. Use the English syntax names below and ASCII double quotes for multiword phrases.
 
-| Field | Searches |
-| --- | --- |
-| `title` (alias `intitle`) | Title |
-| `author`, `editor` | Authors and editors; each condition may match any person in the list |
-| `journal` | Abbreviated or full journal name |
-| `booktitle` | Containing book, collection or conference proceedings title |
-| `abstract`, `note` | Abstract and notes |
-| `publisher`, `school`, `institution`, `organization` | Publishers, school, institution and organizations |
-| `key` (alias `citekey`) | Complete citation key, case-insensitive but preserving accents and punctuation |
-| `doi` | Complete DOI, ignoring case and common DOI URL / `doi:` prefixes |
-| `isbn` | Complete ISBN, ignoring whitespace and ASCII hyphens; ISBN-10 and ISBN-13 are not automatically equivalent |
-| `year` | Year, comparison or range |
-| `type` | Reference type |
-| `tag` | Complete tag name |
+| Field                                                | Searches                                                                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `title` (alias `intitle`)                            | Title                                                                                                      |
+| `author`, `editor`                                   | Authors and editors; each condition may match any person in the list                                       |
+| `journal`                                            | Abbreviated or full journal name                                                                           |
+| `booktitle`                                          | Containing book, collection or conference proceedings title                                                |
+| `abstract`, `note`                                   | Abstract and notes                                                                                         |
+| `publisher`, `school`, `institution`, `organization` | Publishers, school, institution and organizations                                                          |
+| `key` (alias `citekey`)                              | Complete citation key, case-insensitive but preserving accents and punctuation                             |
+| `doi`                                                | Complete DOI, ignoring case and common DOI URL / `doi:` prefixes                                           |
+| `isbn`                                               | Complete ISBN, ignoring whitespace and ASCII hyphens; ISBN-10 and ISBN-13 are not automatically equivalent |
+| `year`                                               | Year, comparison or range                                                                                  |
+| `type`                                               | Reference type                                                                                             |
+| `tag`                                                | Complete tag name                                                                                          |
 
 Unqualified terms search citation keys, titles, authors, journals, years and notes within the selected default scope. Extended metadata such as abstracts requires an explicit field. `title:graph neural` limits only graph to the title; `title:(graph neural)` limits both terms. Explicit inner fields override inherited scope, as in `title:(graph OR author:Smith)`. `author:Smith author:Jones` can match two different authors; `author:"Smith Jones"` must occur within one author entry.
 
@@ -160,14 +163,14 @@ Only positive unqualified ordinary terms are eligible for spelling supplementati
 
 ### Years and types
 
-| Syntax | Meaning |
-| --- | --- |
-| `year:2026` or `year:=2026` | Exactly 2026 |
-| `year:>2020` or `after:2020` | After 2020, excluding 2020 |
-| `year:<2024` or `before:2024` | Before 2024, excluding 2024 |
-| `year:>=2020` or `year:2020..` | 2020 or later |
-| `year:<=2024` or `year:..2024` | 2024 or earlier |
-| `year:2020..2024` | 2020 through 2024, inclusive |
+| Syntax                         | Meaning                      |
+| ------------------------------ | ---------------------------- |
+| `year:2026` or `year:=2026`    | Exactly 2026                 |
+| `year:>2020` or `after:2020`   | After 2020, excluding 2020   |
+| `year:<2024` or `before:2024`  | Before 2024, excluding 2024  |
+| `year:>=2020` or `year:2020..` | 2020 or later                |
+| `year:<=2024` or `year:..2024` | 2024 or earlier              |
+| `year:2020..2024`              | 2020 through 2024, inclusive |
 
 Years are integers from 1 to 9999. Ranges cannot be reversed, and comparison operators cannot be separated from their values by whitespace. `before` / `after` accept one year and refer to the reference's publication year. A reference without a year fails a positive year condition but can satisfy its negation. Bare `2020..2024` is ordinary text.
 

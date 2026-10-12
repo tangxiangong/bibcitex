@@ -9,11 +9,21 @@
 
   <p>
     <a href="https://github.com/tangxiangong/bibcitex/releases">
-      <img src="https://img.shields.io/github/v/release/tangxiangong/bibcitex?style=for-the-badge&logo=github&color=blue" alt="GitHub Release">
+      <img src="https://img.shields.io/github/v/release/tangxiangong/bibcitex?style=flat-square&logo=github&color=blue" alt="GitHub Release">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/blob/main/LICENSE-MIT">
-      <img src="https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=for-the-badge" alt="License">
+      <img src="https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=flat-square" alt="License">
     </a>
+  </p>
+
+  <p>
+    <strong>系统要求</strong>
+  </p>
+
+  <p>
+    <img src="https://img.shields.io/badge/macOS-13%2B-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS 13（Ventura）及以上" title="macOS 13（Ventura）及以上">
+    <img src="https://img.shields.io/badge/Windows-10%201809%2B-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 10 1809（操作系统内部版本 17763）及以上" title="Windows 10 1809（操作系统内部版本 17763）及以上">
+    <img src="https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows 11" title="Windows 11">
   </p>
 
   <p>
@@ -22,16 +32,16 @@
 
   <p>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-arm64.dmg">
-      <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Apple Silicon">
+      <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-macos-x86_64.dmg">
-      <img src="https://img.shields.io/badge/macOS-Intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS Intel">
+      <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-arm64.exe">
-      <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows ARM64">
+      <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
     <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.7.3/BibCiTeX-0.7.3-windows-x64.exe">
-      <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x86_64">
+      <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
 </div>
@@ -51,14 +61,7 @@ v0.7.3 更新内容：[中文发布说明](release-notes/0.7.3/zh-Hans.md) · [E
 
 ## 安装指南
 
-### 支持的系统
-
-| 平台 | 支持的系统版本 | 架构 |
-| --- | --- | --- |
-| macOS | macOS 13（Ventura）及以上 | Apple Silicon（ARM64）、Intel（x86_64） |
-| Windows | Windows 10 1809（操作系统内部版本 17763）及以上，包括 Windows 11 | x64、ARM64 |
-
-### 下载
+### **下载**
 
 从 [**Release 页面**](https://github.com/tangxiangong/bibcitex/releases) 下载对应平台架构的最新版本安装包。
 
@@ -118,18 +121,18 @@ macOS、Windows 和 Linux 共用 Rust 高级搜索引擎，词法和语法解析
 
 在高级搜索输入框直接输入查询，也可以打开条件编辑器添加条件、AND/OR 分组和排除条件；两种方式使用同一查询规则。
 
-| 想找什么 | 输入示例 |
-| --- | --- |
-| 同时包含两个关键词，可出现在不同默认字段 | `graph network` |
-| 连续短语 | `"machine learning"` |
-| 作者与年份同时满足 | `author:Knuth year:>=2020` |
-| 标题包含一个词，排除另一个词 | `title:graph -survey` |
-| 二选一，再限定作者 | `(graph OR network) author:Smith` |
-| 期刊论文或书籍 | `type:(article OR book)` |
-| 2020–2024 年，包含两端 | `year:2020..2024` |
-| 同时具有两个标签 | `tag:待读 tag:数学` |
-| 任一标签，并排除已读 | `tag:(数学 OR 算法) -tag:已读` |
-| 完整引用键 | `key:Smith2024` |
+| 想找什么                                 | 输入示例                          |
+| ---------------------------------------- | --------------------------------- |
+| 同时包含两个关键词，可出现在不同默认字段 | `graph network`                   |
+| 连续短语                                 | `"machine learning"`              |
+| 作者与年份同时满足                       | `author:Knuth year:>=2020`        |
+| 标题包含一个词，排除另一个词             | `title:graph -survey`             |
+| 二选一，再限定作者                       | `(graph OR network) author:Smith` |
+| 期刊论文或书籍                           | `type:(article OR book)`          |
+| 2020–2024 年，包含两端                   | `year:2020..2024`                 |
+| 同时具有两个标签                         | `tag:待读 tag:数学`               |
+| 任一标签，并排除已读                     | `tag:(数学 OR 算法) -tag:已读`    |
+| 完整引用键                               | `key:Smith2024`                   |
 
 空格表示 AND；也可以显式写 `AND`。只有大写 `AND`、`OR`、`NOT` 是布尔运算符，小写按普通文本处理。优先级为括号 → `NOT` / `-` → AND → OR。`graph OR network author:Smith` 等价于 `graph OR (network AND author:Smith)`；要让作者限制两边，使用表中的括号写法。`NOT survey` 与 `-survey` 等价，减号后不能有空格。只含排除条件也可以搜索。文献库及外部筛选仍约束整个表达式。
 
@@ -137,20 +140,20 @@ macOS、Windows 和 Linux 共用 Rust 高级搜索引擎，词法和语法解析
 
 字段名不区分大小写，冒号后必须紧接值或左括号：`author:Knuth` 正确，`author: Knuth` 错误。字段名使用下表中的英文语法名；多词短语使用 ASCII 双引号。
 
-| 字段 | 搜索内容 |
-| --- | --- |
-| `title`（别名 `intitle`） | 标题 |
-| `author`、`editor` | 作者、编者；每个条件可匹配列表中的任一人 |
-| `journal` | 期刊简称或全称 |
-| `booktitle` | 所属书籍、文集或会议录标题 |
-| `abstract`、`note` | 摘要、备注 |
-| `publisher`、`school`、`institution`、`organization` | 出版者、学校、机构、组织 |
-| `key`（别名 `citekey`） | 完整引用键，忽略大小写，不忽略重音和标点 |
-| `doi` | 完整 DOI，忽略大小写及常见 DOI URL / `doi:` 前缀 |
-| `isbn` | 完整 ISBN，忽略空白和 ASCII 连字符，不自动等同 ISBN-10 与 ISBN-13 |
-| `year` | 年份、比较或范围 |
-| `type` | 文献类型 |
-| `tag` | 完整标签名 |
+| 字段                                                 | 搜索内容                                                          |
+| ---------------------------------------------------- | ----------------------------------------------------------------- |
+| `title`（别名 `intitle`）                            | 标题                                                              |
+| `author`、`editor`                                   | 作者、编者；每个条件可匹配列表中的任一人                          |
+| `journal`                                            | 期刊简称或全称                                                    |
+| `booktitle`                                          | 所属书籍、文集或会议录标题                                        |
+| `abstract`、`note`                                   | 摘要、备注                                                        |
+| `publisher`、`school`、`institution`、`organization` | 出版者、学校、机构、组织                                          |
+| `key`（别名 `citekey`）                              | 完整引用键，忽略大小写，不忽略重音和标点                          |
+| `doi`                                                | 完整 DOI，忽略大小写及常见 DOI URL / `doi:` 前缀                  |
+| `isbn`                                               | 完整 ISBN，忽略空白和 ASCII 连字符，不自动等同 ISBN-10 与 ISBN-13 |
+| `year`                                               | 年份、比较或范围                                                  |
+| `type`                                               | 文献类型                                                          |
+| `tag`                                                | 完整标签名                                                        |
 
 未指定字段时，搜索当前默认范围内的引用键、标题、作者、期刊、年份和备注；摘要等扩展字段需要显式指定。`title:graph neural` 只限制 graph 的字段；`title:(graph neural)` 将两个词都限制在标题。组内显式字段覆盖继承范围，例如 `title:(graph OR author:Smith)`。`author:Smith author:Jones` 可以分别匹配两位作者，`author:"Smith Jones"` 必须在同一位作者内连续出现。
 
@@ -160,14 +163,14 @@ macOS、Windows 和 Linux 共用 Rust 高级搜索引擎，词法和语法解析
 
 ### 年份与类型
 
-| 写法 | 含义 |
-| --- | --- |
-| `year:2026` 或 `year:=2026` | 等于 2026 |
-| `year:>2020` 或 `after:2020` | 晚于 2020，不含 2020 |
-| `year:<2024` 或 `before:2024` | 早于 2024，不含 2024 |
-| `year:>=2020` 或 `year:2020..` | 2020 及以后 |
-| `year:<=2024` 或 `year:..2024` | 2024 及以前 |
-| `year:2020..2024` | 2020 到 2024，包含两端 |
+| 写法                           | 含义                   |
+| ------------------------------ | ---------------------- |
+| `year:2026` 或 `year:=2026`    | 等于 2026              |
+| `year:>2020` 或 `after:2020`   | 晚于 2020，不含 2020   |
+| `year:<2024` 或 `before:2024`  | 早于 2024，不含 2024   |
+| `year:>=2020` 或 `year:2020..` | 2020 及以后            |
+| `year:<=2024` 或 `year:..2024` | 2024 及以前            |
+| `year:2020..2024`              | 2020 到 2024，包含两端 |
 
 年份为 1–9999 的整数；范围不能倒置，比较符和值之间不能有空格。`before` / `after` 只接受单个年份，指文献年份。没有年份的文献不满足正向年份条件，但可满足该条件的否定。裸 `2020..2024` 是普通文本。
 
