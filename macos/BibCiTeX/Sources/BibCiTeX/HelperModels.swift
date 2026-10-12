@@ -1,5 +1,6 @@
 import ApplicationServices
 import Foundation
+import BibCiTeXCore
 
 /// One source of truth for the helper surface metrics: the view draws these
 /// heights and `HelperViewModel` sizes the panel from them.
@@ -177,7 +178,9 @@ struct ReferencePages: Sendable {
 }
 
 struct Reference: Identifiable, Sendable {
-    var id: String { citeKey }
+    let id: String
+    let libraryUID: String
+    let tags: [TagRecord]
     let citeKey: String
     let source: String
     let typeKind: EntryType
@@ -258,7 +261,8 @@ struct Reference: Identifiable, Sendable {
 }
 
 struct Bibliography: Identifiable, Equatable, Sendable {
-    var id: [String] { [name, path] }
+    var id: String { uid }
+    let uid: String
     let name: String
     let path: String
     let updatedAt: String

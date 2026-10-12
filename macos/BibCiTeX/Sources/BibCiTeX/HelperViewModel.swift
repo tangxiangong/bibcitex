@@ -400,6 +400,27 @@ final class HelperViewModel: ObservableObject {
         let result = BibCiTeXCore.editQueryText(edit: QueryTextEdit(document: document, text: query, start: start, end: end, replacement: replacement, fullReplace: false))
         boundDraft.document = result.document; queryAnalysis = result; updateQuery(text)
     }
+    func tagsChanged() {
+        invalidateSearch()
+        searchContext = nil
+        let state = stateVersion, session = sessionGeneration
+        Task {
+            do {
+                let updated = try await service.loadBibliographyStateIfAvailable()
+                guard state == stateVersion, session == sessionGeneration else { return }
+                bibliographies = updated.bibs
+                if let uid = currentBibliography?.uid {
+                    currentBibliography = updated.bibs.first { $0.uid == uid && $0.name == currentBibliography?.name }
+                        ?? updated.bibs.first { $0.uid == uid }
+                    if currentBibliography == nil { isSelectingBibliography = true }
+                }
+                refreshSearch()
+            } catch {
+                guard state == stateVersion, session == sessionGeneration else { return }
+                errorDetails = LocalizedMessage(error: error)
+            }
+        }
+    }
     func refreshSearch() {
         updateQuery(query)
         if candidateKind != nil {
@@ -522,7 +543,7 @@ final class HelperViewModel: ObservableObject {
                     $0.updatedAt.localizedStandardCompare($1.updatedAt) == .orderedDescending
                 }
                 if let current = state.current, current.available,
-                    let index = bibliographies.firstIndex(where: { $0.id == current.id }) {
+                    let index = bibliographies.firstIndex(where: { $0.uid == current.uid && $0.name == current.name }) {
                     currentBibliography = bibliographies[index]
                     isSelectingBibliography = false
                     selectedBibliographyIndex = index

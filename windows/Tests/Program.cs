@@ -15,6 +15,7 @@ NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), (name, assem
 
 var directory = Path.Combine(Path.GetTempPath(), "BibCiTeX-interop-" + Guid.NewGuid());
 Directory.CreateDirectory(directory);
+TestEnvironment.Isolate(directory);
 var bibliography = Path.Combine(directory, "文献 β.bib");
 var assertions = 0;
 void Assert(bool condition, string name)
@@ -106,6 +107,12 @@ try
     await File.WriteAllTextAsync(ordinaryFile, "@misc{changed,title={New graph methods}}");
     Assert((await RustCore.Search(ordinaryFile, "new graph", "title")).Single().Key == "changed", "search text cache refresh crosses C# bindings");
     Assert((await RustCore.Search(bibliography, "no-such-title")).Count == 0, "empty search response");
+    var identity = (await RustCore.Search(bibliography, ""))[0];
+    Assert(Guid.TryParse(identity.Id, out _) && Guid.TryParse(identity.Data.library_uid, out _), "UUIDs are UIDs");
+    var tagState = await RustCore.TagSnapshot(new() { library_uid = identity.Data.library_uid, record_uid = identity.Id, path = "", cite_key = "" });
+    var tagged = await RustCore.MutateTag(new() { library_uid = identity.Data.library_uid, record_uid = identity.Id, color = "#3b82f6", action = TagAction.Create, id = "", name = "Interop", target_id = "", path = "", cite_key = "", expected_revision = tagState.revision });
+    Assert(tagged.tags.Single().color == "#3B82F6" && tagged.assigned_ids.Count == 1, "tag UUID and color roundtrip");
+    Assert((await RustCore.Search(bibliography, "")).Single(r => r.Id == identity.Id).Data.tags.Single().id == tagged.assigned_ids[0], "tag assignment survives generated wire transport");
     await Throws(() => RustCore.Search(bibliography, "", "invalid"), "Unknown search field");
     await Throws(() => RustCore.Search(bibliography, "", "all", "invalid"), "Unknown bibliography type filter");
     var invalid = Path.Combine(directory, "invalid.bib");
@@ -123,11 +130,11 @@ try
     var advanced = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = bibliography, mode = SearchMode.Advanced, input_kind = QueryInputKind.Bound, text = condition.text, document = condition.document, expected_tag_revision = null, default_field = "all", type_filter = "all", query_version = 42 });
     Assert(advanced.references.Single().cite_key == "book2025" && advanced.context?.query_version == 42, "bound query result and generation");
     Assert(advanced.evidence.Single().ranges.Count > 0, "original source match ranges cross C# bindings");
+    Assert((await RustCore.ValidateSearchContext(advanced.context!)).valid, "result snapshot validation");
     var fuzzyFile = Path.Combine(directory, "fuzzy-evidence.bib");
     await File.WriteAllTextAsync(fuzzyFile, "@article{A,title={netwrok graph}}");
     var supplemented = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = fuzzyFile, mode = SearchMode.Advanced, input_kind = QueryInputKind.Text, text = "network graph", document = null, expected_tag_revision = null, default_field = "title", type_filter = "all", query_version = 43 });
     Assert(supplemented.evidence.Single().fuzzy_terms.SequenceEqual(new[] { "network" }), "actual spelling terms cross C# bindings");
-    Assert((await RustCore.ValidateSearchContext(advanced.context!)).valid, "result snapshot validation");
     for (var i = 0; i < 32; i++) {
         var result = await RustCore.AdvancedSearch(new AdvancedSearchRequest { path = bibliography, mode = SearchMode.Advanced, input_kind = QueryInputKind.Text, text = "year:2025 OR type:article", document = null, expected_tag_revision = null, default_field = "all", type_filter = "all", query_version = (ulong)i });
         Assert(result.analysis.status.IsValid && result.references.Count == 2, "repeated advanced wire ownership " + i);
@@ -147,6 +154,18 @@ try
             samples.Sort(); Console.WriteLine(FormattableString.Invariant($"BINDING,csharp,{count},{samples[5]},{samples[9]}"));
         }
     }
-    Console.WriteLine($"PASS: {assertions} assertions against the actual Rust dynamic library. No registry, clipboard, paste, or UI calls.");
+    Console.WriteLine($"PASS: {assertions} assertions against the actual Rust dynamic library. Isolated tag metadata; no clipboard, paste, or UI calls.");
 }
 finally { Directory.Delete(directory, recursive: true); }
+
+internal static class TestEnvironment
+{
+    [DllImport("libc", EntryPoint = "setenv")]
+    private static extern int SetNative([MarshalAs(UnmanagedType.LPUTF8Str)] string name, [MarshalAs(UnmanagedType.LPUTF8Str)] string value, int overwrite);
+    internal static void Isolate(string directory)
+    {
+        Environment.SetEnvironmentVariable("BIBCITEX_CONFIG_DIRECTORY", directory);
+        if (!OperatingSystem.IsWindows() && SetNative("BIBCITEX_CONFIG_DIRECTORY", directory, 1) != 0)
+            throw new InvalidOperationException("Could not isolate native test settings");
+    }
+}

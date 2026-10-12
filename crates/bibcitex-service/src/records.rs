@@ -4,6 +4,7 @@ use biblatex::{Chunk, EntryType};
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct LibraryRecord {
+    pub uid: String,
     pub name: String,
     pub path: String,
     pub created_at: String,
@@ -41,6 +42,8 @@ pub struct PageRange {
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug)]
 pub struct ReferenceRecord {
+    pub library_uid: String,
+    pub tags: Vec<crate::TagRecord>,
     pub id: String,
     pub cite_key: String,
     pub source: String,
@@ -95,7 +98,7 @@ fn chunks(value: &Option<Vec<Chunk>>) -> Vec<ChunkRecord> {
 }
 
 impl ReferenceRecord {
-    pub(crate) fn from_reference(reference: &Reference, path: &str) -> Result<Self, String> {
+    pub(crate) fn from_reference(reference: &Reference, _path: &str) -> Result<Self, String> {
         let entry_type = match &reference.type_ {
             EntryType::Unknown(name) => name.clone(),
             entry_type => serde_json::to_value(entry_type)
@@ -105,7 +108,9 @@ impl ReferenceRecord {
                 .to_owned(),
         };
         Ok(Self {
-            id: format!("{}\u{1f}{}", path, reference.cite_key),
+            id: String::new(),
+            library_uid: String::new(),
+            tags: Vec::new(),
             cite_key: reference.cite_key.clone(),
             source: reference.source.clone(),
             entry_type,
@@ -168,7 +173,7 @@ mod tests {
         let references = crate::core::utils::read_bibliography(bibliography);
         let record = ReferenceRecord::from_reference(&references[0], "/work.bib").unwrap();
         assert_eq!(record.entry_type, "Article");
-        assert_eq!(record.id, "/work.bib\u{1f}example");
+        assert_eq!(record.cite_key, "example");
         assert_eq!(record.year, Some(2026));
         assert_eq!(record.source, references[0].source);
         assert!(

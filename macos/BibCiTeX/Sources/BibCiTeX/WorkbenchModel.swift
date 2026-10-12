@@ -82,7 +82,7 @@ final class WorkbenchModel: ObservableObject {
         showInspector = preferences.object(forKey: "mainShowInspector") as? Bool ?? false
     }
     var library: Bibliography? { libraries.first { $0.name == selectedLibrary } }
-    var reference: Reference? { references.first { $0.citeKey == selectedReference } }
+    var reference: Reference? { references.first { $0.id == selectedReference } }
     var referenceSelectionContext: ReferenceSelectionContext {
         ReferenceSelectionContext(library: selectedLibrary, revision: referencesRevision)
     }
@@ -143,7 +143,7 @@ final class WorkbenchModel: ObservableObject {
     }
     func selectReference(_ key: String?, context: ReferenceSelectionContext) {
         guard context == referenceSelectionContext, requested.library == context.library,
-              key == nil || references.contains(where: { $0.citeKey == key }) else { return }
+              key == nil || references.contains(where: { $0.id == key }) else { return }
         rowCommit?.cancel()
         guard key != selectedReference else { return }
         let version = generation
@@ -158,11 +158,11 @@ final class WorkbenchModel: ObservableObject {
         guard !loading, requested.library == selectedLibrary,
               requested.query == query, requested.field == field, requested.type == type,
               !references.isEmpty else { return }
-        let index = references.firstIndex { $0.citeKey == selectedReference }
+        let index = references.firstIndex { $0.id == selectedReference }
         let next = index.map { min(max($0 + delta, 0), references.count - 1) }
             ?? (delta < 0 ? references.count - 1 : 0)
         rowCommit?.cancel()
-        selectedReference = references[next].citeKey
+        selectedReference = references[next].id
     }
 
     func reload() async {
@@ -241,7 +241,7 @@ final class WorkbenchModel: ObservableObject {
                 referencesLibraryPath = response.analysis.status == .valid ? library.path : nil
                 referencesRevision += 1
                 references = found
-                if !found.contains(where: { $0.citeKey == self.selectedReference }) { selectedReference = found.first?.citeKey }
+                if !found.contains(where: { $0.id == self.selectedReference }) { selectedReference = found.first?.id }
                 if loading { loading = false }
                 if error != nil { error = nil }
             } catch {

@@ -239,115 +239,253 @@ struct QueryDiagnostics: View {
     }
 }
 
-/// Captures the originating library before a context menu outlives its result row.
+/// Stable UUIDs captured before a result menu outlives its row.
 struct TagAssignmentTarget: Identifiable {
-    let path: String
+    let libraryUID: String
+    let recordUID: String
     let citeKey: String
-    var id: String { path + "\u{1f}" + citeKey }
+    var id: String { recordUID }
 }
 
-/// Shared macOS tag directory, single-reference assignment, and explicit recovery UI.
+extension TagRecord {
+    var displayColor: Color {
+        let value = UInt32(color.dropFirst(), radix: 16) ?? 0x64748B
+        return Color(red: Double((value >> 16) & 255) / 255, green: Double((value >> 8) & 255) / 255, blue: Double(value & 255) / 255)
+    }
+}
+
+/// One bounded line of readable tags, including an overflow menu.
+struct TagChips: View {
+    let tags: [TagRecord]
+    var edit: (() -> Void)? = nil
+    var body: some View {
+        if !tags.isEmpty {
+            HStack(spacing: 4) {
+                ForEach(Array(tags.prefix(2)), id: \.id) { tag in
+                    if let edit { Button(action: edit) { chip(tag) }.buttonStyle(.plain) }
+                    else { chip(tag) }
+                }
+                if tags.count > 2 {
+                    Menu("+\(tags.count - 2)") {
+                        ForEach(tags, id: \.id) { tag in Button(tag.name) { edit?() } }
+                    }.menuStyle(.borderlessButton).fixedSize()
+                }
+            }.font(.system(size: 10)).frame(maxWidth: 160, alignment: .trailing)
+        }
+    }
+    private func chip(_ tag: TagRecord) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(tag.displayColor).frame(width: 6, height: 6)
+            Text(tag.name).lineLimit(1).truncationMode(.tail)
+        }.padding(.horizontal, 6).padding(.vertical, 2)
+            .background(tag.displayColor.opacity(0.14), in: Capsule())
+            .foregroundStyle(Color.primary).help(tag.name)
+    }
+}
+
+private struct TagColorEditor: View {
+    let tag: TagRecord
+    let save: (String) -> Void
+    @State private var color: Color
+    init(tag: TagRecord, save: @escaping (String) -> Void) {
+        self.tag = tag; self.save = save; _color = State(initialValue: tag.displayColor)
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                ForEach(["#64748B", "#EF4444", "#F59E0B", "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6", "#EC4899"], id: \.self) { value in
+                    Button { save(value) } label: {
+                        Circle().fill(TagRecord(color: value, id: "", name: "").displayColor)
+                            .overlay(Circle().stroke(Color.primary.opacity(0.25))).frame(width: 20, height: 20)
+                    }.buttonStyle(.plain).accessibilityLabel(value)
+                }
+            }
+            ColorPicker(L10n.text("自定义颜色"), selection: $color, supportsOpacity: false)
+            Button(L10n.text("保存")) {
+                guard let rgb = NSColor(color).usingColorSpace(.sRGB) else { return }
+                save(String(format: "#%02X%02X%02X", Int((rgb.redComponent * 255).rounded()), Int((rgb.greenComponent * 255).rounded()), Int((rgb.blueComponent * 255).rounded())))
+            }.keyboardShortcut(.defaultAction)
+        }.padding(12).frame(width: 240)
+    }
+}
+
+/// Compact assignment picker; catalog maintenance is revealed only when requested.
 struct TagManagerView: View {
-    let path: String
-    let citeKey: String
+    var path: String = ""
+    var citeKey: String = ""
+    var libraryUID: String = ""
+    var recordUID: String = ""
     @Environment(\.dismiss) private var dismiss
     @State private var snapshot: TagSnapshot?
+    @State private var filter = ""
+    @State private var colorID = ""
+    @State private var editingID = ""
     @State private var name = ""
-    @State private var selected = ""
-    @State private var mergeTarget = ""
+    @State private var error: String?
+    @State private var busy = false
+    @State private var mergeTarget: (id: String, target: String, label: String)?
+    @State private var deleteID: String?
+    @State private var showRecovery = false
+    private var assignment: Bool { !recordUID.isEmpty || !citeKey.isEmpty }
+    private var filtered: [TagRecord] {
+        (snapshot?.tags ?? []).filter { filter.isEmpty || $0.name.localizedCaseInsensitiveContains(filter) }
+            .sorted { a, b in
+                let aa = snapshot?.assignedIds.contains(a.id) ?? false
+                let bb = snapshot?.assignedIds.contains(b.id) ?? false
+                return aa != bb ? aa : a.name.localizedStandardCompare(b.name) == .orderedAscending
+            }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L10n.text(assignment ? "标签" : "标签管理")).font(.headline)
+                if assignment { Text(citeKey).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                Spacer()
+                if busy { ProgressView().controlSize(.small) }
+                Button(L10n.text("关闭")) { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+            TextField(L10n.text("搜索或创建标签"), text: $filter).textFieldStyle(.roundedBorder)
+                .onSubmit { if canCreate { mutate(.create, name: filter) } }
+            ScrollView {
+                LazyVStack(spacing: 4) {
+                    ForEach(filtered, id: \.id) { tag in
+                        HStack(spacing: 8) {
+                            if assignment {
+                                Toggle(tag.name, isOn: Binding(get: { snapshot?.assignedIds.contains(tag.id) ?? false }, set: { mutate($0 ? .assign : .unassign, id: tag.id) }))
+                                    .toggleStyle(.checkbox).labelsHidden().accessibilityLabel(tag.name)
+                            }
+                            Button { colorID = tag.id } label: {
+                                Circle().fill(tag.displayColor).overlay(Circle().stroke(Color.primary.opacity(0.25))).frame(width: 14, height: 14)
+                            }.buttonStyle(.plain).frame(width: 24, height: 24).accessibilityLabel(L10n.text("标签颜色") + " " + tag.name)
+                                .popover(isPresented: Binding(get: { colorID == tag.id }, set: { if !$0 { colorID = "" } })) {
+                                    TagColorEditor(tag: tag) { value in mutate(.recolor, id: tag.id, color: value); colorID = "" }
+                                }
+                            if editingID == tag.id {
+                                TextField(L10n.text("标签名称"), text: $name).textFieldStyle(.roundedBorder)
+                                    .onSubmit { mutate(.rename, id: tag.id, name: name) }
+                                Button(L10n.text("保存")) { mutate(.rename, id: tag.id, name: name) }
+                            } else {
+                                Button { if assignment { mutate(snapshot?.assignedIds.contains(tag.id) == true ? .unassign : .assign, id: tag.id) } } label: {
+                                    Text(tag.name).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                                }.buttonStyle(.plain)
+                            }
+                            Menu {
+                                Button(L10n.text("重命名")) { editingID = tag.id; name = tag.name }
+                                Button(L10n.text("标签颜色")) { colorID = tag.id }
+                                if !assignment {
+                                    Menu(L10n.text("合并到")) {
+                                        ForEach((snapshot?.tags ?? []).filter { $0.id != tag.id }, id: \.id) { target in
+                                            Button(target.name) { mergeTarget = (tag.id, target.id, tag.name + " → " + target.name) }
+                                        }
+                                    }
+                                    Button(L10n.text("删除"), role: .destructive) { deleteID = tag.id }
+                                }
+                            } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 28, height: 24)
+                                .accessibilityLabel(L10n.text("标签管理") + " " + tag.name)
+                        }.padding(.vertical, 4)
+                    }
+                    if canCreate {
+                        Button { mutate(.create, name: filter) } label: { Label(L10n.text(assignment ? "创建并添加" : "创建") + " “" + filter.trimmingCharacters(in: .whitespacesAndNewlines) + "”", systemImage: "plus") }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if !assignment, let snapshot, !snapshot.pending.isEmpty {
+                Button(L10n.text("失效标签关联")) { showRecovery = true }
+                    .sheet(isPresented: $showRecovery) { TagRecoveryView() }
+            }
+        }.padding(14).frame(width: assignment ? 360 : 460, height: assignment ? 340 : 440)
+            .disabled(busy).task { await reload() }
+            .onChange(of: showRecovery) { shown in if !shown { Task { await reload() } } }
+            .alert(L10n.text("合并到"), isPresented: Binding(get: { mergeTarget != nil }, set: { if !$0 { mergeTarget = nil } })) {
+                Button(L10n.text("确认")) { if let merge = mergeTarget { mutate(.merge, id: merge.id, target: merge.target) }; mergeTarget = nil }
+                Button(L10n.text("取消"), role: .cancel) { mergeTarget = nil }
+            } message: { Text(mergeTarget?.label ?? "") }
+            .alert(L10n.text("删除标签"), isPresented: Binding(get: { deleteID != nil }, set: { if !$0 { deleteID = nil } })) {
+                Button(L10n.text("删除"), role: .destructive) { if let id = deleteID { mutate(.delete, id: id) }; deleteID = nil }
+                Button(L10n.text("取消"), role: .cancel) { deleteID = nil }
+            }
+    }
+    private var canCreate: Bool {
+        let value = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !value.isEmpty && !(snapshot?.tags.contains { $0.name.compare(value, options: [.caseInsensitive]) == .orderedSame } ?? false)
+    }
+    private func reload() async {
+        do {
+            if !libraryUID.isEmpty { snapshot = try await RustCore.shared.tagSnapshot(libraryUID: libraryUID, recordUID: recordUID) }
+            else { snapshot = try await RustCore.shared.tagSnapshot(path: path, citeKey: citeKey) }
+        } catch { self.error = error.localizedDescription }
+    }
+    private func mutate(_ action: TagAction, id: String = "", name: String = "", color: String? = nil, target: String = "") {
+        guard !busy, let state = snapshot else { return }
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                snapshot = try await RustCore.shared.mutateTag(TagMutation(libraryUid: state.libraryUid, recordUid: state.recordUid, color: color, action: action, id: id, name: name, targetId: target, path: "", citeKey: "", expectedRevision: state.revision))
+                if action == .create { filter = "" }
+                if action == .rename { editingID = "" }
+                error = nil
+                NotificationCenter.default.post(name: .searchTagsChanged, object: nil)
+            } catch { self.error = error.localizedDescription; await reload() }
+        }
+    }
+}
+
+/// Exceptional record recovery is separate from everyday tag assignment.
+struct TagRecoveryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var snapshot: TagSnapshot?
     @State private var pendingID = ""
-    @State private var targetPath = ""
-    @State private var targetKey = ""
-    @State private var relocateSource = ""
-    @State private var relocatePath = ""
+    @State private var libraryUID = ""
+    @State private var recordUID = ""
     @State private var libraries: [Bibliography] = []
     @State private var targets: [Reference] = []
     @State private var error: String?
     @State private var busy = false
     var body: some View {
-        ScrollView {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.text("标签管理")).font(.headline)
-            if !citeKey.isEmpty { Text(citeKey).font(.subheadline) }
-            List {
-                ForEach(snapshot?.tags ?? [], id: \.id) { tag in
-                    HStack {
-                        if !citeKey.isEmpty {
-                            Toggle("", isOn: Binding(get: { snapshot?.assignedIds.contains(tag.id) ?? false }, set: { mutation($0 ? .assign : .unassign, id: tag.id) })).labelsHidden()
-                        }
-                        Button { selected = tag.id; name = tag.name } label: { Text(tag.name).frame(maxWidth: .infinity, alignment: .leading) }
-                            .buttonStyle(.plain).accessibilityAddTraits(selected == tag.id ? .isSelected : [])
-                    }
-                        .listRowBackground(selected == tag.id ? Color.accentColor.opacity(0.15) : Color.clear)
-                }
-            }.frame(height: 160)
-            TextField(L10n.text("标签名称"), text: $name).textFieldStyle(.roundedBorder)
-            HStack {
-                Button(L10n.text("创建")) { mutation(.create) }.disabled(name.isEmpty)
-                Button(L10n.text("重命名")) { mutation(.rename, id: selected) }.disabled(selected.isEmpty || name.isEmpty)
-                Button(L10n.text("删除")) { mutation(.delete, id: selected) }.disabled(selected.isEmpty)
+            Text(L10n.text("失效标签关联")).font(.headline)
+            Picker(L10n.text("旧记录"), selection: $pendingID) {
+                Text(L10n.text("选择记录")).tag("")
+                ForEach(snapshot?.pending ?? [], id: \.recordId) { Text($0.citeKey).tag($0.recordId) }
             }
-            HStack {
-                Picker(L10n.text("合并到"), selection: $mergeTarget) {
-                    Text(L10n.text("选择标签")).tag("")
-                    ForEach(snapshot?.tags.filter { $0.id != selected } ?? [], id: \.id) { Text($0.name).tag($0.id) }
-                }
-                Button(L10n.text("合并标签")) { mutation(.merge, id: selected, target: mergeTarget) }.disabled(selected.isEmpty || mergeTarget.isEmpty)
+            Picker(L10n.text("目标文献库"), selection: $libraryUID) {
+                Text(L10n.text("选择文献库")).tag("")
+                ForEach(libraries, id: \.name) { Text($0.name).tag($0.uid) }
+            }.onChange(of: libraryUID) { uid in
+                recordUID = ""; targets = []
+                guard let path = libraries.first(where: { $0.uid == uid })?.path else { return }
+                Task { do { let rows = try await RustCore.shared.search(path: path, query: ""); if libraryUID == uid { targets = rows } } catch { self.error = error.localizedDescription } }
             }
-            DisclosureGroup(L10n.text("待关联记录")) {
-                Picker(L10n.text("旧记录"), selection: $pendingID) {
-                    Text(L10n.text("选择记录")).tag("")
-                    ForEach(snapshot?.pending ?? [], id: \.recordId) { Text("\($0.citeKey) · \($0.path)").tag($0.recordId) }
-                }
-                Picker(L10n.text("目标文献库"), selection: $targetPath) {
-                    Text(L10n.text("选择文献库")).tag("")
-                    ForEach(libraries) { Text($0.name).tag($0.path) }
-                }.onChange(of: targetPath) { path in
-                    targetKey = ""; targets = []
-                    Task { do { let rows = try await RustCore.shared.search(path: path, query: ""); if targetPath == path { targets = rows } } catch { self.error = error.localizedDescription } }
-                }
-                Picker(L10n.text("目标记录"), selection: $targetKey) {
-                    Text(L10n.text("选择记录")).tag("")
-                    ForEach(targets) { Text($0.citeKey + " · " + $0.title.map(\.text).joined()).tag($0.citeKey) }
-                }
-                Button(L10n.text("重新关联")) { mutation(.relink, id: pendingID) }.disabled(pendingID.isEmpty || targetPath.isEmpty || targetKey.isEmpty)
-            }
-            DisclosureGroup(L10n.text("重新定位来源")) {
-                Picker(L10n.text("原来源"), selection: $relocateSource) {
-                    Text(L10n.text("选择来源")).tag("")
-                    ForEach(snapshot?.sources ?? [], id: \.id) { Text($0.path).tag($0.id) }
-                }
-                TextField(L10n.text("目标文件路径"), text: $relocatePath).textFieldStyle(.roundedBorder)
-                HStack {
-                    Button(L10n.text("选择文件")) {
-                        let panel = NSOpenPanel(); panel.canChooseDirectories = false; panel.allowsMultipleSelection = false
-                        if panel.runModal() == .OK { relocatePath = panel.url?.path ?? "" }
-                    }
-                    Button(L10n.text("重新定位来源")) { mutation(.relocate, id: relocateSource) }
-                        .disabled(relocateSource.isEmpty || relocatePath.isEmpty)
-                }
+            Picker(L10n.text("目标记录"), selection: $recordUID) {
+                Text(L10n.text("选择记录")).tag("")
+                ForEach(targets) { Text($0.citeKey).tag($0.id) }
             }
             if let error { Text(error).font(.caption).foregroundStyle(.red) }
-            HStack { Spacer(); Button(L10n.text("关闭")) { dismiss() }.keyboardShortcut(.cancelAction) }
-        }.padding(18)
-        }.frame(width: 540, height: 620).disabled(busy)
-        .task { await reload() }
+            HStack {
+                Button(L10n.text("重新关联")) { relink() }.disabled(pendingID.isEmpty || recordUID.isEmpty)
+                Spacer(); Button(L10n.text("关闭")) { dismiss() }
+            }
+        }.padding(18).frame(width: 420).disabled(busy).task { await reload() }
     }
     private func reload() async {
-        do { snapshot = try await RustCore.shared.tagSnapshot(path: path, citeKey: citeKey); libraries = try await RustCore.shared.libraries() }
+        do { snapshot = try await RustCore.shared.tagSnapshot(path: "", citeKey: ""); var seen = Set<String>(); libraries = try await RustCore.shared.libraries().filter { $0.available && seen.insert($0.uid).inserted } }
         catch { self.error = error.localizedDescription }
     }
-    private func mutation(_ action: TagAction, id: String = "", target: String = "") {
-        guard let revision = snapshot?.revision else { return }
+    private func relink() {
         busy = true
         Task {
             defer { busy = false }
             do {
-                _ = try await RustCore.shared.mutateTag(TagMutation(action: action, id: id, name: action == .relocate ? "" : name, targetId: action == .relocate ? "" : target,
-                    path: action == .relocate ? relocatePath : (action == .relink ? targetPath : path), citeKey: action == .relocate ? "" : (action == .relink ? targetKey : citeKey), expectedRevision: revision))
+                await reload()
+                guard let revision = snapshot?.revision else { return }
+                _ = try await RustCore.shared.mutateTag(TagMutation(libraryUid: libraryUID, recordUid: recordUID, color: nil, action: .relink, id: pendingID, name: "", targetId: "", path: "", citeKey: "", expectedRevision: revision))
+                pendingID = ""
                 await reload(); error = nil
                 NotificationCenter.default.post(name: .searchTagsChanged, object: nil)
-            } catch { self.error = error.localizedDescription; await reload() }
+            } catch { self.error = error.localizedDescription }
         }
     }
 }

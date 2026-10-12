@@ -144,7 +144,7 @@ pub struct SearchContext {
 pub struct SearchEvidence {
     /// Original UTF-8 ranges within individual field entries; never normalized offsets.
     pub ranges: Vec<SearchMatchRange>,
-    /// Existing path-plus-cite-key record identity, unchanged by metadata IDs.
+    /// Persistent record UUID shared with the returned reference.
     pub reference_id: String,
     /// Canonical fields supporting the successful positive branch.
     pub fields: Vec<String>,
@@ -183,6 +183,8 @@ pub struct SearchCatalog {
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct TagRecord {
+    /// Shared sRGB color in #RRGGBB format.
+    pub color: String,
     /// Immutable tag or source identifier.
     pub id: String,
     /// User-facing tag display name.
@@ -207,6 +209,10 @@ pub struct PendingAssociation {
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug)]
 pub struct TagSnapshot {
+    /// Selected stable bibliography identity, empty for the global catalog.
+    pub library_uid: String,
+    /// Selected stable record identity, empty for catalog-only requests.
+    pub record_uid: String,
     /// Monotonically increasing metadata revision for optimistic concurrency.
     pub revision: u64,
     /// Tag catalog or associated stable tag IDs, according to the enclosing record.
@@ -222,6 +228,8 @@ pub struct TagSnapshot {
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TagAction {
+    /// Update a tag color without changing identity.
+    Recolor,
     /// Create or reuse a normalized same-name tag.
     Create,
     /// Rename an existing tag without changing its identity.
@@ -243,6 +251,12 @@ pub enum TagAction {
 #[cfg_attr(feature = "csharp", interoptopus::ffi)]
 #[derive(Clone, Debug)]
 pub struct TagMutation {
+    /// Stable bibliography identity for record associations.
+    pub library_uid: String,
+    /// Stable record identity for record associations.
+    pub record_uid: String,
+    /// Optional color when creating or recoloring a tag.
+    pub color: Option<String>,
     /// Requested semantic edit or metadata operation.
     pub action: TagAction,
     /// Immutable tag or source identifier.
@@ -251,9 +265,9 @@ pub struct TagMutation {
     pub name: String,
     /// Destination tag ID for an explicit merge.
     pub target_id: String,
-    /// Bibliography path identifying the current source.
+    /// Destination file path for explicit relocation only; associations use UUIDs.
     pub path: String,
-    /// Original case-sensitive cite key used for association lookup.
+    /// Legacy display context; associations use record_uid.
     pub cite_key: String,
     /// Revision observed by the editor; stale mutations fail without writing.
     pub expected_revision: u64,

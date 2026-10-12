@@ -541,8 +541,7 @@ pub fn edit_query_text(edit: QueryTextEdit) -> QueryAnalysis {
 pub fn refresh_query(doc: QueryDocumentRecord) -> Result<QueryAnalysis, CoreError> {
     let mut doc = document(doc);
     query::validate_document(&doc).map_err(|e| CoreError::from(e.code))?;
-    crate::registry::recover_search_transaction()?;
-    let _lock = crate::tags::lock()?;
+    let _lock = crate::registry::search_lock()?;
     let metadata = crate::tags::read()?;
     for node in &mut doc.nodes {
         if let Some(id) = &node.tag_id {
@@ -570,17 +569,27 @@ pub fn tag_snapshot(path: String, cite_key: String) -> Result<TagSnapshot, CoreE
     }
     crate::tags::snapshot(path, cite_key).map_err(Into::into)
 }
+/// Read assignments by stable library and record identities, resolving paths only for IO.
+pub fn tag_snapshot_uid(library_uid: String, record_uid: String) -> Result<TagSnapshot, CoreError> {
+    crate::registry::recover_search_transaction()?;
+    let path = crate::registry::path_for_uid(&library_uid)?;
+    let source = crate::api::references(&path)?;
+    crate::tags::load_snapshot_uid(&library_uid, &path, &source.version, &source.references)?;
+    crate::tags::snapshot_uid(&library_uid, &record_uid).map_err(Into::into)
+}
 /// Apply one revision-checked tag or association mutation atomically. Conflicts and storage failures leave existing metadata intact.
 pub fn mutate_tag(mutation: TagMutation) -> Result<TagSnapshot, CoreError> {
+    crate::registry::recover_search_transaction()?;
     if matches!(
         mutation.action,
         TagAction::Assign | TagAction::Unassign | TagAction::Relink
-    ) {
-        let source = crate::api::references(&mutation.path)?;
-        let canonical =
-            fs::canonicalize(&mutation.path).map_err(|e| CoreError::from(e.to_string()))?;
-        crate::tags::load_snapshot(
-            &canonical.to_string_lossy(),
+    ) || (mutation.action == TagAction::Create && !mutation.record_uid.is_empty())
+    {
+        let path = crate::registry::path_for_uid(&mutation.library_uid)?;
+        let source = crate::api::references(&path)?;
+        crate::tags::load_snapshot_uid(
+            &mutation.library_uid,
+            &path,
             &source.version,
             &source.references,
         )?;
@@ -593,8 +602,7 @@ pub fn validate_search_context(context: SearchContext) -> Result<bool, CoreError
         return Ok(false);
     }
     if let Some(revision) = context.tag_revision {
-        crate::registry::recover_search_transaction()?;
-        let _lock = crate::tags::lock()?;
+        let _lock = crate::registry::search_lock()?;
         if crate::tags::read()?.revision != revision {
             return Ok(false);
         }
@@ -695,21 +703,11 @@ pub fn advanced_search(
     {
         return Err("MissingExpectedTagRevision".to_string().into());
     }
-    let uses_tags = has_ids
-        || request.expected_tag_revision.is_some()
-        || doc
-            .nodes
-            .iter()
-            .any(|n| n.kind == NodeKind::Scope && n.value == "tag");
-    let metadata = if uses_tags {
-        Some(crate::tags::load_snapshot(
-            &path,
-            &source.version,
-            &source.references,
-        )?)
-    } else {
-        None
-    };
+    let metadata = Some(crate::tags::load_snapshot(
+        &path,
+        &source.version,
+        &source.references,
+    )?);
     if let Some(metadata) = &metadata {
         analysis.tag_revision = Some(metadata.revision);
         if request
@@ -861,6 +859,12 @@ pub fn advanced_search(
             response.references.push(reference);
         }
     }
+    if let Some(metadata) = &metadata {
+        crate::tags::decorate(metadata, &path, &mut response.references)?;
+        for (evidence, reference) in response.evidence.iter_mut().zip(&response.references) {
+            evidence.reference_id = reference.id.clone();
+        }
+    }
     let context = SearchContext {
         path,
         file_version: source.version.clone(),
@@ -901,7 +905,21 @@ mod tests {
         }
     }
     fn mutation(action: TagAction, id: &str, name: &str, path: &str, revision: u64) -> TagMutation {
+        let snapshot = if path.is_empty() {
+            None
+        } else {
+            Some(tag_snapshot(path.into(), "A".into()).unwrap())
+        };
         TagMutation {
+            library_uid: snapshot
+                .as_ref()
+                .map(|s| s.library_uid.clone())
+                .unwrap_or_default(),
+            record_uid: snapshot
+                .as_ref()
+                .map(|s| s.record_uid.clone())
+                .unwrap_or_default(),
+            color: None,
             action,
             id: id.into(),
             name: name.into(),
@@ -1232,7 +1250,7 @@ mod snapshot_regressions {
         assert!(!validate_search_context(context).unwrap());
     }
     #[test]
-    fn broken_tag_storage_does_not_break_unrelated_search_or_become_empty_tags() {
+    fn broken_tag_storage_never_displays_empty_tags_or_overwrites_metadata() {
         let file = tempfile::NamedTempFile::new().unwrap();
         fs::write(file.path(), "@article{A,title={graph}}").unwrap();
         let _lock = crate::tags::lock().unwrap();
@@ -1249,9 +1267,11 @@ mod snapshot_regressions {
             type_filter: "all".into(),
             query_version: 0,
         };
-        assert_eq!(
-            advanced_search(request.clone()).unwrap().references.len(),
-            1
+        assert!(
+            advanced_search(request.clone())
+                .unwrap_err()
+                .to_string()
+                .contains("InvalidSearchMetadata")
         );
         let mut tagged = request;
         tagged.text = "-tag:read".into();
@@ -1276,7 +1296,21 @@ mod metadata_identity_regressions {
         path: &str,
         revision: u64,
     ) -> TagMutation {
+        let snapshot = if path.is_empty() {
+            None
+        } else {
+            Some(tag_snapshot(path.into(), "A".into()).unwrap())
+        };
         TagMutation {
+            library_uid: snapshot
+                .as_ref()
+                .map(|s| s.library_uid.clone())
+                .unwrap_or_default(),
+            record_uid: snapshot
+                .as_ref()
+                .map(|s| s.record_uid.clone())
+                .unwrap_or_default(),
+            color: None,
             action,
             id: id.into(),
             name: name.into(),

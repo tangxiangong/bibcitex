@@ -124,7 +124,7 @@ internal sealed class HelperCandidates
             var catalog = await RustCore.SearchCatalog(); if (!Open || request != generation) return;
             if (symbol == '#')
             {
-                var tags = await RustCore.TagSnapshot(new() { path = "", cite_key = "" }); if (!Open || request != generation) return;
+                var tags = await RustCore.TagSnapshot(new() { library_uid = "", record_uid = "", path = "", cite_key = "" }); if (!Open || request != generation) return;
                 entries = tags.tags.Select(x => new Candidate(x.name, x.name, x.name, x.id, null)).ToList();
             }
             else if (symbol == '@') entries = catalog.type_descriptors.Select(x => new Candidate(x.name, L10n.Text(x.label_key), L10n.Translate(x.label_key, "en"), null, null)).ToList();

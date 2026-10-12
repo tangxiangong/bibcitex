@@ -162,9 +162,9 @@ internal static class RustCore
         Check(wire.Unwire().error);
     });
 }
-internal sealed record Library(string Name, string Path, string Description, string CreatedAt, string UpdatedAt, bool Pinned = false, bool Available = true)
+internal sealed record Library(string Uid, string Name, string Path, string Description, string CreatedAt, string UpdatedAt, bool Pinned = false, bool Available = true)
 {
-    internal static Library From(LibraryRecord x) => new(x.name, x.path, x.description ?? "", x.created_at, x.updated_at, x.pinned, x.available);
+    internal static Library From(LibraryRecord x) => new(x.uid, x.name, x.path, x.description ?? "", x.created_at, x.updated_at, x.pinned, x.available);
     public override string ToString() => Name;
 }
 internal sealed record Chunk(string Kind, string Text);

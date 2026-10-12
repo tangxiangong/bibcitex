@@ -45,6 +45,9 @@ actor RustCore {
     func refreshQuery(_ document: QueryDocumentRecord) throws -> QueryAnalysis { try translated { try BibCiTeXCore.refreshQuery(document: document) } }
     /// Reads one revision of the tag directory and optional reference assignments.
     func tagSnapshot(path: String, citeKey: String) throws -> TagSnapshot { try translated { try BibCiTeXCore.tagSnapshot(path: path, citeKey: citeKey) } }
+    func tagSnapshot(libraryUID: String, recordUID: String) throws -> TagSnapshot {
+        try translated { try BibCiTeXCore.tagSnapshotUid(libraryUid: libraryUID, recordUid: recordUID) }
+    }
     /// Mutates tags with optimistic revision checking; never edits BibTeX.
     func mutateTag(_ mutation: TagMutation) throws -> TagSnapshot { try translated { try BibCiTeXCore.mutateTag(mutation: mutation) } }
     /// Checks file and tag revisions immediately before acting on a result.
@@ -90,7 +93,7 @@ actor RustCore {
         }
     }
     private func library(_ record: LibraryRecord) -> Bibliography {
-        Bibliography(name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description, pinned: record.pinned, available: record.available)
+        Bibliography(uid: record.uid, name: record.name, path: record.path, updatedAt: record.updatedAt, descriptionText: record.description, pinned: record.pinned, available: record.available)
     }
     private func chunks(_ records: [ChunkRecord]) -> [TextChunk] {
         records.map {
@@ -102,7 +105,7 @@ actor RustCore {
     private func reference(_ value: ReferenceRecord) -> Reference {
         let type = (0...32).compactMap(EntryType.init(rawValue:)).first { $0.displayText.lowercased() == value.entryType.lowercased() } ?? .unknown
         return Reference(
-            citeKey: value.citeKey, source: value.source, typeKind: type, typeUnknown: value.entryType,
+            id: value.id, libraryUID: value.libraryUid, tags: value.tags, citeKey: value.citeKey, source: value.source, typeKind: type, typeUnknown: value.entryType,
             author: value.author, title: chunks(value.title), journal: value.journal ?? "", year: value.year.map(Int.init),
             fullJournal: value.fullJournal ?? "", volume: value.volume, number: value.number ?? "",
             pages: value.pages.map { ReferencePages(start: $0.start, end: $0.end) },

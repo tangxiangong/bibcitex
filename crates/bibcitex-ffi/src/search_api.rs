@@ -57,3 +57,9 @@ pub fn mutate_tag(mutation: TagMutation) -> Result<TagSnapshot, CoreError> {
 pub fn validate_search_context(context: SearchContext) -> Result<bool, CoreError> {
     bibcitex_service::validate_search_context(context)
 }
+
+/// Read tag assignments using stable identities.
+#[uniffi::export]
+pub fn tag_snapshot_uid(library_uid: String, record_uid: String) -> Result<TagSnapshot, CoreError> {
+    bibcitex_service::tag_snapshot_uid(library_uid, record_uid)
+}

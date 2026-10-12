@@ -193,7 +193,9 @@ internal sealed class HelperWindow : Window, IDisposable
 
     private async void TagsChanged()
     {
-        searchSession.Invalidate(); version++; results.Items.Clear();
+        searchSession.Invalidate(); version++;
+        if (TagManager.IsEditing(root.XamlRoot)) return;
+        results.Items.Clear();
         if (!visible) return;
         try { libraries = await RustCore.Libraries(); current = await RustCore.HelperCurrent(); await Refresh(); }
         catch (Exception error) { SetErrorStatus(error); }

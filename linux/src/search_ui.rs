@@ -31,8 +31,15 @@ pub(super) struct ConditionEditor {
 pub(super) struct TagManager {
     snapshot: TagSnapshot,
     name: Entity<InputState>,
+    color: Entity<InputState>,
+    _subscription: Subscription,
+    editing: bool,
+    editing_color: bool,
+    maintenance: bool,
     selected: Option<String>,
-    path: String,
+    recovery_library: String,
+    recovery_records: Vec<service::ReferenceRecord>,
+    recovery_target: Option<service::ReferenceRecord>,
     cite_key: String,
     confirmation: Option<TagMutation>,
     error: Option<String>,
@@ -89,7 +96,7 @@ impl Workbench {
             ]);
         }
         if let Some(manager) = &self.tag_manager {
-            inputs.push(manager.name.clone());
+            inputs.extend([manager.name.clone(), manager.color.clone()]);
         }
         inputs.into_iter().any(|input| {
             input.update(cx, |input, cx| {
@@ -419,7 +426,7 @@ impl Workbench {
                     .ghost()
                     .small()
                     .label(self.localized("标签", "Tags", cx))
-                    .on_click(cx.listener(|this, _, window, cx| this.open_tags(window, cx))),
+                    .on_click(cx.listener(|this, _, window, cx| this.open_tag_catalog(window, cx))),
             )
     }
 
@@ -790,24 +797,57 @@ impl Workbench {
         panel.child(self.tag_panel(cx))
     }
 
+    pub(super) fn open_tag_catalog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let selected = self.selected.take();
+        self.open_tags(window, cx);
+        self.selected = selected;
+    }
+
     /// Loads the selected bibliography and citation association snapshot; service failures are shown without mutating tags.
     pub(super) fn open_tags(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.selected.is_some() && !self.current_results_valid(cx) {
             return;
         }
-        let path = self.search_path();
         let cite_key = self
             .selected
             .and_then(|i| self.references.get(i))
             .map(|r| r.cite_key.clone())
             .unwrap_or_default();
-        match service::tag_snapshot(path.clone(), cite_key.clone()) {
+        let result = if let Some(record) = self.selected.and_then(|i| self.references.get(i)) {
+            service::tag_snapshot_uid(record.library_uid.clone(), record.id.clone())
+        } else {
+            service::tag_snapshot(String::new(), String::new())
+        };
+        match result {
             Ok(snapshot) => {
+                let name = cx.new(|cx| {
+                    InputState::new(window, cx).placeholder(self.text("搜索或创建标签", cx))
+                });
+                let subscription =
+                    cx.subscribe_in(&name, window, |this, _, event, window, cx| match event {
+                        InputEvent::Change => cx.notify(),
+                        InputEvent::PressEnter { .. } => {
+                            let action = if this.tag_manager.as_ref().is_some_and(|m| m.editing) {
+                                TagAction::Rename
+                            } else {
+                                TagAction::Create
+                            };
+                            this.change_tag(action, String::new(), false, window, cx);
+                        }
+                        _ => {}
+                    });
                 self.tag_manager = Some(TagManager {
                     snapshot,
-                    name: cx.new(|cx| InputState::new(window, cx)),
+                    name,
+                    color: cx.new(|cx| InputState::new(window, cx).default_value("#64748B")),
+                    _subscription: subscription,
+                    editing: false,
+                    editing_color: false,
+                    maintenance: false,
                     selected: None,
-                    path,
+                    recovery_library: String::new(),
+                    recovery_records: Vec::new(),
+                    recovery_target: None,
                     cite_key,
                     confirmation: None,
                     error: None,
@@ -824,18 +864,23 @@ impl Workbench {
         action: TagAction,
         target: String,
         confirm: bool,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let Some(manager) = self.tag_manager.as_mut() else {
             return;
         };
         let mutation = TagMutation {
+            library_uid: manager.snapshot.library_uid.clone(),
+            record_uid: manager.snapshot.record_uid.clone(),
+            color: (action == TagAction::Recolor)
+                .then(|| manager.color.read(cx).value().to_string()),
             action,
             id: manager.selected.clone().unwrap_or_default(),
             name: manager.name.read(cx).value().to_string(),
             target_id: target,
-            path: manager.path.clone(),
-            cite_key: manager.cite_key.clone(),
+            path: String::new(),
+            cite_key: String::new(),
             expected_revision: manager.snapshot.revision,
         };
         if confirm {
@@ -843,39 +888,42 @@ impl Workbench {
             cx.notify();
             return;
         }
-        self.apply_tag_mutation(mutation, cx);
+        self.apply_tag_mutation(mutation, window, cx);
     }
 
-    fn apply_tag_mutation(&mut self, mutation: TagMutation, cx: &mut Context<Self>) {
-        let relocation = (mutation.action == TagAction::Relocate).then(|| {
-            let old_path = self
-                .tag_manager
-                .as_ref()
-                .and_then(|manager| {
-                    manager
-                        .snapshot
-                        .sources
-                        .iter()
-                        .find(|source| source.id == mutation.id)
-                })
-                .map(|source| source.path.clone());
-            (old_path, mutation.path.clone())
+    fn apply_tag_mutation(
+        &mut self,
+        mutation: TagMutation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let action = mutation.action;
+        let global = self
+            .tag_manager
+            .as_ref()
+            .is_some_and(|m| m.snapshot.record_uid.is_empty());
+        let result = service::mutate_tag(mutation).and_then(|snapshot| {
+            if global {
+                service::tag_snapshot(String::new(), String::new())
+            } else {
+                Ok(snapshot)
+            }
         });
-        match service::mutate_tag(mutation) {
+        match result {
             Ok(snapshot) => {
                 if let Some(manager) = self.tag_manager.as_mut() {
                     manager.snapshot = snapshot;
                     manager.confirmation = None;
                     manager.error = None;
-                    if let Some((Some(old_path), new_path)) = &relocation {
-                        if manager.path == *old_path {
-                            manager.path = new_path.clone();
-                        }
-                        match service::tag_snapshot(manager.path.clone(), manager.cite_key.clone())
-                        {
-                            Ok(snapshot) => manager.snapshot = snapshot,
-                            Err(error) => manager.error = Some(error.to_string()),
-                        }
+                    if matches!(
+                        action,
+                        TagAction::Create | TagAction::Rename | TagAction::Recolor
+                    ) {
+                        manager.editing = false;
+                        manager.editing_color = false;
+                        manager
+                            .name
+                            .update(cx, |input, cx| input.set_value("", window, cx));
                     }
                 }
             }
@@ -883,6 +931,17 @@ impl Workbench {
                 if let Some(manager) = self.tag_manager.as_mut() {
                     manager.error = Some(error.to_string());
                     manager.confirmation = None;
+                    let fresh = if manager.snapshot.library_uid.is_empty() {
+                        service::tag_snapshot(String::new(), String::new())
+                    } else {
+                        service::tag_snapshot_uid(
+                            manager.snapshot.library_uid.clone(),
+                            manager.snapshot.record_uid.clone(),
+                        )
+                    };
+                    if let Ok(snapshot) = fresh {
+                        manager.snapshot = snapshot;
+                    }
                 }
             }
         }
@@ -895,47 +954,10 @@ impl Workbench {
         cx.notify();
     }
 
-    fn relocate_source(&mut self, source_id: String, window: &mut Window, cx: &mut Context<Self>) {
-        let prompt = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: false,
-            prompt: Some(self.text("选择文件", cx)),
-        });
-        cx.spawn_in(window, async move |this, cx| {
-            let result = prompt.await;
-            let _ = this.update_in(cx, |this, _, cx| {
-                let Some(manager) = this.tag_manager.as_mut() else {
-                    return;
-                };
-                match result {
-                    Ok(Ok(Some(paths))) => {
-                        if let Some(path) = paths.first() {
-                            manager.confirmation = Some(TagMutation {
-                                action: TagAction::Relocate,
-                                id: source_id,
-                                path: path.to_string_lossy().into_owned(),
-                                name: String::new(),
-                                target_id: String::new(),
-                                cite_key: String::new(),
-                                expected_revision: manager.snapshot.revision,
-                            });
-                        }
-                    }
-                    Ok(Err(error)) => manager.error = Some(error.to_string()),
-                    Err(error) => manager.error = Some(error.to_string()),
-                    _ => {}
-                }
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
     fn tag_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let mut panel = div()
             .id("tag-management-panel")
-            .max_h(px(420.))
+            .max_h(px(if self.helper { 320. } else { 420. }))
             .overflow_y_scroll()
             .flex()
             .flex_col()
@@ -957,130 +979,410 @@ impl Workbench {
                         )
                     },
                 ));
+        let assignment = !manager.snapshot.record_uid.is_empty();
+        let filter = if manager.editing || manager.editing_color {
+            String::new()
+        } else {
+            manager.name.read(cx).value().to_string().to_lowercase()
+        };
+        panel = panel.when(!manager.editing_color, |panel| {
+            panel.child(Input::new(&manager.name).cleanable(true))
+        });
         let mut tags = div()
             .id("tag-catalog")
-            .max_h(px(180.))
+            .max_h(px(220.))
             .overflow_y_scroll()
             .flex()
-            .flex_col();
-        for (index, tag) in manager.snapshot.tags.iter().enumerate() {
+            .flex_col()
+            .gap_1();
+        let mut catalog = manager.snapshot.tags.clone();
+        catalog.sort_by_key(|tag| {
+            (
+                !manager.snapshot.assigned_ids.contains(&tag.id),
+                tag.name.to_lowercase(),
+            )
+        });
+        for (index, tag) in catalog
+            .iter()
+            .filter(|t| filter.is_empty() || t.name.to_lowercase().contains(&filter))
+            .enumerate()
+        {
             let id = tag.id.clone();
-            let name = tag.name.clone();
             let assigned = manager.snapshot.assigned_ids.contains(&id);
+            let color =
+                u32::from_str_radix(tag.color.trim_start_matches('#'), 16).unwrap_or(0x64748B);
+            let row_owner = cx.weak_entity();
+            let rename_label = self.text("重命名", cx);
+            let delete_label = self.text("删除", cx);
+            let color_label = self.text("标签颜色", cx);
+            let menu_tag = tag.clone();
+            let merge_tags = manager.snapshot.tags.clone();
             tags = tags.child(
-                Button::new(("tag", index))
+                div()
+                    .flex()
+                    .gap_1()
+                    .items_center()
+                    .child(div().size(px(8.)).rounded_full().bg(gpui::rgb(color)))
+                    .child(
+                        Button::new(("tag", index))
+                            .ghost()
+                            .small()
+                            .flex_1()
+                            .justify_start()
+                            .label(format!(
+                                "{}{}",
+                                if assignment && assigned { "✓ " } else { "" },
+                                tag.name
+                            ))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                if let Some(manager) = this.tag_manager.as_mut() {
+                                    manager.selected = Some(id.clone());
+                                }
+                                if assignment {
+                                    this.change_tag(
+                                        if assigned {
+                                            TagAction::Unassign
+                                        } else {
+                                            TagAction::Assign
+                                        },
+                                        String::new(),
+                                        false,
+                                        window,
+                                        cx,
+                                    );
+                                }
+                            })),
+                    )
+                    .child(
+                        Button::new(("tag-more", index))
+                            .ghost()
+                            .small()
+                            .icon(icon("more"))
+                            .tooltip(self.text("标签管理", cx))
+                            .dropdown_menu(move |mut menu, _, _| {
+                                let owner = row_owner.clone();
+                                let tag = menu_tag.clone();
+                                menu =
+                                    menu.item(PopupMenuItem::new(rename_label.clone()).on_click(
+                                        move |_, window, cx| {
+                                            let _ = owner.update(cx, |this, cx| {
+                                                if let Some(manager) = this.tag_manager.as_mut() {
+                                                    manager.selected = Some(tag.id.clone());
+                                                    manager.editing = true;
+                                                    manager.editing_color = false;
+                                                    manager.name.update(cx, |input, cx| {
+                                                        input.set_value(
+                                                            tag.name.clone(),
+                                                            window,
+                                                            cx,
+                                                        )
+                                                    });
+                                                    manager.color.update(cx, |input, cx| {
+                                                        input.set_value(
+                                                            tag.color.clone(),
+                                                            window,
+                                                            cx,
+                                                        )
+                                                    });
+                                                }
+                                                cx.notify();
+                                            });
+                                        },
+                                    ));
+                                let owner = row_owner.clone();
+                                let tag = menu_tag.clone();
+                                menu = menu.item(PopupMenuItem::new(color_label.clone()).on_click(
+                                    move |_, window, cx| {
+                                        let _ = owner.update(cx, |this, cx| {
+                                            if let Some(manager) = this.tag_manager.as_mut() {
+                                                manager.selected = Some(tag.id.clone());
+                                                manager.editing_color = true;
+                                                manager.editing = false;
+                                                manager.color.update(cx, |input, cx| {
+                                                    input.set_value(tag.color.clone(), window, cx)
+                                                });
+                                            }
+                                            cx.notify();
+                                        });
+                                    },
+                                ));
+                                if !assignment {
+                                    let owner = row_owner.clone();
+                                    let id = menu_tag.id.clone();
+                                    menu = menu.item(
+                                        PopupMenuItem::new(delete_label.clone()).on_click(
+                                            move |_, window, cx| {
+                                                let _ = owner.update(cx, |this, cx| {
+                                                    if let Some(manager) = this.tag_manager.as_mut()
+                                                    {
+                                                        manager.selected = Some(id.clone());
+                                                    }
+                                                    this.change_tag(
+                                                        TagAction::Delete,
+                                                        String::new(),
+                                                        true,
+                                                        window,
+                                                        cx,
+                                                    );
+                                                });
+                                            },
+                                        ),
+                                    );
+                                    for target in merge_tags.iter().filter(|t| t.id != menu_tag.id)
+                                    {
+                                        let owner = row_owner.clone();
+                                        let id = menu_tag.id.clone();
+                                        let target_id = target.id.clone();
+                                        menu = menu.item(
+                                            PopupMenuItem::new(format!("→ {}", target.name))
+                                                .on_click(move |_, window, cx| {
+                                                    let _ = owner.update(cx, |this, cx| {
+                                                        if let Some(manager) =
+                                                            this.tag_manager.as_mut()
+                                                        {
+                                                            manager.selected = Some(id.clone());
+                                                        }
+                                                        this.change_tag(
+                                                            TagAction::Merge,
+                                                            target_id.clone(),
+                                                            true,
+                                                            window,
+                                                            cx,
+                                                        );
+                                                    });
+                                                }),
+                                        );
+                                    }
+                                }
+                                menu
+                            }),
+                    ),
+            );
+        }
+        panel = panel.when(!manager.editing_color && !manager.editing, |panel| {
+            panel.child(tags)
+        });
+        if manager.editing_color {
+            let mut swatches = div().flex().gap_2();
+            for (index, value) in [
+                "#64748B", "#EF4444", "#F59E0B", "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6",
+                "#EC4899",
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                swatches = swatches.child(
+                    Button::new(("tag-swatch", index))
+                        .small()
+                        .size(px(24.))
+                        .bg(gpui::rgb(
+                            u32::from_str_radix(&value[1..], 16).unwrap_or(0x64748B),
+                        ))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            if let Some(manager) = this.tag_manager.as_mut() {
+                                manager
+                                    .color
+                                    .update(cx, |input, cx| input.set_value(value, window, cx));
+                            }
+                            this.change_tag(TagAction::Recolor, String::new(), false, window, cx);
+                        })),
+                );
+            }
+            panel = panel
+                .child(swatches)
+                .child(div().child(self.text("自定义颜色", cx)))
+                .child(
+                    div()
+                        .flex()
+                        .gap_2()
+                        .child(Input::new(&manager.color).w(px(120.)))
+                        .child(
+                            Button::new("tag-custom-save")
+                                .small()
+                                .label(self.text("保存", cx))
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.change_tag(
+                                        TagAction::Recolor,
+                                        String::new(),
+                                        false,
+                                        window,
+                                        cx,
+                                    )
+                                })),
+                        )
+                        .child(
+                            Button::new("tag-custom-cancel")
+                                .small()
+                                .label(self.text("取消", cx))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    if let Some(manager) = this.tag_manager.as_mut() {
+                                        manager.editing_color = false;
+                                    }
+                                    cx.notify();
+                                })),
+                        ),
+                );
+        }
+        if manager.editing {
+            panel = panel.child(
+                div()
+                    .flex()
+                    .gap_2()
+                    .child(
+                        Button::new("tag-save-name")
+                            .small()
+                            .label(self.text("保存", cx))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.change_tag(
+                                    TagAction::Rename,
+                                    String::new(),
+                                    false,
+                                    window,
+                                    cx,
+                                );
+                            })),
+                    )
+                    .child(
+                        Button::new("tag-cancel-edit")
+                            .ghost()
+                            .small()
+                            .label(self.text("取消", cx))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                if let Some(manager) = this.tag_manager.as_mut() {
+                                    manager.editing = false;
+                                    manager
+                                        .name
+                                        .update(cx, |input, cx| input.set_value("", window, cx));
+                                }
+                                cx.notify();
+                            })),
+                    ),
+            );
+        } else if !manager.editing_color
+            && !filter.trim().is_empty()
+            && !manager
+                .snapshot
+                .tags
+                .iter()
+                .any(|t| t.name.to_lowercase() == filter.trim())
+        {
+            panel = panel.child(
+                Button::new("tag-create")
+                    .small()
+                    .label(self.text(
+                        if assignment {
+                            "创建并添加"
+                        } else {
+                            "创建"
+                        },
+                        cx,
+                    ))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.change_tag(TagAction::Create, String::new(), false, window, cx);
+                    })),
+            );
+        }
+        if !assignment && !manager.snapshot.pending.is_empty() {
+            panel = panel.child(
+                Button::new("tag-maintenance")
                     .ghost()
                     .small()
-                    .justify_start()
-                    .when(manager.selected.as_ref() == Some(&id), |b| {
-                        b.bg(cx.theme().muted)
-                    })
-                    .label(format!("{}{}", if assigned { "✓ " } else { "" }, tag.name))
-                    .on_click(cx.listener(move |this, _, window, cx| {
+                    .label(self.text("失效标签关联", cx))
+                    .on_click(cx.listener(|this, _, _, cx| {
                         if let Some(manager) = this.tag_manager.as_mut() {
-                            manager.selected = Some(id.clone());
-                            manager
-                                .name
-                                .update(cx, |input, cx| input.set_value(name.clone(), window, cx));
+                            manager.maintenance = !manager.maintenance;
                         }
                         cx.notify();
                     })),
             );
         }
-        panel = panel
-            .child(tags)
-            .child(Input::new(&manager.name).cleanable(true));
-        let selected = manager.selected.is_some();
-        let assigned = manager
-            .selected
-            .as_ref()
-            .is_some_and(|id| manager.snapshot.assigned_ids.contains(id));
-        let owner = cx.weak_entity();
-        let merge_tags = manager.snapshot.tags.clone();
-        let selected_id = manager.selected.clone();
-        panel = panel.child(
-            div()
-                .flex()
-                .flex_wrap()
-                .gap_1()
-                .child(
-                    Button::new("tag-create")
-                        .small()
-                        .label(self.localized("新建", "Create", cx))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.change_tag(TagAction::Create, String::new(), false, cx)
-                        })),
-                )
-                .child(
-                    Button::new("tag-rename")
-                        .small()
-                        .disabled(!selected)
-                        .label(self.localized("重命名", "Rename", cx))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.change_tag(TagAction::Rename, String::new(), false, cx)
-                        })),
-                )
-                .child(
-                    Button::new("tag-delete")
-                        .ghost()
-                        .small()
-                        .disabled(!selected)
-                        .label(self.localized("删除", "Delete", cx))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.change_tag(TagAction::Delete, String::new(), true, cx)
-                        })),
-                )
-                .child(
-                    Button::new("tag-merge")
-                        .ghost()
-                        .small()
-                        .disabled(!selected)
-                        .label(self.localized("合并到", "Merge into", cx))
-                        .dropdown_menu(move |mut menu, _, _| {
-                            for tag in merge_tags
-                                .iter()
-                                .filter(|tag| Some(&tag.id) != selected_id.as_ref())
-                            {
-                                let owner = owner.clone();
-                                let id = tag.id.clone();
-                                menu = menu.item(PopupMenuItem::new(tag.name.clone()).on_click(
-                                    move |_, _, cx| {
-                                        let _ = owner.update(cx, |this, cx| {
-                                            this.change_tag(TagAction::Merge, id.clone(), true, cx)
-                                        });
-                                    },
-                                ));
+        if !assignment && manager.maintenance && !manager.snapshot.pending.is_empty() {
+            panel = panel.child(div().child(self.text("失效标签关联", cx)));
+            let libraries = self.libraries.clone();
+            let owner = cx.weak_entity();
+            panel = panel.child(
+                Button::new("recovery-library")
+                    .small()
+                    .label(if manager.recovery_library.is_empty() {
+                        self.text("目标文献库", cx)
+                    } else {
+                        manager.recovery_library.clone().into()
+                    })
+                    .dropdown_menu(move |mut menu, _, _| {
+                        let mut seen = std::collections::BTreeSet::new();
+                        for library in libraries.iter().filter(|l| l.available) {
+                            if !seen.insert(library.uid.clone()) {
+                                continue;
                             }
-                            menu
-                        }),
-                )
-                .when(!manager.cite_key.is_empty(), |v| {
-                    v.child(
-                        Button::new("tag-assignment")
-                            .small()
-                            .disabled(!selected)
-                            .label(if assigned {
-                                self.localized("移除关联", "Unassign", cx)
-                            } else {
-                                self.localized("关联文献", "Assign", cx)
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.change_tag(
-                                    if assigned {
-                                        TagAction::Unassign
-                                    } else {
-                                        TagAction::Assign
-                                    },
-                                    String::new(),
-                                    false,
-                                    cx,
-                                )
-                            })),
+                            let owner = owner.clone();
+                            let library = library.clone();
+                            menu = menu.item(PopupMenuItem::new(library.name.clone()).on_click(
+                                move |_, _, cx| {
+                                    let _ = owner.update(cx, |this, cx| {
+                                        if let Some(manager) = this.tag_manager.as_mut() {
+                                            manager.recovery_library = library.name.clone();
+                                            manager.recovery_target = None;
+                                            manager.recovery_records.clear();
+                                            let result = service::search(
+                                                library.path.clone(),
+                                                String::new(),
+                                                "all".into(),
+                                                "all".into(),
+                                            )
+                                            .and_then(|rows| {
+                                                service::tag_snapshot(String::new(), String::new())
+                                                    .map(|snapshot| (rows, snapshot))
+                                            });
+                                            match result {
+                                                Ok((rows, snapshot)) => {
+                                                    manager.recovery_records = rows;
+                                                    manager.snapshot = snapshot;
+                                                    manager.error = None;
+                                                }
+                                                Err(error) => {
+                                                    manager.error = Some(error.to_string())
+                                                }
+                                            }
+                                        }
+                                        cx.notify();
+                                    });
+                                },
+                            ));
+                        }
+                        menu
+                    }),
+            );
+            let targets = manager.recovery_records.clone();
+            let owner = cx.weak_entity();
+            panel = panel.child(
+                Button::new("recovery-record")
+                    .small()
+                    .disabled(targets.is_empty())
+                    .label(
+                        manager
+                            .recovery_target
+                            .as_ref()
+                            .map(|r| r.cite_key.clone().into())
+                            .unwrap_or_else(|| self.text("目标记录", cx)),
                     )
-                }),
-        );
-        if !manager.snapshot.pending.is_empty() {
-            panel = panel.child(div().child(self.localized("待关联", "Pending associations", cx)));
+                    .dropdown_menu(move |mut menu, _, _| {
+                        for target in &targets {
+                            let owner = owner.clone();
+                            let target = target.clone();
+                            menu = menu.item(PopupMenuItem::new(target.cite_key.clone()).on_click(
+                                move |_, _, cx| {
+                                    let _ = owner.update(cx, |this, cx| {
+                                        if let Some(manager) = this.tag_manager.as_mut() {
+                                            manager.recovery_target = Some(target.clone());
+                                        }
+                                        cx.notify();
+                                    });
+                                },
+                            ));
+                        }
+                        menu
+                    }),
+            );
             for (index, pending) in manager.snapshot.pending.iter().enumerate() {
                 let pending_id = pending.record_id.clone();
                 panel = panel.child(
@@ -1096,17 +1398,23 @@ impl Workbench {
                         .child(
                             Button::new(("relink", index))
                                 .small()
-                                .disabled(manager.cite_key.is_empty())
-                                .label(self.localized("关联到当前文献", "Link to selected", cx))
+                                .disabled(manager.recovery_target.is_none())
+                                .label(self.text("重新关联", cx))
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     if let Some(manager) = this.tag_manager.as_mut() {
+                                        let Some(target) = manager.recovery_target.as_ref() else {
+                                            return;
+                                        };
                                         manager.confirmation = Some(TagMutation {
+                                            library_uid: target.library_uid.clone(),
+                                            record_uid: target.id.clone(),
+                                            color: None,
                                             action: TagAction::Relink,
                                             id: pending_id.clone(),
                                             name: String::new(),
                                             target_id: String::new(),
-                                            path: manager.path.clone(),
-                                            cite_key: manager.cite_key.clone(),
+                                            path: String::new(),
+                                            cite_key: target.cite_key.clone(),
                                             expected_revision: manager.snapshot.revision,
                                         });
                                     }
@@ -1116,53 +1424,8 @@ impl Workbench {
                 );
             }
         }
-        if !manager.snapshot.sources.is_empty() {
-            panel =
-                panel.child(div().child(self.localized("文献来源", "Bibliography sources", cx)));
-            for (index, source) in manager.snapshot.sources.iter().enumerate() {
-                let source_id = source.id.clone();
-                panel = panel.child(
-                    div()
-                        .flex()
-                        .gap_2()
-                        .child(div().flex_1().truncate().child(format!(
-                            "{}{}",
-                            source.path,
-                            if source.available {
-                                ""
-                            } else {
-                                " · unavailable"
-                            }
-                        )))
-                        .child(
-                            Button::new(("relocate-source", index))
-                                .ghost()
-                                .small()
-                                .label(self.localized(
-                                    "重新定位并保留标签",
-                                    "Relocate, keep tags",
-                                    cx,
-                                ))
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.relocate_source(source_id.clone(), window, cx)
-                                })),
-                        ),
-                );
-            }
-        }
         if let Some(mutation) = &manager.confirmation {
             let confirmation = match mutation.action {
-                TagAction::Relocate => format!(
-                    "{} → {}",
-                    manager
-                        .snapshot
-                        .sources
-                        .iter()
-                        .find(|source| source.id == mutation.id)
-                        .map(|source| source.path.as_str())
-                        .unwrap_or(""),
-                    mutation.path
-                ),
                 TagAction::Merge => format!(
                     "{} → {}",
                     manager
@@ -1213,8 +1476,8 @@ impl Workbench {
                         Button::new("tag-confirm")
                             .small()
                             .label(self.localized("确认", "Confirm", cx))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.apply_tag_mutation(mutation.clone(), cx)
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.apply_tag_mutation(mutation.clone(), window, cx)
                             })),
                     )
                     .child(
@@ -1239,10 +1502,14 @@ impl Workbench {
                     .label(self.text("刷新", cx))
                     .on_click(cx.listener(|this, _, _, cx| {
                         if let Some(manager) = this.tag_manager.as_mut() {
-                            match service::tag_snapshot(
-                                manager.path.clone(),
-                                manager.cite_key.clone(),
-                            ) {
+                            match if manager.snapshot.library_uid.is_empty() {
+                                service::tag_snapshot(String::new(), String::new())
+                            } else {
+                                service::tag_snapshot_uid(
+                                    manager.snapshot.library_uid.clone(),
+                                    manager.snapshot.record_uid.clone(),
+                                )
+                            } {
                                 Ok(snapshot) => {
                                     manager.snapshot = snapshot;
                                     manager.error = None;

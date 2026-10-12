@@ -299,7 +299,12 @@ pub fn search(
     };
     let type_filter = search_type(&type_filter)?;
     let source = references(&path)?;
-    source
+    let canonical = fs::canonicalize(&path)
+        .map_err(|e| CoreError::from(e.to_string()))?
+        .to_string_lossy()
+        .into_owned();
+    let metadata = crate::tags::load_snapshot(&canonical, &source.version, &source.references)?;
+    let mut rows = source
         .search
         .search_filtered(&query, field, |i| {
             let kind = &source.references[i].type_;
@@ -313,7 +318,9 @@ pub fn search(
         .map(|i| {
             ReferenceRecord::from_reference(&source.references[i], &path).map_err(CoreError::from)
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()?;
+    crate::tags::decorate(&metadata, &canonical, &mut rows)?;
+    Ok(rows)
 }
 pub fn helper_current() -> Result<Option<LibraryRecord>, CoreError> {
     serde_json::from_value(registry::current()?).map_err(|e| CoreError::from(e.to_string()))
@@ -415,7 +422,8 @@ mod tests {
                 .collect::<Vec<_>>(),
             ["paper"]
         );
-        assert_eq!(found[0].id, format!("{path}\u{1f}paper"));
+        assert!(uuid::Uuid::parse_str(&found[0].id).is_ok());
+        assert!(uuid::Uuid::parse_str(&found[0].library_uid).is_ok());
         assert!(found[0].source.contains("Neural methods"));
         assert!(
             search(

@@ -166,7 +166,7 @@ internal static class AdvancedSearchEditor
             bool tag = descriptor?.name == "tag";
             tags.Visibility = tag ? Visibility.Visible : Visibility.Collapsed; value.Visibility = tag ? Visibility.Collapsed : Visibility.Visible;
             tags.SelectedItem = null;
-            if (tag) try { snapshot = await RustCore.TagSnapshot(new() { path = "", cite_key = "" }); tags.Items.Clear(); foreach (var candidate in snapshot.tags) tags.Items.Add(new ComboBoxItem { Content = candidate.name, Tag = candidate }); } catch (Exception ex) { diagnostics.Text = L10n.ErrorMessage(ex); }
+            if (tag) try { snapshot = await RustCore.TagSnapshot(new() { library_uid = "", record_uid = "", path = "", cite_key = "" }); tags.Items.Clear(); foreach (var candidate in snapshot.tags) tags.Items.Add(new ComboBoxItem { Content = candidate.name, Tag = candidate }); } catch (Exception ex) { diagnostics.Text = L10n.ErrorMessage(ex); }
         };
         preview.TextChanged += (_, _) =>
         {

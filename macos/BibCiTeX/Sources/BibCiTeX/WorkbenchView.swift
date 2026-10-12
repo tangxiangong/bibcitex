@@ -48,7 +48,7 @@ struct WorkbenchView: View {
             }
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.searchDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
-        .sheet(item: $taggingReference) { reference in TagManagerView(path: reference.path, citeKey: reference.citeKey) }
+        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
         .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
@@ -145,7 +145,7 @@ struct WorkbenchView: View {
                 Text(L10n.text("暂无文献库")).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(selection: Binding(get: { model.selectedLibrary }, set: model.selectLibrary)) {
-                    ForEach(model.libraries) { library in
+                    ForEach(model.libraries, id: \.name) { library in
                         LibrarySidebarRow(model: model, library: library) {
                             editingLibrary = library
                         }.tag(library.name)
@@ -159,7 +159,6 @@ struct WorkbenchView: View {
     }
     private var references: some View {
         let selectionContext = model.referenceSelectionContext
-        let libraryPath = model.library?.path ?? ""
         return VStack(spacing: 0) {
             if !model.libraries.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
@@ -220,13 +219,16 @@ struct WorkbenchView: View {
                                     }.font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 8)
-                                ListCiteKey(reference: reference, model: model)
-                            }.padding(.vertical, 8).tag(reference.citeKey).id(reference.citeKey)
+                                VStack(alignment: .trailing, spacing: 6) {
+                                    ListCiteKey(reference: reference, model: model)
+                                    TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
+                                }
+                            }.padding(.vertical, 8).tag(reference.id).id(reference.id)
                             .foregroundStyle(Color(nsColor: .labelColor))
-                            .listRowBackground(RowSelectionBackground(selected: model.selectedReference == reference.citeKey,
+                            .listRowBackground(RowSelectionBackground(selected: model.selectedReference == reference.id,
                                 fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor)))
                             .contextMenu {
-                                Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey) }
+                                Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) }
                                 Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
                                 Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
                             }
@@ -254,8 +256,8 @@ struct WorkbenchView: View {
                 let selectionContext = model.referenceSelectionContext
                 ReferenceInspector(reference: reference, context: selectionContext, model: model) {
                     guard !libraryPath.isEmpty, selectionContext == model.referenceSelectionContext,
-                          model.selectedReference == reference.citeKey else { return }
-                    taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey)
+                          model.selectedReference == reference.id else { return }
+                    taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
                 }
             } else {
                 Text(L10n.text("选择一条文献查看字段和操作")).foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -591,7 +593,7 @@ struct AddLibrarySheet: View {
                                 .font(.callout).foregroundStyle(path.isEmpty ? .secondary : .primary)
                                 .lineLimit(2).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .leading)
                                 .help(path)
-                            Button(L10n.text("选择文件"), action: selectFile).controlSize(.large)
+                            Button(L10n.text(library == nil ? "选择文件" : "重新定位来源"), action: selectFile).controlSize(.large)
                         }
                         .padding(16).frame(maxWidth: .infinity)
                         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 10))

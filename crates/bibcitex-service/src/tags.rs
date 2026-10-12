@@ -27,11 +27,14 @@ pub(crate) struct Metadata {
 pub(crate) struct StoredTag {
     pub id: String,
     pub name: String,
+    #[serde(default = "default_color")]
+    pub color: String,
     #[serde(flatten)]
     extra: BTreeMap<String, Value>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Source {
+    #[serde(skip)]
     pub path: String,
     pub version: String,
     pub records: BTreeMap<String, Record>,
@@ -58,6 +61,18 @@ pub(crate) fn digest(bytes: &[u8]) -> String {
 }
 pub(crate) fn comparison(name: &str) -> String {
     crate::core::search::advanced::normalize_tag_name(name)
+}
+pub(crate) fn default_color() -> String {
+    "#64748B".into()
+}
+fn color(value: &str) -> Result<String> {
+    if value.len() != 7
+        || !value.starts_with('#')
+        || !value.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)
+    {
+        return Err("InvalidTagColor".into());
+    }
+    Ok(value.to_ascii_uppercase())
 }
 fn display(name: &str) -> Result<String> {
     let name: String = name
@@ -86,34 +101,47 @@ pub(crate) fn lock() -> Result<fs::File> {
     Ok(file)
 }
 pub(crate) fn read() -> Result<Metadata> {
-    let data = match fs::read(path()) {
+    let mut data = match fs::read(path()) {
         Ok(bytes) => serde_json::from_slice::<Metadata>(&bytes)
             .map_err(|e| format!("InvalidSearchMetadata: {e}"))?,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Metadata {
-            schema: 1,
+            schema: 2,
             ..Metadata::default()
         },
         Err(e) => return Err(e.to_string()),
     };
-    if data.schema != 1 {
+    if data.schema != 2 {
         return Err("UnsupportedSearchMetadataSchema".into());
     }
     let mut names = BTreeSet::new();
     for (id, tag) in &data.tags {
-        if id != &tag.id || display(&tag.name)? != tag.name || !names.insert(comparison(&tag.name))
+        if color(&tag.color)? != tag.color {
+            return Err("InvalidTagColor".into());
+        }
+        if Uuid::parse_str(id).is_err()
+            || id != &tag.id
+            || display(&tag.name)? != tag.name
+            || !names.insert(comparison(&tag.name))
         {
             return Err("InvalidSearchMetadata".into());
         }
     }
+    let locations = crate::registry::source_paths()?;
+    for (id, source) in &mut data.sources {
+        source.path = locations.get(id).cloned().ok_or("SourceLocationMissing")?;
+    }
     let mut paths = BTreeSet::new();
     let mut records = BTreeSet::new();
     for (id, source) in &data.sources {
-        if id.is_empty() || !Path::new(&source.path).is_absolute() || !paths.insert(&source.path) {
+        if Uuid::parse_str(id).is_err()
+            || !Path::new(&source.path).is_absolute()
+            || !paths.insert(&source.path)
+        {
             return Err("InvalidSearchMetadata".into());
         }
         let mut keys = BTreeSet::new();
         for (id, record) in &source.records {
-            if id.is_empty()
+            if Uuid::parse_str(id).is_err()
                 || !records.insert(id)
                 || (record.present && !keys.insert(&record.key))
                 || record.tags.iter().any(|id| !data.tags.contains_key(id))
@@ -147,8 +175,12 @@ pub(crate) fn atomic_write<T: Serialize>(path: &Path, value: &T) -> Result<()> {
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+pub(crate) fn storage_document(data: &Metadata) -> Result<Value> {
+    serde_json::to_value(data).map_err(|e| e.to_string())
+}
+
 pub(crate) fn write(data: &Metadata) -> Result<()> {
-    atomic_write(&path(), data)
+    atomic_write(&path(), &storage_document(data)?)
 }
 fn fingerprint(reference: &Reference) -> Result<String> {
     let bibliography =
@@ -214,10 +246,17 @@ impl Metadata {
             .map(|t| TagRecord {
                 id: t.id.clone(),
                 name: t.name.clone(),
+                color: t.color.clone(),
             })
             .collect();
         tags.sort_by_key(|t| comparison(&t.name));
+        let selected = self.sources.iter().find(|(_, s)| s.path == path);
         TagSnapshot {
+            library_uid: selected.map(|(id, _)| id.clone()).unwrap_or_default(),
+            record_uid: selected
+                .and_then(|(_, s)| s.records.iter().find(|(_, r)| r.present && r.key == key))
+                .map(|(id, _)| id.clone())
+                .unwrap_or_default(),
             revision: self.revision,
             tags,
             assigned_ids,
@@ -235,11 +274,12 @@ impl Metadata {
     }
     pub fn reconcile(
         &mut self,
+        uid: &str,
         path: &str,
         version: &str,
         references: &[Reference],
     ) -> Result<bool> {
-        if self.source(path).is_some_and(|s| s.version == version) {
+        if self.sources.get(uid).is_some_and(|s| s.version == version) {
             return Ok(false);
         }
         let mut incoming = BTreeMap::new();
@@ -251,12 +291,7 @@ impl Metadata {
                 return Err("DuplicateCiteKey".into());
             }
         }
-        let sid = self
-            .sources
-            .iter()
-            .find(|(_, s)| s.path == path)
-            .map(|(id, _)| id.clone())
-            .unwrap_or_else(|| Uuid::new_v4().to_string());
+        let sid = uid.to_owned();
         let source = self.sources.entry(sid).or_insert_with(|| Source {
             path: path.into(),
             version: String::new(),
@@ -331,6 +366,7 @@ impl Metadata {
             r.key = key.clone();
             r.present = true;
         }
+        source.path = path.into();
         source.version = version.into();
         self.revision = self.revision.checked_add(1).ok_or("RevisionOverflow")?;
         Ok(true)
@@ -341,16 +377,79 @@ pub(crate) fn load_snapshot(
     version: &str,
     references: &[Reference],
 ) -> Result<Metadata> {
-    crate::registry::recover_search_transaction()?;
-    let _lock = lock()?;
+    let uid = crate::registry::uid_for_path(path)?;
+    load_snapshot_uid(&uid, path, version, references)
+}
+
+pub(crate) fn load_snapshot_uid(
+    uid: &str,
+    path: &str,
+    version: &str,
+    references: &[Reference],
+) -> Result<Metadata> {
+    let _lock = crate::registry::search_lock()?;
     let mut metadata = read()?;
-    if metadata.reconcile(path, version, references)? {
+    if crate::registry::path_for_uid(uid)? != path {
+        return Err("SourceLocationChanged".into());
+    }
+    if metadata.reconcile(uid, path, version, references)? {
         write(&metadata)?;
     }
     Ok(metadata)
 }
+pub(crate) fn decorate(
+    metadata: &Metadata,
+    path: &str,
+    rows: &mut [crate::ReferenceRecord],
+) -> Result<()> {
+    let (uid, source) = metadata
+        .sources
+        .iter()
+        .find(|(_, s)| s.path == path)
+        .ok_or("SourceNotFound")?;
+    let records: BTreeMap<_, _> = source
+        .records
+        .iter()
+        .filter(|(_, r)| r.present)
+        .map(|(id, r)| (r.key.as_str(), (id, r)))
+        .collect();
+    for row in rows {
+        let (id, record) = records
+            .get(row.cite_key.as_str())
+            .ok_or("ReferenceNotFound")?;
+        row.id = (*id).clone();
+        row.library_uid = uid.clone();
+        row.tags = record
+            .tags
+            .iter()
+            .filter_map(|id| metadata.tags.get(id))
+            .map(|t| TagRecord {
+                id: t.id.clone(),
+                name: t.name.clone(),
+                color: t.color.clone(),
+            })
+            .collect();
+        row.tags.sort_by_key(|t| comparison(&t.name));
+    }
+    Ok(())
+}
+pub(crate) fn snapshot_uid(library_uid: &str, record_uid: &str) -> Result<TagSnapshot> {
+    let _lock = crate::registry::search_lock()?;
+    let data = read()?;
+    let source = data.sources.get(library_uid).ok_or("SourceNotFound")?;
+    let key = if record_uid.is_empty() {
+        ""
+    } else {
+        &source
+            .records
+            .get(record_uid)
+            .filter(|r| r.present)
+            .ok_or("ReferenceNotFound")?
+            .key
+    };
+    Ok(data.snapshot(&source.path, key))
+}
 pub fn snapshot(path: String, key: String) -> Result<TagSnapshot> {
-    crate::registry::recover_search_transaction()?;
     let canonical = if path.is_empty() {
         path
     } else {
@@ -359,11 +458,10 @@ pub fn snapshot(path: String, key: String) -> Result<TagSnapshot> {
             .to_string_lossy()
             .into_owned()
     };
-    let _lock = lock()?;
+    let _lock = crate::registry::search_lock()?;
     Ok(read()?.snapshot(&canonical, &key))
 }
 pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
-    crate::registry::recover_search_transaction()?;
     if mutation.action == TagAction::Relocate {
         crate::registry::relocate_search_source(
             &mutation.id,
@@ -372,15 +470,8 @@ pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
         )?;
         return snapshot(mutation.path, mutation.cite_key);
     }
-    let canonical = if mutation.path.is_empty() {
-        String::new()
-    } else {
-        fs::canonicalize(&mutation.path)
-            .map_err(|e| e.to_string())?
-            .to_string_lossy()
-            .into_owned()
-    };
-    let _lock = lock()?;
+    let canonical = String::new();
+    let _lock = crate::registry::search_lock()?;
     let mut data = read()?;
     if data.revision != mutation.expected_revision {
         return Err("StaleTagRevision".into());
@@ -398,11 +489,40 @@ pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
                     id.clone(),
                     StoredTag {
                         id,
-                        name,
+                        name: name.clone(),
+                        color: mutation
+                            .color
+                            .as_deref()
+                            .map(color)
+                            .transpose()?
+                            .unwrap_or_else(default_color),
                         extra: BTreeMap::new(),
                     },
                 );
             }
+            if !mutation.record_uid.is_empty() {
+                let id = data
+                    .tags
+                    .values()
+                    .find(|t| comparison(&t.name) == comparison(&name))
+                    .ok_or("MissingTagBinding")?
+                    .id
+                    .clone();
+                data.sources
+                    .get_mut(&mutation.library_uid)
+                    .and_then(|s| s.records.get_mut(&mutation.record_uid))
+                    .filter(|r| r.present)
+                    .ok_or("ReferenceNotFound")?
+                    .tags
+                    .insert(id);
+            }
+        }
+        TagAction::Recolor => {
+            let value = color(mutation.color.as_deref().ok_or("InvalidTagColor")?)?;
+            data.tags
+                .get_mut(&mutation.id)
+                .ok_or("MissingTagBinding")?
+                .color = value;
         }
         TagAction::Rename => {
             let name = display(&mutation.name)?;
@@ -444,13 +564,9 @@ pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
             }
             let r = data
                 .sources
-                .values_mut()
-                .find(|s| s.path == canonical)
-                .and_then(|s| {
-                    s.records
-                        .values_mut()
-                        .find(|r| r.present && r.key == mutation.cite_key)
-                })
+                .get_mut(&mutation.library_uid)
+                .and_then(|s| s.records.get_mut(&mutation.record_uid))
+                .filter(|r| r.present)
                 .ok_or("ReferenceNotFound")?;
             if mutation.action == TagAction::Assign {
                 r.tags.insert(mutation.id);
@@ -468,31 +584,26 @@ pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
                 .ok_or("PendingReferenceNotFound")?;
             let target = data
                 .sources
-                .values_mut()
-                .find(|s| s.path == canonical)
-                .and_then(|s| {
-                    s.records
-                        .values_mut()
-                        .find(|r| r.present && r.key == mutation.cite_key)
-                })
+                .get_mut(&mutation.library_uid)
+                .and_then(|s| s.records.get_mut(&mutation.record_uid))
+                .filter(|r| r.present)
                 .ok_or("ReferenceNotFound")?;
             target.tags.extend(old.tags);
             for s in data.sources.values_mut() {
                 s.records.remove(&mutation.id);
             }
         }
-        TagAction::Relocate => {
-            if data.source(&canonical).is_some() {
-                return Err("SourceAlreadyExists".into());
-            }
-            let s = data.sources.get_mut(&mutation.id).ok_or("SourceNotFound")?;
-            s.path = canonical.clone();
-            s.version = String::new();
-        }
+        TagAction::Relocate => return Err("InvalidTagAction".into()),
     }
     data.revision = data.revision.checked_add(1).ok_or("RevisionOverflow")?;
     write(&data)?;
-    Ok(data.snapshot(&canonical, &mutation.cite_key))
+    let selected = data.sources.get(&mutation.library_uid).and_then(|s| {
+        s.records
+            .get(&mutation.record_uid)
+            .map(|r| (s.path.clone(), r.key.clone()))
+    });
+    let (path, key) = selected.unwrap_or((canonical, mutation.cite_key));
+    Ok(data.snapshot(&path, &key))
 }
 
 #[cfg(test)]

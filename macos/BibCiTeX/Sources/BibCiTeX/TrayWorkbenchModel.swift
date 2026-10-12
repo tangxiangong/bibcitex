@@ -46,7 +46,7 @@ final class TrayWorkbenchModel: ObservableObject {
     }
     var reference: Reference? {
         guard loadedVersion == searchVersion else { return nil }
-        return references.first { $0.citeKey == selection }
+        return references.first { $0.id == selection }
     }
     func reload() async {
         reloadVersion += 1
@@ -132,7 +132,7 @@ final class TrayWorkbenchModel: ObservableObject {
                 queryAnalysis = response.analysis; searchContext = response.context
                 references = rows
                 loadedVersion = version
-                if !rows.contains(where: { $0.citeKey == self.selection }) { selection = rows.first?.citeKey }
+                if !rows.contains(where: { $0.id == self.selection }) { selection = rows.first?.id }
                 loading = false
             } catch {
                 guard !Task.isCancelled, version == searchVersion else { return }
@@ -143,10 +143,10 @@ final class TrayWorkbenchModel: ObservableObject {
     }
     func move(_ delta: Int) {
         guard !loading, loadedVersion == searchVersion, !references.isEmpty else { return }
-        let index = references.firstIndex { $0.citeKey == selection }
+        let index = references.firstIndex { $0.id == selection }
         let next = index.map { min(max($0 + delta, 0), references.count - 1) }
             ?? (delta > 0 ? 0 : references.count - 1)
-        selection = references[next].citeKey
+        selection = references[next].id
     }
     func openURL(_ string: String) {
         guard let url = URL(string: string), ["https", "http"].contains(url.scheme?.lowercased() ?? "") else { return }

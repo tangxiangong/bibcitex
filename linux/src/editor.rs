@@ -267,7 +267,11 @@ impl Render for LibraryEditor {
                                 )
                                 .child(
                                     Button::new("choose")
-                                        .label(p.text("选择文件"))
+                                        .label(p.text(if self.library.is_some() {
+                                            "重新定位来源"
+                                        } else {
+                                            "选择文件"
+                                        }))
                                         .disabled(self.saving)
                                         .on_click(cx.listener(|this, _, window, cx| {
                                             this.choose_file(window, cx)

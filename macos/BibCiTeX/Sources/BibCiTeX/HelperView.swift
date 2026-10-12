@@ -9,6 +9,7 @@ struct HelperView: View {
     var onHidePanel: () -> Void = {}
     @FocusState private var searchFocused: Bool
 
+    @State private var taggingReference: TagAssignmentTarget?
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -31,8 +32,9 @@ struct HelperView: View {
         .sheet(isPresented: $model.showConditionEditor) {
             AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyEditorQuery($0, draft: $1) }
         }
+        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .sheet(isPresented: $model.showTagManager) { TagManagerView(path: "", citeKey: "") }
-        .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in model.refreshSearch() }
+        .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in model.tagsChanged() }
         .onChange(of: model.showConditionEditor) { visible in if !visible { model.refreshSearch(); searchFocused = true } }
         .onAppear { searchFocused = true }
         .onChange(of: model.focusRequest) { _ in searchFocused = true }
@@ -198,7 +200,7 @@ struct HelperView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 2) {
-                            ForEach(Array(model.filteredBibliographies.enumerated()), id: \.element.id) { index, bib in
+                            ForEach(Array(model.filteredBibliographies.enumerated()), id: \.element.name) { index, bib in
                                 Button {
                                     model.selectBibliography(bib, at: index)
                                     searchFocused = true
@@ -322,12 +324,18 @@ struct HelperView: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 6)
-            citeKeyLabel(reference)
+            VStack(alignment: .trailing, spacing: 6) {
+                citeKeyLabel(reference)
+                TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
+            }
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: HelperMetrics.referenceRow, alignment: .top)
         .background(selection(selected))
+        .contextMenu {
+            Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) }
+        }
     }
 
     /// The same key in the same place, shown but not clickable: on the paste

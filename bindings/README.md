@@ -84,11 +84,12 @@ with one-edit spelling matches for Latin words of 5–64 letters in titles, auth
 and journals; all AND terms still apply. Query text has no advanced-search syntax.
 Parsed records and preprocessed search texts share one file-version snapshot;
 the cache keeps up to eight libraries and 64 MiB of estimated search allocations,
-evicting the least recently used snapshots. Returned record IDs and metadata are
-unchanged.
+evicting the least recently used snapshots. Returned record UUIDs remain stable when their library location changes.
 
-Records preserve every original metadata field. `ReferenceRecord.id` is path +
-U+001F + cite key. `entryType` contains enum names such as Article/InBook, not
+Records preserve every original metadata field. `ReferenceRecord.id` is the persistent record UUID (UID), and `libraryUid` is
+the persistent library UUID. `tags` contains the global tag UUID, name and sRGB
+`#RRGGBB` color from one metadata snapshot. Association mutations use library and
+record UUIDs; paths are used only for file IO and explicit library relocation. `entryType` contains enum names such as Article/InBook, not
 BibTeX's lowercase Display representation. `abstractText` replaces the Rust core's
 `abstract_` name. Author/publisher/organization/editor/chunk collections are empty
 when absent; other optional fields remain optional. Chunks preserve Normal,

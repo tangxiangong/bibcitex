@@ -17,6 +17,9 @@ thread_local! {
     static TEST_DIRECTORY: tempfile::TempDir = tempfile::tempdir().expect("temporary settings directory");
 }
 pub(crate) fn settings_path() -> PathBuf {
+    if let Some(directory) = std::env::var_os("BIBCITEX_CONFIG_DIRECTORY") {
+        return PathBuf::from(directory).join("setting.json");
+    }
     #[cfg(test)]
     {
         if let Some(directory) = std::env::var_os("BIBCITEX_TEST_REGISTRY_DIRECTORY") {
@@ -80,15 +83,14 @@ fn info(name: &str, value: &Value) -> Result<Value> {
         serde_json::from_value(value.clone()).map_err(|e| e.to_string())?;
     let available = parsed.path.is_file();
     Ok(
-        json!({"name": name, "path": parsed.path, "created_at": parsed.created_at,
+        json!({"uid": value["uid"], "name": name, "path": parsed.path, "created_at": parsed.created_at,
         "updated_at": parsed.updated_at, "description": parsed.description,
         "pinned": value["pinned"].as_bool().unwrap_or(false),
         "available": available}),
     )
 }
 pub fn libraries() -> Result<Value> {
-    recover_search_transaction()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
+    let _guard = search_lock()?;
     let document = read()?;
     let mut rows = document["bibliographies"]
         .as_object()
@@ -100,7 +102,6 @@ pub fn libraries() -> Result<Value> {
     Ok(Value::Array(rows))
 }
 pub fn add(name: &str, path: &str, description: Option<String>) -> Result<Value> {
-    recover_search_transaction()?;
     if name.trim().is_empty() {
         return Err("文献库名称不能为空".into());
     }
@@ -108,14 +109,24 @@ pub fn add(name: &str, path: &str, description: Option<String>) -> Result<Value>
     if !canonical.is_file() {
         return Err("Bibliography path is not a file".into());
     }
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _file_guard = mutation_lock()?;
+    let _guard = search_lock()?;
     let mut document = read()?;
     if document["bibliographies"].get(name).is_some() {
         return Err("该名称已存在，请换一个".into());
     }
     let now = Local::now();
-    document["bibliographies"][name] = json!({"path": canonical, "created_at": now,
+    let path_text = canonical.to_string_lossy().into_owned();
+    let uid = document["library_locations"]
+        .as_object()
+        .and_then(|locations| {
+            locations
+                .iter()
+                .find(|(_, p)| p.as_str() == Some(&path_text))
+                .map(|(uid, _)| uid.clone())
+        })
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    document["library_locations"][&uid] = json!(canonical);
+    document["bibliographies"][name] = json!({"uid": uid, "path": canonical, "created_at": now,
         "updated_at": now, "description": description});
     write(&document)?;
     info(name, &document["bibliographies"][name])
@@ -126,7 +137,6 @@ pub fn update(
     path: Option<&str>,
     description: Option<String>,
 ) -> Result<Value> {
-    recover_search_transaction()?;
     let new_name = new_name.trim();
     if new_name.is_empty() {
         return Err("文献库名称不能为空".into());
@@ -140,8 +150,7 @@ pub fn update(
             Ok(canonical)
         })
         .transpose()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _file_guard = mutation_lock()?;
+    let _guard = search_lock()?;
     let mut document = read()?;
     let before_registry = document.clone();
     let entries = document["bibliographies"]
@@ -163,61 +172,59 @@ pub fn update(
     let library = info(new_name, &value)?;
     entries.insert(new_name.to_string(), value);
     if document["helper_current"]["name"].as_str() == Some(name) {
-        document["helper_current"] = json!({"name": new_name, "path": library["path"]});
+        document["helper_current"] =
+            json!({"uid": library["uid"], "name": new_name, "path": library["path"]});
     }
     if let Some(target) = target_path.filter(|target| target != &old_path) {
-        let _metadata = crate::tags::lock()?;
-        let before_metadata = crate::tags::read()?;
-        let version = crate::tags::digest(&fs::read(&target).map_err(|e| e.to_string())?);
-        let origin = before_metadata.sources.iter().find(|(_, source)| {
-            source.path == old_path && source.version.split(':').next() == Some(version.as_str())
-        });
-        if !Path::new(&old_path).exists()
-            && before_metadata.source(&target).is_none()
-            && before_metadata
-                .sources
-                .values()
-                .filter(|source| source.version.split(':').next() == Some(version.as_str()))
-                .count()
-                == 1
-            && let Some((id, _)) = origin
+        let uid = library["uid"].as_str().ok_or("MissingLibraryUid")?;
+        if document["library_locations"]
+            .as_object()
+            .is_some_and(|locations| {
+                locations
+                    .iter()
+                    .any(|(id, path)| id != uid && path.as_str() == Some(&target))
+            })
         {
-            let mut after_metadata = before_metadata.clone();
-            if let Some(source) = after_metadata.sources.get_mut(id) {
-                source.path = target.clone();
-            }
-            after_metadata.revision = after_metadata
-                .revision
-                .checked_add(1)
-                .ok_or("RevisionOverflow")?;
-            for entry in document["bibliographies"]
-                .as_object_mut()
-                .ok_or("Invalid settings")?
-                .values_mut()
-            {
-                if entry["path"].as_str() == Some(&old_path) {
-                    entry["path"] = json!(target);
-                }
-            }
-            if document["helper_current"]["path"].as_str() == Some(&old_path) {
-                document["helper_current"]["path"] = json!(target);
-            }
-            commit_search_transaction(
-                &before_registry,
-                &document,
-                &before_metadata,
-                &after_metadata,
-            )?;
-            return Ok(library);
+            return Err("SourceAlreadyExists".into());
         }
+        document["library_locations"][uid] = json!(target);
+        for entry in document["bibliographies"]
+            .as_object_mut()
+            .ok_or("Invalid settings")?
+            .values_mut()
+        {
+            if entry["uid"].as_str() == Some(uid) {
+                entry["path"] = json!(target);
+            }
+        }
+        if document["helper_current"]["name"].as_str() == Some(new_name)
+            || document["helper_current"]["path"].as_str() == Some(&old_path)
+        {
+            document["helper_current"]["uid"] = json!(uid);
+            document["helper_current"]["path"] = json!(target);
+        }
+        let before_metadata = crate::tags::read()?;
+        let mut after_metadata = before_metadata.clone();
+        if let Some(source) = after_metadata.sources.get_mut(uid) {
+            source.version.clear();
+        }
+        after_metadata.revision = after_metadata
+            .revision
+            .checked_add(1)
+            .ok_or("RevisionOverflow")?;
+        commit_search_transaction(
+            &before_registry,
+            &document,
+            &before_metadata,
+            &after_metadata,
+        )?;
+        return Ok(library);
     }
     write(&document)?;
     Ok(library)
 }
 pub fn set_pinned(name: &str, pinned: bool) -> Result<()> {
-    recover_search_transaction()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _file_guard = mutation_lock()?;
+    let _guard = search_lock()?;
     let mut document = read()?;
     let value = document["bibliographies"]
         .get_mut(name)
@@ -226,9 +233,7 @@ pub fn set_pinned(name: &str, pinned: bool) -> Result<()> {
     write(&document)
 }
 pub fn remove(name: &str) -> Result<Value> {
-    recover_search_transaction()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _file_guard = mutation_lock()?;
+    let _guard = search_lock()?;
     let mut document = read()?;
     document["bibliographies"]
         .as_object_mut()
@@ -241,8 +246,7 @@ pub fn remove(name: &str) -> Result<Value> {
     Ok(Value::Null)
 }
 pub fn current() -> Result<Value> {
-    recover_search_transaction()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
+    let _guard = search_lock()?;
     let document = read()?;
     let Some(name) = document["helper_current"]["name"].as_str() else {
         return Ok(Value::Null);
@@ -256,9 +260,7 @@ pub fn current() -> Result<Value> {
     info(name, value)
 }
 pub fn select(name: &str, path: &str) -> Result<Value> {
-    recover_search_transaction()?;
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _file_guard = mutation_lock()?;
+    let _guard = search_lock()?;
     let mut document = read()?;
     let value = document["bibliographies"]
         .get(name)
@@ -268,7 +270,8 @@ pub fn select(name: &str, path: &str) -> Result<Value> {
         return Err("Bibliography path does not match registry".into());
     }
     let library = info(name, value)?;
-    document["helper_current"] = json!({"name": name, "path": registered});
+    document["helper_current"] =
+        json!({"uid": document["bibliographies"][name]["uid"], "name": name, "path": registered});
     write(&document)?;
     Ok(library)
 }
@@ -400,12 +403,8 @@ mod tests {
         let saved = read().unwrap();
         assert_eq!(saved["theme"], "system");
         assert_eq!(saved["future"]["enabled"], true);
-        assert_eq!(
-            fs::read_dir(settings_path().parent().unwrap())
-                .unwrap()
-                .count(),
-            2
-        );
+        assert!(settings_path().exists());
+        assert!(settings_path().with_file_name("setting.lock").exists());
     }
     #[test]
     fn sidecar_lock_serializes_independent_handles_across_atomic_replacement() {
@@ -520,15 +519,149 @@ mod tests {
     }
 }
 
-/// Recover or finish a source relocation under the fixed registry-then-metadata lock order.
-pub(crate) fn recover_search_transaction() -> Result<()> {
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _registry = mutation_lock()?;
-    if !transaction_path().exists() {
-        return Ok(());
+/// File locations live only in the registry. Tag records refer to its stable UIDs.
+pub(crate) fn source_paths() -> Result<std::collections::BTreeMap<String, String>> {
+    let document = read()?;
+    if document
+        .get("library_locations")
+        .is_some_and(|v| !v.is_object())
+    {
+        return Err("InvalidLibraryLocations".into());
     }
-    let _metadata = crate::tags::lock()?;
-    recover_transaction_locked()
+    document
+        .get("library_locations")
+        .and_then(Value::as_object)
+        .map(|locations| {
+            locations
+                .iter()
+                .map(|(id, value)| {
+                    value
+                        .as_str()
+                        .map(|path| (id.clone(), path.to_owned()))
+                        .ok_or("InvalidLibraryLocation".into())
+                })
+                .collect()
+        })
+        .unwrap_or_else(|| Ok(std::collections::BTreeMap::new()))
+}
+pub(crate) fn path_for_uid(uid: &str) -> Result<String> {
+    source_paths()?.remove(uid).ok_or("SourceNotFound".into())
+}
+pub(crate) fn uid_for_path(path: &str) -> Result<String> {
+    let _guard = search_lock()?;
+    let mut document = read()?;
+    if let Some((uid, _)) = document["library_locations"]
+        .as_object()
+        .and_then(|m| m.iter().find(|(_, p)| p.as_str() == Some(path)))
+    {
+        return Ok(uid.clone());
+    }
+    let uid = uuid::Uuid::new_v4().to_string();
+    document["library_locations"][&uid] = json!(path);
+    write(&document)?;
+    Ok(uid)
+}
+// Existing installations have library registrations but no tag identity schema.
+// Initialize UUIDs atomically in the registry; subsequent reads only validate them.
+fn initialize_identities_locked() -> Result<()> {
+    let before = read()?;
+    let mut registry = before.clone();
+    if registry.get("library_locations").is_none() {
+        registry["library_locations"] = json!({});
+    }
+    let mut locations = source_paths()?;
+    let mut by_path = std::collections::BTreeMap::new();
+    for (uid, path) in &locations {
+        if uuid::Uuid::parse_str(uid).is_err() || !Path::new(path).is_absolute() {
+            return Err("InvalidLibraryLocation".into());
+        }
+        if by_path.insert(path.clone(), uid.clone()).is_some() {
+            return Err("LibraryUidConflict".into());
+        }
+    }
+    // Seed existing UUIDs before filling missing aliases, regardless of name order.
+    for value in registry["bibliographies"]
+        .as_object()
+        .ok_or("Invalid settings")?
+        .values()
+    {
+        if let Some(uid) = value.get("uid") {
+            let uid = uid
+                .as_str()
+                .filter(|id| uuid::Uuid::parse_str(id).is_ok())
+                .ok_or("InvalidLibraryUid")?;
+            let path = value["path"].as_str().ok_or("InvalidLibraryPath")?;
+            if by_path.get(path).is_some_and(|id| id != uid)
+                || locations.get(uid).is_some_and(|p| p != path)
+            {
+                return Err("LibraryUidConflict".into());
+            }
+            by_path.insert(path.to_owned(), uid.to_owned());
+            locations.insert(uid.to_owned(), path.to_owned());
+        }
+    }
+    for value in registry["bibliographies"]
+        .as_object_mut()
+        .ok_or("Invalid settings")?
+        .values_mut()
+    {
+        let path = value["path"]
+            .as_str()
+            .ok_or("InvalidLibraryPath")?
+            .to_owned();
+        let uid = match value.get("uid") {
+            Some(Value::String(uid)) if uuid::Uuid::parse_str(uid).is_ok() => uid.clone(),
+            None => by_path
+                .get(&path)
+                .cloned()
+                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+            _ => return Err("InvalidLibraryUid".into()),
+        };
+        if by_path.get(&path).is_some_and(|id| id != &uid)
+            || locations.get(&uid).is_some_and(|p| p != &path)
+        {
+            return Err("LibraryUidConflict".into());
+        }
+        by_path.insert(path.clone(), uid.clone());
+        locations.insert(uid.clone(), path);
+        value["uid"] = json!(uid);
+    }
+    registry["library_locations"] = json!(locations);
+    if let Some(name) = registry["helper_current"]["name"]
+        .as_str()
+        .map(str::to_owned)
+    {
+        registry["helper_current"]["uid"] = registry["bibliographies"][&name]["uid"].clone();
+    }
+    if registry != before {
+        write(&registry)?;
+    }
+    Ok(())
+}
+
+/// Keep recovery and the following operation in one critical section, including
+/// across processes. No writer may slip into an interrupted relocation journal.
+pub(crate) struct SearchGuard {
+    _metadata: fs::File,
+    _registry: fs::File,
+    _process: std::sync::MutexGuard<'static, ()>,
+}
+pub(crate) fn search_lock() -> Result<SearchGuard> {
+    let process = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
+    let registry = mutation_lock()?;
+    let metadata = crate::tags::lock()?;
+    let guard = SearchGuard {
+        _metadata: metadata,
+        _registry: registry,
+        _process: process,
+    };
+    recover_transaction_locked()?;
+    initialize_identities_locked()?;
+    Ok(guard)
+}
+pub(crate) fn recover_search_transaction() -> Result<()> {
+    let _guard = search_lock()?;
+    Ok(())
 }
 fn transaction_path() -> PathBuf {
     settings_path().with_file_name("search-transaction.json")
@@ -545,7 +678,7 @@ fn recover_transaction_locked() -> Result<()> {
         return Err("UnsupportedSearchTransactionSchema".into());
     }
     let current_registry = read()?;
-    let current_metadata = serde_json::to_value(crate::tags::read()?).map_err(|e| e.to_string())?;
+    let current_metadata = crate::tags::storage_document(&crate::tags::read()?)?;
     if (current_registry != transaction["before_registry"]
         && current_registry != transaction["after_registry"])
         || (current_metadata != transaction["before_metadata"]
@@ -569,7 +702,7 @@ fn commit_search_transaction(
     before_metadata: &crate::tags::Metadata,
     after_metadata: &crate::tags::Metadata,
 ) -> Result<()> {
-    let transaction = json!({"schema":1,"before_registry":before_registry,"after_registry":after_registry,"before_metadata":before_metadata,"after_metadata":after_metadata});
+    let transaction = json!({"schema":1,"before_registry":before_registry,"after_registry":after_registry,"before_metadata":crate::tags::storage_document(before_metadata)?,"after_metadata":crate::tags::storage_document(after_metadata)?});
     crate::tags::atomic_write(&transaction_path(), &transaction)?;
     transaction_checkpoint(1)?;
     write(after_registry)?;
@@ -595,34 +728,41 @@ pub(crate) fn relocate_search_source(id: &str, path: &str, revision: u64) -> Res
         .map_err(|e| e.to_string())?
         .to_string_lossy()
         .into_owned();
-    let _guard = REGISTRY.lock().map_err(|_| "Settings lock poisoned")?;
-    let _registry = mutation_lock()?;
-    let _metadata = crate::tags::lock()?;
-    recover_transaction_locked()?;
+    if !Path::new(&canonical).is_file() {
+        return Err("Bibliography path is not a file".into());
+    }
+    let _guard = search_lock()?;
     let before_registry = read()?;
     let before_metadata = crate::tags::read()?;
     if before_metadata.revision != revision {
         return Err("StaleTagRevision".into());
     }
-    if before_metadata.source(&canonical).is_some() {
+    if before_registry["library_locations"]
+        .as_object()
+        .is_some_and(|locations| {
+            locations
+                .values()
+                .any(|path| path.as_str() == Some(&canonical))
+        })
+    {
         return Err("SourceAlreadyExists".into());
     }
     let mut after_metadata = before_metadata.clone();
     let source = after_metadata.sources.get_mut(id).ok_or("SourceNotFound")?;
     let old = source.path.clone();
-    source.path = canonical.clone();
     source.version = String::new();
     after_metadata.revision = after_metadata
         .revision
         .checked_add(1)
         .ok_or("RevisionOverflow")?;
     let mut after_registry = before_registry.clone();
+    after_registry["library_locations"][id] = json!(canonical);
     for entry in after_registry["bibliographies"]
         .as_object_mut()
         .ok_or("Invalid settings")?
         .values_mut()
     {
-        if entry["path"].as_str() == Some(&old) {
+        if entry["uid"].as_str() == Some(id) {
             entry["path"] = json!(canonical);
         }
     }
@@ -690,7 +830,7 @@ mod search_transaction_tests {
         let before = serde_json::json!({"bibliographies":{}});
         write(&before).unwrap();
         let mut metadata = crate::tags::Metadata::default();
-        metadata.schema = 1;
+        metadata.schema = 2;
         crate::tags::write(&metadata).unwrap();
         TRANSACTION_FAILURE.with(|s| s.set(1));
         assert!(commit_search_transaction(&before, &before, &metadata, &metadata).is_err());
@@ -702,5 +842,145 @@ mod search_transaction_tests {
                 .contains("SearchTransactionConflict")
         );
         assert_eq!(read().unwrap()["external"], true);
+    }
+}
+
+#[cfg(test)]
+mod identity_review_tests {
+    use super::*;
+
+    #[test]
+    fn existing_registrations_receive_one_stable_uuid_per_location() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let path = fs::canonicalize(file.path()).unwrap();
+        let now = Local::now();
+        let entry = json!({"path":path,"created_at":now,"updated_at":now});
+        write(&json!({"bibliographies":{"Original":entry,"Alias":entry},"future":true})).unwrap();
+        let first = libraries().unwrap();
+        let uid = first[0]["uid"].as_str().unwrap();
+        assert!(uuid::Uuid::parse_str(uid).is_ok());
+        assert_eq!(first[1]["uid"], uid);
+        let bytes = fs::read(settings_path()).unwrap();
+        assert_eq!(libraries().unwrap(), first);
+        assert_eq!(fs::read(settings_path()).unwrap(), bytes);
+        assert_eq!(read().unwrap()["future"], true);
+        assert!(!crate::tags::path().exists());
+        remove("Original").unwrap();
+        assert_eq!(
+            add("Restored", file.path().to_str().unwrap(), None).unwrap()["uid"],
+            uid
+        );
+    }
+
+    #[test]
+    fn uid_initialization_prefers_existing_uuid_over_alias_name_order() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let path = fs::canonicalize(file.path()).unwrap();
+        let uid = uuid::Uuid::new_v4().to_string();
+        let now = Local::now();
+        let bare = json!({"path":path,"created_at":now,"updated_at":now});
+        let mut identified = bare.clone();
+        identified["uid"] = json!(uid);
+        write(&json!({"bibliographies":{"A alias":bare,"Z original":identified}})).unwrap();
+        let rows = libraries().unwrap();
+        assert!(rows.as_array().unwrap().iter().all(|row| row["uid"] == uid));
+        assert_eq!(source_paths().unwrap().len(), 1);
+        assert_eq!(libraries().unwrap(), rows);
+    }
+
+    #[test]
+    fn moving_an_alias_keeps_helper_selection_and_shared_uuid() {
+        let original = tempfile::NamedTempFile::new().unwrap();
+        let moved = tempfile::NamedTempFile::new().unwrap();
+        let first = add("First", original.path().to_str().unwrap(), None).unwrap();
+        let alias = add("Alias", original.path().to_str().unwrap(), None).unwrap();
+        select("First", first["path"].as_str().unwrap()).unwrap();
+        let updated = update(
+            "Alias",
+            "Renamed",
+            Some(moved.path().to_str().unwrap()),
+            None,
+        )
+        .unwrap();
+        assert_eq!(updated["uid"], first["uid"]);
+        assert_eq!(updated["uid"], alias["uid"]);
+        let helper = current().unwrap();
+        assert_eq!(helper["name"], "First");
+        assert_eq!(helper["path"], updated["path"]);
+        assert_eq!(helper["uid"], first["uid"]);
+    }
+
+    #[test]
+    fn conflicting_locations_never_reassign_an_existing_uuid() {
+        let first = tempfile::NamedTempFile::new().unwrap();
+        let second = tempfile::NamedTempFile::new().unwrap();
+        let one = add("One", first.path().to_str().unwrap(), None).unwrap();
+        add("Two", second.path().to_str().unwrap(), None).unwrap();
+        let mut document = read().unwrap();
+        document["bibliographies"]["Two"]["uid"] = one["uid"].clone();
+        write(&document).unwrap();
+        let before = fs::read(settings_path()).unwrap();
+        assert_eq!(libraries().unwrap_err(), "LibraryUidConflict");
+        assert_eq!(fs::read(settings_path()).unwrap(), before);
+    }
+
+    #[test]
+    fn relocation_rejects_registered_but_unsearched_destination() {
+        let first = tempfile::NamedTempFile::new().unwrap();
+        let second = tempfile::NamedTempFile::new().unwrap();
+        fs::write(first.path(), "@article{A,title={one}}").unwrap();
+        let one = add("One", first.path().to_str().unwrap(), None).unwrap();
+        add("Two", second.path().to_str().unwrap(), None).unwrap();
+        let snapshot =
+            crate::tag_snapshot(first.path().to_string_lossy().into(), "A".into()).unwrap();
+        let before = fs::read(settings_path()).unwrap();
+        assert_eq!(
+            relocate_search_source(
+                one["uid"].as_str().unwrap(),
+                second.path().to_str().unwrap(),
+                snapshot.revision
+            )
+            .unwrap_err(),
+            "SourceAlreadyExists"
+        );
+        assert_eq!(fs::read(settings_path()).unwrap(), before);
+        assert_eq!(crate::tags::read().unwrap().revision, snapshot.revision);
+    }
+
+    #[test]
+    fn next_writer_recovers_interrupted_relocation_before_mutating_registry() {
+        for stage in 1..=3 {
+            let original = tempfile::NamedTempFile::new().unwrap();
+            let moved = tempfile::NamedTempFile::new().unwrap();
+            let extra = tempfile::NamedTempFile::new().unwrap();
+            fs::write(original.path(), "@article{A,title={one}}").unwrap();
+            let name = format!("original{stage}");
+            let library = add(&name, original.path().to_str().unwrap(), None).unwrap();
+            let snapshot =
+                crate::tag_snapshot(original.path().to_string_lossy().into(), "A".into()).unwrap();
+            TRANSACTION_FAILURE.with(|s| s.set(stage));
+            assert!(
+                relocate_search_source(
+                    library["uid"].as_str().unwrap(),
+                    moved.path().to_str().unwrap(),
+                    snapshot.revision
+                )
+                .is_err()
+            );
+            TRANSACTION_FAILURE.with(|s| s.set(0));
+            add(
+                &format!("extra{stage}"),
+                extra.path().to_str().unwrap(),
+                None,
+            )
+            .unwrap();
+            let state = read().unwrap();
+            assert_eq!(state["bibliographies"][&name]["uid"], library["uid"]);
+            assert_eq!(
+                state["bibliographies"][&name]["path"],
+                json!(fs::canonicalize(moved.path()).unwrap())
+            );
+            assert!(!transaction_path().exists());
+        }
     }
 }

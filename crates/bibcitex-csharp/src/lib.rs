@@ -280,6 +280,27 @@ mod tests {
     #[test]
     fn wire_search_preserves_unicode_math_and_errors() {
         let directory = tempfile::tempdir().unwrap();
+        if std::env::var_os("BIBCITEX_WIRE_TEST_CHILD").is_none() {
+            // Set the native environment before process startup; never mutate it
+            // while other ABI tests may be running or touch real user settings.
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "tests::wire_search_preserves_unicode_math_and_errors",
+                    "--nocapture",
+                ])
+                .env("BIBCITEX_WIRE_TEST_CHILD", "1")
+                .env("BIBCITEX_CONFIG_DIRECTORY", directory.path())
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
         let path = directory.path().join("文献.bib");
         std::fs::write(
             &path,

@@ -4,6 +4,10 @@ use interoptopus::{ffi, wire::Wire};
 /// Path and exact cite key for a metadata snapshot; an empty path requests the global catalog.
 #[ffi]
 pub struct TagSnapshotRequest {
+    /// Stable bibliography identity for assignment reads.
+    pub library_uid: String,
+    /// Stable record identity for assignment reads.
+    pub record_uid: String,
     /// Bibliography path; empty requests the global catalog.
     pub path: String,
     /// Original case-sensitive cite key for single-record assignments.
@@ -174,7 +178,11 @@ pub fn tag_snapshot(
     invoke(|| {
         let input = request(wire)?;
         Ok(
-            match bibcitex_service::tag_snapshot(input.path, input.cite_key) {
+            match if input.library_uid.is_empty() {
+                bibcitex_service::tag_snapshot(input.path, input.cite_key)
+            } else {
+                bibcitex_service::tag_snapshot_uid(input.library_uid, input.record_uid)
+            } {
                 Ok(payload) => TagSnapshotResult {
                     payload: Some(payload),
                     error: None,
@@ -274,8 +282,11 @@ mod tests {
     #[test]
     fn catalog_and_source_records_preserve_optional_values_and_ownership() {
         let snapshot = TagSnapshot {
+            library_uid: String::new(),
+            record_uid: String::new(),
             revision: 42,
             tags: vec![TagRecord {
+                color: "#64748B".into(),
                 id: "id".into(),
                 name: "Straße".into(),
             }],

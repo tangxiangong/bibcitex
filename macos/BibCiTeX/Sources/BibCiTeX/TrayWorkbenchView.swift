@@ -40,7 +40,7 @@ struct TrayWorkbenchView: View {
                         PanelSeparator(vertical: true).frame(height: 16)
                         Menu {
                             Picker(L10n.text("文献库"), selection: $model.libraryName) {
-                                ForEach(model.libraries) { library in
+                                ForEach(model.libraries, id: \.name) { library in
                                     Text(library.available ? library.name : "\(library.name) · \(L10n.text("不可用"))")
                                         .tag(Optional(library.name)).disabled(!library.available)
                                 }
@@ -134,7 +134,7 @@ struct TrayWorkbenchView: View {
         .background(NeutralListSelection())
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
-        .sheet(item: $taggingReference) { reference in TagManagerView(path: reference.path, citeKey: reference.citeKey) }
+        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .onAppear { searchFocused = true }
         .onChange(of: model.detailVisible) { visible in
@@ -160,27 +160,28 @@ struct TrayWorkbenchView: View {
         }
     }
     private var results: some View {
-        let libraryPath = model.libraries.first { $0.name == model.libraryName }?.path ?? ""
         return ScrollViewReader { proxy in
             List(selection: $model.selection) {
                 ForEach(model.references) { reference in
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(alignment: .top, spacing: 12) {
-                            MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).lineLimit(2).help(model.matchEvidence[reference.citeKey] ?? "")
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            citeKeyButton(reference.citeKey)
-                                .frame(maxWidth: 180, alignment: .trailing)
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 5) {
+                                MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).lineLimit(2).help(model.matchEvidence[reference.citeKey] ?? "")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            if !reference.author.isEmpty {
+                                Text(SearchHighlight.authors(reference.author, matches: model.matchRanges[reference.citeKey] ?? [])).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Text([reference.displayType, reference.year.map(String.init) ?? "", reference.venueText]
+                                .filter { !$0.isEmpty }.joined(separator: " · "))
+                                .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                         }
-                        if !reference.author.isEmpty {
-                            Text(SearchHighlight.authors(reference.author, matches: model.matchRanges[reference.citeKey] ?? [])).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        VStack(alignment: .trailing, spacing: 6) {
+                            citeKeyButton(reference.citeKey).frame(maxWidth: 160, alignment: .trailing)
+                            TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
                         }
-                        Text([reference.displayType, reference.year.map(String.init) ?? "", reference.venueText]
-                            .filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }.padding(.vertical, 7).tag(reference.citeKey).id(reference.citeKey)
-                    .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey) } }
+                    }.padding(.vertical, 7).tag(reference.id).id(reference.id)
+                    .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) } }
                     .foregroundStyle(Color(nsColor: .labelColor))
-                    .listRowBackground(RowSelectionBackground(selected: model.selection == reference.citeKey))
+                    .listRowBackground(RowSelectionBackground(selected: model.selection == reference.id))
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
                 .overlay {

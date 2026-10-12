@@ -248,7 +248,7 @@ internal sealed class TrayWindow : Window
         catch (Exception ex) { if (visible && request == reloadVersion) { ClearResults(); ShowError(ex); SetBusy(false); } }
         finally { updating = false; }
     }
-    private void TagsChanged() { searchSession.Invalidate(); version++; references.Items.Clear(); ShowDetail(null); if (visible) _ = Reload(); }
+    private void TagsChanged() { searchSession.Invalidate(); version++; if (TagManager.IsEditing(root.XamlRoot)) return; references.Items.Clear(); ShowDetail(null); if (visible) _ = Reload(); }
 
     private async Task Search(bool debounce = false)
     {
@@ -298,13 +298,23 @@ internal sealed class TrayWindow : Window
         // Keep unusually long keys from consuming the title's column.
         if (key.Content is StackPanel keyContent)
             foreach (var label in keyContent.Children.OfType<TextBlock>()) label.MaxWidth = 150;
-        Grid.SetColumn(key, 1); heading.Children.Add(key); row.Children.Add(heading);
+        row.Children.Add(heading);
         if (reference.Authors.Length > 0) row.Children.Add(SearchHighlights.Authors(reference, 12));
         var metadata = new TextBlock { FontSize = 11, Opacity = .6, TextTrimming = TextTrimming.CharacterEllipsis };
         Localized.BindValue(metadata, TextBlock.TextProperty, () => string.Join(" · ", new[] { reference.TypeLabel, reference.Text("year"), reference.Venue }.Where(x => x.Length > 0)));
         row.Children.Add(metadata);
+        var accessory = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 160, Margin = new Thickness(0, 7, 0, 7) };
+        accessory.Children.Add(key);
+        if (reference.Data.tags.Count > 0) accessory.Children.Add(TagManager.Chips(reference));
+        var layout = new Grid { ColumnSpacing = 12 };
+        layout.ColumnDefinitions.Add(new()); layout.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        layout.Children.Add(row); Grid.SetColumn(accessory, 1); layout.Children.Add(accessory);
         if (reference.Evidence is { } evidence) ToolTipService.SetToolTip(row, (evidence.fuzzy ? L10n.Text("拼写补充") + " (" + string.Join(", ", evidence.fuzzy_terms) + ") · " : "") + string.Join(" · ", evidence.fields.Select(x => L10n.Text(x))));
-        var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(Views.RowRadius) };
+        var item = new ListViewItem { Content = layout, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(Views.RowRadius) };
+        var menu = new MenuFlyout();
+        var tags = new MenuFlyoutItem { Text = L10n.Text("标签") };
+        tags.Click += async (_, _) => { try { await TagManager.Show(item.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, item); } catch (Exception ex) { ShowError(ex); } };
+        menu.Items.Add(tags); item.ContextFlyout = menu;
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Key + " " + reference.Title);
         return item;
     }
@@ -323,7 +333,7 @@ internal sealed class TrayWindow : Window
         detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
         var tags = new Button { Content = L10n.Text("标签") };
-        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, (library.SelectedItem as Library)?.Path ?? "", reference.Key); } catch (Exception ex) { ShowError(ex); } };
+        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, tags); } catch (Exception ex) { ShowError(ex); } };
         detail.Children.Add(tags);
         foreach (var (label, value) in new[] { ("引用键", reference.Key), ("作者", reference.Authors), ("类型", reference.TypeLabel), ("年份", reference.Text("year")), ("期刊", reference.Venue), ("DOI", reference.Text("doi")), ("URL", reference.Text("url")) })
         {

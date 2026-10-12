@@ -8,6 +8,7 @@ enum CoreError {
 }
 #[uniffi::remote(Record)]
 pub struct LibraryRecord {
+    pub uid: String,
     pub name: String,
     pub path: String,
     pub created_at: String,
@@ -39,6 +40,8 @@ pub struct PageRange {
 }
 #[uniffi::remote(Record)]
 pub struct ReferenceRecord {
+    pub library_uid: String,
+    pub tags: Vec<bibcitex_service::TagRecord>,
     pub id: String,
     pub cite_key: String,
     pub source: String,

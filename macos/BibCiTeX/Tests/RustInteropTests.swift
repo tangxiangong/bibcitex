@@ -1,13 +1,14 @@
 import Foundation
 import BibCiTeXCore
 
-/// Exercises actual generated bindings and Rust without creating windows or touching settings/clipboard.
+/// Exercises actual generated bindings and Rust without creating windows or touching user settings/clipboard.
 @main
 struct RustInteropTests {
     static func main() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bibcitex-interop-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
+        setenv("BIBCITEX_CONFIG_DIRECTORY", directory.path, 1)
         let file = directory.appendingPathComponent("references.bib")
         try """
         @article{unicode2025,
@@ -62,6 +63,13 @@ struct RustInteropTests {
 
         let incomplete = BibCiTeXCore.analyzeQuery(text: "author:")
         precondition(incomplete.status == .incomplete && incomplete.document == nil)
+        let row = records[0]
+        precondition(UUID(uuidString: row.id) != nil && UUID(uuidString: row.libraryUid) != nil)
+        let tagState = try BibCiTeXCore.tagSnapshotUid(libraryUid: row.libraryUid, recordUid: row.id)
+        let tagged = try BibCiTeXCore.mutateTag(mutation: TagMutation(libraryUid: row.libraryUid, recordUid: row.id, color: "#3b82f6", action: .create, id: "", name: "Interop", targetId: "", path: "", citeKey: "", expectedRevision: tagState.revision))
+        precondition(tagged.tags.first?.color == "#3B82F6" && tagged.assignedIds.count == 1)
+        let decorated = try BibCiTeXCore.search(path: file.path, query: "", field: "all", typeFilter: "all")
+        precondition(decorated.first { $0.id == row.id }?.tags.first?.id == tagged.assignedIds.first)
         let invalid = BibCiTeXCore.analyzeQuery(text: "year:abc author:")
         precondition(invalid.status == .invalid && !invalid.diagnostics.isEmpty)
         let condition = BibCiTeXCore.buildCondition(condition: QueryCondition(fieldName: "title", textValue: "Collected Works", phrase: false, exclude: false, tagId: nil))

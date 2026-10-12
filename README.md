@@ -178,7 +178,9 @@ Type values are case-insensitive: `article`, `book`, `thesis`, `mastersthesis`, 
 
 ### Tags
 
-Use tag management to create, rename, delete or explicitly merge tags, and reference details to assign or remove tags for individual references. Tags live in separate local metadata and never modify `.bib` files. Back up the application's configuration-directory `search-metadata.json` when migrating libraries; ordinary BibTeX import/export does not include tags.
+Reference lists show colored tags. Click a tag or the reference’s tag action to search, toggle assignments, or create and assign a tag in one step. Tag menus offer rename and color editing; global management contains merge/delete and broken tag association recovery. The recovery entry is hidden when no broken associations exist. To relocate a file, edit its library in library management, choose “Relocate source”, select the new file, and save.
+
+Library, reference and tag UUIDs are their UIDs. A library keeps its UUID when renamed or relocated, even when file content also changes. Global tags work across libraries; associations store UUIDs rather than `.bib` paths. Tags never modify `.bib` files. Back up both `setting.json` (UUIDs and file locations) and `search-metadata.json` (tags and record associations) in the configuration directory. Existing library registrations receive UUIDs on first use; ordinary BibTeX import/export does not include tags.
 
 Tag matching uses the complete name, normalizes whitespace and ignores case, but preserves accents and punctuation. Quote names containing spaces, for example `tag:"machine learning"`. An unknown tag matches no references; `-tag:unknown` excludes none. Unknown names produce a warning and do not create tags automatically.
 

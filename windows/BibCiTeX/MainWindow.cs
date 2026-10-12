@@ -193,7 +193,7 @@ internal sealed class MainWindow : Window
         LayoutPanes();
     }
 
-    private void TagsChanged() { searchSession.Invalidate(); searchVersion++; references.Items.Clear(); ShowDetail(null); _ = ReloadLibraries(); }
+    private void TagsChanged() { searchSession.Invalidate(); searchVersion++; if (TagManager.IsEditing(root.XamlRoot)) return; references.Items.Clear(); ShowDetail(null); _ = ReloadLibraries(); }
 
     private static void SetPaneBackground(Grid pane, string resource) =>
         pane.Style = (Style)Application.Current.Resources[resource];
@@ -478,8 +478,8 @@ internal sealed class MainWindow : Window
             Localized.Bind(description, TextBox.HeaderProperty, "描述"); Localized.Bind(description, TextBox.PlaceholderTextProperty, "简单描述一下这个文献库...");
             name.Text = library?.Name ?? ""; description.Text = library?.Description ?? "";
             var error = Views.Text(""); error.Visibility = Visibility.Collapsed; error.IsTextSelectionEnabled = true; Views.SelectableText(error); Views.ThemeForeground(error, "SystemFillColorCriticalBrush");
-            var choose = new Button { Content = L10n.Text("选择文件") };
-            Localized.Bind(choose, ContentControl.ContentProperty, "选择文件");
+            var choose = new Button { Content = L10n.Text(library is null ? "选择文件" : "重新定位来源") };
+            Localized.Bind(choose, ContentControl.ContentProperty, library is null ? "选择文件" : "重新定位来源");
             var form = new StackPanel { Spacing = 20, Width = 464, Margin = new Thickness(0, 8, 0, 8) };
             var title = Views.LocalizedText(library is null ? "新增文献库" : "编辑文献库", 22);
             var titleRow = Views.Row(new Border { Child = new SvgIcon("folderAdd", 24), Padding = new Thickness(12), CornerRadius = new CornerRadius(12), Background = Views.Brush("SubtleFillColorSecondaryBrush") }, title);
@@ -566,7 +566,7 @@ internal sealed class MainWindow : Window
         detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题", highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
         var tags = new Button { Content = L10n.Text("标签") };
-        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, current?.Path ?? "", reference.Key); } catch (Exception ex) { await Report(ex); } };
+        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, tags); } catch (Exception ex) { await Report(ex); } };
         detail.Children.Add(tags);
         var libraryPath = current?.Path;
         foreach (var (key, label) in Metadata)

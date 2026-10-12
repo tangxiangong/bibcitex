@@ -428,7 +428,7 @@
   "字段值": "Field value",
   "完整短语": "Exact phrase",
   "应用": "Apply",
-  "待关联记录": "Pending associations",
+  "失效标签关联": "Broken tag associations",
   "拼写补充": "Spelling supplement",
   "排除": "Exclude",
   "排除关键词或短语": "None of these words or phrases",
@@ -476,5 +476,17 @@
   "硕士论文": "Master's thesis",
   "博士论文": "PhD thesis",
   "书籍": "Book",
-  "字段值（可选）": "Field value (optional)"
+  "字段值（可选）": "Field value (optional)",
+  "搜索或创建标签": "Search or create tag",
+  "创建并添加": "Create and add",
+  "标签颜色": "Tag color",
+  "删除标签": "Delete tag",
+  "确认": "Confirm",
+  "InvalidTagColor": "Invalid tag color",
+  "SourceLocationMissing": "Library location is missing",
+  "LibraryUidConflict": "Library identity conflict",
+  "InvalidLibraryUid": "Invalid library identity",
+  "InvalidLibraryLocation": "Invalid library location",
+  "InvalidLibraryLocations": "Invalid library locations",
+  "自定义颜色": "Custom color"
 }
