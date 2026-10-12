@@ -78,7 +78,8 @@ internal sealed class MainWindow : Window
         sidebarToggle = PaneToggle("panelLeftClose", "文献库", () => { SetPaneVisibility(true, sidebarToggle.IsChecked == true); });
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
-        var primary = Views.Row(Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
+        var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } });
+        var primary = Views.Row(manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), Views.Button("settings", "设置", ShowSettings),
             Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()), GroupSeparator(), inspectorToggle);
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
@@ -134,15 +135,13 @@ internal sealed class MainWindow : Window
             }
             catch (Exception ex) { await Report(ex); }
         };
-        var manageTags = new Button { Content = L10n.Text("标签") };
-        manageTags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } };
         advanced.Click += async (_, _) =>
         {
             try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
             catch (Exception error) { advanced.IsChecked = searchSession.Advanced; await Report(error); }
         };
         var filters = new StackPanel { Spacing = 8 };
-        filters.Children.Add(Views.Row(type, field)); filters.Children.Add(Views.Row(advanced, conditions, manageTags));
+        filters.Children.Add(Views.Row(type, field)); filters.Children.Add(Views.Row(advanced, conditions));
         referenceHeader.Children.Add(filters); referenceHeader.Children.Add(queryDiagnostic);
         Grid.SetRow(references, 1); center.Children.Add(references);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(brand, "BibCiTeX");

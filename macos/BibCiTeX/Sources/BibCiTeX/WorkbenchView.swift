@@ -250,7 +250,13 @@ struct WorkbenchView: View {
             }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
             Divider()
             if let reference = model.reference {
-                ReferenceInspector(reference: reference, context: model.referenceSelectionContext, model: model)
+                let libraryPath = model.library?.path ?? ""
+                let selectionContext = model.referenceSelectionContext
+                ReferenceInspector(reference: reference, context: selectionContext, model: model) {
+                    guard !libraryPath.isEmpty, selectionContext == model.referenceSelectionContext,
+                          model.selectedReference == reference.citeKey else { return }
+                    taggingReference = TagAssignmentTarget(path: libraryPath, citeKey: reference.citeKey)
+                }
             } else {
                 Text(L10n.text("选择一条文献查看字段和操作")).foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -337,9 +343,11 @@ struct ReferenceInspector: View {
     let reference: Reference
     let context: WorkbenchModel.ReferenceSelectionContext
     @ObservedObject var model: WorkbenchModel
+    let editTags: () -> Void
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                Button(L10n.text("标签"), action: editTags)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
