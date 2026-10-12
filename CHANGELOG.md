@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-10-12
+
+### Search, tags and selection
+
+- Improve ordinary search with multi-term matching across fields, Unicode normalization, bounded spelling tolerance, relevance ranking and cached indexes.
+- Add advanced field, phrase, year, type and tag queries with AND / OR / NOT and grouped conditions, separate mode drafts, and a condition editor.
+- Add Helper type (`@`), field (`$`) and tag (`#`) candidates with editable condition capsules and IME-aware input.
+- Add shared colored tags, stable library/reference identities, association recovery and atomic bulk tag editing without modifying BibTeX files.
+- Add multiple selection and visible selection counts. Helper pastes selected citation keys in list order, joined with commas, and shows the captured target application's name when available.
+
+### Bug fixes
+
+- Fix macOS selection highlight flashes, scrolling insets, narrow-window layout, tray sheets, search focus, Helper footer layout and attachment-path parsing.
+- Align Windows search and toolbar controls, improve candidate positioning and keyboard navigation, prevent Helper footer overlap, and cancel stale asynchronous paste requests.
+
+### Release scope
+
+- Windows and macOS additions and fixes passed real-device validation, confirmed by the user on 2026-10-12.
+- Publish macOS and Windows only; Linux releases remain disabled pending native build and desktop acceptance.
+- Main/tray batch copying and LaTeX/Typst citation-format presets remain planned.
+
+Release notes and advanced search instructions: [简体中文](release-notes/0.8.0/zh-Hans.md) · [English](release-notes/0.8.0/en.md) · [GitHub announcement](release-notes/0.8.0/release-body.md).
+
 ## [0.7.3] - 2026-10-09
 
 ### Features and interface

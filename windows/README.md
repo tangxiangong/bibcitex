@@ -10,7 +10,7 @@ C# / WinUI 3（Windows App SDK 2.5.1 稳定版）主窗口与 Spotlight helper�
 
 MSBuild 会自动构建 Rust DLL、运行 Interoptopus 生成器，再编译 WinUI；干净检出不需要预先执行脚本、Just 或手工生成绑定。Rust 源码变化会触发构建检查，设计时 IntelliSense 不启动 Cargo。找不到 Cargo 时检查 PATH，再检查 `%USERPROFILE%/.cargo/bin/cargo.exe`，缺失时输出明确错误。工具链沿用当前 rustup / `RUSTUP_TOOLCHAIN`，不固定版本；没有 rustup 则使用已安装目标。显式设置 `CargoExecutable` 时不会自动改用其他工具链，除非同时指定匹配的 `RustupExecutable`。
 
-项目使用普通 `Project` 启动项，Visual Studio F5 运行非打包 WinUI 程序，不依赖包身份。运行由用户操作；本次没有启动应用或 GUI。macOS 已验证共享动态库和 C# 语义，完整 Windows XAML 编译及部署须在 Windows 验证。
+项目使用普通 `Project` 启动项，Visual Studio F5 运行非打包 WinUI 程序，不依赖包身份。运行由用户操作。用户于 2026-10-12 确认 v0.8.0 的新增与修复内容已通过 Windows 实机验证；此前 macOS 宿主上的 C# 语义检查记录不等同于 Windows 原生构建记录。
 
 CLI 和 IDE 使用同一构建链：
 
@@ -26,7 +26,7 @@ dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 Windows uses unpackaged, framework-dependent WinUI 3 with Velopack 1.2.161. EXE and MSI installers detect and install the matching .NET 10 runtime and Visual C++ runtime when missing. Before starting WinUI on the first application launch, `WindowsRuntime` checks Windows App Runtime 2.5.1, downloads the matching Microsoft installer if needed, verifies its pinned SHA-256, installs it and retries initialization. Existing compatible installations are reused; missing dependencies require internet access. Silent installation defers Windows App Runtime provisioning until the first application launch. `Program.Main` handles Velopack hooks before this bootstrap, so packaging and uninstall hooks do not download runtimes. When upgrading the Windows App SDK runtime package, update the bootstrap version, URLs and verified hashes together. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
 
 ```powershell
-./windows/scripts/publish.ps1 -Architecture x64 -Version 0.7.3 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
+./windows/scripts/publish.ps1 -Architecture x64 -Version 0.8.0 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
 Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow publishes verified artifacts to GitHub Releases and then COS. The client checks COS first and falls back to GitHub on feed or download failure, retaining the selected package filename and SHA-256. Cancellation stops downloads without starting fallback. See [COS configuration](../ci/README.md#cos-primary-source-and-github-fallback). It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
@@ -57,7 +57,7 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 
 主窗口保留现有三栏 Grid。侧栏和详情栏使用系统透明 layer brush，让 Mica（不支持时 Acrylic）透出；内容列使用 `LayerFillColorDefaultBrush`。App.xaml 的 Grid Style 通过 `ThemeResource` 保持窗口主题切换时的动态解析，不使用不透明的 SolidBackground 覆盖材质，也不在代码中一次性获取背景 brush。分隔线使用 `DividerStrokeColorDefaultBrush`。
 
-托盘和助手保留 Acrylic 及现有布局。浅色、深色、高对比、应用内主题切换，以及 Windows 10 的 Acrylic 回退均需 Windows 实机验收；非 UI 集成测试不替代 WinUI/XAML 编译。
+托盘和助手保留 Acrylic 及现有布局。v0.8.0 新增与修复内容已通过 Windows 实机验证（用户确认，2026-10-12）。浅色、深色、高对比、应用内主题切换及 Windows 10 Acrylic 回退继续作为人工验收项目；非 UI 集成测试不替代 WinUI/XAML 编译。
 
 ## Helper 粘贴失败处理
 

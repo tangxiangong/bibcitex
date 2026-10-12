@@ -61,6 +61,8 @@ See [the release configuration and COS protocol](../ci/README.md#cos-primary-sou
 
 ## Verification
 
+The user confirmed on 2026-10-12 that the additions and fixes planned for v0.8.0 passed real-device validation on macOS and Windows. This acceptance record is separate from the build history below and from release-artifact signing and online update validation.
+
 The Xcode project has built the arm64 app with an empty DerivedData directory and no repository-local generated bindings. Default Debug architecture selection and the x86_64 command-line cross-build both pass. Cargo discovery also passes with a GUI-style minimal PATH. Generated Swift/Rust ABI tests pass against Xcode's static library products. An unchanged build skips the Rust binding script. Both architecture products contain all 31 SVG icons, MathJax resources and the embedded Sparkle framework; neither GUI was launched. Release distribution signing and notarization remain unverified.
 
 UI/GUI tests are prohibited; GUI acceptance is manual. The standalone integration script is `BibCiTeX/Tests/run-interop-tests.sh`. It accepts `--products` and `--rust-library`; its default products are `target/xcode/<host-architecture>/Build/Products/Debug`, and it discovers generated headers and the Rust archive beside those products. Tests use temporary directories and retain a 30-second timeout; they do not change the user's registry or clipboard.
