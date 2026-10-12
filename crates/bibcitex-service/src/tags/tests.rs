@@ -224,8 +224,15 @@ fn uid_associations_survive_relocation_with_changed_content_and_share_tag_colors
     let copy = crate::search(other.path.clone(), "".into(), "all".into(), "all".into())
         .unwrap()
         .remove(0);
-    assert_ne!(original.id, copy.id);
-    assert_ne!(library.uid, other.uid);
+    // Compare identities without exposing their values in failure logs.
+    assert!(
+        original.id != copy.id,
+        "records in separate libraries must have distinct identities"
+    );
+    assert!(
+        library.uid != other.uid,
+        "separate libraries must have distinct identities"
+    );
     let initial = crate::tag_snapshot_uid(library.uid.clone(), original.id.clone()).unwrap();
     let created = crate::mutate_tag(command(
         TagAction::Create,
@@ -247,7 +254,10 @@ fn uid_associations_survive_relocation_with_changed_content_and_share_tag_colors
         None,
     )
     .unwrap();
-    assert_eq!(updated.uid, library.uid);
+    assert!(
+        updated.uid == library.uid,
+        "relocating a library must preserve its identity"
+    );
     // The original file is still present, and content differs at the new location.
     assert!(first.path().exists());
     let relocated = crate::tag_snapshot_uid(library.uid.clone(), original.id.clone()).unwrap();
@@ -274,8 +284,14 @@ fn uid_associations_survive_relocation_with_changed_content_and_share_tag_colors
     assert!(!stored.contains(moved.path().to_str().unwrap()));
     let stable =
         crate::search(updated.path.clone(), "".into(), "all".into(), "all".into()).unwrap();
-    assert_eq!(stable[0].id, original.id);
-    assert_eq!(stable[0].library_uid, library.uid);
+    assert!(
+        stable[0].id == original.id,
+        "relocating a library must preserve record identities"
+    );
+    assert!(
+        stable[0].library_uid == library.uid,
+        "relocated records must retain their library identity"
+    );
     let current = crate::tag_snapshot_uid(library.uid.clone(), original.id.clone()).unwrap();
     let before = fs::read(path()).unwrap();
     let mut invalid = command(TagAction::Recolor, &current, &tag, "", Some("red"));
