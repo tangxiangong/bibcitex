@@ -1283,6 +1283,18 @@ impl Workbench {
     /// Floating controls, no bar: Enter (cross-app paste) and Tab as clickable
     /// hints, grouped in one capsule at the trailing edge.
     fn bottom_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(target_os = "linux")]
+        let application_name = cx
+            .global::<crate::application::Services>()
+            .desktop
+            .as_ref()
+            .and_then(|desktop| desktop.captured_application_name());
+        #[cfg(not(target_os = "linux"))]
+        let application_name: Option<String> = None;
+        let paste_title = match application_name {
+            Some(name) => SharedString::from(self.text("粘贴到 {0}", cx).replace("{0}", &name)),
+            None => self.text("粘贴到当前应用", cx),
+        };
         div()
             .absolute()
             .right(px(12.))
@@ -1297,7 +1309,7 @@ impl Workbench {
             .border_color(cx.theme().border)
             .shadow_sm()
             .child(
-                self.key_hint("helper-paste", "粘贴引用键", "↵", cx)
+                self.key_hint("helper-paste", paste_title, "↵", cx)
                     .disabled(
                         self.selected.is_none()
                             || (self.batch_selecting && self.batch_ids.is_empty()),
@@ -1307,7 +1319,7 @@ impl Workbench {
                     ),
             )
             .child(
-                self.key_hint("helper-switch", "切换文献库", "⇥", cx)
+                self.key_hint("helper-switch", self.text("切换文献库", cx), "⇥", cx)
                     .on_click(
                         cx.listener(|this, _, window, cx| {
                             this.toggle_library_selection(window, cx)
@@ -1320,7 +1332,7 @@ impl Workbench {
     fn key_hint(
         &self,
         id: &'static str,
-        label: &'static str,
+        label: SharedString,
         key: &'static str,
         cx: &App,
     ) -> Button {
@@ -1329,7 +1341,8 @@ impl Workbench {
             .ghost()
             .small()
             .rounded_full()
-            .accessibility_label(self.text(label, cx))
+            .accessibility_label(label.clone())
+            .tooltip(label.clone())
             .child(
                 div()
                     .flex()
@@ -1339,7 +1352,9 @@ impl Workbench {
                         div()
                             .text_size(px(12.))
                             .text_color(muted)
-                            .child(self.text(label, cx)),
+                            .max_w(px(240.))
+                            .truncate()
+                            .child(label),
                     )
                     .child(
                         div()

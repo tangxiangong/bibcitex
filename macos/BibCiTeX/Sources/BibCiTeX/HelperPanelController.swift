@@ -104,8 +104,9 @@ final class HelperPanelController: NSObject {
         opening = true
         Task { @MainActor in
             do {
-                try await RustCore.pasteboard.capturePasteTarget()
+                let applicationName = try await RustCore.pasteboard.capturePasteTarget()
                 guard model.sessionGeneration == session else { return }
+                model.pasteTargetApplicationName = applicationName
                 opening = false
                 presentPanel()
             } catch {

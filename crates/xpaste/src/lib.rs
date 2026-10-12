@@ -32,7 +32,7 @@ fn validate_target_process(expected: u32, actual: u32) -> Result<(), String> {
 // Serialize clipboard and key injection as one transaction, without locking searches.
 static PASTE: Mutex<()> = Mutex::new(());
 
-pub fn capture_paste_target() -> Result<(), String> {
+pub fn capture_paste_target() -> Result<Option<String>, String> {
     transaction(platform::capture_paste_target)
 }
 /// Start once at app launch. The recent external target and active paste snapshot are separate.
@@ -73,7 +73,7 @@ pub fn paste(text: &str) -> Result<(), String> {
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod platform {
     pub fn observe_foreground() {}
-    pub fn capture_paste_target() -> Result<(), String> {
+    pub fn capture_paste_target() -> Result<Option<String>, String> {
         Err("Unsupported platform".into())
     }
     pub fn focus_previous_window() -> Result<(), String> {

@@ -330,7 +330,7 @@ pub fn helper_select(name: String, path: String) -> Result<LibraryRecord, CoreEr
     serde_json::from_value(registry::select(&name, &path)?)
         .map_err(|e| CoreError::from(e.to_string()))
 }
-pub fn capture_paste_target() -> Result<(), CoreError> {
+pub fn capture_paste_target() -> Result<Option<String>, CoreError> {
     xpaste::capture_paste_target().map_err(Into::into)
 }
 pub fn copy(text: String) -> Result<(), CoreError> {

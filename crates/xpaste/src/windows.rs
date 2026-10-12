@@ -2,12 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Derived from https://github.com/EcoPasteHub/EcoPaste
 use ::windows::Win32::{
-    Foundation::HWND,
+    Foundation::{CloseHandle, HWND},
+    Storage::FileSystem::{GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW},
+    System::Threading::{
+        OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+        QueryFullProcessImageNameW,
+    },
     UI::WindowsAndMessaging::{
         GetForegroundWindow, GetWindowThreadProcessId, IsIconic, IsWindow, SW_RESTORE,
         SetForegroundWindow, ShowWindow,
     },
 };
+use ::windows::core::{PCWSTR, PWSTR};
 use enigo::{Direction, Enigo, Key, Keyboard, Settings};
 use std::{sync::Mutex, thread, time::Duration};
 
@@ -32,13 +38,82 @@ pub fn observe_foreground() {
         *recent = Some((hwnd.0 as isize, pid));
     }
 }
-pub fn capture_paste_target() -> Result<(), String> {
+pub fn capture_paste_target() -> Result<Option<String>, String> {
     observe_foreground();
     let recent = *RECENT.lock().map_err(|_| "Paste target lock poisoned")?;
     if recent.is_some() {
         *TARGET.lock().map_err(|_| "Paste target lock poisoned")? = recent;
     }
-    Ok(())
+    Ok(recent.and_then(|(_, pid)| application_name(pid)))
+}
+
+fn application_name(pid: u32) -> Option<String> {
+    // Metadata is optional: failure to read it must not prevent pasting.
+    let mut path = vec![0u16; 32768];
+    let mut length = path.len() as u32;
+    // SAFETY: the process handle is closed after the query and the buffer length is valid.
+    let queried = unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let result = QueryFullProcessImageNameW(
+            handle,
+            PROCESS_NAME_WIN32,
+            PWSTR(path.as_mut_ptr()),
+            &mut length,
+        );
+        let _ = CloseHandle(handle);
+        result
+    };
+    queried.ok()?;
+    path.truncate(length as usize);
+    let fallback = std::path::Path::new(&String::from_utf16_lossy(&path))
+        .file_stem()
+        .map(|name| name.to_string_lossy().into_owned());
+    path.push(0);
+    file_description(&path).or(fallback)
+}
+
+fn file_description(path: &[u16]) -> Option<String> {
+    // SAFETY: path is NUL-terminated. Version queries borrow the live, aligned data buffer.
+    unsafe {
+        let size = GetFileVersionInfoSizeW(PCWSTR(path.as_ptr()), None);
+        if size == 0 {
+            return None;
+        }
+        let mut data = vec![0u32; (size as usize).div_ceil(4)];
+        GetFileVersionInfoW(PCWSTR(path.as_ptr()), None, size, data.as_mut_ptr().cast()).ok()?;
+        let query = |key: &str| -> Option<(*const u16, usize)> {
+            let key: Vec<u16> = key.encode_utf16().chain(Some(0)).collect();
+            let mut value = std::ptr::null_mut();
+            let mut length = 0;
+            if !VerQueryValueW(
+                data.as_ptr().cast(),
+                PCWSTR(key.as_ptr()),
+                &mut value,
+                &mut length,
+            )
+            .as_bool()
+                || value.is_null()
+                || length == 0
+            {
+                return None;
+            }
+            Some((value.cast(), length as usize))
+        };
+        let (translations, bytes) = query(r"\VarFileInfo\Translation")?;
+        for pair in std::slice::from_raw_parts(translations, bytes / 2).chunks_exact(2) {
+            for field in ["FileDescription", "ProductName"] {
+                let key = format!(r"\StringFileInfo\{:04x}{:04x}\{field}", pair[0], pair[1]);
+                if let Some((value, length)) = query(&key) {
+                    let text = String::from_utf16_lossy(std::slice::from_raw_parts(value, length));
+                    let text = text.trim_end_matches('\0').trim();
+                    if !text.is_empty() {
+                        return Some(text.to_owned());
+                    }
+                }
+            }
+        }
+        None
+    }
 }
 
 pub fn focus_previous_window() -> Result<(), String> {

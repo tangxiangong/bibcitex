@@ -107,7 +107,7 @@ internal sealed class HelperWindow : Window, IDisposable
         var rule = Views.Divider(); rule.VerticalAlignment = VerticalAlignment.Top; listArea.Children.Add(rule);
         // Floating controls, no bar: Enter (cross-app paste) and Tab as clickable hints,
         // grouped in one capsule at the trailing edge. Rows scroll beneath them.
-        pasteHint = Views.KeyHint("粘贴引用键", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
+        pasteHint = Views.KeyHint("粘贴到当前应用", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
         var switchHint = Views.KeyHint("切换文献库", "⇥", () => { if (!busy && !pasting) _ = StartSelecting(); });
         var editHint = Views.Button("settings", "高级搜索", async () =>
         {
@@ -220,8 +220,10 @@ internal sealed class HelperWindow : Window, IDisposable
         try
         {
             // Capture before activation, including when launched by the global hotkey.
-            await RustCore.CapturePasteTarget();
+            var applicationName = await RustCore.CapturePasteTarget();
             if (showVersion != lifecycle) return;
+            Views.SetKeyHintTitle(pasteHint, string.IsNullOrWhiteSpace(applicationName)
+                ? "粘贴到当前应用" : "粘贴到 {0}", applicationName ?? "");
             failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
             librarySearchDraft = ""; libraryBoundDraft = null; libraryFieldDraft = null;
             queryBar.Reset(); results.Items.Clear(); chooseLibrary.Visibility = Visibility.Collapsed; Resize(Header); Position(); visible = true;

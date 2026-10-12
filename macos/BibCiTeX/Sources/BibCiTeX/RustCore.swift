@@ -23,7 +23,7 @@ actor RustCore {
         try translated { try BibCiTeXCore.setLibraryPinned(name: name, pinned: pinned) }
     }
     func removeLibrary(name: String) throws { try translated { try BibCiTeXCore.removeLibrary(name: name) } }
-    func capturePasteTarget() throws { try translated { try BibCiTeXCore.capturePasteTarget() } }
+    func capturePasteTarget() throws -> String? { try translated { try BibCiTeXCore.capturePasteTarget() } }
     func copy(_ text: String) throws { try translated { try BibCiTeXCore.copy(text: text) } }
     func paste(_ text: String) throws { try translated { try BibCiTeXCore.paste(text: text) } }
     func search(path: String, query: String, field: String = "all", type: String = "all") throws -> [Reference] {

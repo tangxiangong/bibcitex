@@ -348,6 +348,15 @@ internal static class Views
         button.Click += (_, _) => action();
         return button;
     }
+    internal static void SetKeyHintTitle(Button button, string key, params object[] arguments)
+    {
+        var label = (TextBlock)((StackPanel)button.Content).Children[0];
+        label.MaxWidth = 180; label.TextTrimming = TextTrimming.CharacterEllipsis;
+        Localized.Bind(label, TextBlock.TextProperty, key, arguments);
+        Localized.Bind(button, Microsoft.UI.Xaml.Automation.AutomationProperties.NameProperty, key, arguments);
+        Localized.Bind(button, ToolTipService.ToolTipProperty, key, arguments);
+    }
+
     internal static ListViewItem LibraryItem(Library library, bool current = false, bool sidebar = false)
     {
         var row = new Grid { ColumnSpacing = 9, Padding = new Thickness(10, 5, 10, 5) };

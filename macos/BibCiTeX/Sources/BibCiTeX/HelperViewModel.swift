@@ -430,6 +430,7 @@ final class HelperViewModel: ObservableObject {
             }
         }
     }
+    @Published var pasteTargetApplicationName: String?
     @Published var isPasting = false
     @Published private(set) var isPasteOperationPending = false
     @Published private(set) var bibliographies: [Bibliography] = []

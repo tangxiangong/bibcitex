@@ -29,14 +29,20 @@ fn observe_foreground_inner() {
         }
     }
 }
-pub fn capture_paste_target() -> Result<(), String> {
+pub fn capture_paste_target() -> Result<Option<String>, String> {
     observe_foreground();
     let recent = *RECENT.lock().map_err(|_| "Paste target lock poisoned")?;
     // The observer never changes this snapshot while a helper session is in progress.
     if recent.is_some() {
         *TARGET.lock().map_err(|_| "Paste target lock poisoned")? = recent;
     }
-    Ok(())
+    Ok(autoreleasepool(|_| {
+        recent
+            .and_then(NSRunningApplication::runningApplicationWithProcessIdentifier)
+            .and_then(|app| app.localizedName())
+            .map(|name| name.to_string())
+            .filter(|name| !name.trim().is_empty())
+    }))
 }
 
 pub fn focus_previous_window() -> Result<(), String> {

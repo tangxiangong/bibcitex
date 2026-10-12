@@ -62,6 +62,12 @@ pub struct StatusResponse {
 }
 
 #[ffi]
+pub struct PasteTargetResponse {
+    pub application_name: Option<String>,
+    pub error: Option<String>,
+}
+
+#[ffi]
 pub struct LibrariesResponse {
     pub payload: Vec<LibraryRecord>,
     pub error: Option<String>,
@@ -229,8 +235,19 @@ pub fn helper_select(
 }
 
 #[ffi]
-pub fn capture_paste_target() -> ffi::Result<Wire<StatusResponse>, BridgeError> {
-    invoke(|| Ok(status(bibcitex_service::capture_paste_target())))
+pub fn capture_paste_target() -> ffi::Result<Wire<PasteTargetResponse>, BridgeError> {
+    invoke(|| {
+        Ok(match bibcitex_service::capture_paste_target() {
+            Ok(application_name) => PasteTargetResponse {
+                application_name,
+                error: None,
+            },
+            Err(error) => PasteTargetResponse {
+                application_name: None,
+                error: Some(error.to_string()),
+            },
+        })
+    })
 }
 
 #[ffi]

@@ -47,7 +47,9 @@ Call `initialize()` before first activation of the main window. It starts a
 once-only observer for the most recent external foreground window/application.
 `libraries()` also initializes for compatibility. Before activating the helper,
 await `capturePasteTarget()`: this snapshots the foreground external target or the
-last external target if BibCiTeX already has focus. The observer does not change
+last external target if BibCiTeX already has focus, and returns its optional application
+name for the helper action label. Missing application metadata does not block pasting.
+The observer does not change
 this snapshot during a helper session. `paste(text)` copies the exact text, then
 activates and verifies the target before Cmd+V / Ctrl+V. Windows verifies HWND plus
 owning PID. macOS requires Accessibility permission. A failed focus/permission/key

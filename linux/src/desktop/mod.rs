@@ -143,6 +143,9 @@ impl Desktop {
             Err("No previous application is available for paste".into())
         }
     }
+    pub fn captured_application_name(&self) -> Option<String> {
+        self.target.as_ref()?.lock().ok()?.captured_name.clone()
+    }
     pub fn language(&self, chinese: bool) {
         let _ = self.requests.try_send(Request::Language(chinese));
     }

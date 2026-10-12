@@ -98,6 +98,8 @@
   "类型": "Type",
   "类型筛选": "Filter by type",
   "粘贴失败：{0}": "Failed to paste: {0}",
+  "粘贴到 {0}": "Paste to {0}",
+  "粘贴到当前应用": "Paste to Current App",
   "粘贴引用键": "Paste citation key",
   "组织": "Organization",
   "编号": "Number",

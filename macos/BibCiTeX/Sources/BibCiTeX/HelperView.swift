@@ -136,8 +136,10 @@ struct HelperView: View {
             Spacer(minLength: 0)
             HStack(spacing: 2) {
                 HelperBarButton(action: { model.activateSelection(onSuccess: onHidePanel) }) {
-                    barHint(L10n.text("粘贴引用键"), key: "↵")
+                    barHint(pasteTargetTitle, key: "↵")
                 }
+                .help(pasteTargetTitle)
+                .accessibilityLabel(pasteTargetTitle)
                 .disabled(model.selectedReferenceIndex == nil || model.pasteSelection?.isEmpty == true)
                 HelperBarButton(action: {
                     model.startSelectMode()
@@ -153,9 +155,20 @@ struct HelperView: View {
         .frame(height: HelperMetrics.bottomBar)
     }
 
+    private var pasteTargetTitle: String {
+        if let name = model.pasteTargetApplicationName, !name.isEmpty {
+            return L10n.text("粘贴到 {0}", name)
+        }
+        return L10n.text("粘贴到当前应用")
+    }
+
     private func barHint(_ title: String, key: String) -> some View {
         HStack(spacing: 6) {
             Text(title)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: 240)
+                .fixedSize(horizontal: true, vertical: false)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
             HelperKeyCap(text: key)

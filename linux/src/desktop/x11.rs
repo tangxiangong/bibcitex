@@ -16,10 +16,11 @@ use x11rb::{
     rust_connection::RustConnection,
 };
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 pub struct Target {
     recent: Option<(u32, u32)>,
     captured: Option<(u32, u32)>,
+    pub captured_name: Option<String>,
 }
 fn atom(connection: &RustConnection, name: &[u8]) -> Result<u32, String> {
     connection
@@ -114,11 +115,39 @@ pub fn start(events: async_channel::Sender<Command>) -> Result<Arc<Mutex<Target>
 pub fn capture(target: &Mutex<Target>) -> Result<(), String> {
     let mut state = target.lock().map_err(|e| e.to_string())?;
     state.captured = state.recent;
+    state.captured_name = state
+        .captured
+        .and_then(|(window, pid)| application_name(window, pid));
     if state.captured.is_none() {
         return Err("No previous application is available for paste".into());
     }
     Ok(())
 }
+fn application_name(window: u32, pid: u32) -> Option<String> {
+    let class = (|| {
+        let (connection, _) = x11rb::connect(None).ok()?;
+        let reply = connection
+            .get_property(false, window, AtomEnum::WM_CLASS, AtomEnum::STRING, 0, 1024)
+            .ok()?
+            .reply()
+            .ok()?;
+        let mut names = reply.value.split(|byte| *byte == 0);
+        let instance = names.next()?;
+        let class = names
+            .next()
+            .filter(|name| !name.is_empty())
+            .unwrap_or(instance);
+        let name = String::from_utf8_lossy(class).trim().to_owned();
+        (!name.is_empty()).then_some(name)
+    })();
+    class.or_else(|| {
+        std::fs::read_link(format!("/proc/{pid}/exe"))
+            .ok()?
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+    })
+}
+
 pub fn validate(target: &Mutex<Target>) -> Result<(), String> {
     let (window, pid) = target
         .lock()

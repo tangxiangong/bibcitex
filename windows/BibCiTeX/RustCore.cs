@@ -154,10 +154,11 @@ internal static class RustCore
         var response = wire.Unwire(); Check(response.error);
         return Library.From(response.payload ?? throw new LocalizedException("Missing bibliography response."));
     });
-    internal static Task CapturePasteTarget() => Task.Run(() =>
+    internal static Task<string?> CapturePasteTarget() => Task.Run(() =>
     {
         using var wire = Interop.capture_paste_target().AsOk();
-        Check(wire.Unwire().error);
+        var response = wire.Unwire(); Check(response.error);
+        return response.application_name;
     });
     internal static Task Copy(string text) => Task.Run(() =>
     {

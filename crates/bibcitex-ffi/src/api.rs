@@ -50,7 +50,7 @@ pub fn helper_select(name: String, path: String) -> Result<LibraryRecord, CoreEr
     bibcitex_service::helper_select(name, path)
 }
 #[uniffi::export]
-pub fn capture_paste_target() -> Result<(), CoreError> {
+pub fn capture_paste_target() -> Result<Option<String>, CoreError> {
     bibcitex_service::capture_paste_target()
 }
 #[uniffi::export]
