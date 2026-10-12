@@ -10,6 +10,19 @@ use std::{sync::Mutex, thread, time::Duration};
 
 static TARGET: Mutex<Option<i32>> = Mutex::new(None);
 static RECENT: Mutex<Option<i32>> = Mutex::new(None);
+
+pub fn paste_preserving_clipboard(text: &str) -> Result<(), String> {
+    autoreleasepool(|_| {
+        crate::clipboard::paste(
+            &mut crate::macos_clipboard::Pasteboard(
+                objc2_app_kit::NSPasteboard::generalPasteboard(),
+            ),
+            text,
+            focus_previous_window,
+            thread::sleep,
+        )
+    })
+}
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {
     fn AXIsProcessTrusted() -> bool;

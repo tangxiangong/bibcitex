@@ -12,8 +12,12 @@ use std::sync::Mutex;
 
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+mod macos_clipboard;
 #[cfg(target_os = "windows")]
 mod windows;
+#[cfg(target_os = "windows")]
+mod windows_clipboard;
 #[cfg(target_os = "macos")]
 use macos as platform;
 #[cfg(target_os = "windows")]
@@ -65,13 +69,15 @@ fn copy_inner(text: &str) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 pub fn paste(text: &str) -> Result<(), String> {
-    transaction(|| {
-        copy_inner(text)?;
-        focus_previous_window()
-    })
+    transaction(|| platform::paste_preserving_clipboard(text))
 }
+
+mod clipboard;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod platform {
+    pub fn paste_preserving_clipboard(_: &str) -> Result<(), String> {
+        Err("Unsupported platform".into())
+    }
     pub fn observe_foreground() {}
     pub fn capture_paste_target() -> Result<Option<String>, String> {
         Err("Unsupported platform".into())

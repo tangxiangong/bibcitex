@@ -1008,10 +1008,12 @@ impl Workbench {
         if key.is_empty() {
             return;
         }
+        #[cfg(not(target_os = "linux"))]
         self.copy(key.clone(), cx);
         #[cfg(target_os = "linux")]
         {
             let Some(desktop) = cx.global::<crate::application::Services>().desktop.clone() else {
+                self.copy(key.clone(), cx);
                 self.paste_failed("Desktop paste is unavailable".into(), key, cx);
                 return;
             };
@@ -1023,10 +1025,30 @@ impl Workbench {
                 if let Err(error) = desktop.prepare().await {
                     let _ = this.update_in(cx, |this, _, cx| {
                         this.pasting = false;
+                        this.copy(key.clone(), cx);
                         this.paste_failed(error, key, cx);
                     });
                     return;
                 }
+                let original_clipboard =
+                    gpui::AsyncApp::update(cx, |cx| cx.read_from_clipboard_async())
+                        .await
+                        .ok()
+                        .flatten()
+                        // GPUI's X11 writer only publishes text. Restoring an image
+                        // or file item through it would silently publish empty text.
+                        .filter(|item| {
+                            item.entries
+                                .iter()
+                                .all(|entry| matches!(entry, gpui::ClipboardEntry::String(_)))
+                        });
+                static PASTE_ID: std::sync::atomic::AtomicU64 =
+                    std::sync::atomic::AtomicU64::new(0);
+                let paste_id = PASTE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let temporary = ClipboardItem::new_string_with_metadata(
+                    key.clone(),
+                    format!("bibcitex-paste-{}-{paste_id}", std::process::id()),
+                );
                 // Closing our surface lets the compositor restore its previous focus.
                 if !this
                     .update_in(cx, |this, window, cx| {
@@ -1034,7 +1056,7 @@ impl Workbench {
                             this.pasting = false;
                             return false;
                         }
-                        this.copy(key.clone(), cx);
+                        cx.write_to_clipboard(temporary.clone());
                         window.remove_window();
                         true
                     })
@@ -1062,6 +1084,20 @@ impl Workbench {
                     return;
                 }
                 let result = desktop.paste().await;
+                if result.is_ok() {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(200))
+                        .await;
+                    gpui::AsyncApp::update(cx, |cx| {
+                        // Metadata belongs to this write, unlike text equality. A new copy
+                        // of the same text must not be replaced by the old snapshot.
+                        if cx.read_from_clipboard().as_ref() == Some(&temporary)
+                            && let Some(original) = original_clipboard
+                        {
+                            cx.write_to_clipboard(original);
+                        }
+                    });
+                }
                 let _ = this.update(cx, |this, cx| {
                     this.pasting = false;
                     cx.notify();

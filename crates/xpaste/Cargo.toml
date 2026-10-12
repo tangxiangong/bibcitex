@@ -14,10 +14,13 @@ enigo = { workspace = true }
 dispatch2 = { workspace = true }
 objc2 = { workspace = true }
 objc2-app-kit = { workspace = true }
+objc2-foundation = { workspace = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { workspace = true, features = [
     "Win32_Foundation",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
     "Win32_System_Threading",
     "Win32_Storage_FileSystem",
     "Win32_UI_WindowsAndMessaging",

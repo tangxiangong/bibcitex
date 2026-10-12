@@ -20,6 +20,15 @@ use std::{sync::Mutex, thread, time::Duration};
 // Keep the owning process as well as HWND to reject recycled handles.
 static TARGET: Mutex<Option<(isize, u32)>> = Mutex::new(None);
 static RECENT: Mutex<Option<(isize, u32)>> = Mutex::new(None);
+
+pub fn paste_preserving_clipboard(text: &str) -> Result<(), String> {
+    let Ok(mut clipboard) = crate::windows_clipboard::Pasteboard::new() else {
+        // Preservation infrastructure must not prevent ordinary paste.
+        crate::copy_inner(text)?;
+        return focus_previous_window();
+    };
+    crate::clipboard::paste(&mut clipboard, text, focus_previous_window, thread::sleep)
+}
 fn process(hwnd: HWND) -> u32 {
     let mut pid = 0;
     unsafe {
