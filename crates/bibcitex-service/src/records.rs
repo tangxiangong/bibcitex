@@ -164,6 +164,43 @@ impl ReferenceRecord {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn platform_records_normalize_doubled_math_commands_without_rewriting_bibtex() {
+        let bibliography = biblatex::Bibliography::parse(
+            r"@article{example,
+                title={{The characteristic class and ramification of an $\\ell$-adic étale sheaf}},
+                note={$\\alpha$}, abstract={$\\frac{1}{2}$},
+                booktitle={$\\mathbb{R}$}, issue={$\\beta$}
+            }",
+        )
+        .unwrap();
+        let source = bibliography
+            .get("example")
+            .unwrap()
+            .to_bibtex_string()
+            .unwrap();
+        let references = crate::core::utils::read_bibliography(bibliography);
+        let record = ReferenceRecord::from_reference(&references[0], "/work.bib").unwrap();
+        let formulas: Vec<_> = [
+            &record.title,
+            &record.note,
+            &record.abstract_text,
+            &record.book_title,
+            &record.issue,
+        ]
+        .into_iter()
+        .flat_map(|chunks| chunks.iter())
+        .filter(|chunk| matches!(chunk.kind, ChunkKind::Math))
+        .map(|chunk| chunk.text.as_str())
+        .collect();
+        assert_eq!(
+            formulas,
+            [r"\ell", r"\alpha", r"\frac{1}{2}", r"\mathbb{R}", r"\beta"]
+        );
+        assert_eq!(record.source, source);
+    }
+
     #[test]
     fn generated_record_preserves_enum_math_source_and_absent_fields() {
         let bibliography = biblatex::Bibliography::parse(

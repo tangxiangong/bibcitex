@@ -119,6 +119,31 @@ fn evidence_points_to_original_unicode_and_excludes_negative_terms() {
     assert!(ranges.contains(&"learning"));
     assert_eq!(ranges.iter().filter(|&&r| r == "learning").count(), 1);
 }
+
+#[test]
+fn evidence_after_doubled_math_commands_uses_normalized_chunk_offsets() {
+    let refs = references(r"@article{A,title={Café $\\ell$-adic étale sheaf}}");
+    let index = AdvancedIndex::new(&refs);
+    let document = query::analyze("title:étale").document.unwrap();
+    let hits = index
+        .search(&document, "all", |_| true, |_, _, _| false)
+        .unwrap();
+    let title = refs[0]
+        .title
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|c| c.get())
+        .collect::<String>();
+    assert_eq!(title, r"Café \ell-adic étale sheaf");
+    let matches: Vec<_> = hits[0]
+        .ranges
+        .iter()
+        .filter(|range| range.field_name == "title")
+        .map(|range| &title[range.start..range.end])
+        .collect();
+    assert_eq!(matches, ["étale"]);
+}
 #[test]
 fn phrases_do_not_cross_author_entries_or_fold_accents_and_symbols() {
     let refs = references(

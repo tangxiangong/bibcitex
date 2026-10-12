@@ -582,7 +582,10 @@ extension Renderer {
   nonisolated private static func rasterizeSVG(
     data: Data, size: CGSize, scale: CGFloat
   ) -> _Image? {
-    guard let svg = SwiftDraw.SVG(data: data) else { return nil }
+    guard let svg = SwiftDraw.SVG(data: data),
+      svg.size.width > 0, svg.size.height > 0,
+      size.width.isFinite, size.height.isFinite, scale.isFinite
+    else { return nil }
     let pixelWidth = Int(ceil(size.width * scale))
     let pixelHeight = Int(ceil(size.height * scale))
     guard pixelWidth > 0, pixelHeight > 0 else { return nil }

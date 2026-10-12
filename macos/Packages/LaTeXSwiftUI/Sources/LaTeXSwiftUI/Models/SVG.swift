@@ -72,8 +72,11 @@ internal struct SVG: Codable, Hashable, Sendable {
     // Get the SVG's geometry
     geometry = try SVGGeometry(svg: patchedSVG)
 
-    // Get the SVG data
-    if let svgData = patchedSVG.data(using: .utf8) {
+    // SwiftDraw stores root dimensions as integer lengths. A glyph such as
+    // \ell is only 0.943ex wide and would become a zero-width viewport.
+    // Rasterize in viewBox units; keep the original ex geometry for layout.
+    let rasterSVG = Self.rasterizationViewport(patchedSVG, size: geometry.frame.rect.size)
+    if let svgData = rasterSVG.data(using: .utf8) {
       data = svgData
     }
     else {
@@ -86,6 +89,22 @@ internal struct SVG: Codable, Hashable, Sendable {
 // MARK: Methods
 
 extension SVG {
+
+  private static func rasterizationViewport(_ svg: String, size: CGSize) -> String {
+    guard let range = svg.range(of: #"<svg\b[^>]*>"#, options: .regularExpression) else {
+      return svg
+    }
+    var root = String(svg[range])
+    for (name, length) in [("width", size.width), ("height", size.height)] {
+      root = root.replacingOccurrences(
+        of: #"\b\#(name)="[^"]*""#,
+        with: "\(name)=\"\(ceil(length))\"",
+        options: .regularExpression)
+    }
+    var result = svg
+    result.replaceSubrange(range, with: root)
+    return result
+  }
   
   /// The JSON encoded value of the receiver.
   ///

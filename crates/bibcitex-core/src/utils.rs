@@ -2,6 +2,8 @@ use crate::bib::Reference;
 use biblatex::{Bibliography, Chunk, Chunks};
 use rayon::prelude::*;
 
+mod math;
+
 /// Read a bibliography and convert it to a vector of references parallelly.
 pub fn par_read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
     bibliography
@@ -33,21 +35,24 @@ pub fn read_bibliography(bibliography: Bibliography) -> Vec<Reference> {
     }
 }
 
-/// Merge [`Chunk::Normal`] and [`Chunk::Verbatim`] chunks.
+/// Merge text chunks and normalize doubled commands in simple math chunks.
 pub fn merge_chunks(chunks: Chunks) -> Vec<Chunk> {
-    let mut chunks_iter = chunks.into_iter();
+    let mut chunks_iter = chunks.into_iter().map(|chunk| match chunk.v {
+        Chunk::Math(text) => Chunk::Math(math::normalize_commands(text)),
+        other => other,
+    });
     let mut merged: Vec<Chunk> = Vec::with_capacity(chunks_iter.len());
     if let Some(first_chunk) = chunks_iter.next() {
-        let mut current = first_chunk.v;
+        let mut current = first_chunk;
         for chunk in chunks_iter {
-            match (&current, &chunk.v) {
+            match (&current, &chunk) {
                 (
                     Chunk::Normal(_) | Chunk::Verbatim(_),
                     Chunk::Normal(txt) | Chunk::Verbatim(txt),
                 ) => current.get_mut().push_str(txt),
                 _ => {
                     merged.push(current);
-                    current = chunk.v;
+                    current = chunk;
                 }
             }
         }

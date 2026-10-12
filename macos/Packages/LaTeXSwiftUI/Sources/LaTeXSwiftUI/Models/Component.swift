@@ -268,7 +268,8 @@ extension Component {
         text = imageText
       }
       else {
-        text = Text("")
+        // Keep the equation readable when SVG decoding or rasterization fails.
+        text = Text(blockRenderingMode == .alwaysInline ? originalTextTrimmingNewlines : originalText)
       }
     }
     else if blockRenderingMode == .alwaysInline {
