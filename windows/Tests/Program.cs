@@ -123,6 +123,14 @@ try
     Assert(incompleteQuery.status.IsIncomplete && incompleteQuery.document is null, "typed incomplete query");
     var invalidQuery = await RustCore.AnalyzeQuery(new TextRequest { text = "year:abc author:" });
     Assert(invalidQuery.status.IsInvalid && invalidQuery.diagnostics.Count > 0, "definite errors dominate incomplete suffix");
+    var batchRows = await RustCore.Search(bibliography, "");
+    var batchTargets = batchRows.Select(r => new TagTarget { library_uid = r.Data.library_uid, record_uid = r.Id }).ToList();
+    var batchState = await RustCore.BatchTagSnapshot(new() { targets = batchTargets });
+    Assert(batchState.count == (ulong)batchRows.Count && batchState.partial_ids.Contains(tagged.assigned_ids[0]), "batch partial state crosses C# bindings");
+    var batchAdded = await RustCore.MutateBatchTag(new() { targets = batchTargets, action = TagAction.Assign, id = tagged.assigned_ids[0], name = "", expected_revision = batchState.revision });
+    Assert(batchAdded.assigned_ids.Contains(tagged.assigned_ids[0]) && batchAdded.partial_ids.Count == 0, "batch assign is shared across selected records");
+    var batchRemoved = await RustCore.MutateBatchTag(new() { targets = batchTargets, action = TagAction.Unassign, id = tagged.assigned_ids[0], name = "", expected_revision = batchAdded.revision });
+    Assert(batchRemoved.assigned_ids.Count == 0 && batchRemoved.partial_ids.Count == 0 && batchRemoved.tags.Count == batchAdded.tags.Count, "batch remove preserves catalog");
     var condition = await RustCore.BuildCondition(new QueryCondition { field_name = "title", text_value = "A book", phrase = false, exclude = false, tag_id = null });
     Assert(condition.status.IsValid && condition.document is not null, "typed condition construction");
     var rendered = await RustCore.RenderQuery(condition.document!);

@@ -1481,3 +1481,29 @@ mod scoped_binding_review_regressions {
         assert_eq!(render_query(doc).text, edited.text);
     }
 }
+
+fn refresh_tag_targets(targets: &[TagTarget]) -> Result<(), CoreError> {
+    crate::registry::recover_search_transaction()?;
+    for uid in targets
+        .iter()
+        .map(|target| &target.library_uid)
+        .collect::<std::collections::BTreeSet<_>>()
+    {
+        let path = crate::registry::path_for_uid(uid)?;
+        let source = crate::api::references(&path)?;
+        crate::tags::load_snapshot_uid(uid, &path, &source.version, &source.references)?;
+    }
+    Ok(())
+}
+
+/// Read all/partial tag assignments for a stable, possibly cross-library selection.
+pub fn batch_tag_snapshot(targets: Vec<TagTarget>) -> Result<BatchTagSnapshot, CoreError> {
+    refresh_tag_targets(&targets)?;
+    crate::tags::snapshot_batch(&targets).map_err(Into::into)
+}
+
+/// Apply one tag operation atomically; any invalid target or stale revision aborts it.
+pub fn mutate_batch_tag(mutation: BatchTagMutation) -> Result<BatchTagSnapshot, CoreError> {
+    refresh_tag_targets(&mutation.targets)?;
+    crate::tags::mutate_batch(mutation).map_err(Into::into)
+}

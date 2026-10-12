@@ -134,7 +134,7 @@ internal sealed class HelperWindow : Window, IDisposable
         bottomBar.HorizontalAlignment = HorizontalAlignment.Right; bottomBar.VerticalAlignment = VerticalAlignment.Bottom;
         bottomBar.Margin = new Thickness(0, 0, 12, 8); bottomBar.Visibility = Visibility.Collapsed;
         listArea.Children.Add(bottomBar);
-        results.SelectionChanged += (_, _) => pasteHint.IsEnabled = results.SelectedItem is not null;
+        results.SelectionChanged += (_, _) => pasteHint.IsEnabled = results.SelectedItems.Count > 0;
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
         fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
         fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };
@@ -185,7 +185,12 @@ internal sealed class HelperWindow : Window, IDisposable
         };
         search.PreviewKeyDown += KeyDown;
         results.PreviewKeyDown += KeyDown;
-        results.ItemClick += async (_, e) => await Execute(e.ClickedItem as ListViewItem);
+        results.ItemClick += async (_, e) => {
+            pasteCursor = results.Items.IndexOf(e.ClickedItem);
+            if (!KeyPressed(VirtualKey.Shift)) pasteAnchor = pasteCursor;
+            if (selecting || (!KeyPressed(VirtualKey.Control) && !KeyPressed(VirtualKey.Shift)))
+                await Execute(e.ClickedItem as ListViewItem, clicked: true);
+        };
         Activated += (_, args) => { active = args.WindowActivationState != WindowActivationState.Deactivated; if (!active && !opening && !pasting && !busy) Hide(); };
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };
         Resize(Header);
@@ -205,7 +210,7 @@ internal sealed class HelperWindow : Window, IDisposable
 
     internal async Task Toggle()
     {
-        if (pasting) return;
+        if (pasting || validatingPaste) return;
         if (visible) { Hide(); return; }
         if (opening || disposed || busy) return;
         App.Tray?.Hide();
@@ -252,6 +257,8 @@ internal sealed class HelperWindow : Window, IDisposable
     {
         if (!visible || busy || pasting || composing || candidates.Open || searchSession.Restoring) return;
         searchSession.Invalidate();
+        pasteCursor = pasteAnchor = 0;
+        results.SelectionMode = selecting ? ListViewSelectionMode.Single : ListViewSelectionMode.Extended;
         var request = ++version;
         results.Items.Clear();
         failedKey = null; fallback.Visibility = Visibility.Collapsed; SetStatus("");
@@ -290,6 +297,11 @@ internal sealed class HelperWindow : Window, IDisposable
         catch (Exception error) { if (request == version) { SetErrorStatus(error); ResizeContent(); } }
         finally { if (request == version) SetSearching(false); }
     }
+    private int pasteCursor, pasteAnchor;
+    private bool validatingPaste;
+    private static bool KeyPressed(VirtualKey key) =>
+        (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
+
     private async void KeyDown(object sender, KeyRoutedEventArgs args)
     {
         if (args.Handled) return;
@@ -314,6 +326,25 @@ internal sealed class HelperWindow : Window, IDisposable
         var shift = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Shift);
         var winLeft = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.LeftWindows);
         var winRight = Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.RightWindows);
+        if (!selecting && !KeyPressed(VirtualKey.Menu) && !KeyPressed(VirtualKey.LeftWindows) && !KeyPressed(VirtualKey.RightWindows)) {
+            if (KeyPressed(VirtualKey.Control) && args.Key == VirtualKey.A) {
+                results.SelectAll(); args.Handled = true; return;
+            }
+            if (args.Key is VirtualKey.Up or VirtualKey.Down && !KeyPressed(VirtualKey.Control) && results.Items.Count > 0) {
+                var next = Math.Clamp(pasteCursor + (args.Key == VirtualKey.Down ? 1 : -1), 0, results.Items.Count - 1);
+                results.SelectedItems.Clear();
+                if (KeyPressed(VirtualKey.Shift)) {
+                    for (var i = Math.Min(pasteAnchor, next); i <= Math.Max(pasteAnchor, next); i++)
+                        results.SelectedItems.Add(results.Items[i]);
+                } else {
+                    pasteAnchor = next;
+                    results.SelectedItems.Add(results.Items[next]);
+                }
+                pasteCursor = next;
+                results.ScrollIntoView(results.Items[next]);
+                args.Handled = true; return;
+            }
+        }
         if (((control | alt | shift | winLeft | winRight) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0) return;
         switch (args.Key)
         {
@@ -331,9 +362,14 @@ internal sealed class HelperWindow : Window, IDisposable
             case VirtualKey.Enter: args.Handled = true; await Execute(results.SelectedItem as ListViewItem); break;
         }
     }
-    private async Task Execute(ListViewItem? item)
+    private async Task Execute(ListViewItem? item, bool clicked = false)
     {
-        if (pasting || busy || searching || item is null) return;
+        if (pasting || validatingPaste || busy || searching || !visible || item is null) return;
+        var keys = item.Tag is Reference single
+            ? clicked ? single.Key : string.Join(",", results.Items.Cast<ListViewItem>()
+                .Where(row => results.SelectedItems.Contains(row)).Select(row => ((Reference)row.Tag).Key))
+            : "";
+        if (item.Tag is Reference && keys.Length == 0) return;
         var session = lifecycle;
         var request = ++version;
         bool attemptedPaste = false;
@@ -349,13 +385,19 @@ internal sealed class HelperWindow : Window, IDisposable
             }
             else if (item.Tag is Reference reference)
             {
-                if (!await searchSession.Validate()) { await Refresh(); return; }
+                validatingPaste = true;
+                var valid = await searchSession.Validate();
+                // Validation yields: a query edit, close, or tag refresh can replace
+                // this selection before the clipboard/target may be touched.
+                if (request != version || session != lifecycle || disposed || !visible
+                    || busy || composing || candidates.Open || !results.Items.Contains(item)) return;
+                if (!valid) { await Refresh(); return; }
                 pasting = true;
                 // Release keyboard focus without invalidating this paste session.
                 visible = false;
                 AppWindow.Hide();
                 attemptedPaste = true;
-                await RustCore.Paste(reference.Key);
+                await RustCore.Paste(keys);
                 if (session == lifecycle) Hide();
             }
         }
@@ -368,14 +410,14 @@ internal sealed class HelperWindow : Window, IDisposable
                 // the clipboard. The dialog reports only the original paste error.
                 try
                 {
-                    await RustCore.Copy(reference.Key);
+                    await RustCore.Copy(keys);
                     if (session != lifecycle || disposed) return;
                     failedKey = null; fallback.Visibility = Visibility.Collapsed;
                 }
                 catch
                 {
                     if (session != lifecycle || disposed) return;
-                    failedKey = reference.Key; fallback.Visibility = Visibility.Visible;
+                    failedKey = keys; fallback.Visibility = Visibility.Visible;
                 }
                 visible = true;
                 Activate(); SetErrorStatus(error);
@@ -400,10 +442,11 @@ internal sealed class HelperWindow : Window, IDisposable
             }
             else { Activate(); search.Focus(FocusState.Programmatic); SetErrorStatus(error); ResizeContent(); }
         }
-        finally { pasting = false; busy = false; }
+        finally { validatingPaste = false; pasting = false; if (item.Tag is Library) busy = false; }
     }
     private async Task StartSelecting()
     {
+        results.SelectionMode = ListViewSelectionMode.Single;
         if (!selecting) { librarySearchDraft = search.Text; libraryBoundDraft = queryBar.Prefix; libraryFieldDraft = queryBar.Field; }
         selecting = true; queryBar.Reset(); await Refresh(); search.Focus(FocusState.Programmatic);
     }

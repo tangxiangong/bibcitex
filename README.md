@@ -178,6 +178,10 @@ Type values are case-insensitive: `article`, `book`, `thesis`, `mastersthesis`, 
 
 ### Tags
 
+The main window and tray support Command-click (Ctrl-click on Windows/Linux) to toggle selection, Shift-click for ranges, Command/Ctrl+A to select all, and Shift+arrow keys to extend selection. Shortcuts follow focus: select all in a search field still selects its text. In Helper, ordinary clicks paste immediately. Command/Ctrl-click toggles selection, Shift-click or Shift+arrow extends a range, and Command/Ctrl+A selects all current results, including while the search input is focused. Enter pastes selected cite keys in list order joined with commas. Helper has no selection-mode button; selection serves paste only.
+
+In the main window or tray, choose “Select multiple”, check the current results, then open “Batch tags” from the “Selected N” menu. The menu also provides select all, clear selection, and end selection. The editor distinguishes tags added to all, some, or none of the selected references, and supports adding, removing, or creating and assigning a tag. Searching, filtering, changing libraries, or refreshing results clears selection; an open batch editor retains its captured UUID targets. Every write validates all targets and the metadata revision before applying the whole operation atomically.
+
 Reference lists show colored tags. Click a tag or the reference’s tag action to search, toggle assignments, or create and assign a tag in one step. Tag menus offer rename and color editing; global management contains merge/delete and broken tag association recovery. The recovery entry is hidden when no broken associations exist. To relocate a file, edit its library in library management, choose “Relocate source”, select the new file, and save.
 
 Library, reference and tag UUIDs are their UIDs. A library keeps its UUID when renamed or relocated, even when file content also changes. Global tags work across libraries; associations store UUIDs rather than `.bib` paths. Tags never modify `.bib` files. Back up both `setting.json` (UUIDs and file locations) and `search-metadata.json` (tags and record associations) in the configuration directory. Existing library registrations receive UUIDs on first use; ordinary BibTeX import/export does not include tags.
@@ -211,9 +215,9 @@ See [TODO.md](./TODO.md) for the detailed roadmap.
 - [x] **Search improvements**: Multiple keywords, fuzzy matching, relevance ranking, and performance optimization.
 - [x] **Advanced search**: Fields, exact phrases, Boolean groups, exclusions, year ranges and a visual condition editor, powered by chumsky.
 - [x] **Tags**: Single-reference assignment, catalog management, stable identities and tag filtering.
-- [ ] **Bulk tags**: Add and remove tags across multiple selected references.
+- [x] **Bulk tags**: Three-platform selection, mixed assignment state, and atomic add/remove operations.
 - [x] **Helper filter commands**: Floating `@` / `$` / `#` candidates, inline name filtering, optional field values and removable capsules on all three platforms.
-- [ ] **Multiple selection**: Select multiple references and perform bulk operations in the main window and helper.
+- [ ] **Multiple selection refinements**: Bulk copy and output presets remain planned; Helper supports comma-separated bulk paste.
 - [ ] **Copy and paste formats**: Bare citation keys, LaTeX and Typst citation presets, and combined citations for multiple references.
 
 ## Third-Party Code Attribution

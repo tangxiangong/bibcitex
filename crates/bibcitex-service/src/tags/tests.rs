@@ -469,3 +469,172 @@ fn merge_and_relink_keep_global_tags_and_cross_library_records_distinct() {
             .contains_key(&second.record_uid)
     );
 }
+
+#[test]
+fn batch_tags_are_atomic_deduplicated_and_cross_library() {
+    let first = tempfile::NamedTempFile::new().unwrap();
+    let second = tempfile::NamedTempFile::new().unwrap();
+    fs::write(
+        first.path(),
+        "@article{same,title={one}} @article{B,title={two}}",
+    )
+    .unwrap();
+    fs::write(second.path(), "@article{same,title={three}}").unwrap();
+    let a = crate::add_library(
+        "batch-a".into(),
+        first.path().to_str().unwrap().into(),
+        None,
+    )
+    .unwrap();
+    let b = crate::add_library(
+        "batch-b".into(),
+        second.path().to_str().unwrap().into(),
+        None,
+    )
+    .unwrap();
+    let rows = crate::search(a.path.clone(), "".into(), "all".into(), "all".into()).unwrap();
+    let other = crate::search(b.path.clone(), "".into(), "all".into(), "all".into()).unwrap();
+    let one = TagTarget {
+        library_uid: a.uid.clone(),
+        record_uid: rows[0].id.clone(),
+    };
+    let two = TagTarget {
+        library_uid: b.uid.clone(),
+        record_uid: other[0].id.clone(),
+    };
+    let targets = vec![one.clone(), two.clone(), one.clone()];
+    let snapshot = crate::batch_tag_snapshot(targets.clone()).unwrap();
+    assert_eq!(snapshot.count, 2);
+    let create = BatchTagMutation {
+        targets: targets.clone(),
+        action: TagAction::Create,
+        id: String::new(),
+        name: "Batch".into(),
+        expected_revision: snapshot.revision,
+    };
+    let assigned = crate::mutate_batch_tag(create.clone()).unwrap();
+    let id = assigned
+        .tags
+        .iter()
+        .find(|tag| tag.name == "Batch")
+        .unwrap()
+        .id
+        .clone();
+    assert_eq!(assigned.assigned_ids, vec![id.clone()]);
+    assert!(assigned.partial_ids.is_empty());
+    let bytes = fs::read(path()).unwrap();
+    assert!(
+        crate::mutate_batch_tag(create)
+            .unwrap_err()
+            .to_string()
+            .contains("StaleTagRevision")
+    );
+    assert_eq!(bytes, fs::read(path()).unwrap());
+    let wrong = TagTarget {
+        library_uid: a.uid.clone(),
+        record_uid: other[0].id.clone(),
+    };
+    for (action, tag, selection) in [
+        (TagAction::Unassign, id.clone(), vec![one.clone(), wrong]),
+        (TagAction::Assign, "missing-tag".into(), targets.clone()),
+        (TagAction::Delete, id.clone(), targets.clone()),
+        (TagAction::Create, String::new(), Vec::new()),
+    ] {
+        let result = crate::mutate_batch_tag(BatchTagMutation {
+            targets: selection,
+            action,
+            id: tag,
+            name: "Must not exist".into(),
+            expected_revision: assigned.revision,
+        });
+        assert!(result.is_err());
+        assert_eq!(bytes, fs::read(path()).unwrap());
+    }
+    crate::mutate_batch_tag(BatchTagMutation {
+        targets: vec![one.clone()],
+        action: TagAction::Unassign,
+        id: id.clone(),
+        name: String::new(),
+        expected_revision: assigned.revision,
+    })
+    .unwrap();
+    let partial = crate::batch_tag_snapshot(targets.clone()).unwrap();
+    assert!(partial.assigned_ids.is_empty());
+    assert_eq!(partial.partial_ids, vec![id.clone()]);
+    let result = crate::mutate_batch_tag(BatchTagMutation {
+        targets: targets.clone(),
+        action: TagAction::Assign,
+        id: id.clone(),
+        name: String::new(),
+        expected_revision: partial.revision,
+    })
+    .unwrap();
+    assert_eq!(result.assigned_ids, vec![id.clone()]);
+    let untouched = crate::tag_snapshot_uid(a.uid.clone(), rows[1].id.clone()).unwrap();
+    assert!(untouched.assigned_ids.is_empty());
+    let removed = crate::mutate_batch_tag(BatchTagMutation {
+        targets,
+        action: TagAction::Unassign,
+        id,
+        name: String::new(),
+        expected_revision: result.revision,
+    })
+    .unwrap();
+    assert!(removed.assigned_ids.is_empty() && removed.partial_ids.is_empty());
+    assert_eq!(
+        removed.tags.len(),
+        1,
+        "removing associations never deletes the global tag"
+    );
+}
+
+#[test]
+fn batch_targets_survive_library_relocation_and_reject_deleted_records() {
+    let original = tempfile::NamedTempFile::new().unwrap();
+    let moved = tempfile::NamedTempFile::new().unwrap();
+    fs::write(
+        original.path(),
+        "@article{A,title={one}} @article{B,title={two}}",
+    )
+    .unwrap();
+    fs::copy(original.path(), moved.path()).unwrap();
+    let library = crate::add_library(
+        "batch-move".into(),
+        original.path().to_str().unwrap().into(),
+        None,
+    )
+    .unwrap();
+    let rows = crate::search(library.path.clone(), "".into(), "all".into(), "all".into()).unwrap();
+    let targets: Vec<_> = rows
+        .iter()
+        .map(|r| TagTarget {
+            library_uid: r.library_uid.clone(),
+            record_uid: r.id.clone(),
+        })
+        .collect();
+    crate::update_library(
+        library.name.clone(),
+        library.name,
+        Some(moved.path().to_str().unwrap().into()),
+        None,
+    )
+    .unwrap();
+    let snapshot = crate::batch_tag_snapshot(targets.clone()).unwrap();
+    let mutation = BatchTagMutation {
+        targets: targets.clone(),
+        action: TagAction::Create,
+        id: String::new(),
+        name: "Stable".into(),
+        expected_revision: snapshot.revision,
+    };
+    let tagged = crate::mutate_batch_tag(mutation.clone()).unwrap();
+    assert_eq!(tagged.assigned_ids.len(), 1);
+    fs::write(moved.path(), "@article{A,title={one}}").unwrap();
+    assert!(crate::batch_tag_snapshot(targets).is_err());
+    let bytes = fs::read(path()).unwrap();
+    let mut mutation = mutation;
+    mutation.expected_revision = read().unwrap().revision;
+    mutation.name = "Never partially created".into();
+    assert!(crate::mutate_batch_tag(mutation).is_err());
+    assert_eq!(bytes, fs::read(path()).unwrap());
+}

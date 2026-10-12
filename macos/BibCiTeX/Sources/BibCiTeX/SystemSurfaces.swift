@@ -4,8 +4,12 @@ import AppKit
 /// Keep native List selection and keyboard handling, but draw selection in the
 /// SwiftUI row backgrounds instead of AppKit's accent-colored highlight.
 struct NeutralListSelection: NSViewRepresentable {
+    var rowOnly = false
+
     func makeNSView(context: Context) -> NeutralListSelectionView {
-        NeutralListSelectionView()
+        let view = NeutralListSelectionView()
+        view.rowOnly = rowOnly
+        return view
     }
 
     func updateNSView(_ view: NeutralListSelectionView, context: Context) {
@@ -19,6 +23,7 @@ struct NeutralListSelection: NSViewRepresentable {
 }
 
 final class NeutralListSelectionView: NSView {
+    var rowOnly = false
     private var pending = false
     private var observing = false
     private struct HighlightObservation {
@@ -34,11 +39,18 @@ final class NeutralListSelectionView: NSView {
         observing = true
         // Selection notifications are synchronous: remove AppKit's highlight
         // before this event is drawn, rather than on the next main-queue turn.
-        for name in [NSTableView.selectionIsChangingNotification, NSTableView.selectionDidChangeNotification] {
-            NotificationCenter.default.addObserver(self, selector: #selector(selectionChanged(_:)), name: name, object: nil)
+        if !rowOnly {
+            for name in [NSTableView.selectionIsChangingNotification, NSTableView.selectionDidChangeNotification] {
+                NotificationCenter.default.addObserver(self, selector: #selector(selectionChanged(_:)), name: name, object: nil)
+            }
         }
         updateNow()
         scheduleUpdate()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        updateNow()
     }
 
     override func layout() {
@@ -62,7 +74,24 @@ final class NeutralListSelectionView: NSView {
         // A queued update can outlive dismantleNSView while still attached.
         guard observing, let root = window?.contentView else { return }
         highlights = highlights.filter { $0.value.view?.window === window }
-        configure(root)
+        if rowOnly {
+            // New/rebuilt rows can appear after the window-level scan. Install
+            // their observers during attachment, before their first draw.
+            var ancestor = superview
+            while let view = ancestor {
+                if let row = view as? NSTableRowView {
+                    configureRow(row)
+                }
+                if let table = view as? NSTableView {
+                    observeHighlight(table)
+                    if table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
+                    break
+                }
+                ancestor = view.superview
+            }
+        } else {
+            configure(root)
+        }
     }
 
     func scheduleUpdate() {
@@ -80,12 +109,16 @@ final class NeutralListSelectionView: NSView {
             observeHighlight(table)
             if table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
             table.enumerateAvailableRowViews { row, _ in
-                self.observeHighlight(row)
-                if row.isEmphasized { row.isEmphasized = false }
-                if row.selectionHighlightStyle != .none { row.selectionHighlightStyle = .none }
+                self.configureRow(row)
             }
         }
         for child in view.subviews { configure(child) }
+    }
+
+    private func configureRow(_ row: NSTableRowView) {
+        observeHighlight(row)
+        if row.isEmphasized { row.isEmphasized = false }
+        if row.selectionHighlightStyle != .none { row.selectionHighlightStyle = .none }
     }
 
     // Selection notifications only cover changes to the selected indexes.
@@ -369,6 +402,7 @@ struct RowSelectionBackground: View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
             .fill(selected ? fill : .clear)
             .padding(.horizontal, 6)
+            .background(NeutralListSelection(rowOnly: true))
     }
 }
 

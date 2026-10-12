@@ -1,10 +1,11 @@
 use crate::records::ReferenceRecord;
 pub use bibcitex_service::{
-    AdvancedSearchRequest, AdvancedSearchResponse, PendingAssociation, QueryAnalysis,
-    QueryCondition, QueryDiagnostic, QueryDocumentRecord, QueryEdit, QueryEditAction,
-    QueryInputKind, QueryNodeKind, QueryNodeRecord, QueryStatus, QueryTextEdit, SearchCatalog,
-    SearchContext, SearchEvidence, SearchFieldDescriptor, SearchMatchRange, SearchMode,
-    SearchSourceRecord, SearchTypeDescriptor, TagAction, TagMutation, TagRecord, TagSnapshot,
+    AdvancedSearchRequest, AdvancedSearchResponse, BatchTagMutation, BatchTagSnapshot,
+    PendingAssociation, QueryAnalysis, QueryCondition, QueryDiagnostic, QueryDocumentRecord,
+    QueryEdit, QueryEditAction, QueryInputKind, QueryNodeKind, QueryNodeRecord, QueryStatus,
+    QueryTextEdit, SearchCatalog, SearchContext, SearchEvidence, SearchFieldDescriptor,
+    SearchMatchRange, SearchMode, SearchSourceRecord, SearchTypeDescriptor, TagAction, TagMutation,
+    TagRecord, TagSnapshot, TagTarget,
 };
 // Platform-neutral advanced search and metadata contracts.
 /// Selects ordinary compatibility search or the shared advanced query language.
@@ -361,4 +362,41 @@ pub struct SearchTypeDescriptor {
     pub name: String,
     /// Localization key owned by the shared catalog.
     pub label_key: String,
+}
+
+/// A record selected by its stable library and record UUIDs.
+#[uniffi::remote(Record)]
+pub struct TagTarget {
+    /// Stable bibliography UUID.
+    pub library_uid: String,
+    /// Stable reference UUID within that bibliography.
+    pub record_uid: String,
+}
+/// Consistent tag state across a deduplicated selection.
+#[uniffi::remote(Record)]
+pub struct BatchTagSnapshot {
+    /// Metadata revision required by the next mutation.
+    pub revision: u64,
+    /// Global tag catalog.
+    pub tags: Vec<TagRecord>,
+    /// Tags present on every selected reference.
+    pub assigned_ids: Vec<String>,
+    /// Tags present on some, but not all, selected references.
+    pub partial_ids: Vec<String>,
+    /// Number of distinct selected references.
+    pub count: u64,
+}
+/// One atomic assignment operation across all selected records.
+#[uniffi::remote(Record)]
+pub struct BatchTagMutation {
+    /// Exact selected identities; duplicate pairs are ignored.
+    pub targets: Vec<TagTarget>,
+    /// Only Create, Assign and Unassign are accepted.
+    pub action: TagAction,
+    /// Existing tag UUID for Assign or Unassign.
+    pub id: String,
+    /// Display name for Create (creates and assigns in one transaction).
+    pub name: String,
+    /// Revision observed by the batch editor.
+    pub expected_revision: u64,
 }

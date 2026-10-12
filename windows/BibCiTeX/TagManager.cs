@@ -41,6 +41,97 @@ internal static class TagManager
         return row;
     }
 
+    internal static Button BatchControls(ListView references, Action? opening = null, Action? closed = null, bool nativeMultiple = false)
+    {
+        var button = new Button { Content = L10n.Text("多选"), Padding = new Thickness(6, 2, 6, 2) };
+        var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+        button.Content = nativeMultiple ? new SvgIcon("checklist") : Views.Row(new SvgIcon("checklist"), label);
+        var menu = new MenuFlyout();
+        var mode = new MenuFlyoutItem();
+        var all = new MenuFlyoutItem { Text = L10n.Text("全选") };
+        var clear = new MenuFlyoutItem { Text = L10n.Text("清空选择") };
+        var edit = new MenuFlyoutItem { Text = L10n.Text("批量标签") };
+        bool explicitSelection = false;
+        bool Active() => nativeMultiple ? explicitSelection || references.SelectedItems.Count > 1 : references.SelectionMode == ListViewSelectionMode.Multiple;
+        List<Reference> Selected() => references.SelectedItems.OfType<ListViewItem>().Select(item => item.Tag).OfType<Reference>().ToList();
+        void Render()
+        {
+            label.Text = Active() ? $"{L10n.Text("已选")} {Selected().Count}" : L10n.Text("多选");
+            ToolTipService.SetToolTip(button, label.Text); AutomationProperties.SetName(button, label.Text);
+            mode.Text = L10n.Text(Active() ? "结束多选" : "多选");
+            all.IsEnabled = clear.IsEnabled = Active(); edit.IsEnabled = Active() && Selected().Count > 0;
+        }
+        mode.Click += (_, _) => { explicitSelection = false; if (nativeMultiple) references.SelectedItems.Clear(); else { references.SelectionMode = ListViewSelectionMode.Single; references.SelectedIndex = -1; } Render(); };
+        all.Click += (_, _) => { foreach (var item in references.Items.OfType<ListViewItem>().Where(item => item.Tag is Reference)) if (!references.SelectedItems.Contains(item)) references.SelectedItems.Add(item); };
+        clear.Click += (_, _) => references.SelectedItems.Clear();
+        edit.Click += async (_, _) => { var selected = Selected(); if (selected.Count == 0) return; try { opening?.Invoke(); await ShowBatch(button.XamlRoot, selected); } catch (Exception ex) { await Views.Error(button, ex); } finally { closed?.Invoke(); } };
+        references.SelectionChanged += (_, _) => Render(); menu.Opening += (_, _) => Render();
+        menu.Items.Add(all); menu.Items.Add(clear); menu.Items.Add(edit); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(mode);
+        button.Click += (_, _) => {
+            if (Active()) { Render(); menu.ShowAt(button); }
+            else if (references.Items.OfType<ListViewItem>().Any(item => item.Tag is Reference)) {
+                explicitSelection = true;
+                references.SelectionMode = nativeMultiple ? ListViewSelectionMode.Extended : ListViewSelectionMode.Multiple;
+                references.SelectedItems.Clear(); Render();
+            }
+        };
+        Render();
+        return button;
+    }
+
+    private static async Task ShowBatch(XamlRoot root, List<Reference> references)
+    {
+        var targets = references.Select(reference => new TagTarget { library_uid = reference.Data.library_uid, record_uid = reference.Id }).ToList();
+        if (targets.Count == 0) return;
+        var request = new BatchTagRequest { targets = targets };
+        var state = await RustCore.BatchTagSnapshot(request);
+        var panel = new StackPanel { Spacing = 8, Width = 430 };
+        var controls = new ContentControl { Content = panel, HorizontalContentAlignment = HorizontalAlignment.Stretch };
+        var filter = new TextBox { Header = L10n.Text("搜索或创建标签") };
+        var list = new StackPanel { Spacing = 6 };
+        var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        var create = new Button { Content = L10n.Text("创建并添加") };
+        var busy = false; var changed = false; var valid = true;
+        async Task Mutate(TagAction action, string id = "", string name = "")
+        {
+            if (busy || !valid) return;
+            busy = true; controls.IsEnabled = false;
+            try {
+                state = await RustCore.MutateBatchTag(new() { targets = targets, action = action, id = id, name = name, expected_revision = state.revision });
+                changed = true; Changed?.Invoke(); error.Text = "";
+                if (action.IsCreate) filter.Text = "";
+            } catch (Exception ex) {
+                error.Text = L10n.ErrorMessage(ex);
+                try { state = await RustCore.BatchTagSnapshot(request); } catch { valid = false; }
+            } finally { busy = false; controls.IsEnabled = true; Render(); }
+        }
+        void Render()
+        {
+            list.Children.Clear(); create.IsEnabled = valid && !string.IsNullOrWhiteSpace(filter.Text);
+            foreach (var tag in state.tags.Where(tag => tag.name.Contains(filter.Text, StringComparison.CurrentCultureIgnoreCase))) {
+                bool all = state.assigned_ids.Contains(tag.id), some = state.partial_ids.Contains(tag.id);
+                var add = new Button { Content = L10n.Text("添加"), IsEnabled = valid && !all };
+                var remove = new Button { Content = L10n.Text("移除"), IsEnabled = valid && (all || some) };
+                add.Click += async (_, _) => await Mutate(TagAction.Assign, tag.id);
+                remove.Click += async (_, _) => await Mutate(TagAction.Unassign, tag.id);
+                var row = new Grid { ColumnSpacing = 6 };
+                row.ColumnDefinitions.Add(new()); row.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+                var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+                label.Children.Add(new Border { Width = 12, Height = 12, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(Color(tag.color)) });
+                label.Children.Add(new TextBlock { Text = tag.name, MaxWidth = 140, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
+                ToolTipService.SetToolTip(label, tag.name);
+                var actions = Views.Row(new TextBlock { Text = L10n.Text(all ? "全部已添加" : some ? "部分已添加" : "未添加"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center }, add, remove);
+                row.Children.Add(label); Grid.SetColumn(actions, 1); row.Children.Add(actions); list.Children.Add(row);
+            }
+        }
+        filter.TextChanged += (_, _) => Render(); create.Click += async (_, _) => await Mutate(TagAction.Create, name: filter.Text);
+        panel.Children.Add(filter); panel.Children.Add(new ScrollViewer { Content = list, MaxHeight = 240 }); panel.Children.Add(create); panel.Children.Add(error); Render();
+        var dialog = new ContentDialog { XamlRoot = root, Title = $"{L10n.Text("批量标签")} · {L10n.Text("已选")} {state.count}", Content = controls, CloseButtonText = L10n.Text("关闭") };
+        dialog.Closing += (_, args) => { if (busy) args.Cancel = true; };
+        EditingRoots.Add(root);
+        try { await dialog.ShowAsync(); } finally { EditingRoots.Remove(root); if (changed) Changed?.Invoke(); }
+    }
+
     internal static async Task Show(XamlRoot root, string libraryUid = "", string recordUid = "", string citeKey = "", FrameworkElement? anchor = null)
     {
         var request = new TagSnapshotRequest { library_uid = libraryUid, record_uid = recordUid, path = "", cite_key = "" };

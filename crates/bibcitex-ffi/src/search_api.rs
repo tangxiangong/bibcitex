@@ -63,3 +63,14 @@ pub fn validate_search_context(context: SearchContext) -> Result<bool, CoreError
 pub fn tag_snapshot_uid(library_uid: String, record_uid: String) -> Result<TagSnapshot, CoreError> {
     bibcitex_service::tag_snapshot_uid(library_uid, record_uid)
 }
+
+/// Read selected record tag assignments.
+#[uniffi::export]
+pub fn batch_tag_snapshot(targets: Vec<TagTarget>) -> Result<BatchTagSnapshot, CoreError> {
+    bibcitex_service::batch_tag_snapshot(targets)
+}
+/// Atomically update selected record tag assignments.
+#[uniffi::export]
+pub fn mutate_batch_tag(mutation: BatchTagMutation) -> Result<BatchTagSnapshot, CoreError> {
+    bibcitex_service::mutate_batch_tag(mutation)
+}

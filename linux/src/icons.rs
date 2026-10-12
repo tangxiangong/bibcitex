@@ -22,6 +22,7 @@ pub fn load(path: &str) -> Option<&'static [u8]> {
         "chevronDown",
         "chevronRight",
         "check",
+        "checklist",
         "folderOpen",
         "more",
         "add",

@@ -30,6 +30,9 @@ pub(super) struct ConditionEditor {
 /// Native session state for TagManager, owned by its workbench.
 pub(super) struct TagManager {
     snapshot: TagSnapshot,
+    batch_targets: Vec<service::TagTarget>,
+    batch_snapshot: Option<service::BatchTagSnapshot>,
+    batch_valid: bool,
     name: Entity<InputState>,
     color: Entity<InputState>,
     _subscription: Subscription,
@@ -410,6 +413,7 @@ impl Workbench {
         div()
             .flex()
             .gap_1()
+            .child(self.batch_controls(cx))
             .when(self.advanced && !self.choosing_library, |view| {
                 view.child(
                     Button::new("edit-search-conditions")
@@ -838,6 +842,9 @@ impl Workbench {
                     });
                 self.tag_manager = Some(TagManager {
                     snapshot,
+                    batch_targets: Vec::new(),
+                    batch_snapshot: None,
+                    batch_valid: true,
                     name,
                     color: cx.new(|cx| InputState::new(window, cx).default_value("#64748B")),
                     _subscription: subscription,
@@ -867,6 +874,14 @@ impl Workbench {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if self
+            .tag_manager
+            .as_ref()
+            .is_some_and(|manager| !manager.batch_targets.is_empty())
+        {
+            self.change_batch_tag(action, String::new(), window, cx);
+            return;
+        }
         let Some(manager) = self.tag_manager.as_mut() else {
             return;
         };
@@ -965,6 +980,9 @@ impl Workbench {
         let Some(manager) = &self.tag_manager else {
             return panel;
         };
+        if manager.batch_snapshot.is_some() {
+            return self.batch_tag_panel(panel, cx);
+        }
         panel =
             panel
                 .p_3()
@@ -2619,5 +2637,275 @@ impl Workbench {
                         .focus_bordered(false),
                 )
         })
+    }
+}
+
+impl Workbench {
+    pub(super) fn batch_controls(&self, cx: &mut Context<Self>) -> AnyElement {
+        if !self.batch_selecting {
+            return Button::new("batch-selection")
+                .ghost()
+                .small()
+                .icon(icon("checklist"))
+                .when(self.helper, |button| button.label(self.text("多选", cx)))
+                .tooltip(self.text("多选", cx))
+                .accessibility_label(self.text("多选", cx))
+                .disabled(self.choosing_library || self.references.is_empty())
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.batch_selecting = true;
+                    this.batch_ids.clear();
+                    cx.notify();
+                }))
+                .into_any_element();
+        }
+        let owner = cx.weak_entity();
+        let active = self.batch_selecting;
+        let mode = self.text(if active { "结束多选" } else { "多选" }, cx);
+        let all = self.text("全选", cx);
+        let clear = self.text("清空选择", cx);
+        let edit = self.text("批量标签", cx);
+        let has_selection = !self.batch_ids.is_empty();
+        Button::new("batch-selection")
+            .icon(icon("checklist"))
+            .ghost()
+            .small()
+            .when(self.helper, |button| {
+                button.label(format!(
+                    "{} {}",
+                    self.text("已选", cx),
+                    self.batch_ids.len()
+                ))
+            })
+            .tooltip(format!(
+                "{} {}",
+                self.text("已选", cx),
+                self.batch_ids.len()
+            ))
+            .accessibility_label(format!(
+                "{} {}",
+                self.text("已选", cx),
+                self.batch_ids.len()
+            ))
+            .disabled(self.choosing_library || (self.references.is_empty() && !active))
+            .dropdown_menu(move |mut menu, _, _| {
+                let control = owner.clone();
+                menu = menu.item(PopupMenuItem::new(mode.clone()).on_click(move |_, _, cx| {
+                    let _ = control.update(cx, |this, cx| {
+                        this.batch_selecting = !active;
+                        this.batch_ids.clear();
+                        cx.notify();
+                    });
+                }));
+                if active {
+                    let control = owner.clone();
+                    menu = menu.item(PopupMenuItem::new(all.clone()).on_click(move |_, _, cx| {
+                        let _ = control.update(cx, |this, cx| {
+                            if this.current_results_valid(cx) {
+                                this.batch_ids =
+                                    this.references.iter().map(|r| r.id.clone()).collect();
+                            }
+                            cx.notify();
+                        });
+                    }));
+                    let control = owner.clone();
+                    menu =
+                        menu.item(PopupMenuItem::new(clear.clone()).on_click(move |_, _, cx| {
+                            let _ = control.update(cx, |this, cx| {
+                                this.batch_ids.clear();
+                                cx.notify();
+                            });
+                        }));
+                    if has_selection {
+                        let control = owner.clone();
+                        menu = menu.item(PopupMenuItem::new(edit.clone()).on_click(
+                            move |_, window, cx| {
+                                let _ =
+                                    control.update(cx, |this, cx| this.open_batch_tags(window, cx));
+                            },
+                        ));
+                    }
+                }
+                menu
+            })
+            .into_any_element()
+    }
+
+    fn open_batch_tags(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.current_results_valid(cx) {
+            return;
+        }
+        let targets: Vec<_> = self
+            .references
+            .iter()
+            .filter(|r| self.batch_ids.contains(&r.id))
+            .map(|r| service::TagTarget {
+                library_uid: r.library_uid.clone(),
+                record_uid: r.id.clone(),
+            })
+            .collect();
+        match service::batch_tag_snapshot(targets.clone()) {
+            Ok(snapshot) => {
+                self.open_tag_catalog(window, cx);
+                if let Some(manager) = self.tag_manager.as_mut() {
+                    manager.batch_targets = targets;
+                    manager.batch_snapshot = Some(snapshot);
+                }
+            }
+            Err(error) => self.error = Some(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn change_batch_tag(
+        &mut self,
+        action: TagAction,
+        id: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(manager) = self.tag_manager.as_mut() else {
+            return;
+        };
+        if !manager.batch_valid {
+            return;
+        }
+        let Some(snapshot) = manager.batch_snapshot.as_ref() else {
+            return;
+        };
+        let mutation = service::BatchTagMutation {
+            targets: manager.batch_targets.clone(),
+            action,
+            id,
+            name: manager.name.read(cx).value().to_string(),
+            expected_revision: snapshot.revision,
+        };
+        match service::mutate_batch_tag(mutation) {
+            Ok(snapshot) => {
+                manager.batch_snapshot = Some(snapshot);
+                manager.error = None;
+                if action == TagAction::Create {
+                    manager
+                        .name
+                        .update(cx, |input, cx| input.set_value("", window, cx));
+                }
+                self.preferences.update(cx, |_, cx| cx.notify());
+            }
+            Err(error) => {
+                manager.error = Some(error.to_string());
+                match service::batch_tag_snapshot(manager.batch_targets.clone()) {
+                    Ok(snapshot) => manager.batch_snapshot = Some(snapshot),
+                    Err(_) => manager.batch_valid = false,
+                }
+            }
+        }
+        cx.notify();
+    }
+
+    fn batch_tag_panel(&self, mut panel: Stateful<Div>, cx: &mut Context<Self>) -> Stateful<Div> {
+        let Some(manager) = &self.tag_manager else {
+            return panel;
+        };
+        let Some(snapshot) = &manager.batch_snapshot else {
+            return panel;
+        };
+        let filter = manager.name.read(cx).value().to_string().to_lowercase();
+        panel = panel
+            .p_3()
+            .child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .child(format!(
+                        "{} · {} {}",
+                        self.text("批量标签", cx),
+                        self.text("已选", cx),
+                        snapshot.count
+                    ))
+                    .child(
+                        Button::new("close-batch-tags")
+                            .ghost()
+                            .small()
+                            .label(self.text("关闭", cx))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.tag_manager = None;
+                                this.schedule_search(cx);
+                                this.focus_search(window, cx);
+                            })),
+                    ),
+            )
+            .child(Input::new(&manager.name).cleanable(true));
+        for (index, tag) in snapshot
+            .tags
+            .iter()
+            .filter(|tag| filter.is_empty() || tag.name.to_lowercase().contains(&filter))
+            .enumerate()
+        {
+            let all = snapshot.assigned_ids.contains(&tag.id);
+            let some = snapshot.partial_ids.contains(&tag.id);
+            let add_id = tag.id.clone();
+            let remove_id = tag.id.clone();
+            let color =
+                u32::from_str_radix(tag.color.trim_start_matches('#'), 16).unwrap_or(0x64748B);
+            panel = panel.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(div().size(px(10.)).rounded_full().bg(gpui::rgb(color)))
+                    .child(div().flex_1().child(tag.name.clone()))
+                    .child(div().text_size(px(11.)).child(self.text(
+                        if all {
+                            "全部已添加"
+                        } else if some {
+                            "部分已添加"
+                        } else {
+                            "未添加"
+                        },
+                        cx,
+                    )))
+                    .child(
+                        Button::new(("batch-add", index))
+                            .small()
+                            .label(self.text("添加", cx))
+                            .disabled(!manager.batch_valid || all)
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.change_batch_tag(TagAction::Assign, add_id.clone(), window, cx)
+                            })),
+                    )
+                    .child(
+                        Button::new(("batch-remove", index))
+                            .small()
+                            .label(self.text("移除", cx))
+                            .disabled(!manager.batch_valid || (!all && !some))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.change_batch_tag(
+                                    TagAction::Unassign,
+                                    remove_id.clone(),
+                                    window,
+                                    cx,
+                                )
+                            })),
+                    ),
+            );
+        }
+        if !filter.trim().is_empty() {
+            panel = panel.child(
+                Button::new("batch-create")
+                    .small()
+                    .label(self.text("创建并添加", cx))
+                    .disabled(!manager.batch_valid)
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.change_batch_tag(TagAction::Create, String::new(), window, cx)
+                    })),
+            );
+        }
+        if let Some(error) = &manager.error {
+            panel = panel.child(
+                div()
+                    .text_color(cx.theme().danger)
+                    .child(self.text(error, cx)),
+            );
+        }
+        panel
     }
 }

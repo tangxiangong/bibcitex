@@ -30,6 +30,17 @@ enum HelperKeyHandling {
             }
         }
         if model.showConditionEditor { return event }
+        if model.candidateKind == nil && !model.isSelectingBibliography {
+            let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+            if modifiers == .command && event.charactersIgnoringModifiers?.lowercased() == "a" {
+                model.selectAllForPaste()
+                return nil
+            }
+            if modifiers == .shift && (event.keyCode == 125 || event.keyCode == 126) {
+                model.moveSelection(delta: event.keyCode == 125 ? 1 : -1, extending: true)
+                return nil
+            }
+        }
         if !event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty {
             return event
         }

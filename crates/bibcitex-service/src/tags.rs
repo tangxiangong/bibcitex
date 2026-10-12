@@ -1,6 +1,9 @@
 //! Locked, atomic metadata with stable identities independent of paths and cite keys.
 use crate::core::bib::Reference;
-use crate::{PendingAssociation, TagAction, TagMutation, TagRecord, TagSnapshot};
+use crate::{
+    BatchTagMutation, BatchTagSnapshot, PendingAssociation, TagAction, TagMutation, TagRecord,
+    TagSnapshot, TagTarget,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -608,3 +611,99 @@ pub fn mutate(mutation: TagMutation) -> Result<TagSnapshot> {
 
 #[cfg(test)]
 mod tests;
+
+fn batch_snapshot(data: &Metadata, targets: &[TagTarget]) -> Result<BatchTagSnapshot> {
+    let targets: BTreeSet<_> = targets.iter().collect();
+    if targets.is_empty() {
+        return Err("ReferenceNotFound".into());
+    }
+    let mut counts = BTreeMap::<&String, usize>::new();
+    for target in &targets {
+        let record = data
+            .sources
+            .get(&target.library_uid)
+            .and_then(|source| source.records.get(&target.record_uid))
+            .filter(|record| record.present)
+            .ok_or("ReferenceNotFound")?;
+        for id in &record.tags {
+            *counts.entry(id).or_default() += 1;
+        }
+    }
+    Ok(BatchTagSnapshot {
+        revision: data.revision,
+        tags: data.snapshot("", "").tags,
+        assigned_ids: counts
+            .iter()
+            .filter(|(_, n)| **n == targets.len())
+            .map(|(id, _)| (*id).clone())
+            .collect(),
+        partial_ids: counts
+            .iter()
+            .filter(|(_, n)| **n < targets.len())
+            .map(|(id, _)| (*id).clone())
+            .collect(),
+        count: targets.len() as u64,
+    })
+}
+
+pub(crate) fn snapshot_batch(targets: &[TagTarget]) -> Result<BatchTagSnapshot> {
+    let _lock = crate::registry::search_lock()?;
+    batch_snapshot(&read()?, targets)
+}
+
+pub(crate) fn mutate_batch(mutation: BatchTagMutation) -> Result<BatchTagSnapshot> {
+    let _lock = crate::registry::search_lock()?;
+    let mut data = read()?;
+    if data.revision != mutation.expected_revision {
+        return Err("StaleTagRevision".into());
+    }
+    // Validate the complete selection before changing even an in-memory tag.
+    batch_snapshot(&data, &mutation.targets)?;
+    let id = match mutation.action {
+        TagAction::Create => {
+            let name = display(&mutation.name)?;
+            if let Some(tag) = data
+                .tags
+                .values()
+                .find(|tag| comparison(&tag.name) == comparison(&name))
+            {
+                tag.id.clone()
+            } else {
+                let id = Uuid::new_v4().to_string();
+                data.tags.insert(
+                    id.clone(),
+                    StoredTag {
+                        id: id.clone(),
+                        name,
+                        color: default_color(),
+                        extra: BTreeMap::new(),
+                    },
+                );
+                id
+            }
+        }
+        TagAction::Assign | TagAction::Unassign => {
+            if !data.tags.contains_key(&mutation.id) {
+                return Err("MissingTagBinding".into());
+            }
+            mutation.id
+        }
+        _ => return Err("InvalidTagAction".into()),
+    };
+    for target in &mutation.targets {
+        let record = data
+            .sources
+            .get_mut(&target.library_uid)
+            .and_then(|source| source.records.get_mut(&target.record_uid))
+            .ok_or("ReferenceNotFound")?;
+        if mutation.action == TagAction::Unassign {
+            record.tags.remove(&id);
+        } else {
+            record.tags.insert(id.clone());
+        }
+    }
+    data.revision = data.revision.checked_add(1).ok_or("RevisionOverflow")?;
+    let snapshot = batch_snapshot(&data, &mutation.targets)?;
+    write(&data)?;
+    Ok(snapshot)
+}

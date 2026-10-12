@@ -263,6 +263,8 @@ pub fn inventory() -> RustInventory {
         .register(function!(advanced::search_catalog))
         .register(function!(advanced::tag_snapshot))
         .register(function!(advanced::mutate_tag))
+        .register(function!(advanced::batch_tag_snapshot))
+        .register(function!(advanced::mutate_batch_tag))
         .register(function!(advanced::validate_search_context))
         .register(function!(helper_current))
         .register(function!(helper_select))

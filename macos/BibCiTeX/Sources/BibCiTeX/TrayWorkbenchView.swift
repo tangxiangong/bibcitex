@@ -15,6 +15,7 @@ struct TrayWorkbenchView: View {
     let dismiss: () -> Void
     @State private var searchEditor = false
     @State private var showTagManager = false
+    @StateObject private var batchSelection = BatchTagSelection()
     @State private var taggingReference: TagAssignmentTarget?
     @FocusState private var searchFocused: Bool
     @FocusState private var detailToggleFocused: Bool
@@ -134,6 +135,12 @@ struct TrayWorkbenchView: View {
         .background(NeutralListSelection())
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
+        .onChange(of: model.query) { _ in batchSelection.ids.removeAll() }
+        .onChange(of: model.type) { _ in batchSelection.ids.removeAll() }
+        .onChange(of: model.field) { _ in batchSelection.ids.removeAll() }
+        .onChange(of: model.libraryName) { _ in batchSelection.ids.removeAll() }
+        .onChange(of: model.advancedSearchEnabled) { _ in batchSelection.ids.removeAll() }
+        .onReceive(model.$references) { _ in batchSelection.ids.removeAll() }
         .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .onAppear { searchFocused = true }
@@ -148,6 +155,7 @@ struct TrayWorkbenchView: View {
     }
     private var toolbarButtonGroup: some View {
         HStack(spacing: 8) {
+            BatchTagControls(selection: batchSelection, references: model.references, showsText: false)
             iconButton("tag", L10n.text("标签管理")) { showTagManager = true }
             iconButton(model.detailVisible ? "panelRightClose" : "panelRightOpen", L10n.text("文献详情")) {
                 model.detailVisible.toggle()
@@ -160,10 +168,22 @@ struct TrayWorkbenchView: View {
         }
     }
     private var results: some View {
+        let selectionVersion = model.referenceSelectionVersion
         return ScrollViewReader { proxy in
-            List(selection: $model.selection) {
+            List(selection: Binding<Set<String>>(get: { batchSelection.ids }, set: { values in
+                batchSelection.deferListSelection {
+                    guard selectionVersion == model.referenceSelectionVersion,
+                          values != batchSelection.ids else { return }
+                    let added = values.subtracting(batchSelection.ids)
+                    batchSelection.ids = values
+                    if values.count > 1 { batchSelection.active = true }
+                    model.selection = model.references.first { added.contains($0.id) }?.id
+                        ?? model.references.first { values.contains($0.id) }?.id
+                }
+            })) {
                 ForEach(model.references) { reference in
                     HStack(alignment: .top, spacing: 12) {
+                        BatchTagCheck(selection: batchSelection, reference: reference)
                         VStack(alignment: .leading, spacing: 5) {
                                 MathChunkText(chunks: reference.title, highlightRanges: SearchHighlight.ranges(model.matchRanges[reference.citeKey] ?? [], field: "title")).lineLimit(2).help(model.matchEvidence[reference.citeKey] ?? "")
                                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -181,7 +201,7 @@ struct TrayWorkbenchView: View {
                     }.padding(.vertical, 7).tag(reference.id).id(reference.id)
                     .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) } }
                     .foregroundStyle(Color(nsColor: .labelColor))
-                    .listRowBackground(RowSelectionBackground(selected: model.selection == reference.id))
+                    .listRowBackground(RowSelectionBackground(selected: batchSelection.ids.contains(reference.id)))
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
                 .overlay {
@@ -189,7 +209,10 @@ struct TrayWorkbenchView: View {
                         Text(L10n.text("暂无可显示的文献")).font(.callout).foregroundStyle(.secondary)
                     }
                 }
-                .onChange(of: model.selection) { key in if let key { proxy.scrollTo(key) } }
+                .onChange(of: model.selection) { key in
+                    if !batchSelection.active { batchSelection.ids = Set(key.map { [$0] } ?? []) }
+                    if let key, !batchSelection.active { proxy.scrollTo(key) }
+                }
         }
     }
     private func citeKeyButton(_ key: String) -> some View {

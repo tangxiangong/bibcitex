@@ -13,7 +13,7 @@ internal sealed class MainWindow : Window
 {
     private readonly Grid root = new();
     private readonly ListView libraries = new() { SelectionMode = ListViewSelectionMode.Single };
-    private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Single };
+    private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Extended };
     private readonly StackPanel detail = new() { Padding = new Thickness(16), Spacing = 16 };
     private readonly TextBlock heading = Views.LocalizedText("文献工作台", 20);
     private readonly TextBlock count = Views.Text(L10n.References(0), 12);
@@ -79,7 +79,7 @@ internal sealed class MainWindow : Window
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } });
-        var primary = Views.Row(manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
+        var primary = Views.Row(TagManager.BatchControls(references, nativeMultiple: true), manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), Views.Button("settings", "设置", ShowSettings),
             Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()), GroupSeparator(), inspectorToggle);
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
@@ -391,7 +391,7 @@ internal sealed class MainWindow : Window
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true, copy: Copy); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
             resultsVersion = version;
-            if (references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
+            if (references.SelectionMode == ListViewSelectionMode.Single && references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
             Localized.Count(count, rows.Count); emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception error) { if (version == searchVersion) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); await Report(error); } }

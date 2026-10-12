@@ -18,7 +18,7 @@ internal sealed class TrayWindow : Window
     private readonly SearchSession searchSession = new("trayAdvancedSearch");
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ComboBox field = new() { MinWidth = 110 };
-    private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Single };
+    private readonly ListView references = new() { SelectionMode = ListViewSelectionMode.Extended };
     private readonly Border detailPanel;
     private readonly ToggleButton detailToggle;
     private readonly Button closeDetail;
@@ -79,7 +79,7 @@ internal sealed class TrayWindow : Window
         Localized.Name(detailToggle, "文献详情"); Localized.Tooltip(detailToggle, "文献详情");
         detailToggle.Click += (_, _) => SetDetailVisible(detailToggle.IsChecked == true);
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } });
-        var buttons = Views.Row(manageTags, detailToggle,
+        var buttons = Views.Row(TagManager.BatchControls(references, nativeMultiple: true), manageTags, detailToggle,
             Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
         // One capsule for the toolbar, as on the macOS tray.
@@ -280,7 +280,7 @@ internal sealed class TrayWindow : Window
                 var item = ReferenceRow(reference); references.Items.Add(item);
                 if (reference.Id == selected) references.SelectedItem = item;
             }
-            if (references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
+            if (references.SelectionMode == ListViewSelectionMode.Single && references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
             Localized.Count(count, rows.Count); empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception ex) { if (visible && request == version) { ClearResults(); ShowError(ex); } }

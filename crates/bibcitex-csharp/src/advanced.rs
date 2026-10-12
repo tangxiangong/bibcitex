@@ -310,3 +310,56 @@ mod tests {
         assert_eq!(copied.pending[0].cite_key, "Key");
     }
 }
+
+/// Stable selection to inspect before batch editing.
+#[ffi]
+pub struct BatchTagRequest {
+    /// Exact library/record UUID pairs.
+    pub targets: Vec<TagTarget>,
+}
+/// Owned batch tag state or operation error.
+#[ffi]
+pub struct BatchTagSnapshotResult {
+    /// Current batch state on success.
+    pub payload: Option<BatchTagSnapshot>,
+    /// Operation failure.
+    pub error: Option<String>,
+}
+/// Read selected record tag assignments.
+#[ffi]
+pub fn batch_tag_snapshot(
+    wire: Wire<BatchTagRequest>,
+) -> ffi::Result<Wire<BatchTagSnapshotResult>, BridgeError> {
+    invoke(|| {
+        let input = request(wire)?;
+        Ok(match bibcitex_service::batch_tag_snapshot(input.targets) {
+            Ok(payload) => BatchTagSnapshotResult {
+                payload: Some(payload),
+                error: None,
+            },
+            Err(error) => BatchTagSnapshotResult {
+                payload: None,
+                error: Some(error.to_string()),
+            },
+        })
+    })
+}
+/// Atomically update selected record tag assignments.
+#[ffi]
+pub fn mutate_batch_tag(
+    wire: Wire<BatchTagMutation>,
+) -> ffi::Result<Wire<BatchTagSnapshotResult>, BridgeError> {
+    invoke(|| {
+        let input = request(wire)?;
+        Ok(match bibcitex_service::mutate_batch_tag(input) {
+            Ok(payload) => BatchTagSnapshotResult {
+                payload: Some(payload),
+                error: None,
+            },
+            Err(error) => BatchTagSnapshotResult {
+                payload: None,
+                error: Some(error.to_string()),
+            },
+        })
+    })
+}

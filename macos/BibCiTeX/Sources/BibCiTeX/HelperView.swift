@@ -146,7 +146,7 @@ struct HelperView: View {
                 HelperBarButton(action: { model.activateSelection(onSuccess: onHidePanel) }) {
                     barHint(L10n.text("粘贴引用键"), key: "↵")
                 }
-                .disabled(model.selectedReferenceIndex == nil)
+                .disabled(model.selectedReferenceIndex == nil || model.pasteSelection?.isEmpty == true)
                 HelperBarButton(action: {
                     model.startSelectMode()
                     searchFocused = true
@@ -230,14 +230,19 @@ struct HelperView: View {
                         ForEach(Array(model.searchResults.enumerated()), id: \.element.citeKey) { index, reference in
                             // The row is a tap target rather than a Button, so the
                             // copy button inside it can take its own clicks.
-                            referenceRow(reference, selected: model.selectedReferenceIndex == index)
+                            HStack(spacing: 6) {
+                                referenceRow(reference, selected: model.isSelectedForPaste(reference, at: index))
+                            }
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    model.activate(reference, at: index, onSuccess: onHidePanel)
+                                    let modifiers = NSEvent.modifierFlags
+                                    if modifiers.contains(.command) || modifiers.contains(.shift) {
+                                        model.selectForPaste(at: index, extending: modifiers.contains(.shift), toggling: modifiers.contains(.command))
+                                    } else { model.activate(reference, at: index, onSuccess: onHidePanel) }
                                 }
                                 .id(index)
                                 .accessibilityElement(children: .contain)
-                                .accessibilityAddTraits(model.selectedReferenceIndex == index ? .isSelected : [])
+                                .accessibilityAddTraits(model.isSelectedForPaste(reference, at: index) ? .isSelected : [])
                         }
                     }
                     .frame(maxWidth: .infinity).padding(8)

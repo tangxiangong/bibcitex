@@ -87,6 +87,16 @@ internal static class RustCore
     });
     /// <summary>Applies one metadata mutation only at its expected revision. Conflicts and storage failures throw and never silently overwrite newer metadata.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
+    internal static Task<BatchTagSnapshot> BatchTagSnapshot(BatchTagRequest value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.batch_tag_snapshot(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
+    internal static Task<BatchTagSnapshot> MutateBatchTag(BatchTagMutation value) => Task.Run(() =>
+    {
+        using var request = value.Wire(); using var wire = Interop.mutate_batch_tag(request).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
+    });
     internal static Task<TagSnapshot> MutateTag(TagMutation value) => Task.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.mutate_tag(request).AsOk();

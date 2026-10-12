@@ -488,5 +488,16 @@
   "InvalidLibraryUid": "Invalid library identity",
   "InvalidLibraryLocation": "Invalid library location",
   "InvalidLibraryLocations": "Invalid library locations",
-  "自定义颜色": "Custom color"
+  "自定义颜色": "Custom color",
+  "多选": "Select multiple",
+  "结束多选": "End selection",
+  "全选": "Select all",
+  "清空选择": "Clear selection",
+  "批量标签": "Batch tags",
+  "已选": "Selected",
+  "全部已添加": "Added to all",
+  "部分已添加": "Added to some",
+  "未添加": "Not added",
+  "添加": "Add",
+  "ReferenceNotFound": "One or more selected references are no longer available. Refresh the list and select them again."
 }

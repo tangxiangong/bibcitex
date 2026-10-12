@@ -35,6 +35,7 @@ final class TrayWorkbenchModel: ObservableObject {
     private var searchTask: Task<Void, Never>?
     private var copyTask: [CopySurface: Task<Void, Never>] = [:]
     private var searchVersion = 0
+    var referenceSelectionVersion: Int { searchVersion }
     private var loadedVersion = -1
     private var reloadVersion = 0
     private var session = 0

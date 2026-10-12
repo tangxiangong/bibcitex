@@ -49,6 +49,8 @@ actor RustCore {
         try translated { try BibCiTeXCore.tagSnapshotUid(libraryUid: libraryUID, recordUid: recordUID) }
     }
     /// Mutates tags with optimistic revision checking; never edits BibTeX.
+    func batchTagSnapshot(_ targets: [TagTarget]) throws -> BatchTagSnapshot { try translated { try BibCiTeXCore.batchTagSnapshot(targets: targets) } }
+    func mutateBatchTag(_ mutation: BatchTagMutation) throws -> BatchTagSnapshot { try translated { try BibCiTeXCore.mutateBatchTag(mutation: mutation) } }
     func mutateTag(_ mutation: TagMutation) throws -> TagSnapshot { try translated { try BibCiTeXCore.mutateTag(mutation: mutation) } }
     /// Checks file and tag revisions immediately before acting on a result.
     func validateContext(_ context: SearchContext) throws -> Bool { try translated { try BibCiTeXCore.validateSearchContext(context: context) } }

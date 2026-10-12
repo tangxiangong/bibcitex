@@ -770,3 +770,144 @@ func advancedSearchPreference(_ preferences: UserDefaults, key: String) -> Bool 
           CFGetTypeID(number) == CFBooleanGetTypeID() else { return false }
     return number.boolValue
 }
+
+
+/// Selection is local to the displayed result set. Editors capture immutable UUID pairs.
+final class BatchTagSelection: ObservableObject {
+    @Published var active = false { didSet { selectionRevision &+= 1 } }
+    @Published var ids = Set<String>() { didSet { selectionRevision &+= 1 } }
+    private var selectionRevision: UInt64 = 0
+
+    // AppKit can write List selection while SwiftUI is reconciling its rows.
+    // Coalesce those writes and discard callbacks invalidated by another action.
+    func deferListSelection(_ apply: @escaping () -> Void) {
+        selectionRevision &+= 1
+        let revision = selectionRevision
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.selectionRevision == revision else { return }
+            apply()
+        }
+    }
+
+    func toggle(_ reference: Reference) {
+        if !ids.insert(reference.id).inserted { ids.remove(reference.id) }
+    }
+}
+
+struct BatchTagCheck: View {
+    @ObservedObject var selection: BatchTagSelection
+    let reference: Reference
+    var body: some View {
+        if selection.active {
+            Toggle(reference.citeKey, isOn: Binding(get: { selection.ids.contains(reference.id) }, set: { value in
+                if value { selection.ids.insert(reference.id) } else { selection.ids.remove(reference.id) }
+            })).toggleStyle(.checkbox).labelsHidden().accessibilityLabel(reference.citeKey)
+        }
+    }
+}
+
+private struct BatchTagPresentation: Identifiable {
+    let id = UUID()
+    let targets: [TagTarget]
+
+    init?(references: [Reference], selectedIDs: Set<String>) {
+        let targets = references.filter { selectedIDs.contains($0.id) }
+            .map { TagTarget(libraryUid: $0.libraryUID, recordUid: $0.id) }
+        guard !targets.isEmpty else { return nil }
+        self.targets = targets
+    }
+}
+
+struct BatchTagControls: View {
+    @ObservedObject var selection: BatchTagSelection
+    let references: [Reference]
+    var showsText = true
+    @State private var presentation: BatchTagPresentation?
+    var body: some View {
+        Group {
+            if selection.active {
+                Menu {
+                    Button(L10n.text("全选")) { selection.ids = Set(references.map(\.id)) }
+                    Button(L10n.text("清空选择")) { selection.ids.removeAll() }
+                    Button(L10n.text("批量标签")) {
+                        presentation = BatchTagPresentation(references: references, selectedIDs: selection.ids)
+                    }.disabled(selection.ids.isEmpty)
+                    Divider()
+                    Button(L10n.text("结束多选")) { selection.active = false; selection.ids.removeAll() }
+                } label: {
+                    controlLabel
+                }
+            } else {
+                Button { selection.ids.removeAll(); selection.active = true } label: {
+                    controlLabel
+                }.disabled(references.isEmpty)
+            }
+        }.fixedSize()
+            .help(title).accessibilityLabel(title)
+            .sheet(item: $presentation) { item in BatchTagEditor(targets: item.targets) }
+            .onChange(of: references.map(\.id)) { _ in selection.ids.removeAll() }
+    }
+    private var title: String {
+        selection.active ? "\(L10n.text("已选")) \(selection.ids.count)" : L10n.text("多选")
+    }
+    @ViewBuilder private var controlLabel: some View {
+        if showsText { Label(title, systemImage: "checklist").labelStyle(.titleAndIcon) }
+        else { Label(title, systemImage: "checklist").labelStyle(.iconOnly) }
+    }
+}
+
+struct BatchTagEditor: View {
+    let targets: [TagTarget]
+    @Environment(\.dismiss) private var dismiss
+    @State private var snapshot: BatchTagSnapshot?
+    @State private var filter = ""
+    @State private var error: String?
+    @State private var busy = false
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L10n.text("批量标签")).font(.headline)
+                Text("\(L10n.text("已选")) \(snapshot?.count ?? UInt64(targets.count))").foregroundStyle(.secondary)
+                Spacer()
+                Button(L10n.text("关闭")) { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+            TextField(L10n.text("搜索或创建标签"), text: $filter).textFieldStyle(.roundedBorder)
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach((snapshot?.tags ?? []).filter { filter.isEmpty || $0.name.localizedCaseInsensitiveContains(filter) }, id: \.id) { tag in
+                        HStack {
+                            Circle().fill(tag.displayColor).frame(width: 12, height: 12)
+                            Text(tag.name).lineLimit(1)
+                            Spacer()
+                            Text(L10n.text(snapshot?.assignedIds.contains(tag.id) == true ? "全部已添加" : snapshot?.partialIds.contains(tag.id) == true ? "部分已添加" : "未添加")).font(.caption).foregroundStyle(.secondary)
+                            Button(L10n.text("添加")) { mutate(.assign, id: tag.id) }.disabled(snapshot?.assignedIds.contains(tag.id) == true)
+                            Button(L10n.text("移除")) { mutate(.unassign, id: tag.id) }.disabled(snapshot?.assignedIds.contains(tag.id) != true && snapshot?.partialIds.contains(tag.id) != true)
+                        }
+                    }
+                    if !filter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Button(L10n.text("创建并添加")) { mutate(.create, name: filter) }
+                    }
+                }
+            }.disabled(snapshot == nil)
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            if busy { ProgressView().controlSize(.small) }
+        }.padding(14).frame(width: 460, height: 340).disabled(busy).task { await reload() }
+    }
+    private func reload() async {
+        do { snapshot = try await RustCore.shared.batchTagSnapshot(targets) }
+        catch { snapshot = nil; self.error = error.localizedDescription }
+    }
+    private func mutate(_ action: TagAction, id: String = "", name: String = "") {
+        guard !busy, let snapshot else { return }
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                self.snapshot = try await RustCore.shared.mutateBatchTag(BatchTagMutation(targets: targets, action: action, id: id, name: name, expectedRevision: snapshot.revision))
+                error = nil
+                if action == .create { filter = "" }
+                NotificationCenter.default.post(name: .searchTagsChanged, object: nil)
+            } catch { self.error = error.localizedDescription; await reload() }
+        }
+    }
+}

@@ -440,7 +440,7 @@ final class HelperViewModel: ObservableObject {
     @Published var isPasting = false
     @Published private(set) var isPasteOperationPending = false
     @Published private(set) var bibliographies: [Bibliography] = []
-    @Published private(set) var searchResults: [Reference] = []
+    @Published private(set) var searchResults: [Reference] = [] { didSet { pasteSelection = nil; pasteAnchor = nil } }
     @Published private(set) var currentBibliography: Bibliography?
     @Published private(set) var isSelectingBibliography = true
     @Published private(set) var selectedBibliographyIndex: Int?
@@ -694,7 +694,7 @@ final class HelperViewModel: ObservableObject {
         }
     }
 
-    func moveSelection(delta: Int) {
+    func moveSelection(delta: Int, extending: Bool = false) {
         guard delta != 0 else { return }
 
         if isSelectingBibliography {
@@ -717,21 +717,61 @@ final class HelperViewModel: ObservableObject {
         }
         let start = selectedReferenceIndex ?? (delta > 0 ? -1 : 0)
         let count = searchResults.count
-        let next = (start + delta + count) % count
-        selectedReferenceIndex = next
+        let next = min(max(start + delta, 0), count - 1)
+        selectForPaste(at: next, extending: extending, toggling: false)
+    }
+
+    @Published private(set) var pasteSelection: Set<String>?
+    private var pasteAnchor: Int?
+
+    func isSelectedForPaste(_ reference: Reference, at index: Int) -> Bool {
+        pasteSelection?.contains(reference.id) ?? (selectedReferenceIndex == index)
+    }
+
+    func selectAllForPaste() {
+        guard !isSelectingBibliography, !isSearching else { return }
+        pasteSelection = Set(searchResults.map(\.id))
+        pasteAnchor = selectedReferenceIndex
+    }
+
+    func selectForPaste(at index: Int, extending: Bool, toggling: Bool) {
+        guard searchResults.indices.contains(index) else { return }
+        let previous = selectedReferenceIndex ?? index
+        var ids = pasteSelection ?? Set([searchResults[previous].id])
+        if extending {
+            let anchor = pasteAnchor ?? previous
+            pasteAnchor = anchor
+            if !toggling { ids.removeAll() }
+            ids.formUnion(searchResults[min(anchor, index)...max(anchor, index)].map(\.id))
+        } else if toggling {
+            let id = searchResults[index].id
+            if !ids.insert(id).inserted { ids.remove(id) }
+            pasteAnchor = index
+        } else {
+            ids = [searchResults[index].id]
+            pasteAnchor = index
+        }
+        pasteSelection = ids
+        selectedReferenceIndex = index
     }
 
     /// Return and row activation paste into the previously focused application.
     func activate(_ reference: Reference, at index: Int? = nil, onSuccess: @escaping () -> Void = {}) {
+        pasteSelection = [reference.id]
         if let index {
             selectedReferenceIndex = index
+            pasteAnchor = index
         }
-        paste(reference, onSuccess: onSuccess)
+        paste([reference], onSuccess: onSuccess)
     }
 
     func activateSelection(onSuccess: @escaping () -> Void) {
         if isSelectingBibliography {
             chooseCurrentBibliography()
+            return
+        }
+        if let ids = pasteSelection {
+            paste(searchResults.filter { ids.contains($0.id) }, onSuccess: onSuccess)
             return
         }
         guard let index = selectedReferenceIndex, searchResults.indices.contains(index) else {
@@ -740,9 +780,9 @@ final class HelperViewModel: ObservableObject {
         activate(searchResults[index], onSuccess: onSuccess)
     }
 
-    private func paste(_ reference: Reference, onSuccess: @escaping () -> Void) {
-        guard !isPasteOperationPending, !editingCondition, !isSearching, searchContext != nil, searchResults.contains(where: { $0.citeKey == reference.citeKey }) else { return }
-        let key = reference.citeKey
+    private func paste(_ references: [Reference], onSuccess: @escaping () -> Void) {
+        guard !isPasteOperationPending, !editingCondition, !isSearching, searchContext != nil, !references.isEmpty, references.allSatisfy({ reference in searchResults.contains(where: { $0.id == reference.id }) }) else { return }
+        let key = references.map(\.citeKey).joined(separator: ",")
         let version = searchVersion
         let session = sessionGeneration
         isPasting = true

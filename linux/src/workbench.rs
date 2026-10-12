@@ -112,6 +112,10 @@ pub struct Workbench {
     result_context: Option<service::SearchContext>,
     evidence: Vec<service::SearchEvidence>,
     tag_manager: Option<TagManager>,
+    batch_selecting: bool,
+    batch_anchor: Option<String>,
+    list_focus: FocusHandle,
+    batch_ids: std::collections::HashSet<String>,
     candidates: Option<CandidatePicker>,
     candidate_window: Option<AnyWindowHandle>,
     helper_scope: Option<String>,
@@ -168,6 +172,37 @@ impl Workbench {
                 input.marked_text_range(window, cx).is_some()
             })
     }
+    fn helper_selection_navigation(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        self.helper
+            && !self.choosing_library
+            && self.candidates.is_none()
+            && self.optional_field_value.is_none()
+            && self.condition_editor.is_none()
+            && self.tag_manager.is_none()
+            && !self.input_is_composing(window, cx)
+            && (self.search_navigation(window, cx) || self.list_focus.contains_focused(window, cx))
+    }
+
+    fn extend_helper_selection(&mut self, delta: isize, cx: &mut Context<Self>) {
+        if !self.current_results_valid(cx) || self.references.is_empty() {
+            return;
+        }
+        let next = self
+            .selected
+            .map_or(0, |i| i.saturating_add_signed(delta))
+            .min(self.references.len() - 1);
+        self.select_batch_row(
+            next,
+            Modifiers {
+                shift: true,
+                ..Default::default()
+            },
+            false,
+            cx,
+        );
+        self.scroll.scroll_to_item(next, ScrollStrategy::Center);
+    }
+
     pub fn paste_in_progress(&self) -> bool {
         self.pasting
     }
@@ -393,6 +428,10 @@ impl Workbench {
             result_context: None,
             evidence: vec![],
             tag_manager: None,
+            batch_selecting: false,
+            batch_anchor: None,
+            list_focus: cx.focus_handle(),
+            batch_ids: Default::default(),
             candidates: None,
             candidate_window: None,
             helper_scope: None,
@@ -624,6 +663,11 @@ impl Workbench {
     }
 
     fn schedule_search(&mut self, cx: &mut Context<Self>) {
+        self.batch_anchor = None;
+        self.batch_ids.clear();
+        if self.helper {
+            self.batch_selecting = false;
+        }
         self.generation += 1;
         let generation = self.generation;
         self.search_task = None;
@@ -939,19 +983,31 @@ impl Workbench {
     }
 
     fn activate_selected(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.batch_selecting && !self.helper {
+            return;
+        }
         if self.input_is_composing(window, cx) {
             return;
         }
         if self.pasting || !self.current_results_valid(cx) {
             return;
         }
-        let Some(key) = self
-            .selected
-            .and_then(|i| self.references.get(i))
-            .map(|r| r.cite_key.clone())
-        else {
-            return;
+        let key = if self.helper && self.batch_selecting {
+            self.references
+                .iter()
+                .filter(|r| self.batch_ids.contains(&r.id))
+                .map(|r| r.cite_key.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
+        } else {
+            self.selected
+                .and_then(|i| self.references.get(i))
+                .map(|r| r.cite_key.clone())
+                .unwrap_or_default()
         };
+        if key.is_empty() {
+            return;
+        }
         self.copy(key.clone(), cx);
         #[cfg(target_os = "linux")]
         {
@@ -1119,7 +1175,11 @@ impl Workbench {
             .selected
             .map_or(0, |i| i.saturating_add_signed(delta))
             .min(self.references.len() - 1);
-        self.selected = Some(index);
+        if self.helper {
+            self.select_batch_row(index, Modifiers::default(), false, cx);
+        } else {
+            self.selected = Some(index);
+        }
         self.scroll.scroll_to_item(index, ScrollStrategy::Center);
         cx.notify();
     }
@@ -1238,7 +1298,10 @@ impl Workbench {
             .shadow_sm()
             .child(
                 self.key_hint("helper-paste", "粘贴引用键", "↵", cx)
-                    .disabled(self.selected.is_none())
+                    .disabled(
+                        self.selected.is_none()
+                            || (self.batch_selecting && self.batch_ids.is_empty()),
+                    )
                     .on_click(
                         cx.listener(|this, _, window, cx| this.activate_selected(window, cx)),
                     ),
@@ -1520,6 +1583,55 @@ impl Workbench {
             .child(list)
     }
 
+    fn select_batch_row(
+        &mut self,
+        index: usize,
+        modifiers: Modifiers,
+        checkbox: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(record) = self.references.get(index) else {
+            return;
+        };
+        let id = record.id.clone();
+        let additive = modifiers.control || modifiers.platform;
+        if modifiers.shift {
+            let anchor = self
+                .batch_anchor
+                .as_ref()
+                .and_then(|uid| self.references.iter().position(|row| &row.id == uid))
+                .or(self.selected)
+                .unwrap_or(index);
+            self.batch_anchor = Some(self.references[anchor].id.clone());
+            if !additive {
+                self.batch_ids.clear();
+            }
+            self.batch_ids.extend(
+                self.references[anchor.min(index)..=anchor.max(index)]
+                    .iter()
+                    .map(|row| row.id.clone()),
+            );
+            self.batch_selecting = true;
+        } else if additive || checkbox {
+            if !self.batch_selecting
+                && let Some(previous) = self.selected.and_then(|i| self.references.get(i))
+            {
+                self.batch_ids.insert(previous.id.clone());
+            }
+            if !self.batch_ids.insert(id.clone()) {
+                self.batch_ids.remove(&id);
+            }
+            self.batch_anchor = Some(id);
+            self.batch_selecting = true;
+        } else {
+            self.batch_ids.clear();
+            self.batch_ids.insert(id.clone());
+            self.batch_anchor = Some(id);
+        }
+        self.selected = Some(index);
+        cx.notify();
+    }
+
     fn row(&self, index: usize, cx: &mut Context<Self>) -> impl IntoElement + use<> {
         let generation = self.generation;
         let record = &self.references[index];
@@ -1678,19 +1790,66 @@ impl Workbench {
             .flex()
             .gap_2()
             .rounded(px(ROW_RADIUS))
-            .when(self.selected == Some(index), |e| e.bg(cx.theme().muted))
+            .when(
+                if self.batch_selecting {
+                    self.batch_ids.contains(&record.id)
+                } else {
+                    self.selected == Some(index)
+                },
+                |e| e.bg(cx.theme().muted),
+            )
             .hover(|e| e.bg(cx.theme().muted))
             .when(self.helper, |e| e.text_size(px(13.)))
-            .on_click(cx.listener(move |this, _, window, cx| {
+            .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 if this.generation != generation || !this.current_results_valid(cx) {
                     return;
                 }
-                this.selected = Some(index);
-                if this.helper {
+                if !this.helper {
+                    this.list_focus.focus(window, cx);
+                    this.select_batch_row(index, event.modifiers(), false, cx);
+                    return;
+                }
+                let modifiers = event.modifiers();
+                if modifiers.control || modifiers.platform || modifiers.shift {
+                    this.select_batch_row(index, modifiers, false, cx);
+                } else {
+                    this.batch_selecting = false;
+                    this.batch_ids.clear();
+                    this.batch_anchor = Some(this.references[index].id.clone());
+                    this.selected = Some(index);
                     this.activate_selected(window, cx);
                 }
                 cx.notify();
             }))
+            .when(self.batch_selecting && !self.helper, |row| {
+                row.child(
+                    Button::new(("batch-check", index))
+                        .ghost()
+                        .small()
+                        .label(if self.batch_ids.contains(&record.id) {
+                            "✓"
+                        } else {
+                            "○"
+                        })
+                        .accessibility_label(record.cite_key.clone())
+                        .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
+                            cx.stop_propagation();
+                            if this.generation != generation || !this.current_results_valid(cx) {
+                                return;
+                            }
+                            if !this.helper {
+                                this.list_focus.focus(window, cx);
+                                this.select_batch_row(index, event.modifiers(), true, cx);
+                                return;
+                            }
+                            let id = this.references[index].id.clone();
+                            if !this.batch_ids.insert(id.clone()) {
+                                this.batch_ids.remove(&id);
+                            }
+                            cx.notify();
+                        })),
+                )
+            })
             .when(self.helper, |row| {
                 row.child(
                     icon("fileText")
@@ -1842,7 +2001,7 @@ impl Workbench {
                 )
                 .into_any_element();
         }
-        uniform_list(
+        let list = uniform_list(
             "references",
             self.references.len(),
             cx.processor(|this, range: std::ops::Range<usize>, _, cx| {
@@ -1858,7 +2017,14 @@ impl Workbench {
         .when(self.shows_bottom_bar(cx), |list| {
             list.pb(px(HELPER_BOTTOM_BAR))
         })
-        .into_any_element()
+        .into_any_element();
+        div()
+            .id("reference-list-focus")
+            .track_focus(&self.list_focus)
+            .flex_1()
+            .min_h_0()
+            .child(list)
+            .into_any_element()
     }
 
     fn content(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -2504,6 +2670,37 @@ impl Render for Workbench {
                     cx.stop_propagation();
                 }
             }))
+            // Input key bindings dispatch actions before raw key-down callbacks.
+            .capture_action(cx.listener(|this, _: &input::SelectAll, window, cx| {
+                if this.helper_selection_navigation(window, cx) {
+                    if this.current_results_valid(cx) {
+                        this.batch_selecting = true;
+                        this.batch_anchor = this
+                            .selected
+                            .and_then(|i| this.references.get(i))
+                            .map(|r| r.id.clone());
+                        this.batch_ids = this.references.iter().map(|r| r.id.clone()).collect();
+                        cx.notify();
+                    }
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(
+                |this, _: &gpui_kit::base::actions::SelectUp, window, cx| {
+                    if this.helper_selection_navigation(window, cx) {
+                        this.extend_helper_selection(-1, cx);
+                        cx.stop_propagation();
+                    }
+                },
+            ))
+            .capture_action(cx.listener(
+                |this, _: &gpui_kit::base::actions::SelectDown, window, cx| {
+                    if this.helper_selection_navigation(window, cx) {
+                        this.extend_helper_selection(1, cx);
+                        cx.stop_propagation();
+                    }
+                },
+            ))
             .capture_action(cx.listener(|this, _: &input::MoveUp, window, cx| {
                 if this.input_is_composing(window, cx) {
                     return;
@@ -2572,6 +2769,8 @@ impl Render for Workbench {
             .capture_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
                 this.pending_trigger = None;
                 let focused = this.search.read(cx).focus_handle(cx).is_focused(window);
+                let helper_selection = this.helper_selection_navigation(window, cx);
+                let list_focused = !this.helper && this.list_focus.contains_focused(window, cx);
                 let composing = this.input_is_composing(window, cx);
                 if composing {
                     return;
@@ -2591,6 +2790,58 @@ impl Render for Workbench {
                     );
                 }
                 match event.keystroke.key.as_str() {
+                    "a" if (list_focused || helper_selection)
+                        && (event.keystroke.modifiers.control
+                            || event.keystroke.modifiers.platform) =>
+                    {
+                        if this.current_results_valid(cx) {
+                            this.batch_selecting = true;
+                            if event.keystroke.modifiers.shift {
+                                this.batch_ids.clear();
+                                this.batch_anchor = None;
+                            } else {
+                                this.batch_ids =
+                                    this.references.iter().map(|r| r.id.clone()).collect();
+                            }
+                            cx.notify();
+                        }
+                        cx.stop_propagation();
+                    }
+                    "up" | "down" if list_focused || helper_selection => {
+                        if this.current_results_valid(cx) && !this.references.is_empty() {
+                            let delta = if event.keystroke.key == "up" { -1 } else { 1 };
+                            let next = this
+                                .selected
+                                .map_or(0, |i| i.saturating_add_signed(delta))
+                                .min(this.references.len() - 1);
+                            if (event.keystroke.modifiers.control
+                                || event.keystroke.modifiers.platform)
+                                && !event.keystroke.modifiers.shift
+                            {
+                                this.selected = Some(next);
+                                cx.notify();
+                            } else {
+                                this.select_batch_row(next, event.keystroke.modifiers, false, cx);
+                            }
+                            this.scroll.scroll_to_item(next, ScrollStrategy::Center);
+                        }
+                        cx.stop_propagation();
+                    }
+                    "space" if list_focused => {
+                        if let Some(index) = this.selected
+                            && this.current_results_valid(cx)
+                        {
+                            this.select_batch_row(index, event.keystroke.modifiers, true, cx);
+                        }
+                        cx.stop_propagation();
+                    }
+                    "escape" if list_focused && this.batch_selecting => {
+                        this.batch_selecting = false;
+                        this.batch_ids.clear();
+                        this.batch_anchor = None;
+                        cx.notify();
+                        cx.stop_propagation();
+                    }
                     "up" if this.candidates.is_some() => {
                         this.candidate_navigation(-1, cx);
                         cx.stop_propagation();
