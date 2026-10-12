@@ -100,7 +100,8 @@ fn file_description(path: &[u16]) -> Option<String> {
             Some((value.cast(), length as usize))
         };
         let (translations, bytes) = query(r"\VarFileInfo\Translation")?;
-        for pair in std::slice::from_raw_parts(translations, bytes / 2).chunks_exact(2) {
+        let translations = std::slice::from_raw_parts(translations, bytes / 2);
+        for pair in translations.as_chunks::<2>().0 {
             for field in ["FileDescription", "ProductName"] {
                 let key = format!(r"\StringFileInfo\{:04x}{:04x}\{field}", pair[0], pair[1]);
                 if let Some((value, length)) = query(&key) {
