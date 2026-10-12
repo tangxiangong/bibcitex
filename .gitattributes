@@ -3,3 +3,6 @@ Justfile text eol=lf
 
 # Exclude vendored macOS packages from GitHub language statistics.
 macos/Packages/** linguist-vendored
+
+# Exclude test data
+data/** linguist-vendored
