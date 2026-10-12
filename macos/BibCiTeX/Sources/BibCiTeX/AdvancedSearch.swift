@@ -518,7 +518,9 @@ struct SearchInput: NSViewRepresentable {
         view.focusChanged = { [weak coordinator = context.coordinator] focused in coordinator?.parent.focusChanged(focused) }
         view.placeholder = placeholder
         view.acceptsTrigger = triggerInserted != nil
-        if fontSize >= 20 || focusRequest != 0 { context.coordinator.requestFocus(view, request: focusRequest, initial: true) }
+        // Only the main helper editor requests opportunistic initial focus.
+        // Candidate and tray requests must reach updateNSView as explicit transfers.
+        if fontSize >= 20 { context.coordinator.requestFocus(view, request: focusRequest, initial: true) }
         view.isVerticallyResizable = false; view.isHorizontallyResizable = false
         view.textContainer?.maximumNumberOfLines = 1
         view.textContainer?.lineBreakMode = .byTruncatingTail
