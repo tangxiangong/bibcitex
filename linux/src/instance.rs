@@ -211,7 +211,11 @@ mod unix {
                 probe.try_lock(),
                 Err(std::fs::TryLockError::WouldBlock)
             ));
-            assert!(acquire_in(directory, &Command::Helper, send).unwrap().is_none());
+            assert!(
+                acquire_in(directory, &Command::Helper, send)
+                    .unwrap()
+                    .is_none()
+            );
             assert!(matches!(receive.recv_blocking().unwrap(), Command::Helper));
             drop(replacement);
             probe.try_lock().unwrap();
