@@ -39,7 +39,7 @@ trap 'exit 143' TERM
 swiftc -parse-as-library -target "$architecture-apple-macosx13.0" \
     -module-cache-path "$work/modules" \
     -I "$products" -I "$bindings/include" \
-    "$package/Tests/RustInteropTests.swift" "$products/libBibCiTeXCore.a" "$rust_library" \
+    "$package/Sources/BibCiTeX/AttachmentPath.swift" "$package/Tests/RustInteropTests.swift" "$products/libBibCiTeXCore.a" "$rust_library" \
     -framework AppKit -framework Carbon -framework ApplicationServices \
     -framework CoreGraphics -framework Foundation -liconv -o "$work/interop-tests"
 "$work/interop-tests" &

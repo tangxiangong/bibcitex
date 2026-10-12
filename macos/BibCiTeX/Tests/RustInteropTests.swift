@@ -5,6 +5,21 @@ import BibCiTeXCore
 @main
 struct RustInteropTests {
     static func main() throws {
+        let attachmentCases = [
+            ("/Users/me/paper:2024:final.pdf", "/Users/me/paper:2024:final.pdf"),
+            ("file:///Users/me/paper:2024:final.pdf", "/Users/me/paper:2024:final.pdf"),
+            ("paper:2024:final.pdf", "/library/paper:2024:final.pdf"),
+            (":papers/article.pdf:PDF", "/library/papers/article.pdf"),
+            ("Article:/Users/me/paper:2024:final.pdf:PDF", "/Users/me/paper:2024:final.pdf"),
+            (":file:///Users/me/paper%20one.pdf:PDF", "/Users/me/paper one.pdf"),
+            (#"Article:papers/a\:b\;c.pdf:PDF;:second.pdf:PDF"#, "/library/papers/a:b;c.pdf"),
+            (#"papers/a\;b.pdf;second.pdf"#, "/library/papers/a;b.pdf")
+        ]
+        for (input, expected) in attachmentCases {
+            precondition(AttachmentPath.resolve(input, relativeTo: "/library/references.bib")?.path == expected, input)
+        }
+        precondition(AttachmentPath.resolve("", relativeTo: "/library/references.bib") == nil)
+
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bibcitex-interop-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }

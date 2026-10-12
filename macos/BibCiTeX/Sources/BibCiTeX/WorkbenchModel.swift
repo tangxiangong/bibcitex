@@ -293,16 +293,7 @@ final class WorkbenchModel: ObservableObject {
         guard context == referenceSelectionContext, requested.library == selectedLibrary,
               let libraryPath = referencesLibraryPath,
               references.contains(where: { $0.citeKey == reference.citeKey && $0.source == reference.source }) else { return nil }
-        let raw = reference.file
-        guard !raw.isEmpty else { return nil }
-        let entry = raw.split(separator: ";", maxSplits: 1).first.map(String.init) ?? raw
-        let parts = entry.split(separator: ":", omittingEmptySubsequences: false)
-        let path = parts.count >= 3 ? String(parts[1]) : entry
-        let url: URL
-        if path.hasPrefix("file://"), let file = URL(string: path) { url = file }
-        else if path.hasPrefix("/") || path.hasPrefix("~") { url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath) }
-        else { url = URL(fileURLWithPath: libraryPath).deletingLastPathComponent().appendingPathComponent(path) }
-        return url
+        return AttachmentPath.resolve(reference.file, relativeTo: libraryPath)
     }
     func openFile(_ reference: Reference, context: ReferenceSelectionContext) {
         guard let url = attachmentURL(for: reference, context: context) else { return }

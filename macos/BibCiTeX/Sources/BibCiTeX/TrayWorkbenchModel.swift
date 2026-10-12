@@ -5,6 +5,7 @@ import BibCiTeXCore
 /// State owned only by the tray workbench. The Rust service is shared; UI state is not.
 @MainActor
 final class TrayWorkbenchModel: ObservableObject {
+    @Published var searchFocusRequest = 0
     @Published private(set) var libraries: [Bibliography] = []
     @Published var libraryName: String? { didSet { if oldValue != libraryName { search() } } }
     @Published var query = "" { didSet { if oldValue != query { if !restoringDraft { boundDraft = SearchDraft() }; search() } } }

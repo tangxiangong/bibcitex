@@ -17,7 +17,7 @@ struct TrayWorkbenchView: View {
     @State private var showTagManager = false
     @StateObject private var batchSelection = BatchTagSelection()
     @State private var taggingReference: TagAssignmentTarget?
-    @FocusState private var searchFocused: Bool
+    @State private var searchFocused = false
     @FocusState private var detailToggleFocused: Bool
     @FocusState private var detailCloseFocused: Bool
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
@@ -33,7 +33,7 @@ struct TrayWorkbenchView: View {
                 }
                 HStack(spacing: 8) {
                     NativeIcon("search", size: 15).foregroundStyle(.secondary)
-                    SearchInput(text: model.query, placeholder: L10n.text("搜索文献"), changed: { model.editText($0, start: $1, end: $2, replacement: $3, full: $4) }, move: model.move, compositionChanged: model.suspendForComposition).frame(height: 18)
+                    SearchInput(text: model.query, placeholder: L10n.text("搜索文献"), focusRequest: model.searchFocusRequest, changed: { model.editText($0, start: $1, end: $2, replacement: $3, full: $4) }, move: model.move, compositionChanged: model.suspendForComposition, focusChanged: { searchFocused = $0 }).frame(height: 18)
                         .padding(.trailing, 174)
                 }
                 .overlay(alignment: .trailing) {
@@ -129,9 +129,6 @@ struct TrayWorkbenchView: View {
         .background(PanelPalette.scrim)
         .background(PanelMaterial(radius: TrayMetrics.panelRadius, fallback: .popover))
         .clipShape(RoundedRectangle(cornerRadius: TrayMetrics.panelRadius, style: .continuous))
-        // Like the helper, the tray never shows scrollers.
-        .scrollIndicators(.never)
-        .background(AutoHidingScrollbars(alwaysHidden: true))
         .background(NeutralListSelection())
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
@@ -143,7 +140,6 @@ struct TrayWorkbenchView: View {
         .onReceive(model.$references) { _ in batchSelection.ids.removeAll() }
         .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
-        .onAppear { searchFocused = true }
         .onChange(of: model.detailVisible) { visible in
             if visible { detailCloseFocused = true } else { detailToggleFocused = true }
         }
@@ -201,7 +197,8 @@ struct TrayWorkbenchView: View {
                     }.padding(.vertical, 7).tag(reference.id).id(reference.id)
                     .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) } }
                     .foregroundStyle(Color(nsColor: .labelColor))
-                    .listRowBackground(RowSelectionBackground(selected: batchSelection.ids.contains(reference.id)))
+                    .listRowBackground(RowSelectionBackground(selected: batchSelection.ids.contains(reference.id),
+                        focused: batchSelection.active && model.selection == reference.id))
                 }
             }.listStyle(.plain).scrollContentBackground(.hidden)
                 .overlay {
@@ -211,7 +208,7 @@ struct TrayWorkbenchView: View {
                 }
                 .onChange(of: model.selection) { key in
                     if !batchSelection.active { batchSelection.ids = Set(key.map { [$0] } ?? []) }
-                    if let key, !batchSelection.active { proxy.scrollTo(key) }
+                    if let key { proxy.scrollTo(key) }
                 }
         }
     }

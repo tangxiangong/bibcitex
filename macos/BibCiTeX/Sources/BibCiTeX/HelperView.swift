@@ -29,13 +29,9 @@ struct HelperView: View {
         .clipShape(RoundedRectangle(cornerRadius: HelperMetrics.panelRadius, style: .continuous))
         .ignoresSafeArea()
         .scrollIndicators(.never)
-        .sheet(isPresented: $model.showConditionEditor) {
-            AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyEditorQuery($0, draft: $1) }
-        }
         .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .sheet(isPresented: $model.showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in model.tagsChanged() }
-        .onChange(of: model.showConditionEditor) { visible in if !visible { model.refreshSearch(); searchFocused = true } }
         .onAppear { searchFocused = true }
         .onChange(of: model.focusRequest) { _ in searchFocused = true }
     }
@@ -103,10 +99,6 @@ struct HelperView: View {
             }
             if model.isSearching || model.isLoading {
                 ProgressView().controlSize(.small).accessibilityLabel(L10n.text("正在搜索"))
-            }
-            if !model.isSelectingBibliography, !model.query.isEmpty {
-                Button { model.showConditionEditor = true; model.refreshSearch() } label: { NativeIcon("tag", size: 14) }
-                    .buttonStyle(.plain).help(L10n.text("搜索条件")).accessibilityLabel(L10n.text("搜索条件"))
             }
             libraryButton
         }
@@ -242,6 +234,11 @@ struct HelperView: View {
                                 }
                                 .id(index)
                                 .accessibilityElement(children: .contain)
+                                .accessibilityAddTraits(.isButton)
+                                .accessibilityHint(Text(L10n.text("粘贴引用键")))
+                                .accessibilityAction {
+                                    model.activate(reference, at: index, onSuccess: onHidePanel)
+                                }
                                 .accessibilityAddTraits(model.isSelectedForPaste(reference, at: index) ? .isSelected : [])
                         }
                     }

@@ -6,7 +6,7 @@ struct WorkbenchView: View {
     @AppStorage("language") private var language = "system"
     @Environment(\.openWindow) private var openWindow
     @ObservedObject var model: WorkbenchModel
-    @FocusState private var searchFocused: Bool
+    @State private var compactSidebar = false
     @State private var searchEditor = false
     @State private var showTagManager = false
     @StateObject private var batchSelection = BatchTagSelection()
@@ -16,37 +16,51 @@ struct WorkbenchView: View {
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
 
     var body: some View {
-        panes
-            // Like the helper and the tray, the workbench never shows scrollers.
-            .scrollIndicators(.never)
-            .background(AutoHidingScrollbars(alwaysHidden: true))
-            .background(NeutralListSelection())
-            // Below ~1240pt with the inspector shown, the macOS 26+ split view never
-            // settles its column sizes and AppKit aborts with an endless Update
-            // Constraints loop, so the window stays above that width.
-            .frame(minWidth: 1280, minHeight: 520)
-            .toolbar {
-                // NavigationSplitView supplies its own sidebar toggle, so the
-                // hand-written one is only needed by the 13 fallback layout.
-                if #unavailable(macOS 14.0) {
+        GeometryReader { geometry in
+            panes(width: geometry.size.width)
+                .background(NeutralListSelection())
+                .toolbar {
                     ToolbarItem(placement: .navigation) {
-                        Button { model.showSidebar.toggle() } label: { NativeIcon(model.showSidebar ? "panelLeftClose" : "panelLeftOpen") }.help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
+                        Button {
+                            if geometry.size.width < 900 { compactSidebar.toggle() }
+                            else { model.showSidebar.toggle() }
+                        } label: { NativeIcon((geometry.size.width < 900 ? compactSidebar : model.showSidebar) ? "panelLeftClose" : "panelLeftOpen") }
+                            .help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
+                            .popover(isPresented: $compactSidebar) {
+                                sidebar.frame(width: 260, height: min(560, geometry.size.height))
+                            }
                     }
-                }
-                if #available(macOS 26.0, *) {
-                    ToolbarItem(placement: .navigation) { toolbarLogo }
-                        .sharedBackgroundVisibility(.hidden)
-                } else {
-                    ToolbarItem(placement: .navigation) { toolbarLogo }
-                }
-                if #unavailable(macOS 14.0) {
-                    ToolbarItemGroup {
-                        Spacer()
+                    if #available(macOS 26.0, *) {
+                        ToolbarItem(placement: .navigation) { toolbarLogo }
+                            .sharedBackgroundVisibility(.hidden)
+                    } else {
+                        ToolbarItem(placement: .navigation) { toolbarLogo }
+                    }
+                    if #available(macOS 26.0, *) {
+                        ToolbarSpacer(.flexible, placement: .primaryAction)
+                    }
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        if #unavailable(macOS 26.0) { Spacer() }
                         toolbarActions
                     }
-                    ToolbarItem { inspectorToggle }
+                    if #available(macOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .primaryAction)
+                    }
+                    ToolbarItem(placement: .primaryAction) {
+                        inspectorToggle
+                            .popover(isPresented: Binding(
+                                get: { geometry.size.width < 1280 && model.showInspector },
+                                set: { if geometry.size.width < 1280 { model.showInspector = $0 } }
+                            )) {
+                                inspector.frame(width: 350, height: min(560, geometry.size.height))
+                            }
+                    }
                 }
-            }
+                .onChange(of: geometry.size.width >= 900) { wide in
+                    if wide { compactSidebar = false }
+                }
+        }
+        .frame(minWidth: 560, minHeight: 520)
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.searchDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onChange(of: model.query) { _ in batchSelection.ids.removeAll() }
@@ -78,60 +92,21 @@ struct WorkbenchView: View {
         Button { model.showInspector.toggle() } label: { NativeIcon(model.showInspector ? "panelRightClose" : "panelRightOpen") }.help(L10n.text("文献详情")).accessibilityLabel(L10n.text("文献详情"))
     }
 
-    /// The standard three-pane idiom where the system provides it. On macOS 14+
-    /// `NavigationSplitView` owns the sidebar and `.inspector` owns the trailing
-    /// pane, so both panes carry system material and the system draws the boundary.
-    /// The macOS 13 fallback keeps `HSplitView` and applies the same semantics by
-    /// hand: the sidebar material, the content background, and one separator.
-    @ViewBuilder private var panes: some View {
-        if #available(macOS 14.0, *) {
-            NavigationSplitView(columnVisibility: sidebarVisibility) {
-                sidebar.navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
-            } detail: {
-                references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
+    /// Explicit split sizing avoids the macOS 26 NavigationSplitView/inspector
+    /// constraint loop. Narrow windows expose auxiliary panes through the toolbar.
+    private func panes(width: CGFloat) -> some View {
+        HSplitView {
+            if model.showSidebar && width >= 900 {
+                sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300, maxHeight: .infinity)
+                    .background(SystemSidebarBackground())
             }
-            .inspector(isPresented: $model.showInspector) {
-                inspector.inspectorColumnWidth(min: 280, ideal: 350, max: 520)
-                    .toolbar {
-                        if #available(macOS 26.0, *) {
-                            ToolbarSpacer(.flexible)
-                        }
-                        ToolbarItemGroup {
-                            if #unavailable(macOS 26.0) { Spacer() }
-                            toolbarActions
-                        }
-                        if #available(macOS 26.0, *) {
-                            ToolbarSpacer(.fixed)
-                        }
-                        ToolbarItem { inspectorToggle }
-                    }
-            }
-        } else {
-            HSplitView {
-                if model.showSidebar {
-                    sidebar.frame(minWidth: 180, idealWidth: 220, maxWidth: 300, maxHeight: .infinity)
-                        .background(SystemSidebarBackground())
-                    SystemSeparator(vertical: true)
-                }
-                references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
-                    .background(SystemPaneBackground())
-                if model.showInspector {
-                    SystemSeparator(vertical: true)
-                    inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520, maxHeight: .infinity)
-                        .background(SystemSidebarBackground())
-                }
+            references.frame(minWidth: 330, maxWidth: .infinity, maxHeight: .infinity)
+                .background(SystemPaneBackground())
+            if model.showInspector && width >= 1280 {
+                inspector.frame(minWidth: 280, idealWidth: 350, maxWidth: 520, maxHeight: .infinity)
+                    .background(SystemSidebarBackground())
             }
         }
-    }
-
-    /// Sidebar and inspector stay independent choices, so "sidebar hidden with the
-    /// inspector shown" stays expressible; `.detailOnly` is the only value either
-    /// column can report as hidden on its own.
-    private var sidebarVisibility: Binding<NavigationSplitViewVisibility> {
-        Binding(
-            get: { model.showSidebar ? .all : .detailOnly },
-            set: { model.showSidebar = $0 != .detailOnly }
-        )
     }
 
     @ViewBuilder private var toolbarLogo: some View {
@@ -246,7 +221,8 @@ struct WorkbenchView: View {
                             }.padding(.vertical, 8).tag(reference.id).id(reference.id)
                             .foregroundStyle(Color(nsColor: .labelColor))
                             .listRowBackground(RowSelectionBackground(selected: batchSelection.ids.contains(reference.id),
-                                fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor)))
+                                fill: Color(nsColor: .unemphasizedSelectedContentBackgroundColor),
+                                focused: batchSelection.active && model.selectedReference == reference.id))
                             .contextMenu {
                                 Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) }
                                 Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
@@ -256,7 +232,7 @@ struct WorkbenchView: View {
                     }.listStyle(.inset)
                     .onChange(of: model.selectedReference) { key in
                         if !batchSelection.active { batchSelection.ids = Set(key.map { [$0] } ?? []) }
-                        if let key, !batchSelection.active { proxy.scrollTo(key) }
+                        if let key { proxy.scrollTo(key) }
                     }
                 }
             }

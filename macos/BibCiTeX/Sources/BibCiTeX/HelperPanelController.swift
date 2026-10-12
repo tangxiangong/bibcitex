@@ -29,7 +29,6 @@ enum HelperKeyHandling {
             default: break
             }
         }
-        if model.showConditionEditor { return event }
         if model.candidateKind == nil && !model.isSelectingBibliography {
             let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
             if modifiers == .command && event.charactersIgnoringModifiers?.lowercased() == "a" {

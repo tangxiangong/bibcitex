@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		A77AC4000000000000000001 /* AttachmentPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77AC4000000000000000002 /* AttachmentPath.swift */; };
 		ABCD00000000000000000001 /* AdvancedSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCD00000000000000000002 /* AdvancedSearch.swift */; };
 		012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */ = {isa = PBXBuildFile; fileRef = 18D1244D5E41DA43FACF65D8 /* refresh.svg */; };
 		0259FFCAC0274ED41C46DFBF /* rename.svg in Resources */ = {isa = PBXBuildFile; fileRef = 54D1A490BCC9B75E7CF23CD4 /* rename.svg */; };
@@ -111,6 +112,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A77AC4000000000000000002 /* AttachmentPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentPath.swift; sourceTree = "<group>"; };
 		ABCD00000000000000000002 /* AdvancedSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSearch.swift; sourceTree = "<group>"; };
 		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		18D1244D5E41DA43FACF65D8 /* refresh.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = refresh.svg; sourceTree = "<group>"; };
@@ -217,6 +219,7 @@
 			isa = PBXGroup;
 			children = (
 				AA4AE55941866C34949D675B /* AppResources.swift */,
+				A77AC4000000000000000002 /* AttachmentPath.swift */,
 				AB10CA110000000000000000 /* L10n.swift */,
 				AB10CA170000000000000000 /* MainMenuLocalizer.swift */,
 				A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */,
@@ -518,6 +521,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				30A86772A4F59C8720455067 /* AppResources.swift in Sources */,
+				A77AC4000000000000000001 /* AttachmentPath.swift in Sources */,
 				AB10CA120000000000000000 /* L10n.swift in Sources */,
 				AB10CA160000000000000000 /* MainMenuLocalizer.swift in Sources */,
 				9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */,

@@ -39,6 +39,7 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
             PanelSurface.refreshShadow(panel)
             PanelSurface.fadeIn(panel, from: alpha)
         }
+        model.searchFocusRequest += 1
         installMonitors()
         Task {
             guard isVisible, presentation == current else { return }
@@ -80,7 +81,8 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
     private func installMonitors() {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, event.window === panel, panel?.isKeyWindow == true else { return event }
+            guard let self, event.window === panel, panel?.isKeyWindow == true,
+                  panel?.attachedSheet == nil else { return event }
             if let editor = panel?.firstResponder as? NSTextView, editor.hasMarkedText() { return event }
             guard event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
             if event.keyCode == 53 {
@@ -96,7 +98,9 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         }
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.isVisible, let panel = self.panel, !panel.frame.contains(NSEvent.mouseLocation) else { return }
+                guard let self, self.isVisible, let panel = self.panel,
+                      panel.attachedSheet == nil,
+                      !panel.frame.contains(NSEvent.mouseLocation) else { return }
                 self.dismiss()
             }
         }
@@ -116,5 +120,19 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         panel.setFrame(frame, display: true)
         PanelSurface.refreshShadow(panel)
     }
-    func windowDidResignKey(_ notification: Notification) { dismiss() }
+    /// Sheets and popovers can become key before AppKit finishes attaching them.
+    /// Inspect the settled window tree and ignore callbacks from an older presentation.
+    func windowDidResignKey(_ notification: Notification) {
+        let current = presentation
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isVisible, self.presentation == current,
+                  let panel = self.panel, !self.retainsKeyboardInteraction(panel) else { return }
+            self.dismiss()
+        }
+    }
+
+    private func retainsKeyboardInteraction(_ window: NSWindow) -> Bool {
+        window.isKeyWindow || window.attachedSheet != nil
+            || (window.childWindows ?? []).contains { retainsKeyboardInteraction($0) }
+    }
 }

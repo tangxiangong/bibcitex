@@ -397,10 +397,17 @@ struct PanelSeparator: View {
 struct RowSelectionBackground: View {
     var selected: Bool
     var fill: Color = PanelPalette.selection
+    /// The detail cursor is independent of the batch assignment selection.
+    var focused = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
             .fill(selected ? fill : .clear)
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(focused ? Color.accentColor : .clear, lineWidth: 1.5)
+                    .allowsHitTesting(false)
+            }
             .padding(.horizontal, 6)
             .background(NeutralListSelection(rowOnly: true))
     }

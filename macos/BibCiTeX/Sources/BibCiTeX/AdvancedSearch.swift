@@ -38,7 +38,6 @@ struct AdvancedSearchEditor: View {
     @State private var value = ""
     @State private var yearFrom = ""
     @State private var yearTo = ""
-    @State private var phrase = false
     @State private var exclude = false
     @State private var tagID = ""
     @State private var combineOr = false
@@ -79,7 +78,7 @@ struct AdvancedSearchEditor: View {
             Picker(L10n.text("字段"), selection: $field) {
                 Text(L10n.text("全部字段")).tag("")
                 ForEach(catalog?.fieldDescriptors ?? [], id: \.name) { Text(L10n.text($0.labelKey)).tag($0.name) }
-            }.onChange(of: field) { _ in phrase = false; matchStyle = "all"; value = "" }
+            }.onChange(of: field) { _ in matchStyle = "all"; value = "" }
             if matchMode == "tag" {
                 Picker(L10n.text("标签"), selection: $tagID) {
                     Text(L10n.text("选择标签")).tag("")
@@ -109,15 +108,12 @@ struct AdvancedSearchEditor: View {
                 Text(L10n.text("包含完整短语")).tag("phrase")
             }.disabled(!supportsPhrase)
             HStack {
-                Toggle(L10n.text("完整短语"), isOn: $phrase).disabled(!supportsPhrase)
                 Toggle(L10n.text("排除"), isOn: $exclude)
                 Picker(L10n.text("组合"), selection: $combineOr) { Text("AND").tag(false); Text("OR").tag(true) }.frame(width: 130)
             }
             HStack {
                 Button(L10n.text("添加条件")) { addCondition() }
                     .disabled(busy || (matchMode == "tag" ? tagID.isEmpty : value.isEmpty))
-                Button(L10n.text("添加条件组")) { addCondition() }
-                    .disabled(busy || value.isEmpty || matchMode != "text")
                 Button(L10n.text("替换条件")) { addCondition(replace: true) }
                     .disabled(busy || selected == nil || (matchMode == "tag" ? tagID.isEmpty : value.isEmpty))
             }
@@ -203,7 +199,7 @@ struct AdvancedSearchEditor: View {
             defer { busy = false }
             let selectedTag = tags?.tags.first { $0.id == tagID }
             let result = BibCiTeXCore.buildCondition(condition: QueryCondition(fieldName: field, textValue: matchMode == "tag" ? (selectedTag?.name ?? "") : value,
-                phrase: supportsPhrase && (phrase || matchStyle == "phrase"), exclude: exclude && matchStyle != "any", tagId: matchMode == "tag" ? selectedTag?.id : nil))
+                phrase: supportsPhrase && matchStyle == "phrase", exclude: exclude && matchStyle != "any", tagId: matchMode == "tag" ? selectedTag?.id : nil))
             guard result.status == .valid, var operand = result.document else { error = result.diagnostics.map(\.code).joined(separator: ", "); return }
             if matchStyle == "any", var root = operand.root {
                 // The service constructed token boundaries; only the chosen group operator changes.
@@ -502,6 +498,7 @@ struct SearchInput: NSViewRepresentable {
     let changed: (String, UInt32, UInt32, String, Bool) -> Void
     var move: ((Int) -> Void)?
     var compositionChanged: (Bool) -> Void = { _ in }
+    var focusChanged: (Bool) -> Void = { _ in }
     var triggerInserted: ((String, String, String) -> Bool)?
     /// Optional token deletion at an empty native selection at the beginning of this editor.
     var deleteBackwardAtStart: (() -> Bool)?
@@ -518,9 +515,10 @@ struct SearchInput: NSViewRepresentable {
             guard let view else { return }; coordinator?.commit(view)
         }
         view.compositionBegan = { [weak coordinator = context.coordinator] old, range in coordinator?.beginComposition(old, range: range) }
+        view.focusChanged = { [weak coordinator = context.coordinator] focused in coordinator?.parent.focusChanged(focused) }
         view.placeholder = placeholder
         view.acceptsTrigger = triggerInserted != nil
-        if fontSize >= 20 { context.coordinator.requestFocus(view, request: focusRequest, initial: true) }
+        if fontSize >= 20 || focusRequest != 0 { context.coordinator.requestFocus(view, request: focusRequest, initial: true) }
         view.isVerticallyResizable = false; view.isHorizontallyResizable = false
         view.textContainer?.maximumNumberOfLines = 1
         view.textContainer?.lineBreakMode = .byTruncatingTail
@@ -547,7 +545,7 @@ struct SearchInput: NSViewRepresentable {
         if coordinator.focusRequest != focusRequest { coordinator.requestFocus(view, request: focusRequest) }
     }
     static func dismantleNSView(_ view: SearchTextView, coordinator: Coordinator) {
-        view.nativeCommit = nil; view.compositionBegan = nil; view.delegate = nil
+        view.nativeCommit = nil; view.compositionBegan = nil; view.focusChanged = nil; view.delegate = nil
         coordinator.cancelFocus()
         coordinator.composition = nil; coordinator.edit = nil
     }
@@ -653,6 +651,18 @@ final class SearchTextView: NSTextView {
     var pendingTrigger: (symbol: String, before: String)?
     var nativeCommit: (() -> Void)?
     var compositionBegan: ((String, NSRange) -> Void)?
+    var focusChanged: ((Bool) -> Void)?
+
+    override func becomeFirstResponder() -> Bool {
+        let accepted = super.becomeFirstResponder()
+        if accepted { focusChanged?(true) }
+        return accepted
+    }
+    override func resignFirstResponder() -> Bool {
+        let accepted = super.resignFirstResponder()
+        if accepted { focusChanged?(false) }
+        return accepted
+    }
 
     override func keyDown(with event: NSEvent) {
         keyWasComposing = isComposing || hasActiveMarkedText

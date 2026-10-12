@@ -27,7 +27,6 @@ final class HelperViewModel: ObservableObject {
     @Published var candidateExclude = false { didSet { candidateOperation += 1 } }
     @Published var candidateFocusRequest = 0
     @Published private(set) var candidateFilterFocus = false
-    @Published var showConditionEditor = false
     @Published var showTagManager = false
     @Published private(set) var candidateCatalog: SearchCatalog?
     @Published private(set) var candidateTags: TagSnapshot?
@@ -124,7 +123,7 @@ final class HelperViewModel: ObservableObject {
     /// Native Backspace at tail offset zero removes the adjacent operand and keeps
     /// the caret at zero so repeated deletes walk backward through the capsules.
     func deletePreviousCapsule() -> Bool {
-        guard !isSelectingBibliography, candidateKind == nil, !showConditionEditor,
+        guard !isSelectingBibliography, candidateKind == nil,
               let previous = capsules.last else { return false }
         removeCapsule(previous.id, refocusTail: false)
         return true
@@ -158,7 +157,7 @@ final class HelperViewModel: ObservableObject {
     private var librarySwitchDraft: (String, SearchDraft)?
     private(set) var boundDraft = SearchDraft()
     private var searchContext: SearchContext?
-    var editingCondition: Bool { candidateKind != nil || showConditionEditor }
+    var editingCondition: Bool { candidateKind != nil }
     struct Candidate: Identifiable { let id: String; let name: String; var searchTerms: [String] = [] }
     /// Chinese UI also accepts the English display label; English never indexes hidden Chinese keys.
     private func catalogCandidate(name: String, labelKey: String) -> Candidate {
@@ -371,12 +370,6 @@ final class HelperViewModel: ObservableObject {
             focusRequest += 1
         }
     }
-    /// A full expression edit replaces both token presentation and tail atomically.
-    func applyEditorQuery(_ text: String, draft: SearchDraft) {
-        capsules = []; tailText = ""; editingCapsuleID = nil; activeKeywordField = nil
-        optionalScopeBefore = nil; candidateKind = nil; candidateField = nil; candidateValue = ""
-        applyAdvancedQuery(text, draft: draft); focusRequest += 1
-    }
     /// Commits a service-built tree and its tag snapshot as the helper’s one active query.
     func applyAdvancedQuery(_ text: String, draft: SearchDraft) {
         boundDraft = draft; updateQuery(text)
@@ -489,7 +482,7 @@ final class HelperViewModel: ObservableObject {
     @discardableResult
     func beginSession() -> Int {
         invalidateSession()
-        boundDraft = SearchDraft(); candidateKind = nil; candidateField = nil; showConditionEditor = false
+        boundDraft = SearchDraft(); candidateKind = nil; candidateField = nil
         queryAnalysis = nil; searchContext = nil; matchEvidence = [:]; librarySwitchDraft = nil
         capsules = []; tailText = ""; capsuleRevision = nil; editingCapsuleID = nil; librarySwitchCapsules = nil; activeKeywordField = nil; savedKeywordField = nil; optionalScopeBefore = nil
         return sessionGeneration
@@ -930,7 +923,7 @@ final class HelperViewModel: ObservableObject {
             if searchResults.isEmpty {
                 listHeight = HelperMetrics.emptyRow
             } else {
-                // The floating controls overlay the list and take no height of their own.
+                // The bottom safe-area inset consumes space in addition to the rows.
                 listHeight = min(CGFloat(searchResults.count) * (rowHeightSearch + 2) + HelperMetrics.listPadding, maxListHeight)
             }
         }
@@ -939,7 +932,7 @@ final class HelperViewModel: ObservableObject {
         // not in a second bar under the message.
         let errorHeight = (errorMessage == nil ? 0 : HelperMetrics.errorBar)
         let diagnosticHeight = CGFloat(min(queryAnalysis?.diagnostics.count ?? 0, 3)) * 18
-        let height = max(minHeight, headerHeight + listHeight + errorHeight + diagnosticHeight)
+        let height = max(minHeight, headerHeight + listHeight + (showsBottomBar ? HelperMetrics.bottomBar : 0) + errorHeight + diagnosticHeight)
         if preferredHeight != height { preferredHeight = height }
     }
 }
