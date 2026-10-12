@@ -21,7 +21,7 @@ mod unix {
     };
 
     pub struct Instance {
-        _lock: File,
+        lock: File,
         socket: PathBuf,
         stop: Arc<AtomicBool>,
         worker: Option<std::thread::JoinHandle<()>>,
@@ -33,6 +33,9 @@ mod unix {
                 let _ = worker.join();
             }
             let _ = fs::remove_file(&self.socket);
+            // A concurrent process spawn can inherit this open file description
+            // until exec. Closing our descriptor alone may leave its lock held.
+            let _ = self.lock.unlock();
         }
     }
 
@@ -143,7 +146,7 @@ mod unix {
             }
         });
         Ok(Some(Instance {
-            _lock: lock,
+            lock,
             socket,
             stop,
             worker: Some(worker),
@@ -179,6 +182,43 @@ mod unix {
                     .unwrap()
                     .is_some()
             );
+        }
+        #[test]
+        fn clean_shutdown_releases_lock_with_a_duplicated_descriptor() {
+            let dir = tempfile::tempdir().unwrap();
+            let directory = dir.path().join("instance");
+            let (send, receive) = async_channel::bounded(8);
+            let primary = acquire_in(directory.clone(), &Command::Main, send.clone())
+                .unwrap()
+                .unwrap();
+            // A duplicate shares the same open file description, just like an
+            // inherited descriptor between fork and exec in a concurrent spawn.
+            let inherited_lock = primary.lock.try_clone().unwrap();
+            let probe = File::open(directory.join("instance.lock")).unwrap();
+            assert!(matches!(
+                probe.try_lock(),
+                Err(std::fs::TryLockError::WouldBlock)
+            ));
+            drop(primary);
+            assert!(!directory.join("instance.sock").exists());
+
+            let replacement = acquire_in(directory.clone(), &Command::Main, send.clone())
+                .unwrap()
+                .unwrap();
+            // Closing the old descriptor must not release the replacement's lock.
+            drop(inherited_lock);
+            assert!(matches!(
+                probe.try_lock(),
+                Err(std::fs::TryLockError::WouldBlock)
+            ));
+            assert!(
+                acquire_in(directory, &Command::Helper, send)
+                    .unwrap()
+                    .is_none()
+            );
+            assert!(matches!(receive.recv_blocking().unwrap(), Command::Helper));
+            drop(replacement);
+            probe.try_lock().unwrap();
         }
         #[test]
         fn private_socket_rejects_internal_commands_from_secondary_processes() {
