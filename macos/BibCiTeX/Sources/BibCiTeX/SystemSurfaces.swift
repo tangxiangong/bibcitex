@@ -20,11 +20,18 @@ struct NeutralListSelection: NSViewRepresentable {
 
 final class NeutralListSelectionView: NSView {
     private var pending = false
+    private var observing = false
+    private struct HighlightObservation {
+        weak var view: NSView?
+        let tokens: [NSKeyValueObservation]
+    }
+    private var highlights: [ObjectIdentifier: HighlightObservation] = [:]
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         stopObserving()
         guard window != nil else { return }
+        observing = true
         // Selection notifications are synchronous: remove AppKit's highlight
         // before this event is drawn, rather than on the next main-queue turn.
         for name in [NSTableView.selectionIsChangingNotification, NSTableView.selectionDidChangeNotification] {
@@ -40,40 +47,71 @@ final class NeutralListSelectionView: NSView {
     }
 
     func stopObserving() {
+        observing = false
         NotificationCenter.default.removeObserver(self)
+        highlights.removeAll()
     }
 
     @objc private func selectionChanged(_ notification: Notification) {
-        guard let table = notification.object as? NSTableView,
+        guard observing, let table = notification.object as? NSTableView,
               let window, table.window === window else { return }
         configure(table)
     }
 
     func updateNow() {
-        guard let root = window?.contentView else { return }
+        // A queued update can outlive dismantleNSView while still attached.
+        guard observing, let root = window?.contentView else { return }
+        highlights = highlights.filter { $0.value.view?.window === window }
         configure(root)
     }
 
     func scheduleUpdate() {
-        guard !pending else { return }
+        guard observing, !pending else { return }
         pending = true
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.pending = false
-            guard let root = self.window?.contentView else { return }
-            self.configure(root)
+            self.updateNow()
         }
     }
 
     private func configure(_ view: NSView) {
         if let table = view as? NSTableView {
+            observeHighlight(table)
             if table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
             table.enumerateAvailableRowViews { row, _ in
+                self.observeHighlight(row)
                 if row.isEmphasized { row.isEmphasized = false }
                 if row.selectionHighlightStyle != .none { row.selectionHighlightStyle = .none }
             }
         }
         for child in view.subviews { configure(child) }
+    }
+
+    // Selection notifications only cover changes to the selected indexes.
+    // SwiftUI/AppKit can write highlight properties again when updating or
+    // reusing rows, or when focus changes without changing the selection.
+    // Enforce the same policy synchronously at those writes, not on a later
+    // main-queue turn after an accent-colored frame has already been drawn.
+    private func observeHighlight(_ table: NSTableView) {
+        let key = ObjectIdentifier(table)
+        guard highlights[key]?.view !== table else { return }
+        let style = table.observe(\.selectionHighlightStyle, options: [.new]) { table, _ in
+            if table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
+        }
+        highlights[key] = HighlightObservation(view: table, tokens: [style])
+    }
+
+    private func observeHighlight(_ row: NSTableRowView) {
+        let key = ObjectIdentifier(row)
+        guard highlights[key]?.view !== row else { return }
+        let style = row.observe(\.selectionHighlightStyle, options: [.new]) { row, _ in
+            if row.selectionHighlightStyle != .none { row.selectionHighlightStyle = .none }
+        }
+        let emphasis = row.observe(\.isEmphasized, options: [.new]) { row, _ in
+            if row.isEmphasized { row.isEmphasized = false }
+        }
+        highlights[key] = HighlightObservation(view: row, tokens: [style, emphasis])
     }
 }
 
