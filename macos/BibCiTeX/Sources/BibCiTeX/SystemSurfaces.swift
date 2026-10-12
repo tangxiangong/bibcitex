@@ -188,18 +188,9 @@ final class ScrollbarConfigurationView: NSView {
             let state = state(for: scroll)
             scroll.contentView.postsBoundsChangedNotifications = true
             if scroll.scrollerStyle != .overlay { scroll.scrollerStyle = .overlay }
-            if alwaysHidden {
-                // Helpers never show scrollers, so remove their slots once;
-                // unlike idle hiding this policy never changes during scrolling.
-                if scroll.hasVerticalScroller { scroll.hasVerticalScroller = false }
-                if scroll.hasHorizontalScroller { scroll.hasHorizontalScroller = false }
-                var insets = scroll.contentInsets
-                if insets.left != 0 || insets.right != 0 {
-                    insets.left = 0
-                    insets.right = 0
-                    scroll.contentInsets = insets
-                }
-            }
+            // Hide the overlay views without removing their slots or changing
+            // contentInsets. SwiftUI owns those insets, including the space
+            // that keeps a NavigationSplitView list clear of its side panes.
             installActivityScrollers(scroll)
             if state.hideWork == nil { setIndicators(scroll, visible: false) }
         }
