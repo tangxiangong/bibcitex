@@ -10,6 +10,7 @@
 
 ## macOS
 
+- 修复 Helper 输入 `@`、`#`、`$` 后候选输入框无法自动聚焦的问题，恢复普通输入显示。
 - 修复 `\ell` 等窄公式字符在 SVG 渲染时消失的问题，保留公式尺寸与对齐。
 - 公式图像渲染失败时显示原始公式文本。
 - 主工作台、托盘窗口以及侧栏和详情弹出面板始终隐藏滚动条，滚动或悬停时也不显示，仍可正常滚动。
@@ -26,6 +27,7 @@
 
 ## macOS
 
+- Fix automatic focus of the Helper candidate input after typing `@`, `#`, or `$`, and restore ordinary text input display.
 - Fix narrow formula glyphs such as `\ell` disappearing during SVG rendering, while preserving formula size and alignment.
 - Display the original formula text if image rendering fails.
 - Keep scrollbars hidden in the main workbench, tray window, and sidebar/detail popovers, including while scrolling or hovering. Scrolling remains available.

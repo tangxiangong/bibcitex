@@ -9,6 +9,7 @@
 <!-- platform:macos -->
 ## macOS
 
+- Fix automatic focus of the Helper candidate input after typing `@`, `#`, or `$`, and restore ordinary text input display.
 - Fix narrow formula glyphs such as `\ell` disappearing during SVG rendering, while preserving formula size and alignment.
 - Display the original formula text if image rendering fails.
 - Keep scrollbars hidden in the main workbench, tray window, and sidebar/detail popovers, including while scrolling or hovering. Scrolling remains available.
