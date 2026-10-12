@@ -22,7 +22,7 @@ Use the same platform scopes in both translations.
 Example source:
 
 ```markdown
-# 0.8.0
+# 0.8.1
 
 - Improve bibliography parsing for everyone.
 
@@ -39,7 +39,7 @@ Example source:
 Preview locally without packaging or publishing:
 
 ```sh
-cargo run --locked -p xtask -- release-notes release-notes/0.8.0 target/release-notes-preview
+cargo run --locked -p xtask -- release-notes release-notes/0.8.1 target/release-notes-preview
 ```
 
 The generator validates both translations before writing output. It emits

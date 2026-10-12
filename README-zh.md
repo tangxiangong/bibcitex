@@ -31,16 +31,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.0/BibCiTeX-0.8.0-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.0/BibCiTeX-0.8.0-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.0/BibCiTeX-0.8.0-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.0/BibCiTeX-0.8.0-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -52,7 +52,7 @@
 
 支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
 
-v0.8.0 更新内容：[中文发布说明](release-notes/0.8.0/zh-Hans.md) · [English release notes](release-notes/0.8.0/en.md)。
+v0.8.1 修复数学命令中的双反斜杠兼容问题、macOS 窄公式字符显示，并隐藏 macOS 工作台和托盘滚动条。更新详情：[中文发布说明](release-notes/0.8.1/zh-Hans.md) · [English release notes](release-notes/0.8.1/en.md)。
 
 ### 核心特性
 

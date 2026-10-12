@@ -152,7 +152,7 @@ variable and a `LINUX_UPDATE_PRIVATE_KEY` secret containing the base64 32-byte
 private seed. No private key is compiled into the client. Builds without a public
 key can run, but cannot accept updates.
 
-Linux Release CI is temporarily disabled until the client is ready. The planned v0.8.0 release continues to
+Linux Release CI is temporarily disabled until the client is ready. The planned v0.8.1 release continues to
 ship only macOS and Windows: no Linux release binaries or packages are built,
 signed, uploaded, or published to GitHub/COS. Ordinary Linux Check CI remains
 enabled. See [release configuration](../ci/README.md#linux-releases) for the

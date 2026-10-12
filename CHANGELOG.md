@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-10-12
+
+### Bug fixes
+
+- Normalize doubled backslashes before multi-letter commands in simple mathematical expressions while preserving line breaks, row-bearing TeX constructs and exported BibTeX source.
+- Keep advanced-search match positions aligned with normalized formula text.
+- Fix disappearing narrow formula glyphs such as `\ell` on macOS, preserve their layout metrics, and show the original formula when image rendering fails.
+- Keep macOS workbench, tray, sidebar and detail-popover scrollbars hidden during scrolling and pointer hover.
+
+### Release scope
+
+- Continue to target macOS and Windows; Linux release builds remain disabled pending native desktop acceptance.
+
+Release notes: [简体中文](release-notes/0.8.1/zh-Hans.md) · [English](release-notes/0.8.1/en.md) · [GitHub announcement](release-notes/0.8.1/release-body.md).
+
 ## [0.8.0] - 2026-10-12
 
 ### Search, tags and selection
