@@ -85,33 +85,25 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 ## 界面功能预览
 
-以下动图来自历史版本。
+以下动图展示 macOS 原生客户端 (v0.8.1)。
 
-<div align="center">
+### 添加文献库
 
-### 核心功能展示
+选择 `.bib` 文件，为文献库命名，并浏览其中的文献。
 
-|                          添加 `.bib` 文件                          |                                   文献列表                                   |                             智能搜索                             |
-| :----------------------------------------------------------------: | :--------------------------------------------------------------------------: | :--------------------------------------------------------------: |
-| [<img src="assets/add_bib.gif" width="120">](./assets/add_bib.gif) | [<img src="assets/show_details.gif" width="120">](./assets/show_details.gif) | [<img src="assets/search.gif" width="120">](./assets/search.gif) |
-|                       *快速导入 BibTeX 文件*                       |                              *查看文献详细信息*                              |                          *实时搜索过滤*                          |
+[<img src="assets/add_bib.gif" alt="从 BibTeX 文件添加文献库" width="800">](./assets/add_bib.gif)
 
-|                             侧边详情                             |                          外部链接                          |                           复制引用                           |
-| :--------------------------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------: |
-| [<img src="assets/drawer.gif" width="120">](./assets/drawer.gif) | [<img src="assets/url.gif" width="120">](./assets/url.gif) | [<img src="assets/copy.gif" width="120">](./assets/copy.gif) |
-|                         *侧边栏详情展示*                         |                     *快速访问外部资源*                     |                      *一键复制引用格式*                      |
+### 复制引用
 
-### 特色功能
+在文献列表中复制文献的引用。
 
-<div style="margin: 20px 0;">
-  <h4>跨应用粘贴</h4>
-  <a href="assets/cross_paste.gif">
-    <img src="assets/cross_paste.gif" alt="跨应用粘贴演示">
-  </a>
-  <p><em>无缝集成到您的工作流程，支持跨应用程序粘贴功能</em></p>
-</div>
+[<img src="assets/copy.gif" alt="从文献列表复制引用" width="800">](./assets/copy.gif)
 
-</div>
+### 跨应用粘贴
+
+在其他应用中编辑时唤出紧凑的 Helper，搜索文献，并将引用粘贴到编辑器中。
+
+[<img src="assets/cross_paste.gif" alt="通过 Helper 搜索文献并将引用粘贴到其他应用" width="800">](./assets/cross_paste.gif)
 
 ## 高级搜索使用方法
 

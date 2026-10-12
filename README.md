@@ -85,33 +85,25 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 
 ## Interface Preview
 
-The animations below show earlier versions of the app.
+The following demos show the native macOS app (v0.8.1).
 
-<div align="center">
+### Add a Bibliography Library
 
-### Core Features
+Choose a `.bib` file, name the library, and browse its references.
 
-|                          Add `.bib` Files                          |                              Bibliography List                               |                           Smart Search                           |
-| :----------------------------------------------------------------: | :--------------------------------------------------------------------------: | :--------------------------------------------------------------: |
-| [<img src="assets/add_bib.gif" width="120">](./assets/add_bib.gif) | [<img src="assets/show_details.gif" width="120">](./assets/show_details.gif) | [<img src="assets/search.gif" width="120">](./assets/search.gif) |
-|                   *Quickly import BibTeX files*                    |                           *View reference details*                           |                   *Filter results as you type*                   |
+[<img src="assets/add_bib.gif" alt="Add a bibliography library from a BibTeX file" width="800">](./assets/add_bib.gif)
 
-|                         Details Sidebar                          |                       External Links                       |                        Copy Citations                        |
-| :--------------------------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------------------------: |
-| [<img src="assets/drawer.gif" width="120">](./assets/drawer.gif) | [<img src="assets/url.gif" width="120">](./assets/url.gif) | [<img src="assets/copy.gif" width="120">](./assets/copy.gif) |
-|                  *View details in the sidebar*                   |            *Quickly access external resources*             |          *Copy formatted citations with one click*           |
+### Copy Citations
 
-### Featured Functionality
+Copy a reference's citation from the bibliography list.
 
-<div style="margin: 20px 0;">
-  <h4>Cross-Application Pasting</h4>
-  <a href="assets/cross_paste.gif">
-    <img src="assets/cross_paste.gif" alt="Cross-application paste demo">
-  </a>
-  <p><em>Paste citations across applications for seamless integration into your workflow.</em></p>
-</div>
+[<img src="assets/copy.gif" alt="Copy a citation from the bibliography list" width="800">](./assets/copy.gif)
 
-</div>
+### Paste Across Applications
+
+Open the compact Helper while editing in another application, search for a reference, and paste its citation into the editor.
+
+[<img src="assets/cross_paste.gif" alt="Search in the Helper and paste a citation into another application" width="800">](./assets/cross_paste.gif)
 
 ## Advanced Search Guide
 
