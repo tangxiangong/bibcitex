@@ -11,10 +11,13 @@ namespace BibCiTeX;
 internal sealed class HelperCandidates
 {
     /// <summary>The inline editor searches catalog names; its optional second stage can add a selected field constraint.</summary>
-    internal Border InlineEditor { get; } = new() { Visibility = Visibility.Collapsed, CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(2), Padding = new Thickness(5, 0, 5, 0) };
-    private readonly TextBox filter = new() { MinWidth = 110, MaxWidth = 220, FontSize = 16, BorderThickness = new Thickness(0) };
-    private readonly ListView items = new() { MaxHeight = 280, IsItemClickEnabled = true };
-    private readonly Popup popup = new() { IsLightDismissEnabled = false, ShouldConstrainToRootBounds = false };
+    internal Border InlineEditor { get; } = new() { Visibility = Visibility.Collapsed };
+    private readonly TextBlock marker = new() { FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Border editorBorder = new() { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1) };
+    private readonly SearchTextBox filter = new() { MinWidth = 110, MaxWidth = 220, FontSize = 16, BorderThickness = new Thickness(0), Padding = new Thickness(8, 5, 8, 5) };
+    private readonly ListView items = new() { IsItemClickEnabled = true, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+    private readonly Popup popup = new() { IsLightDismissEnabled = false, ShouldConstrainToRootBounds = false,
+        DesiredPlacement = PopupPlacementMode.BottomEdgeAlignedLeft, VerticalOffset = 6 };
     private readonly TextBox search;
     private readonly HelperInputGuard input;
     private readonly TextBox optionalValue = new() { MinWidth = 130, MaxWidth = 220, FontSize = 16, BorderThickness = new Thickness(0), PlaceholderText = L10n.Text("字段值（可选）") };
@@ -50,9 +53,15 @@ internal sealed class HelperCandidates
         this.search = search; this.changed = changed; this.visibility = visibility; this.analyze = analyze;
         this.commit = commit; this.selectField = selectField; this.workArea = workArea; this.tailComposing = tailComposing; this.currentField = currentField;
         Localized.Name(filter, "筛选"); Localized.Name(items, "候选");
-        InlineEditor.BorderBrush = Views.Brush("SystemControlForegroundAccentBrush"); InlineEditor.Child = filter;
+        editorBorder.BorderBrush = Views.Brush("SystemControlForegroundAccentBrush"); editorBorder.Child = filter;
+        InlineEditor.Child = Views.Row(marker, editorBorder);
+        popup.PlacementTarget = editorBorder;
         popup.Child = new Border { Child = items, Width = 320, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1),
             Background = Views.Brush("SolidBackgroundFillColorBaseBrush"), BorderBrush = Views.Brush("SurfaceStrokeColorDefaultBrush") };
+        ScrollViewer.SetVerticalScrollMode(items, ScrollMode.Enabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(items, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetHorizontalScrollMode(items, ScrollMode.Disabled);
+        ScrollViewer.SetHorizontalScrollBarVisibility(items, ScrollBarVisibility.Disabled);
         input = new HelperInputGuard(filter); valueInput = new HelperInputGuard(optionalValue);
         Localized.Name(optionalValue, "字段值（可选）");
         optionalValue.TextChanged += (_, _) => { filterVersion++; if (valueError is not null) valueError.IsOpen = false; };
@@ -65,6 +74,7 @@ internal sealed class HelperCandidates
         };
         input.Ended += () => { if (Open) Populate(); };
         InlineEditor.SizeChanged += (_, _) => { if (Open && optionalField is null && !IsComposing && !tailComposing()) ShowPopup(); };
+        InlineEditor.Loaded += (_, _) => { if (Open && optionalField is null) ShowPopup(); };
         filter.TextChanged += (_, _) => { filterVersion++; if (!input.IsComposing) Populate(); };
         filter.PreviewKeyDown += async (_, args) =>
         {
@@ -74,6 +84,7 @@ internal sealed class HelperCandidates
             { args.Handled = true; await Handle(args.Key); }
         };
         items.ItemClick += async (_, args) => { items.SelectedItem = args.ClickedItem; await Confirm(); };
+        items.SelectionChanged += (_, _) => { if (items.SelectedItem is { } selected) items.ScrollIntoView(selected); };
     }
     /// <summary>Recognizes a single standalone typed trigger at the end of unquoted, unescaped input.</summary>
     internal static bool IsTrigger(string previous, string text, int caret)
@@ -89,9 +100,9 @@ internal sealed class HelperCandidates
     {
         if (tailComposing()) return;
         int request = ++generation;
-        active = true; busy = false; optionalField = null; previousField = currentField(); InlineEditor.Child = filter; before = previous; trigger = symbol; entries = []; items.Items.Clear();
+        active = true; busy = false; optionalField = null; previousField = currentField(); editorBorder.Child = filter; before = previous; trigger = symbol; entries = []; items.Items.Clear();
         original = analyze(previous);
-        filter.Text = ""; filter.PlaceholderText = symbol.ToString();
+        marker.Text = symbol.ToString(); filter.Text = "";
         updating = true; try { search.Text = before; } finally { updating = false; }
         InlineEditor.Visibility = Visibility.Visible; visibility(true); ShowPopup();
         // Focus is transferred only at this explicit trigger boundary, never by a late catalog response.
@@ -127,25 +138,25 @@ internal sealed class HelperCandidates
         if (input.IsComposing) return;
         items.Items.Clear();
         foreach (var entry in entries.Where(x => x.Name.Contains(filter.Text, StringComparison.CurrentCultureIgnoreCase) || x.Label.Contains(filter.Text, StringComparison.CurrentCultureIgnoreCase) || (L10n.Language == "zh-Hans" && x.EnglishLabel.Contains(filter.Text, StringComparison.OrdinalIgnoreCase))))
-            items.Items.Add(new ListViewItem { Content = new TextBlock { Text = entry.Label, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Tag = entry, Height = 28, MinHeight = 28, Padding = new Thickness(6, 2, 6, 2) });
+            items.Items.Add(new ListViewItem { Content = new TextBlock { Text = entry.Label, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis }, Tag = entry, Height = 32, MinHeight = 32, Padding = new Thickness(16, 4, 8, 4) });
         if (items.Items.Count > 0) items.SelectedIndex = 0;
-        else items.Items.Add(new ListViewItem { Content = L10n.Text("未找到匹配记录"), IsEnabled = false, Height = 28, MinHeight = 28, Padding = new Thickness(6, 2, 6, 2) });
+        else items.Items.Add(new ListViewItem { Content = L10n.Text("未找到匹配记录"), IsEnabled = false, Height = 32, MinHeight = 32, Padding = new Thickness(16, 4, 8, 4) });
         if (Open && optionalField is null && !IsComposing && !tailComposing()) ShowPopup();
     }
     private void ShowPopup()
     {
+        if (!Open || optionalField is not null || IsComposing || tailComposing() || editorBorder.ActualWidth <= 0 || search.XamlRoot is null) return;
         popup.XamlRoot = search.XamlRoot;
-        var point = InlineEditor.TransformToVisual(null).TransformPoint(new Point(0, Math.Max(32, InlineEditor.ActualHeight) + 6));
         var area = workArea();
         double desired = 140;
         foreach (var item in items.Items.OfType<ListViewItem>())
-            if (item.Tag is Candidate candidate) { var label = new TextBlock { Text = candidate.Label, FontSize = 13 }; label.Measure(new Size(double.PositiveInfinity, 28)); desired = Math.Max(desired, label.DesiredSize.Width + 28); }
+            if (item.Tag is Candidate candidate) { var label = new TextBlock { Text = candidate.Label, FontSize = 13 }; label.Measure(new Size(double.PositiveInfinity, 32)); desired = Math.Max(desired, label.DesiredSize.Width + 40); }
         double width = Math.Min(Math.Clamp(desired, 140, 220), Math.Max(120, area.Width - 16));
-        double height = Math.Min(Math.Clamp(items.Items.Count, 1, 6) * 28 + 12, Math.Max(40, area.Height - 16));
-        if (popup.Child is Border border) { border.Width = width; border.Padding = new Thickness(6); } items.MaxHeight = Math.Max(28, height - 12);
-        popup.HorizontalOffset = Math.Clamp(point.X, area.Left + 8, Math.Max(area.Left + 8, area.Right - width - 8));
-        double y = point.Y + height > area.Bottom - 8 ? point.Y - Math.Max(32, InlineEditor.ActualHeight) - height - 12 : point.Y;
-        popup.VerticalOffset = Math.Clamp(y, area.Top + 8, Math.Max(area.Top + 8, area.Bottom - height - 8)); popup.IsOpen = true;
+        double height = Math.Min(Math.Clamp(items.Items.Count, 1, 6) * 32 + 14, Math.Max(40, area.Height - 16));
+        if (popup.Child is Border border) { border.Width = width; border.Padding = new Thickness(6); }
+        // Give the native list a finite viewport so wheel/trackpad input can scroll it.
+        items.Height = Math.Max(32, height - 14);
+        popup.IsOpen = true;
     }
     /// <summary>Yields immediately when native composition starts in the main tail.</summary>
     internal void BeginMainComposition() { if (Open) Close(false); }
@@ -188,7 +199,8 @@ internal sealed class HelperCandidates
             {
                 optionalField = field; popup.IsOpen = false; selectField(field);
                 optionalValue.Text = "";
-                InlineEditor.Child = Views.Row(new TextBlock { Text = L10n.Text(field.label_key), VerticalAlignment = VerticalAlignment.Center }, optionalValue);
+                var valueRow = Views.Row(new TextBlock { Text = L10n.Text(field.label_key), VerticalAlignment = VerticalAlignment.Center }, optionalValue);
+                valueRow.Padding = new Thickness(5, 0, 5, 0); editorBorder.Child = valueRow;
                 if (!IsComposing && !tailComposing())
                 {
                     if (optionalValue.Focus(FocusState.Programmatic)) { optionalValue.Select(0, 0); optionalValue.StartBringIntoView(); }

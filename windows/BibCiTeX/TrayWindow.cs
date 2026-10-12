@@ -78,7 +78,8 @@ internal sealed class TrayWindow : Window
         detailToggle.Content = new SvgIcon("panelRightOpen");
         Localized.Name(detailToggle, "文献详情"); Localized.Tooltip(detailToggle, "文献详情");
         detailToggle.Click += (_, _) => SetDetailVisible(detailToggle.IsChecked == true);
-        var buttons = Views.Row(detailToggle,
+        var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } });
+        var buttons = Views.Row(manageTags, detailToggle,
             Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
         // One capsule for the toolbar, as on the macOS tray.
@@ -121,8 +122,7 @@ internal sealed class TrayWindow : Window
         foreach (var (label, value) in new[] { ("全部字段", "all"), ("作者", "author"), ("标题", "title"), ("期刊", "journal"), ("年份", "year") }) field.Items.Add(Localized.ComboItem(label, value));
         type.SelectedIndex = field.SelectedIndex = 0;
         var filters = new Grid { ColumnSpacing = 8 };
-        filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); filters.ColumnDefinitions.Add(new());
-        filters.Children.Add(type); Grid.SetColumn(field, 1); filters.Children.Add(field);
+        filters.ColumnDefinitions.Add(new()); filters.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         var advanced = new ToggleButton { Content = L10n.Text("高级搜索"), IsChecked = searchSession.Advanced };
         Localized.Name(advanced, "高级搜索");
         var conditions = new Button { Content = L10n.Text("条件"), IsEnabled = searchSession.Advanced };
@@ -137,19 +137,17 @@ internal sealed class TrayWindow : Window
             }
             catch (Exception ex) { ShowError(ex); }
         };
-        var manageTags = new Button { Content = L10n.Text("标签") };
-        manageTags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } };
         advanced.Click += async (_, _) =>
         {
             try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
             catch (Exception ex) { advanced.IsChecked = searchSession.Advanced; ShowError(ex); }
         };
-        filters.ColumnDefinitions.Insert(2, new() { Width = GridLength.Auto });
-        var advancedTools = Views.Row(advanced, conditions, manageTags);
-        filters.RowDefinitions.Add(new() { Height = GridLength.Auto }); filters.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        Grid.SetRow(advancedTools, 1); Grid.SetColumnSpan(advancedTools, 4); advancedTools.Margin = new Thickness(0, 8, 0, 0); filters.Children.Add(advancedTools);
+        var filterControls = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field),
+            HorizontalScrollMode = ScrollMode.Enabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalScrollMode = ScrollMode.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, ZoomMode = ZoomMode.Disabled };
+        filters.Children.Add(filterControls);
         var counter = Views.Row(progress, count); counter.HorizontalAlignment = HorizontalAlignment.Right; counter.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(counter, 3); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
+        Grid.SetColumn(counter, 1); filters.Children.Add(counter); Grid.SetRow(filters, 2); root.Children.Add(filters);
         var body = new Grid { ColumnSpacing = 0 };
         body.Children.Add(references); empty.HorizontalAlignment = HorizontalAlignment.Center; empty.VerticalAlignment = VerticalAlignment.Center; body.Children.Add(empty);
         var reading = new Grid();

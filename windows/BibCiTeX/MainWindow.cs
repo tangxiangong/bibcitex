@@ -140,8 +140,9 @@ internal sealed class MainWindow : Window
             try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
             catch (Exception error) { advanced.IsChecked = searchSession.Advanced; await Report(error); }
         };
-        var filters = new StackPanel { Spacing = 8 };
-        filters.Children.Add(Views.Row(type, field)); filters.Children.Add(Views.Row(advanced, conditions));
+        var filters = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field),
+            HorizontalScrollMode = ScrollMode.Enabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+            VerticalScrollMode = ScrollMode.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, ZoomMode = ZoomMode.Disabled };
         referenceHeader.Children.Add(filters); referenceHeader.Children.Add(queryDiagnostic);
         Grid.SetRow(references, 1); center.Children.Add(references);
         Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(brand, "BibCiTeX");

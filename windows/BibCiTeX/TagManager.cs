@@ -20,7 +20,7 @@ internal static class TagManager
         var pending = new ComboBox { PlaceholderText = L10n.Text("待关联记录"), HorizontalAlignment = HorizontalAlignment.Stretch };
         var source = new ComboBox { PlaceholderText = L10n.Text("原文献来源"), HorizontalAlignment = HorizontalAlignment.Stretch };
         var targetKey = new TextBox { PlaceholderText = L10n.Text("目标引用键"), Text = citeKey };
-        var targetPath = new TextBox { PlaceholderText = L10n.Text("文献库路径"), Text = path };
+        var targetPath = new TextBox { PlaceholderText = L10n.Text("文献库路径"), Text = PathDisplay.Format(path) };
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
         Localized.Name(list, "标签"); Localized.Name(name, "标签名称"); Localized.Name(target, "目标标签");
         Localized.Name(pending, "待关联记录"); Localized.Name(source, "原文献来源"); Localized.Name(targetKey, "目标引用键"); Localized.Name(targetPath, "文献库路径");
