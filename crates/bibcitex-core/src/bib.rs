@@ -317,28 +317,12 @@ pub(crate) fn parse_optional_field(entry: &biblatex::Entry, field: &str) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     fn sample_bib_file() -> tempfile::NamedTempFile {
-        let mut file = tempfile::Builder::new().suffix(".bib").tempfile().unwrap();
-        file.write_all(
-            r#"@article{smith2024,
-  author = {John Smith and Jane Doe},
-  title = {A Sample Article},
-  journal = {Journal of Testing},
-  year = {2024}
-}
-
-@article{doe2023,
-  author = {Jane Doe},
-  title = {Another Sample Article},
-  journal = {Journal of Examples},
-  year = {2023}
-}
-"#
-            .as_bytes(),
-        )
-        .unwrap();
+        let file = tempfile::Builder::new().suffix(".bib").tempfile().unwrap();
+        // Read only at test runtime; the corpus is never embedded in application binaries.
+        let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/data.bib");
+        std::fs::copy(source, file.path()).expect("data/data.bib must be available for tests");
         file
     }
 
@@ -346,20 +330,21 @@ mod tests {
     fn test_parse() {
         let file = sample_bib_file();
         let bib = parse(file.path()).unwrap();
-        let entry = bib.get("smith2024").unwrap();
+        assert_eq!(bib.len(), 9_986);
+        let entry = bib.get("Abarbanel1997_2c87af72cb").unwrap();
         let title = entry.title().unwrap();
         assert!(!title.is_empty());
-        println!("{title:#?}");
     }
 
     #[test]
     fn test_show_article() {
         let file = sample_bib_file();
         let bib = parse(file.path()).unwrap();
-        let entry = bib.get("doe2023").unwrap();
+        let entry = bib.get("Abate2004_1310e0e70c").unwrap();
         let article = Reference::from(entry);
-        assert_eq!(article.cite_key, "doe2023");
-        println!("{article:#?}");
+        assert_eq!(article.cite_key, "Abate2004_1310e0e70c");
+        assert_eq!(article.year, Some(2004));
+        assert_eq!(article.doi.as_deref(), Some("10.4007/annals.2004.159.819"));
     }
     #[test]
     fn concurrent_bibliography_fixtures_have_independent_lifetimes() {
@@ -377,13 +362,14 @@ mod tests {
             .map(|file| file.path().to_owned())
             .collect::<std::collections::HashSet<_>>();
         assert_eq!(paths.len(), files.len());
+        let expected = std::fs::read(files[0].path()).unwrap();
         let mut files = files;
         while let Some(file) = files.pop() {
             let removed = file.path().to_owned();
             drop(file);
             assert!(!removed.exists());
             for remaining in &files {
-                assert_eq!(parse(remaining.path()).unwrap().len(), 2);
+                assert_eq!(std::fs::read(remaining.path()).unwrap(), expected);
             }
         }
     }

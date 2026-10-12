@@ -1,0 +1,97 @@
+journal of computational physics: 1742
+inventiones mathematicae: 1378
+siam journal on matrix analysis and applications: 1103
+annals of mathematics: 953
+siam journal on scientific computing: 831
+siam journal on numerical analysis: 780
+journal of the american mathematical society: 554
+ima journal of numerical analysis: 378
+acta mathematica: 354
+journal of scientific computing: 325
+numerische mathematik: 299
+mathematics of computation: 283
+bit numerical mathematics: 244
+numerical algorithms: 126
+advances in computational mathematics: 54
+siam journal on applied mathematics: 42
+journal of computational and applied mathematics: 38
+esaim: mathematical modelling and numerical analysis: 36
+siam/asa journal on uncertainty quantification: 35
+computer methods in applied mechanics and engineering: 31
+foundations of computational mathematics: 29
+communications in computational physics: 24
+computational optimization and applications: 24
+multiscale modeling & simulation: 24
+calcolo: 22
+communications on applied mathematics and computation: 21
+siam journal on optimization: 20
+numerical methods for partial differential equations: 17
+computers & mathematics with applications: 16
+mathematical models and methods in applied sciences: 15
+communications in mathematical sciences: 12
+electronic transactions on numerical analysis: 10
+communications in applied mathematics and computational science: 9
+computational methods in applied mathematics: 9
+applied and computational harmonic analysis: 8
+applied mathematics letters: 8
+japan journal of industrial and applied mathematics: 8
+advances in applied mathematics and mechanics: 7
+applied numerical mathematics: 7
+journal of computational physics: x: 7
+the smai journal of computational mathematics: 6
+csiam transactions on applied mathematics: 5
+journal of numerical mathematics: 5
+numerical mathematics: theory, methods and applications: 5
+applied mathematics and computation: 4
+constructive approximation: 4
+journal of computational mathematics: 4
+kinetic and related models: 4
+siam journal on mathematics of data science: 4
+siam review: 4
+computing: 3
+reliable computing: 3
+siam journal on imaging sciences: 3
+annales henri lebesgue: 2
+international journal for numerical methods in engineering: 2
+international journal of computer mathematics: 2
+mathematical and computer modelling: 2
+siam journal on applied dynamical systems: 2
+acm transactions on mathematical software: 1
+acta applicandae mathematicae: 1
+analysis and applications: 1
+annales de la faculté des sciences de toulouse : mathématiques: 1
+annales mathématiques blaise pascal: 1
+annali della scuola normale superiore di pisa - classe di scienze: 1
+applications of mathematics: 1
+communications in mathematical physics: 1
+communications in mathematical research: 1
+communications on pure and applied mathematics: 1
+comptes rendus. mathématique: 1
+computational and applied mathematics: 1
+computational geosciences: 1
+computational mechanics: 1
+computing and visualization in science: 1
+discrete and continuous dynamical systems - s: 1
+fractional calculus and applied analysis: 1
+frontiers of mathematics in china: 1
+gem - international journal on geomathematics: 1
+information and inference: a journal of the ima: 1
+international journal for numerical methods in biomedical engineering: 1
+international journal for numerical methods in fluids: 1
+international journal for uncertainty quantification: 1
+journal de l'école polytechnique — mathématiques: 1
+journal of applied mathematics and computing: 1
+journal of approximation theory: 1
+journal of fourier analysis and applications: 1
+journal of nonlinear science: 1
+mathematical control and related fields: 1
+networks and heterogeneous media: 1
+numerical algebra, control and optimization: 1
+numerical linear algebra with applications: 1
+partial differential equations and applications: 1
+research in the mathematical sciences: 1
+revista matemática iberoamericana: 1
+siam journal on mathematical analysis: 1
+vietnam journal of mathematics: 1
+water waves: 1
+zamm - journal of applied mathematics and mechanics: 1
