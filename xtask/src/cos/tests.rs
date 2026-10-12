@@ -125,6 +125,64 @@ fn conflicting_payload_blocks_all_writes() {
 }
 
 #[test]
+fn explicit_replacement_updates_same_version_and_preserves_other_releases() {
+    let (dir, key) = crate::tests::fixture("v1.2.3");
+    let store = MemoryStore::default();
+    publish_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
+    store
+        .objects
+        .borrow_mut()
+        .insert("releases/v1.0.0/keep.zip".into(), b"keep".to_vec());
+    fs::write(dir.path().join("notes-en.md"), "Fixed helper input").unwrap();
+    replace_release_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
+    let objects = store.objects.borrow();
+    assert_eq!(
+        objects["releases/v1.2.3/notes-en.md"],
+        b"Fixed helper input"
+    );
+    assert_eq!(objects["releases/v1.0.0/keep.zip"], b"keep");
+    let catalog: Channels = serde_json::from_slice(&objects[CATALOG]).unwrap();
+    assert_eq!(catalog.versions["stable"], "1.2.3");
+}
+
+#[test]
+fn replacement_rejects_invalid_signature_before_any_upload() {
+    let (dir, key) = crate::tests::fixture("v1.2.3");
+    let store = MemoryStore::default();
+    publish_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
+    store.uploads.borrow_mut().clear();
+    fs::write(
+        dir.path().join("BibCiTeX-1.2.3-macos-arm64.app.zip"),
+        b"tampered",
+    )
+    .unwrap();
+    assert!(replace_release_to("v1.2.3", dir.path(), "owner/repo", &key, &store).is_err());
+    assert!(store.uploads.borrow().is_empty());
+}
+
+#[test]
+fn replacement_failure_preserves_existing_channel_feeds_and_can_resume() {
+    let (dir, key) = crate::tests::fixture("v1.2.3");
+    let store = MemoryStore::default();
+    publish_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
+    let feeds: BTreeMap<_, _> = store
+        .objects
+        .borrow()
+        .iter()
+        .filter(|(name, _)| name.starts_with("update-feed/"))
+        .map(|(name, bytes)| (name.clone(), bytes.clone()))
+        .collect();
+    fs::write(dir.path().join("notes-en.md"), "New notes").unwrap();
+    *store.fail.borrow_mut() = Some("releases/v1.2.3/notes-en.md".into());
+    assert!(replace_release_to("v1.2.3", dir.path(), "owner/repo", &key, &store).is_err());
+    for (name, bytes) in feeds {
+        assert_eq!(store.objects.borrow()[&name], bytes);
+    }
+    *store.fail.borrow_mut() = None;
+    replace_release_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
+}
+
+#[test]
 fn older_release_does_not_replace_newer_channels() {
     let store = MemoryStore::default();
     for tag in ["v2.0.0-beta.1", "v1.2.3"] {

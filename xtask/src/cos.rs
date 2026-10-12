@@ -248,6 +248,46 @@ pub fn publish(tag: &str, directory: &Path, repository: &str, public_key: &str) 
     publish_to(tag, directory, repository, public_key, &Cos::new()?)
 }
 
+/// Explicitly replace a rebuilt release, then refresh its channel feeds.
+/// Ordinary publication continues to reject changes to existing payloads.
+pub fn replace_release(
+    tag: &str,
+    directory: &Path,
+    repository: &str,
+    public_key: &str,
+) -> Result<()> {
+    replace_release_to(tag, directory, repository, public_key, &Cos::new()?)
+}
+
+fn replace_release_to(
+    tag: &str,
+    directory: &Path,
+    repository: &str,
+    public_key: &str,
+    store: &impl Store,
+) -> Result<()> {
+    let manifest = prepare(directory, tag, repository, public_key)?;
+    let catalog = store
+        .catalog()?
+        .ok_or("Cannot replace a release without an existing COS catalog")?;
+    let _: Channels = serde_json::from_slice(&catalog)?;
+    // Validate the complete signed release before replacing any public object.
+    // Every key is scoped to this version; other releases and channel pointers stay intact.
+    for name in manifest
+        .assets
+        .keys()
+        .map(String::as_str)
+        .chain(["SHA256SUMS", "release.json"])
+    {
+        let path = directory.join(name);
+        store.upload(&format!("releases/{tag}/{name}"), &path, false)?;
+        if name.ends_with(".nupkg") {
+            store.upload(&format!("update-feed/{name}"), &path, false)?;
+        }
+    }
+    publish_to(tag, directory, repository, public_key, store)
+}
+
 fn publish_to(
     tag: &str,
     directory: &Path,

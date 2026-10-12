@@ -47,8 +47,14 @@ fn run() -> Result<()> {
             &env::var("GITHUB_REPOSITORY")?,
             &env::var("SPARKLE_PUBLIC_ED_KEY")?,
         ),
+        ["replace-cos-release"] => xtask::cos::replace_release(
+            &env::var("RELEASE_TAG")?,
+            Path::new(&env::var("RELEASE_ASSETS")?),
+            &env::var("GITHUB_REPOSITORY")?,
+            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+        ),
         _ => Err(
-            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
+            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | replace-cos-release | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
         ),
     }
 }
