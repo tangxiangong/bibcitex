@@ -20,7 +20,7 @@ internal sealed class HelperWindow : Window, IDisposable
     private const double EmptyRow = 112;
     private const double MaxList = 460;
     private const double PanelWidth = 720;
-    // The floating controls overlay the list and take no height of their own.
+    // Reserve a separate footer so hints never cover a result row.
     private const double BottomBar = 52;
 
     private readonly Grid root = new();
@@ -84,7 +84,7 @@ internal sealed class HelperWindow : Window, IDisposable
         root.RowDefinitions.Add(new() { Height = new GridLength(Header) });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new());
-        root.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new() { Height = new GridLength(0) });
 
         var header = new Grid { Padding = new Thickness(18, 0, 18, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
@@ -105,35 +105,14 @@ internal sealed class HelperWindow : Window, IDisposable
         listArea.Children.Add(new Border { Padding = new Thickness(8, 0, 8, 8), Child = results });
         emptyIcon.HorizontalAlignment = HorizontalAlignment.Center; emptyState.Children.Add(emptyIcon); emptyState.Children.Add(emptyLabel); listArea.Children.Add(emptyState); listArea.Children.Add(listProgress);
         var rule = Views.Divider(); rule.VerticalAlignment = VerticalAlignment.Top; listArea.Children.Add(rule);
-        // Floating controls, no bar: Enter (cross-app paste) and Tab as clickable hints,
-        // grouped in one capsule at the trailing edge. Rows scroll beneath them.
+        // Enter (cross-app paste) and Tab are clickable hints in their own footer.
         pasteHint = Views.KeyHint("粘贴到当前应用", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
         var switchHint = Views.KeyHint("切换文献库", "⇥", () => { if (!busy && !pasting) _ = StartSelecting(); });
-        var editHint = Views.Button("settings", "高级搜索", async () =>
-        {
-            if (composing || pasting) return;
-            version++; results.Items.Clear(); busy = true; Resize(600);
-            try
-            {
-                var draft = await queryBar.AnalyzeBase(search.Text);
-                if (!draft.status.IsValid) { SetStatus(SearchSession.Diagnostic(draft)); queryBar.FocusTail(); }
-                else if (await AdvancedSearchEditor.Show(root.XamlRoot, draft.text, draft) is { } query) queryBar.Accept(query);
-            }
-            catch (Exception ex) { SetErrorStatus(ex); }
-            finally { busy = false; await Refresh(); }
-        });
-        var tagsHint = Views.Button("settings", "标签", async () =>
-        {
-            version++; results.Items.Clear(); busy = true; Resize(600);
-            try { await TagManager.Show(root.XamlRoot); }
-            catch (Exception ex) { SetErrorStatus(ex); }
-            finally { busy = false; await Refresh(); }
-        });
-        var hints = Views.Row(pasteHint, switchHint, editHint, tagsHint); hints.Spacing = 2;
+        var hints = Views.Row(pasteHint, switchHint); hints.Spacing = 2;
         bottomBar = Views.Capsule(hints);
         bottomBar.HorizontalAlignment = HorizontalAlignment.Right; bottomBar.VerticalAlignment = VerticalAlignment.Bottom;
         bottomBar.Margin = new Thickness(0, 0, 12, 8); bottomBar.Visibility = Visibility.Collapsed;
-        listArea.Children.Add(bottomBar);
+        Grid.SetRow(bottomBar, 3); root.Children.Add(bottomBar);
         results.SelectionChanged += (_, _) => pasteHint.IsEnabled = results.SelectedItems.Count > 0;
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
         fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
@@ -475,9 +454,8 @@ internal sealed class HelperWindow : Window, IDisposable
         listArea.Visibility = list > 0 ? Visibility.Visible : Visibility.Collapsed;
         var bar = !selecting && !searching && !busy && rows > 0 && (search.Text.Trim().Length > 0 || queryBar.HasPrefix);
         bottomBar.Visibility = bar ? Visibility.Visible : Visibility.Collapsed;
-        // An inset rather than a row: the last result can still scroll clear of the controls.
-        results.Padding = new Thickness(0, 0, 0, bar ? BottomBar : 0);
-        Resize(Header + list + (errorBar.Visibility == Visibility.Visible ? StatusRow : 0));
+        root.RowDefinitions[3].Height = new GridLength(bar ? BottomBar : 0);
+        Resize(Header + list + (bar ? BottomBar : 0) + (errorBar.Visibility == Visibility.Visible ? StatusRow : 0));
     }
     private void Resize(double height)
     {

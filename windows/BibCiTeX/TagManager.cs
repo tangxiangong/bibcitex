@@ -43,7 +43,11 @@ internal static class TagManager
 
     internal static Button BatchControls(ListView references, Action? opening = null, Action? closed = null, bool nativeMultiple = false)
     {
-        var button = new Button { Content = L10n.Text("多选"), Padding = new Thickness(6, 2, 6, 2) };
+        var button = new Button
+        {
+            Padding = nativeMultiple ? new Thickness(8) : new Thickness(6, 2, 6, 2),
+            MinWidth = 32, MinHeight = 32,
+        };
         var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
         button.Content = nativeMultiple ? new SvgIcon("checklist") : Views.Row(new SvgIcon("checklist"), label);
         var menu = new MenuFlyout();
