@@ -49,7 +49,7 @@ internal static class TagManager
             MinWidth = 32, MinHeight = 32,
         };
         var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
-        button.Content = nativeMultiple ? new SvgIcon("checklist") : Views.Row(new SvgIcon("checklist"), label);
+        button.Content = Views.Row(new SvgIcon("checklist"), label);
         var menu = new MenuFlyout();
         var mode = new MenuFlyoutItem();
         var all = new MenuFlyoutItem { Text = L10n.Text("全选") };
@@ -60,6 +60,7 @@ internal static class TagManager
         List<Reference> Selected() => references.SelectedItems.OfType<ListViewItem>().Select(item => item.Tag).OfType<Reference>().ToList();
         void Render()
         {
+            label.Visibility = !nativeMultiple || Active() ? Visibility.Visible : Visibility.Collapsed;
             label.Text = Active() ? $"{L10n.Text("已选")} {Selected().Count}" : L10n.Text("多选");
             ToolTipService.SetToolTip(button, label.Text); AutomationProperties.SetName(button, label.Text);
             mode.Text = L10n.Text(Active() ? "结束多选" : "多选");

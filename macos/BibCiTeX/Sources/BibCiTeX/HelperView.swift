@@ -135,6 +135,12 @@ struct HelperView: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             HStack(spacing: 2) {
+                if let selection = model.pasteSelection {
+                    Text("\(L10n.text("已选")) \(selection.count)")
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .padding(.horizontal, 8)
+                }
                 HelperBarButton(action: { model.activateSelection(onSuccess: onHidePanel) }) {
                     barHint(pasteTargetTitle, key: "↵")
                 }

@@ -2669,13 +2669,11 @@ impl Workbench {
             .icon(icon("checklist"))
             .ghost()
             .small()
-            .when(self.helper, |button| {
-                button.label(format!(
-                    "{} {}",
-                    self.text("已选", cx),
-                    self.batch_ids.len()
-                ))
-            })
+            .label(format!(
+                "{} {}",
+                self.text("已选", cx),
+                self.batch_ids.len()
+            ))
             .tooltip(format!(
                 "{} {}",
                 self.text("已选", cx),

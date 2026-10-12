@@ -108,12 +108,18 @@ internal sealed class HelperWindow : Window, IDisposable
         // Enter (cross-app paste) and Tab are clickable hints in their own footer.
         pasteHint = Views.KeyHint("粘贴到当前应用", "↵", () => _ = Execute(results.SelectedItem as ListViewItem));
         var switchHint = Views.KeyHint("切换文献库", "⇥", () => { if (!busy && !pasting) _ = StartSelecting(); });
-        var hints = Views.Row(pasteHint, switchHint); hints.Spacing = 2;
+        var selectionCount = new TextBlock { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0), Visibility = Visibility.Collapsed };
+        Localized.BindValue(selectionCount, TextBlock.TextProperty, () => $"{L10n.Text("已选")} {results.SelectedItems.Count}");
+        var hints = Views.Row(selectionCount, pasteHint, switchHint); hints.Spacing = 2;
         bottomBar = Views.Capsule(hints);
         bottomBar.HorizontalAlignment = HorizontalAlignment.Right; bottomBar.VerticalAlignment = VerticalAlignment.Bottom;
         bottomBar.Margin = new Thickness(0, 0, 12, 8); bottomBar.Visibility = Visibility.Collapsed;
         Grid.SetRow(bottomBar, 3); root.Children.Add(bottomBar);
-        results.SelectionChanged += (_, _) => pasteHint.IsEnabled = results.SelectedItems.Count > 0;
+        results.SelectionChanged += (_, _) => {
+            pasteHint.IsEnabled = results.SelectedItems.Count > 0;
+            Localized.BindValue(selectionCount, TextBlock.TextProperty, () => $"{L10n.Text("已选")} {results.SelectedItems.Count}");
+            selectionCount.Visibility = !selecting && results.SelectedItems.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
+        };
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
         fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
         fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };

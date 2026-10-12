@@ -1308,6 +1308,13 @@ impl Workbench {
             .border_1()
             .border_color(cx.theme().border)
             .shadow_sm()
+            .when(self.batch_selecting, |bar| {
+                bar.child(div().px(px(8.)).text_xs().child(format!(
+                    "{} {}",
+                    self.text("已选", cx),
+                    self.batch_ids.len()
+                )))
+            })
             .child(
                 self.key_hint("helper-paste", paste_title, "↵", cx)
                     .disabled(

@@ -861,7 +861,7 @@ struct BatchTagControls: View {
         selection.active ? "\(L10n.text("已选")) \(selection.ids.count)" : L10n.text("多选")
     }
     @ViewBuilder private var controlLabel: some View {
-        if showsText { Label(title, systemImage: "checklist").labelStyle(.titleAndIcon) }
+        if showsText || selection.active { Label(title, systemImage: "checklist").labelStyle(.titleAndIcon) }
         else { Label(title, systemImage: "checklist").labelStyle(.iconOnly) }
     }
 }
