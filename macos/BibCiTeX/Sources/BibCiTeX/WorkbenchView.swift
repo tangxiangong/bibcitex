@@ -28,6 +28,8 @@ struct WorkbenchView: View {
                             .help(L10n.text("文献库")).accessibilityLabel(L10n.text("文献库"))
                             .popover(isPresented: $compactSidebar) {
                                 sidebar.frame(width: 260, height: min(560, geometry.size.height))
+                                    .scrollIndicators(.never)
+                                    .background(AutoHidingScrollbars(alwaysHidden: true))
                             }
                     }
                     if #available(macOS 26.0, *) {
@@ -53,6 +55,8 @@ struct WorkbenchView: View {
                                 set: { if geometry.size.width < 1280 { model.showInspector = $0 } }
                             )) {
                                 inspector.frame(width: 350, height: min(560, geometry.size.height))
+                                    .scrollIndicators(.never)
+                                    .background(AutoHidingScrollbars(alwaysHidden: true))
                             }
                     }
                 }
@@ -61,6 +65,8 @@ struct WorkbenchView: View {
                 }
         }
         .frame(minWidth: 560, minHeight: 520)
+        .scrollIndicators(.never)
+        .background(AutoHidingScrollbars(alwaysHidden: true))
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.searchDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onChange(of: model.query) { _ in batchSelection.ids.removeAll() }

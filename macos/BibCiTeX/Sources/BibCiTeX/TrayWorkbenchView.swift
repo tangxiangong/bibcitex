@@ -130,6 +130,8 @@ struct TrayWorkbenchView: View {
         .background(PanelMaterial(radius: TrayMetrics.panelRadius, fallback: .popover))
         .clipShape(RoundedRectangle(cornerRadius: TrayMetrics.panelRadius, style: .continuous))
         .background(NeutralListSelection())
+        .scrollIndicators(.never)
+        .background(AutoHidingScrollbars(alwaysHidden: true))
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.boundDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onChange(of: model.query) { _ in batchSelection.ids.removeAll() }
