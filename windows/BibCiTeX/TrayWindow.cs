@@ -203,7 +203,11 @@ internal sealed class TrayWindow : Window
             }
         };
         references.SelectionChanged += (_, _) => ShowDetail(loadedVersion == version ? (references.SelectedItem as ListViewItem)?.Tag as Reference : null);
-        Activated += (_, args) => { if (args.WindowActivationState == WindowActivationState.Deactivated) Hide(); };
+        Activated += (_, args) => {
+            // Clicking our icon transfers focus to the taskbar before its mouse-up.
+            // Keep visibility intact until that callback toggles the tray window.
+            if (args.WindowActivationState == WindowActivationState.Deactivated && !TrayIcon.IsPointerOverIcon) Hide();
+        };
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };
     }
 

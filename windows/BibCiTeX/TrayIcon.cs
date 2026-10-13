@@ -20,12 +20,17 @@ internal sealed class TrayIcon : IDisposable
             return Shell_NotifyIconGetRect(ref identifier, out var rect) == 0 ? new Windows.Graphics.RectInt32(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top) : null;
         }
     }
+    internal static bool IsPointerOverIcon => Bounds is { } bounds
+        && WindowInterop.GetCursorPos(out var point)
+        && point.X >= bounds.X && point.X < bounds.X + bounds.Width
+        && point.Y >= bounds.Y && point.Y < bounds.Y + bounds.Height;
     private const uint Message = 0x8000 + 52;
     private readonly nint hwnd;
     private readonly nint icon;
     private readonly WindowInterop.SubclassProc callback;
     private Data data;
     private bool disposed;
+    private bool ignoreNextLeftUp;
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct Data
     {
@@ -62,10 +67,15 @@ internal sealed class TrayIcon : IDisposable
             if (message == taskbarCreated) Shell_NotifyIconW(0, ref data);
             if (message == Message)
             {
-                // Left-click opens the tray window; the right-click menu keeps
-                // 显示窗口 / 快捷助手 / 检查更新 / 退出 reachable. A double-click
-                // still arrives as up/dblclk/up, so it must not toggle twice.
-                if ((uint)lparam is 0x0202 or 0x0203 or 0x0400 or 0x0401) { tray(); return 0; }
+                // A double-click arrives as up/dblclk/up; only the first up toggles.
+                if ((uint)lparam == 0x0201) { ignoreNextLeftUp = false; return 0; }
+                if ((uint)lparam == 0x0203) { ignoreNextLeftUp = true; return 0; }
+                if ((uint)lparam == 0x0202)
+                {
+                    if (ignoreNextLeftUp) { ignoreNextLeftUp = false; return 0; }
+                    tray(); return 0;
+                }
+                if ((uint)lparam is 0x0400 or 0x0401) { tray(); return 0; }
                 if ((uint)lparam == 0x0205)
                 {
                     App.Tray?.Hide();

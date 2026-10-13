@@ -102,9 +102,11 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
             return event
         }
         outsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
-            Task { @MainActor in
+            // AppKit delivers event monitors on the main thread; inspect this click now.
+            MainActor.assumeIsolated {
                 guard let self, self.isVisible, let panel = self.panel,
                       panel.attachedSheet == nil,
+                      !self.isPointerOverAnchor(),
                       !panel.frame.contains(NSEvent.mouseLocation) else { return }
                 self.dismiss()
             }
@@ -128,12 +130,20 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
     /// Sheets and popovers can become key before AppKit finishes attaching them.
     /// Inspect the settled window tree and ignore callbacks from an older presentation.
     func windowDidResignKey(_ notification: Notification) {
+        // The status button's mouse-up action owns this click's visibility change.
+        guard !isPointerOverAnchor() else { return }
         let current = presentation
         DispatchQueue.main.async { [weak self] in
             guard let self, self.isVisible, self.presentation == current,
                   let panel = self.panel, !self.retainsKeyboardInteraction(panel) else { return }
             self.dismiss()
         }
+    }
+
+    private func isPointerOverAnchor() -> Bool {
+        guard let anchor, let window = anchor.window else { return false }
+        let frame = window.convertToScreen(anchor.convert(anchor.bounds, to: nil))
+        return frame.contains(NSEvent.mouseLocation)
     }
 
     private func retainsKeyboardInteraction(_ window: NSWindow) -> Bool {

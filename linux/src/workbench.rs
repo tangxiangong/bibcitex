@@ -145,6 +145,7 @@ pub struct Workbench {
     generation: u64,
     registry_generation: u64,
     search_task: Option<Task<()>>,
+    tray_dismiss_task: Option<Task<()>>,
     copied: Option<String>,
     copied_detail: Option<String>,
     copy_task: Option<Task<()>>,
@@ -380,6 +381,7 @@ impl Workbench {
         let updater = cx.global::<crate::application::Services>().updater.clone();
         let update_subscription = cx.observe(&updater, |_, _, cx| cx.notify());
         let activation_subscription = cx.observe_window_activation(window, |this, window, cx| {
+            this.tray_dismiss_task = None;
             if this.input_is_composing(window, cx) {
                 return;
             }
@@ -414,7 +416,28 @@ impl Workbench {
                 && this.condition_editor.is_none()
                 && this.candidates.is_none()
             {
-                window.remove_window();
+                if this.tray {
+                    // The desktop's D-Bus Activate can arrive after the focus change.
+                    // Keep the handle alive briefly so that click closes the existing tray.
+                    this.tray_dismiss_task = Some(cx.spawn_in(window, async move |this, cx| {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(200))
+                            .await;
+                        let _ = this.update_in(cx, |this, window, cx| {
+                            if !window.is_window_active()
+                                && !this.input_is_composing(window, cx)
+                                && !this.pasting
+                                && this.tag_manager.is_none()
+                                && this.condition_editor.is_none()
+                                && this.candidates.is_none()
+                            {
+                                window.remove_window();
+                            }
+                        });
+                    }));
+                } else {
+                    window.remove_window();
+                }
             }
         });
         let selected_library = preferences.read(cx).library.clone();
@@ -462,6 +485,7 @@ impl Workbench {
             generation: 0,
             registry_generation: 0,
             search_task: None,
+            tray_dismiss_task: None,
             copied: None,
             copied_detail: None,
             copy_task: None,

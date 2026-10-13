@@ -127,6 +127,14 @@ impl Windows {
                 if tray && let Some((handle, _)) = self.helper.take() {
                     let _ = handle.update(cx, |_, window, _| window.remove_window());
                 }
+                if tray
+                    && let Some((handle, _)) = self.tray.take()
+                    && handle
+                        .update(cx, |_, window, _| window.remove_window())
+                        .is_ok()
+                {
+                    return;
+                }
                 let slot = if helper {
                     &mut self.helper
                 } else if tray {
