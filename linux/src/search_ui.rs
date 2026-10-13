@@ -2642,88 +2642,108 @@ impl Workbench {
 
 impl Workbench {
     pub(super) fn batch_controls(&self, cx: &mut Context<Self>) -> AnyElement {
-        if !self.batch_selecting {
-            return Button::new("batch-selection")
-                .ghost()
-                .small()
-                .icon(icon("checklist"))
-                .when(self.helper, |button| button.label(self.text("多选", cx)))
-                .tooltip(self.text("多选", cx))
-                .accessibility_label(self.text("多选", cx))
-                .disabled(self.choosing_library || self.references.is_empty())
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.batch_selecting = true;
-                    this.batch_ids.clear();
-                    cx.notify();
-                }))
-                .into_any_element();
-        }
-        let owner = cx.weak_entity();
         let active = self.batch_selecting;
-        let mode = self.text(if active { "结束多选" } else { "多选" }, cx);
-        let all = self.text("全选", cx);
-        let clear = self.text("清空选择", cx);
-        let edit = self.text("批量标签", cx);
+        let title = if active {
+            format!("{} {}", self.text("已选", cx), self.batch_ids.len())
+        } else {
+            self.text("多选", cx).to_string()
+        };
         let has_selection = !self.batch_ids.is_empty();
-        Button::new("batch-selection")
-            .icon(icon("checklist"))
-            .ghost()
-            .small()
-            .label(format!(
-                "{} {}",
-                self.text("已选", cx),
-                self.batch_ids.len()
-            ))
-            .tooltip(format!(
-                "{} {}",
-                self.text("已选", cx),
-                self.batch_ids.len()
-            ))
-            .accessibility_label(format!(
-                "{} {}",
-                self.text("已选", cx),
-                self.batch_ids.len()
-            ))
-            .disabled(self.choosing_library || (self.references.is_empty() && !active))
-            .dropdown_menu(move |mut menu, _, _| {
-                let control = owner.clone();
-                menu = menu.item(PopupMenuItem::new(mode.clone()).on_click(move |_, _, cx| {
-                    let _ = control.update(cx, |this, cx| {
-                        this.batch_selecting = !active;
+        div()
+            .relative()
+            .child(
+                Button::new("batch-selection")
+                    .icon(icon("checklist"))
+                    .ghost()
+                    .small()
+                    .when(active || self.helper, |button| button.label(title.clone()))
+                    .tooltip(title.clone())
+                    .accessibility_label(title)
+                    .disabled(self.choosing_library || (self.references.is_empty() && !active))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.batch_selecting = !this.batch_selecting;
                         this.batch_ids.clear();
+                        this.batch_anchor = None;
                         cx.notify();
-                    });
-                }));
-                if active {
-                    let control = owner.clone();
-                    menu = menu.item(PopupMenuItem::new(all.clone()).on_click(move |_, _, cx| {
-                        let _ = control.update(cx, |this, cx| {
-                            if this.current_results_valid(cx) {
-                                this.batch_ids =
-                                    this.references.iter().map(|r| r.id.clone()).collect();
-                            }
-                            cx.notify();
-                        });
-                    }));
-                    let control = owner.clone();
-                    menu =
-                        menu.item(PopupMenuItem::new(clear.clone()).on_click(move |_, _, cx| {
-                            let _ = control.update(cx, |this, cx| {
-                                this.batch_ids.clear();
-                                cx.notify();
-                            });
-                        }));
-                    if has_selection {
-                        let control = owner.clone();
-                        menu = menu.item(PopupMenuItem::new(edit.clone()).on_click(
-                            move |_, window, cx| {
-                                let _ =
-                                    control.update(cx, |this, cx| this.open_batch_tags(window, cx));
-                            },
-                        ));
-                    }
-                }
-                menu
+                    })),
+            )
+            .when(active && self.tag_manager.is_none(), |view| {
+                view.child(deferred(
+                    anchored()
+                        .position_mode(AnchoredPositionMode::Local)
+                        .position(point(px(0.), px(34.)))
+                        .snap_to_window_with_margin(px(8.))
+                        .child(
+                            div()
+                                .id("batch-actions")
+                                .occlude()
+                                .flex()
+                                .items_center()
+                                .gap_1()
+                                .p_2()
+                                .rounded_lg()
+                                .border_1()
+                                .border_color(cx.theme().border)
+                                .bg(cx.theme().popover)
+                                .shadow_lg()
+                                .child(
+                                    Button::new("batch-all")
+                                        .ghost()
+                                        .small()
+                                        .icon(icon("check"))
+                                        .label(self.text("全选", cx))
+                                        .disabled(self.references.is_empty())
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            if this.current_results_valid(cx) {
+                                                this.batch_ids = this
+                                                    .references
+                                                    .iter()
+                                                    .map(|r| r.id.clone())
+                                                    .collect();
+                                            }
+                                            cx.notify();
+                                        })),
+                                )
+                                .child(
+                                    Button::new("batch-clear")
+                                        .ghost()
+                                        .small()
+                                        .icon(icon("trash"))
+                                        .label(self.text("清空", cx))
+                                        .disabled(!has_selection)
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.batch_ids.clear();
+                                            this.batch_anchor = None;
+                                            cx.notify();
+                                        })),
+                                )
+                                .child(
+                                    Button::new("batch-tags")
+                                        .ghost()
+                                        .small()
+                                        .icon(icon("tag"))
+                                        .label(self.text("批量", cx))
+                                        .disabled(!has_selection)
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            this.open_batch_tags(window, cx)
+                                        })),
+                                )
+                                .child(div().w(px(1.)).h(px(20.)).bg(cx.theme().border))
+                                .child(
+                                    Button::new("batch-end")
+                                        .ghost()
+                                        .small()
+                                        .icon(icon("x"))
+                                        .label(self.text("结束", cx))
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.batch_selecting = false;
+                                            this.batch_ids.clear();
+                                            this.batch_anchor = None;
+                                            cx.notify();
+                                        })),
+                                ),
+                        ),
+                ))
             })
             .into_any_element()
     }

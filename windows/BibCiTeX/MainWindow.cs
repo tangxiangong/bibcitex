@@ -186,7 +186,7 @@ internal sealed class MainWindow : Window
         root.PreviewKeyDown += (_, args) => {
             if (searchComposing || args.Key != VirtualKey.Escape || TagManager.IsEditing(root.XamlRoot)) return;
             if (FocusManager.GetFocusedElement(root.XamlRoot) is TextBox editor && !ReferenceEquals(editor, search)) return;
-            if (VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count > 0) return;
+            if (TagManager.HasBlockingPopup(root.XamlRoot)) return;
             if (new[] { VirtualKey.Control, VirtualKey.Menu, VirtualKey.Shift, VirtualKey.LeftWindows, VirtualKey.RightWindows }.Any(key =>
                 Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))) return;
             if (endBatchSelection()) args.Handled = true;

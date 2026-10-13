@@ -899,28 +899,38 @@ struct BatchTagControls: View {
     var showsText = true
     @State private var presentation: BatchTagPresentation?
     var body: some View {
-        Group {
-            if selection.active {
-                Menu {
-                    Button(L10n.text("全选")) { selection.ids = Set(references.map(\.id)) }
-                    Button(L10n.text("清空选择")) { selection.ids.removeAll() }
-                    Button(L10n.text("批量标签")) {
-                        presentation = BatchTagPresentation(references: references, selectedIDs: selection.ids)
-                    }.disabled(selection.ids.isEmpty)
-                    Divider()
-                    Button(L10n.text("结束多选")) { selection.active = false; selection.ids.removeAll() }
-                } label: {
-                    controlLabel
-                }
-            } else {
-                Button { selection.ids.removeAll(); selection.active = true } label: {
-                    controlLabel
-                }.disabled(references.isEmpty)
-            }
-        }.fixedSize()
+        Button {
+            selection.ids.removeAll()
+            selection.active.toggle()
+        } label: { controlLabel }
+            .disabled(!selection.active && references.isEmpty)
+            .fixedSize()
             .help(title).accessibilityLabel(title)
+            .background(BatchTagActionPopover(isPresented: selection.active && presentation == nil, content: AnyView(actions)))
             .sheet(item: $presentation) { item in BatchTagEditor(targets: item.targets) }
             .onChange(of: references.map(\.id)) { _ in selection.ids.removeAll() }
+    }
+    private var actions: some View {
+        HStack(spacing: 6) {
+            action("全选", icon: "check") { selection.ids = Set(references.map(\.id)) }
+            action("清空", icon: "trash") { selection.ids.removeAll() }.disabled(selection.ids.isEmpty)
+            action("批量", icon: "tag") {
+                presentation = BatchTagPresentation(references: references, selectedIDs: selection.ids)
+            }.disabled(selection.ids.isEmpty)
+            Divider().frame(height: 20)
+            action("结束", icon: "x") { selection.active = false; selection.ids.removeAll() }
+        }
+        .buttonStyle(.borderless)
+        .padding(10)
+        .fixedSize()
+        .onExitCommand { selection.active = false; selection.ids.removeAll() }
+    }
+    private func action(_ title: String, icon: String, perform: @escaping () -> Void) -> some View {
+        Button(action: perform) {
+            Label { Text(L10n.text(title)) } icon: { NativeIcon(icon, size: 14) }
+                .padding(.horizontal, 6).padding(.vertical, 5)
+                .contentShape(Rectangle())
+        }.help(L10n.text(title))
     }
     private var title: String {
         selection.active ? "\(L10n.text("已选")) \(selection.ids.count)" : L10n.text("多选")
@@ -928,6 +938,84 @@ struct BatchTagControls: View {
     @ViewBuilder private var controlLabel: some View {
         if showsText || selection.active { Label(title, systemImage: "checklist").labelStyle(.titleAndIcon) }
         else { Label(title, systemImage: "checklist").labelStyle(.iconOnly) }
+    }
+}
+
+/// Application-defined dismissal keeps the toolbar available while selecting rows.
+private struct BatchTagActionPopover: NSViewRepresentable {
+    let isPresented: Bool
+    let content: AnyView
+
+    func makeCoordinator() -> Coordinator { Coordinator(content: content) }
+    func makeNSView(context: Context) -> AnchorView {
+        let view = AnchorView()
+        view.refresh = { [weak coordinator = context.coordinator] view in coordinator?.refresh(view) }
+        context.coordinator.observe(view)
+        return view
+    }
+    func updateNSView(_ view: AnchorView, context: Context) {
+        context.coordinator.isPresented = isPresented
+        context.coordinator.host.rootView = content
+        view.scheduleRefresh()
+    }
+    static func dismantleNSView(_ view: AnchorView, coordinator: Coordinator) {
+        view.refresh = nil
+        coordinator.close()
+    }
+
+    final class AnchorView: NSView {
+        var refresh: ((AnchorView) -> Void)?
+        private var refreshScheduled = false
+        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); scheduleRefresh() }
+        override func layout() { super.layout(); scheduleRefresh() }
+        func scheduleRefresh() {
+            guard !refreshScheduled else { return }
+            refreshScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                refreshScheduled = false
+                refresh?(self)
+            }
+        }
+    }
+
+    final class Coordinator {
+        let popover = NSPopover()
+        let host: NSHostingController<AnyView>
+        var isPresented = false
+        private var observers: [NSObjectProtocol] = []
+        init(content: AnyView) {
+            host = NSHostingController(rootView: content)
+            popover.behavior = .applicationDefined
+            popover.animates = false
+            popover.contentViewController = host
+        }
+        func observe(_ view: AnchorView) {
+            for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification,
+                         NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak view] _ in
+                    view?.scheduleRefresh()
+                })
+            }
+        }
+        func close() {
+            observers.forEach { NotificationCenter.default.removeObserver($0) }
+            observers.removeAll()
+            popover.close()
+        }
+        deinit { observers.forEach { NotificationCenter.default.removeObserver($0) } }
+        func refresh(_ view: NSView) {
+            guard isPresented, NSApp.isActive, let window = view.window, window.isVisible, !window.isMiniaturized,
+                  !view.isHiddenOrHasHiddenAncestor, window.attachedSheet == nil else {
+                popover.close()
+                return
+            }
+            host.view.layoutSubtreeIfNeeded()
+            let size = host.view.fittingSize
+            guard size.width > 0, size.height > 0, !view.bounds.isEmpty else { return }
+            if popover.contentSize != size { popover.contentSize = size }
+            if !popover.isShown { popover.show(relativeTo: view.bounds, of: view, preferredEdge: .minY) }
+        }
     }
 }
 

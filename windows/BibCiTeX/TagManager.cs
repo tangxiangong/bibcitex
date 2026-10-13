@@ -1,6 +1,7 @@
 using BibCiTeX.Core;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Media;
 using Windows.UI;
@@ -13,6 +14,10 @@ internal static class TagManager
     internal static event Action? Changed;
     private static readonly HashSet<XamlRoot> EditingRoots = [];
     internal static bool IsEditing(XamlRoot root) => EditingRoots.Contains(root);
+    private static readonly object BatchControlsMarker = new();
+    // The persistent selection toolbar must not consume Escape from the list or query.
+    internal static bool HasBlockingPopup(XamlRoot root) => VisualTreeHelper.GetOpenPopupsForXamlRoot(root)
+        .Any(popup => popup.Child is not FrameworkElement child || !ReferenceEquals(child.Tag, BatchControlsMarker));
     private static readonly string[] Palette = ["#64748B", "#EF4444", "#F59E0B", "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6", "#EC4899"];
     internal static Color Color(string value) => Windows.UI.Color.FromArgb(255, Convert.ToByte(value.Substring(1, 2), 16), Convert.ToByte(value.Substring(3, 2), 16), Convert.ToByte(value.Substring(5, 2), 16));
 
@@ -50,21 +55,38 @@ internal static class TagManager
         };
         var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
         button.Content = Views.Row(new SvgIcon("checklist"), label);
-        var menu = new MenuFlyout();
-        var mode = new MenuFlyoutItem();
-        var all = new MenuFlyoutItem { Text = L10n.Text("全选") };
-        var clear = new MenuFlyoutItem { Text = L10n.Text("清空选择") };
-        var edit = new MenuFlyoutItem { Text = L10n.Text("批量标签") };
+        Button ActionButton(string icon, string title)
+        {
+            var action = new Button { Content = Views.Row(new SvgIcon(icon, 16), Views.LocalizedText(title, 12)), Padding = new Thickness(8, 6, 8, 6), CornerRadius = new CornerRadius(16) };
+            Localized.Name(action, title); Localized.Tooltip(action, title);
+            return action;
+        }
+        var mode = ActionButton("x", "结束");
+        var all = ActionButton("check", "全选");
+        var clear = ActionButton("trash", "清空");
+        var edit = ActionButton("tag", "批量");
+        var actions = Views.Row(all, clear, edit, Views.Divider(vertical: true), mode);
+        actions.Spacing = 4;
+        var surface = Views.Capsule(actions);
+        surface.Tag = BatchControlsMarker;
+        var popup = new Popup { Child = surface, PlacementTarget = button, DesiredPlacement = PopupPlacementMode.Bottom, IsLightDismissEnabled = false };
         bool explicitSelection = false;
+        bool editing = false;
+        XamlRoot? observedRoot = null;
         bool Active() => nativeMultiple ? explicitSelection || references.SelectedItems.Count > 1 : references.SelectionMode == ListViewSelectionMode.Multiple;
         List<Reference> Selected() => references.SelectedItems.OfType<ListViewItem>().Select(item => item.Tag).OfType<Reference>().ToList();
         void Render()
         {
+            if (nativeMultiple && references.SelectedItems.Count > 1) explicitSelection = true;
             label.Visibility = !nativeMultiple || Active() ? Visibility.Visible : Visibility.Collapsed;
             label.Text = Active() ? $"{L10n.Text("已选")} {Selected().Count}" : L10n.Text("多选");
             ToolTipService.SetToolTip(button, label.Text); AutomationProperties.SetName(button, label.Text);
-            mode.Text = L10n.Text(Active() ? "结束多选" : "多选");
-            all.IsEnabled = clear.IsEnabled = Active(); edit.IsEnabled = Active() && Selected().Count > 0;
+            all.IsEnabled = Active() && references.Items.OfType<ListViewItem>().Any(item => item.Tag is Reference);
+            clear.IsEnabled = edit.IsEnabled = Active() && Selected().Count > 0;
+            surface.RequestedTheme = button.ActualTheme;
+            var show = Active() && !editing && button.IsLoaded && button.XamlRoot?.IsHostVisible == true;
+            if (show) popup.XamlRoot = button.XamlRoot;
+            popup.IsOpen = show;
         }
         bool EndSelection()
         {
@@ -81,11 +103,20 @@ internal static class TagManager
         mode.Click += (_, _) => EndSelection();
         all.Click += (_, _) => { foreach (var item in references.Items.OfType<ListViewItem>().Where(item => item.Tag is Reference)) if (!references.SelectedItems.Contains(item)) references.SelectedItems.Add(item); };
         clear.Click += (_, _) => references.SelectedItems.Clear();
-        edit.Click += async (_, _) => { var selected = Selected(); if (selected.Count == 0) return; try { opening?.Invoke(); await ShowBatch(button.XamlRoot, selected); } catch (Exception ex) { await Views.Error(button, ex); } finally { closed?.Invoke(); } };
-        references.SelectionChanged += (_, _) => Render(); menu.Opening += (_, _) => Render();
-        menu.Items.Add(all); menu.Items.Add(clear); menu.Items.Add(edit); menu.Items.Add(new MenuFlyoutSeparator()); menu.Items.Add(mode);
+        edit.Click += async (_, _) => { var selected = Selected(); if (selected.Count == 0) return; editing = true; Render(); try { opening?.Invoke(); await ShowBatch(button.XamlRoot, selected); } catch (Exception ex) { await Views.Error(button, ex); } finally { editing = false; closed?.Invoke(); Render(); } };
+        references.SelectionChanged += (_, _) => Render();
+        void RootChanged(XamlRoot _, XamlRootChangedEventArgs args) => Render();
+        button.Loaded += (_, _) => { observedRoot = button.XamlRoot; if (observedRoot != null) observedRoot.Changed += RootChanged; Render(); };
+        button.Unloaded += (_, _) => { popup.IsOpen = false; if (observedRoot != null) observedRoot.Changed -= RootChanged; observedRoot = null; };
+        button.ActualThemeChanged += (_, _) => Render();
+        surface.KeyDown += (_, args) => {
+            if (args.Key != Windows.System.VirtualKey.Escape || HasBlockingPopup(button.XamlRoot)) return;
+            if (new[] { Windows.System.VirtualKey.Control, Windows.System.VirtualKey.Menu, Windows.System.VirtualKey.Shift, Windows.System.VirtualKey.LeftWindows, Windows.System.VirtualKey.RightWindows }.Any(key =>
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))) return;
+            if (EndSelection()) { references.Focus(FocusState.Programmatic); args.Handled = true; }
+        };
         button.Click += (_, _) => {
-            if (Active()) { Render(); menu.ShowAt(button); }
+            if (Active()) EndSelection();
             else if (references.Items.OfType<ListViewItem>().Any(item => item.Tag is Reference)) {
                 explicitSelection = true;
                 references.SelectionMode = nativeMultiple ? ListViewSelectionMode.Extended : ListViewSelectionMode.Multiple;

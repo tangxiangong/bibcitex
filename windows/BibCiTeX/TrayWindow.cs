@@ -195,7 +195,7 @@ internal sealed class TrayWindow : Window
         root.PreviewKeyDown += (_, args) => {
             if (!composing && !TagManager.IsEditing(root.XamlRoot) && args.Key == VirtualKey.Escape && !Modified()) {
                 if (FocusManager.GetFocusedElement(root.XamlRoot) is TextBox editor && !ReferenceEquals(editor, search)) return;
-                if (VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count > 0) return;
+                if (TagManager.HasBlockingPopup(root.XamlRoot)) return;
                 args.Handled = true;
                 if (endBatchSelection()) return;
                 if (detailPanel.Visibility == Visibility.Visible) SetDetailVisible(false); else Hide();
