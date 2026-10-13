@@ -20,6 +20,11 @@ struct RustInteropTests {
         }
         precondition(AttachmentPath.resolve("", relativeTo: "/library/references.bib") == nil)
 
+        precondition(BibCiTeXCore.formatCitation(keys: ["A", "B"], format: "raw", mode: "individual") == "A,B")
+        precondition(BibCiTeXCore.formatCitation(keys: ["A", "B"], format: "cite", mode: "merged") == #"\cite{A,B}"#)
+        precondition(BibCiTeXCore.formatCitation(keys: ["A", "B"], format: "cite", mode: "individual") == #"\cite{A} \cite{B}"#)
+        precondition(BibCiTeXCore.formatCitation(keys: ["A", "B"], format: "typst", mode: "individual") == "@A #box[] @B")
+
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("bibcitex-interop-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }

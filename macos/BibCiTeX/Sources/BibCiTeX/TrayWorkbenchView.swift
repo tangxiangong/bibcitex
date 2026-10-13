@@ -160,7 +160,8 @@ struct TrayWorkbenchView: View {
     }
     private var toolbarButtonGroup: some View {
         HStack(spacing: 8) {
-            BatchTagControls(selection: batchSelection, references: model.references, showsText: false)
+            BatchTagControls(selection: batchSelection, references: model.references, showsText: false,
+                cite: { model.cite($0.map(\.citeKey), surface: .batch) }, copied: model.copied[.batch])
             iconButton("tag", L10n.text("标签管理")) { showTagManager = true }
             iconButton(model.detailVisible ? "panelRightClose" : "panelRightOpen", L10n.text("文献详情")) {
                 model.detailVisible.toggle()
@@ -225,7 +226,7 @@ struct TrayWorkbenchView: View {
     }
     private func citeKeyButton(_ key: String) -> some View {
         let copied = model.copied[.list] == key
-        return Button { model.copy(key) } label: {
+        return Button { model.cite([key]) } label: {
             HStack(spacing: 4) {
                 NativeIcon(copied ? "check" : "copy", size: 10)
                 Text(copied ? L10n.text("已复制") : key)
@@ -237,8 +238,8 @@ struct TrayWorkbenchView: View {
             .background(PanelPalette.controlSurface, in: Capsule())
         }
         .buttonStyle(.plain)
-        .help(L10n.text("复制引用键"))
-        .accessibilityLabel(L10n.text("复制引用键 {0}", key))
+        .help(L10n.text("引用"))
+        .accessibilityLabel(L10n.text("引用 {0}", key))
     }
     @ViewBuilder private var detail: some View {
         if let reference = model.reference {
@@ -246,7 +247,7 @@ struct TrayWorkbenchView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         metadata(L10n.text("引用键"), reference.citeKey) {
-                            copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
+                            copyButton(reference.citeKey, icon: "copy", label: L10n.text("引用"), citation: true)
                         }
                         metadata(L10n.text("作者"), reference.author.joined(separator: ", "))
                         metadata(L10n.text("类型"), reference.displayType)
@@ -295,8 +296,8 @@ struct TrayWorkbenchView: View {
             }
         }
     }
-    private func copyButton(_ value: String, icon: String, label: String) -> some View {
-        Button { model.copy(value, surface: .detail) } label: {
+    private func copyButton(_ value: String, icon: String, label: String, citation: Bool = false) -> some View {
+        Button { if citation { model.cite([value], surface: .detail) } else { model.copy(value, surface: .detail) } } label: {
             if model.copied[.detail] == value {
                 HStack(spacing: 4) {
                     NativeIcon("check", size: 12)

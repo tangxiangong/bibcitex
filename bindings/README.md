@@ -55,7 +55,29 @@ activates and verifies the target before Cmd+V / Ctrl+V. Windows verifies HWND p
 owning PID. macOS requires Accessibility permission. A failed focus/permission/key
 operation throws and leaves the copied text available. If the helper is hidden
 while pasting, restore its current state on failure so the existing error and
-clipboard fallback remain reachable. Do not add LaTeX syntax around cite keys.
+clipboard fallback remain reachable. Clipboard/paste transport never adds citation
+syntax itself: the hosts first call the shared `formatCitation(keys, format, mode)`
+operation (`format_citation(CitationRequest)` in C#) and pass its exact output to
+copy/paste. Formatting is pure and does not access the clipboard.
+
+All three surfaces read the same platform-local `citationFormat` and `citationMode`
+preferences for each operation. The settings picker first selects `key`, `LaTeX`,
+or `Typst`; only the latter two show a second picker containing their commands.
+Both levels resolve to the existing `citationFormat` IDs, so saved command choices
+remain compatible and every surface continues to consume one canonical format.
+Defaults are `raw` / `merged`. Raw keys always use commas, even when the saved command preference is `individual`. Commands support
+`merged` and `individual`; LaTeX uses `\cite{A,B}` or `\cite{A} \cite{B}` with a
+single space between commands. The supported command IDs are `cite`, `citep`,
+`citet`, `autocite`, `parencite`, `textcite`, and `footcite`. The picker distinguishes
+standard LaTeX, natbib, and biblatex commands.
+
+Typst IDs are `typst` (reference shorthand), `typst-cite` (explicit `cite`), and
+`typst-prose` (`form: "prose"`). Merged citations are adjacent; individual citations
+are separated by ` #box[] ` to prevent automatic grouping without visible content.
+Keys unsuitable for reference shorthand use an escaped `label("…")` string.
+Formatting preserves list order and keys exactly; hosts select/deduplicate records
+by UUID, not by cite key. Paste-failure fallback copies the already formatted text,
+without formatting it a second time. BibTeX source copying bypasses this operation.
 
 `libraries`, `addLibrary`, `removeLibrary` manage the existing registry.
 `helperCurrent`, `helperSelect` store the helper's selection independently from

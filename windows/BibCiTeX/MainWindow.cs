@@ -79,7 +79,7 @@ internal sealed class MainWindow : Window
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } });
-        var primary = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true), manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
+        var primary = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true, cite: selected => CopyCitation(selected.Select(reference => reference.Key))), manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), Views.Button("settings", "设置", ShowSettings),
             Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()), GroupSeparator(), inspectorToggle);
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
@@ -216,7 +216,7 @@ internal sealed class MainWindow : Window
         }
         Add(VirtualKey.O, () => _ = AddLibrary());
         Add(VirtualKey.K, () => _ = App.Helper!.Toggle(), VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
-        Add(VirtualKey.C, () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = Copy(selected.Key); }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
+        Add(VirtualKey.C, () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = CopyKey(selected.Key); }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
         Add(VirtualKey.R, () => _ = ReloadLibraries());
     }
     /// Sets the pane toggle apart as its own trailing group, as in Xcode.
@@ -397,7 +397,7 @@ internal sealed class MainWindow : Window
             queryDiagnostic.Visibility = queryDiagnostic.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
             var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
             references.Items.Clear();
-            foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true, copy: Copy); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
+            foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true, copy: Copy, cite: CopyKey); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
             resultsVersion = version;
             if (references.SelectionMode == ListViewSelectionMode.Single && references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
             Localized.Count(count, rows.Count); emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -586,7 +586,7 @@ internal sealed class MainWindow : Window
             var caption = Views.LocalizedText(label, 12); caption.Opacity = .6;
             section.Children.Add(key switch
             {
-                "cite_key" => Views.Caption(caption, Views.CopyButton("copy", "复制引用键", () => Copy(reference.Key), compact: true)),
+                "cite_key" => Views.Caption(caption, Views.CopyButton("copy", "引用", () => CopyKey(reference.Key), compact: true)),
                 "source" => Views.Caption(caption, Views.CopyButton("clipboard", "复制 BibTeX", () => Copy(raw), compact: true)),
                 _ => caption,
             });
@@ -610,9 +610,19 @@ internal sealed class MainWindow : Window
         ("url", "URL"), ("file", "文件"), ("eprint", "Eprint"), ("archive_prefix", "Archive Prefix"),
         ("arxiv_primary_class", "arXiv 分类"), ("how_published", "发表方式"), ("abstract_", "摘要"),
         ("book_title", "书名"), ("issue", "期号"), ("note", "备注"), ("source", "BibTeX") ];
+    private async Task<bool> CopyCitation(IEnumerable<string> keys)
+    {
+        var selected = keys.ToList();
+        if (selected.Count == 0) return false;
+        var revision = searchVersion;
+        try { var text = await RustCore.FormatCitation(selected); return revision == searchVersion && await Copy(text); }
+        catch (Exception error) { await Report(error); return false; }
+    }
+    private Task<bool> CopyKey(string key) => CopyCitation([key]);
     private async Task<bool> Copy(string text)
     {
-        try { if (resultsVersion != searchVersion || !await searchSession.Validate()) { await Search(); return false; } await RustCore.Copy(text); return true; }
+        var revision = searchVersion;
+        try { if (resultsVersion != revision || !await searchSession.Validate()) { await Search(); return false; } if (revision != searchVersion || resultsVersion != revision) return false; await RustCore.Copy(text); return true; }
         catch (Exception error) { await Report(error); return false; }
     }
     private async Task OpenUrl(string value)

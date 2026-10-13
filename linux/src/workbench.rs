@@ -926,6 +926,26 @@ impl Workbench {
         .detach();
     }
 
+    fn citation_text(&self, keys: &[String], cx: &App) -> String {
+        let p = self.preferences.read(cx);
+        service::format_citation(keys, &p.citation_format, &p.citation_mode)
+    }
+    fn selected_citation_keys(&self) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        self.references
+            .iter()
+            .filter(|r| self.batch_ids.contains(&r.id) && seen.insert(&r.id))
+            .map(|r| r.cite_key.clone())
+            .collect()
+    }
+    fn cite(&mut self, keys: Vec<String>, cx: &mut Context<Self>) {
+        if keys.is_empty() || !self.current_results_valid(cx) {
+            return;
+        }
+        let output = self.citation_text(&keys, cx);
+        self.copy(output, cx);
+        self.copied = Some(keys.join(","));
+    }
     fn copy(&mut self, value: String, cx: &mut Context<Self>) {
         // GPUI retains clipboard ownership for the application's lifetime on Linux.
         cx.write_to_clipboard(ClipboardItem::new_string(value.clone()));
@@ -941,11 +961,16 @@ impl Workbench {
         }));
         cx.notify();
     }
-    fn copy_detail(&mut self, value: String, cx: &mut Context<Self>) {
+    fn copy_detail(&mut self, value: String, citation: bool, cx: &mut Context<Self>) {
         if !self.current_results_valid(cx) {
             return;
         }
-        cx.write_to_clipboard(ClipboardItem::new_string(value.clone()));
+        let output = if citation {
+            self.citation_text(std::slice::from_ref(&value), cx)
+        } else {
+            value.clone()
+        };
+        cx.write_to_clipboard(ClipboardItem::new_string(output));
         self.copied_detail = Some(value);
         self.copy_detail_task = Some(cx.spawn(async move |this, cx| {
             cx.background_executor()
@@ -992,19 +1017,15 @@ impl Workbench {
         if self.pasting || !self.current_results_valid(cx) {
             return;
         }
-        let key = if self.helper && self.batch_selecting {
-            self.references
-                .iter()
-                .filter(|r| self.batch_ids.contains(&r.id))
-                .map(|r| r.cite_key.as_str())
-                .collect::<Vec<_>>()
-                .join(",")
+        let keys = if self.helper && self.batch_selecting {
+            self.selected_citation_keys()
         } else {
             self.selected
                 .and_then(|i| self.references.get(i))
-                .map(|r| r.cite_key.clone())
+                .map(|r| vec![r.cite_key.clone()])
                 .unwrap_or_default()
         };
+        let key = self.citation_text(&keys, cx);
         if key.is_empty() {
             return;
         }
@@ -1768,7 +1789,7 @@ impl Workbench {
         let menu_key = key.clone();
         let menu_source = record.source.clone();
         let owner = cx.weak_entity();
-        let copy_label = self.text("复制引用键", cx);
+        let copy_label = self.text("引用", cx);
         let source_label = self.text("复制 BibTeX", cx);
         let evidence_summary = evidence.map(|e| {
             format!(
@@ -1970,13 +1991,13 @@ impl Workbench {
                                 } else {
                                     key.clone().into()
                                 })
-                                .tooltip(self.text("复制引用键", cx))
+                                .tooltip(self.text("引用", cx))
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     cx.stop_propagation();
                                     if this.generation == generation
                                         && this.current_results_valid(cx)
                                     {
-                                        this.copy(key.clone(), cx);
+                                        this.cite(vec![key.clone()], cx);
                                     }
                                 })),
                         )
@@ -2013,7 +2034,7 @@ impl Workbench {
                 PopupMenuItem::new(copy_label.clone()).on_click(move |_, _, cx| {
                     let _ = key_owner.update(cx, |this, cx| {
                         if this.generation == generation && this.current_results_valid(cx) {
-                            this.copy(key.clone(), cx);
+                            this.cite(vec![key.clone()], cx);
                         }
                     });
                 }),
@@ -2392,6 +2413,7 @@ impl Workbench {
         label: &'static str,
         symbol: &'static str,
         value: String,
+        citation: bool,
         cx: &mut Context<Self>,
     ) -> Button {
         let generation = self.generation;
@@ -2405,7 +2427,7 @@ impl Workbench {
             .tooltip(self.text(label, cx))
             .on_click(cx.listener(move |this, _, _, cx| {
                 if this.generation == generation {
-                    this.copy_detail(value.clone(), cx);
+                    this.copy_detail(value.clone(), citation, cx);
                 }
             }))
     }
@@ -2502,7 +2524,7 @@ impl Workbench {
                     continue;
                 }
                 let accessory = (label == "引用键").then(|| {
-                    self.detail_copy("tray-copy-key", "复制引用键", "copy", value.clone(), cx)
+                    self.detail_copy("tray-copy-key", "引用", "copy", value.clone(), true, cx)
                 });
                 let content = match label {
                     "摘要" => crate::math::rich(&record.abstract_text, cx),
@@ -2521,6 +2543,7 @@ impl Workbench {
                 "复制 BibTeX",
                 "clipboard",
                 record.source.clone(),
+                false,
                 cx,
             );
             let source = div()
@@ -2571,7 +2594,7 @@ impl Workbench {
                     continue;
                 }
                 let accessory = (label == "引用键").then(|| {
-                    self.detail_copy("detail-key", "复制引用键", "copy", value.clone(), cx)
+                    self.detail_copy("detail-key", "引用", "copy", value.clone(), true, cx)
                 });
                 let content = match label {
                     "摘要" => crate::math::rich(&record.abstract_text, cx),
@@ -2622,6 +2645,7 @@ impl Workbench {
                 "复制 BibTeX",
                 "clipboard",
                 record.source.clone(),
+                false,
                 cx,
             );
             let source = div()
@@ -3341,7 +3365,7 @@ impl Render for Workbench {
                                 Button::new("failed-paste-copy")
                                     .ghost()
                                     .small()
-                                    .label(self.text("复制引用键", cx))
+                                    .label(self.text("引用", cx))
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.copy(key.clone(), cx)
                                     })),

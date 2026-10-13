@@ -57,6 +57,25 @@ pub struct TextRequest {
 }
 
 #[ffi]
+pub struct CitationRequest {
+    pub keys: Vec<String>,
+    pub format: String,
+    pub mode: String,
+}
+
+#[ffi]
+pub fn format_citation(
+    input: Wire<CitationRequest>,
+) -> ffi::Result<Wire<TextRequest>, BridgeError> {
+    invoke(|| {
+        let input = request(input)?;
+        Ok(TextRequest {
+            text: bibcitex_service::format_citation(&input.keys, &input.format, &input.mode),
+        })
+    })
+}
+
+#[ffi]
 pub struct StatusResponse {
     pub error: Option<String>,
 }
@@ -288,6 +307,7 @@ pub fn inventory() -> RustInventory {
         .register(function!(capture_paste_target))
         .register(function!(copy))
         .register(function!(paste))
+        .register(function!(format_citation))
         .validate()
 }
 

@@ -391,7 +391,7 @@ internal static class Views
     /// makes it a copy button — the main window and the tray window take keys,
     /// while the hotkey panel pastes the whole row and shows the key as a label.
     /// </summary>
-    internal static ListViewItem ReferenceItem(Reference reference, bool citeKeyCopies = false, Func<string, Task<bool>>? copy = null)
+    internal static ListViewItem ReferenceItem(Reference reference, bool citeKeyCopies = false, Func<string, Task<bool>>? copy = null, Func<string, Task<bool>>? cite = null)
     {
         var details = new StackPanel { Spacing = citeKeyCopies ? 4 : 3, Padding = new Thickness(4, 8, 4, 8) };
         details.Children.Add(new ChunkText(reference.Chunks("title"), citeKeyCopies ? 14 : 13, reference.Title, false, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title)));
@@ -423,7 +423,7 @@ internal static class Views
         row.Children.Add(details);
         // Assigned through the base type: the two arms are a Button and a TextBlock.
         FrameworkElement key = citeKeyCopies
-            ? CiteKey(reference.Key, copy)
+            ? CiteKey(reference.Key, cite ?? copy)
             : new TextBlock { Text = reference.Key, FontSize = 11, FontFamily = new FontFamily("Cascadia Mono"), TextTrimming = TextTrimming.CharacterEllipsis, Foreground = Brush("SystemControlForegroundAccentBrush"), VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 10, 4, 0) };
         key.MaxWidth = 180;
         row.SizeChanged += (_, _) => key.MaxWidth = Math.Max(60, row.ActualWidth * .4);
@@ -439,10 +439,10 @@ internal static class Views
         if (citeKeyCopies && copy is not null)
         {
             var menu = new MenuFlyout();
-            foreach (var (label, value) in new[] { ("复制引用键", reference.Key), ("复制 BibTeX", reference.Text("source")) })
+            foreach (var (label, value, actionCopy) in new[] { ("引用", reference.Key, cite ?? copy), ("复制 BibTeX", reference.Text("source"), copy) })
             {
                 var action = new MenuFlyoutItem(); Localized.Bind(action, MenuFlyoutItem.TextProperty, label);
-                action.Click += async (_, _) => await copy(value); menu.Items.Add(action);
+                action.Click += async (_, _) => await actionCopy(value); menu.Items.Add(action);
             }
             item.ContextFlyout = menu;
         }
@@ -474,8 +474,8 @@ internal static class Views
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 4, 4, 0),
         };
-        Localized.Tooltip(button, "复制引用键");
-        Localized.Bind(button, AutomationProperties.NameProperty, "复制引用键 {0}", key);
+        Localized.Tooltip(button, "引用");
+        Localized.Bind(button, AutomationProperties.NameProperty, "引用 {0}", key);
         ThemeForeground(button, "SystemControlForegroundAccentBrush");
         var confirmation = 0;
         void Reset()

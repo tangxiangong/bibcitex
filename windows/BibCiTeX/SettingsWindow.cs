@@ -29,6 +29,37 @@ internal sealed class SettingsWindow : Window
         };
         Section("外观", SettingRow("主题", theme), SettingRow("语言", language));
 
+        var family = CitationPreferences.Family(CitationPreferences.Format);
+        var format = Choice("引用格式", [("key", "raw"), ("LaTeX", "latex"), ("Typst", "typst")], family);
+        var command = Choice("引用指令", CitationPreferences.Commands(family), CitationPreferences.Format);
+        command.Width = 220;
+        var commandRow = SettingRow("引用指令", command);
+        commandRow.Visibility = family == "raw" ? Visibility.Collapsed : Visibility.Visible;
+        var mode = Choice("多选输出方式", [("合并", "merged"), ("逐项", "individual")], CitationPreferences.Mode);
+        mode.IsEnabled = family != "raw";
+        var updatingCommand = false;
+        format.SelectionChanged += (_, _) =>
+        {
+            if (format.SelectedItem is not ComboBoxItem { Tag: string value } || value == CitationPreferences.Family(CitationPreferences.Format)) return;
+            CitationPreferences.Format = value switch { "latex" => "cite", "typst" => "typst", _ => "raw" };
+            updatingCommand = true;
+            try
+            {
+                command.Items.Clear();
+                foreach (var (label, id) in CitationPreferences.Commands(value))
+                {
+                    var item = Localized.ComboItem(label, id); command.Items.Add(item);
+                    if (id == CitationPreferences.Format) command.SelectedItem = item;
+                }
+            }
+            finally { updatingCommand = false; }
+            commandRow.Visibility = value == "raw" ? Visibility.Collapsed : Visibility.Visible;
+            mode.IsEnabled = value != "raw";
+        };
+        command.SelectionChanged += (_, _) => { if (!updatingCommand && command.SelectedItem is ComboBoxItem { Tag: string value }) CitationPreferences.Format = value; };
+        mode.SelectionChanged += (_, _) => { if (mode.SelectedItem is ComboBoxItem { Tag: string value }) CitationPreferences.Mode = value; };
+        Section("引用", SettingRow("引用格式", format), commandRow, SettingRow("多选输出方式", mode));
+
         var version = Views.Row(Views.LocalizedText("当前版本"), Views.Text(Updater.CurrentVersion));
         var channel = Choice("更新通道", [("正式版", "stable"), ("Beta", "beta"), ("Alpha", "alpha")], Updater.Channel);
         channel.SelectionChanged += (_, _) =>
@@ -62,7 +93,7 @@ internal sealed class SettingsWindow : Window
         L10n.Changed += Localize;
         Closed += (_, _) => { closed = true; L10n.Changed -= Localize; };
         var scale = WindowInterop.GetDpiForWindow(WinRT.Interop.WindowNative.GetWindowHandle(this)) / 96.0;
-        AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)(480 * scale), (int)(400 * scale)));
+        AppWindow.ResizeClient(new Windows.Graphics.SizeInt32((int)(480 * scale), (int)(560 * scale)));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter) { presenter.IsResizable = false; presenter.IsMaximizable = false; }
         Localize();
     }
@@ -79,7 +110,12 @@ internal sealed class SettingsWindow : Window
         var rows = new StackPanel();
         foreach (var control in controls)
         {
-            if (rows.Children.Count > 0) rows.Children.Add(Views.Divider());
+            if (rows.Children.Count > 0)
+            {
+                var divider = Views.Divider();
+                divider.SetBinding(UIElement.VisibilityProperty, new Microsoft.UI.Xaml.Data.Binding { Source = control, Path = new PropertyPath("Visibility") });
+                rows.Children.Add(divider);
+            }
             rows.Children.Add(control);
         }
         var card = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""

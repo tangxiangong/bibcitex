@@ -897,6 +897,8 @@ struct BatchTagControls: View {
     @ObservedObject var selection: BatchTagSelection
     let references: [Reference]
     var showsText = true
+    var cite: (([Reference]) -> Void)?
+    var copied: String?
     @State private var presentation: BatchTagPresentation?
     var body: some View {
         Button {
@@ -917,6 +919,13 @@ struct BatchTagControls: View {
             action("批量", icon: "tag") {
                 presentation = BatchTagPresentation(references: references, selectedIDs: selection.ids)
             }.disabled(selection.ids.isEmpty)
+            if let cite {
+                let selected = references.filter { selection.ids.contains($0.id) }
+                let didCopy = !selected.isEmpty && copied == selected.map(\.citeKey).joined(separator: ",")
+                action("引用", icon: didCopy ? "check" : "copy") {
+                    cite(references.filter { selection.ids.contains($0.id) })
+                }.disabled(selected.isEmpty)
+            }
             Divider().frame(height: 20)
             action("结束", icon: "x") { selection.active = false; selection.ids.removeAll() }
         }

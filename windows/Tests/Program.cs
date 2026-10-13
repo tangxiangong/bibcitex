@@ -30,6 +30,11 @@ async Task Throws(Func<Task> call, string expected)
     throw new InvalidOperationException("Expected error: " + expected);
 }
 
+Assert(await RustCore.FormatCitation(["A", "B"], "raw", "individual") == "A,B", "raw citations always use commas");
+Assert(await RustCore.FormatCitation(["A", "B"], "cite", "merged") == @"\cite{A,B}", "merged citation wire output");
+Assert(await RustCore.FormatCitation(["A", "B"], "cite", "individual") == @"\cite{A} \cite{B}", "individual citation wire output");
+Assert(await RustCore.FormatCitation(["A", "B"], "typst", "individual") == "@A #box[] @B", "Typst independent citation groups");
+
 const string contents = """
 @article{unicode2026,
   title = {{NASA}$x^2$研究 与希腊字母 β},

@@ -504,5 +504,13 @@
   "部分已添加": "Added to some",
   "未添加": "Not added",
   "添加": "Add",
-  "ReferenceNotFound": "One or more selected references are no longer available. Refresh the list and select them again."
+  "ReferenceNotFound": "One or more selected references are no longer available. Refresh the list and select them again.",
+  "引用": "Cite",
+  "引用 {0}": "Cite {0}",
+  "引用格式": "Citation format",
+  "多选输出方式": "Multiple citations",
+  "逐项": "Individual",
+  "key": "key",
+  "引用指令": "Citation command",
+  "#cite (正文引用)": "#cite (prose)"
 }

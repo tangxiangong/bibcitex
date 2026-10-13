@@ -57,7 +57,7 @@ struct BibCiTeXApp: App {
             }
             CommandMenu(L10n.text("文献")) {
                 Button(L10n.text("快捷助手")) { HelperPanelController.shared.showPanel() }.keyboardShortcut("k", modifiers: [.command, .shift])
-                Button(L10n.text("复制引用键")) { if let reference = model.reference { model.copy(reference.citeKey) } }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(model.reference == nil)
+                Button(L10n.text("引用")) { if let reference = model.reference { model.cite([reference.citeKey]) } }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(model.reference == nil)
                 Button(L10n.text("刷新")) { Task { await model.reload() } }.keyboardShortcut("r")
             }
         }
@@ -192,10 +192,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 }
 
 private struct PreferencesView: View {
+    @AppStorage("citationFormat") private var citationFormat = "raw"
+    @AppStorage("citationMode") private var citationMode = "merged"
     @ObservedObject var updates: Updater
     @AppStorage("language") private var language = "system"
     @AppStorage("appearance") private var appearance = "system"
 
+    private var citationFamily: String { CitationPreferences.family(citationFormat) }
+    private var citationFamilySelection: Binding<String> {
+        Binding(get: { citationFamily }, set: { family in
+            guard family != citationFamily else { return }
+            citationFormat = family == "latex" ? "cite" : family == "typst" ? "typst" : "raw"
+        })
+    }
     var body: some View {
         Form {
             Section(L10n.text("外观")) {
@@ -211,6 +220,24 @@ private struct PreferencesView: View {
                     Text("简体中文").tag("zh-Hans")
                     Text("English").tag("en")
                 }
+            }
+            Section(L10n.text("引用")) {
+                Picker(L10n.text("引用格式"), selection: citationFamilySelection) {
+                    Text("key").tag("raw")
+                    Text("LaTeX").tag("latex")
+                    Text("Typst").tag("typst")
+                }
+                if citationFamily != "raw" {
+                    Picker(L10n.text("引用指令"), selection: $citationFormat) {
+                        ForEach(CitationPreferences.formats.filter { CitationPreferences.family($0.value) == citationFamily }, id: \.value) { item in
+                            Text(L10n.text(item.label)).tag(item.value)
+                        }
+                    }
+                }
+                Picker(L10n.text("多选输出方式"), selection: $citationMode) {
+                    Text(L10n.text("合并")).tag("merged")
+                    Text(L10n.text("逐项")).tag("individual")
+                }.disabled(citationFamily == "raw")
             }
             Section(L10n.text("更新")) {
                 LabeledContent(L10n.text("当前版本"), value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
@@ -228,6 +255,6 @@ private struct PreferencesView: View {
         }
         .formStyle(.grouped)
         .background(AutoHidingScrollbars())
-        .frame(width: 480, height: 440)
+        .frame(width: 480, height: 540)
     }
 }

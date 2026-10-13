@@ -15,6 +15,10 @@ pub struct Preferences {
     pub appearance: String,
     pub update_channel: String,
     pub automatic_updates: bool,
+    #[serde(rename = "citationFormat")]
+    pub citation_format: String,
+    #[serde(rename = "citationMode")]
+    pub citation_mode: String,
     #[serde(
         rename = "mainAdvancedSearchEnabled",
         deserialize_with = "boolean_preference"
@@ -48,6 +52,8 @@ impl Default for Preferences {
             appearance: "system".into(),
             update_channel: "stable".into(),
             automatic_updates: false,
+            citation_format: "raw".into(),
+            citation_mode: "merged".into(),
             main_advanced_search_enabled: false,
             tray_advanced_search_enabled: false,
             extra: HashMap::new(),

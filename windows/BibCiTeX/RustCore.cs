@@ -160,6 +160,17 @@ internal static class RustCore
         var response = wire.Unwire(); Check(response.error);
         return response.application_name;
     });
+    internal static Task<string> FormatCitation(IEnumerable<string> keys, string? format = null, string? mode = null)
+    {
+        // Capture the global preferences with the selection before yielding.
+        var value = new CitationRequest { keys = keys.ToList(), format = format ?? CitationPreferences.Format, mode = mode ?? CitationPreferences.Mode };
+        return Task.Run(() =>
+        {
+            using var request = value.Wire();
+            using var wire = Interop.format_citation(request).AsOk();
+            return wire.Unwire().text;
+        });
+    }
     internal static Task Copy(string text) => Task.Run(() =>
     {
         using var request = new TextRequest { text = text }.Wire();
@@ -207,4 +218,28 @@ internal sealed class Reference(ReferenceRecord data)
         "eprint" => Data.eprint ?? "", "archive_prefix" => Data.archive_prefix ?? "", "arxiv_primary_class" => Data.arxiv_primary_class ?? "", "how_published" => Data.how_published ?? "", _ => ""
     };
     internal static (string Label, string Value)[] Types => [("全部类型", "all"), ("期刊论文", "Article"), ("图书", "Book"), ("学位论文", "Thesis"), ("技术报告", "TechReport"), ("其他", "Misc"), ("小册子", "Booklet"), ("书籍章节", "InBook"), ("文集章节", "InCollection"), ("会议论文", "InProceedings")];
+}
+
+
+internal static class CitationPreferences
+{
+    internal static readonly (string Label, string Value)[] Formats = [
+        ("key", "raw"), ("\\cite", "cite"),
+        ("\\citep (natbib)", "citep"), ("\\citet (natbib)", "citet"),
+        ("\\autocite (biblatex)", "autocite"), ("\\parencite (biblatex)", "parencite"),
+        ("\\textcite (biblatex)", "textcite"), ("\\footcite (biblatex)", "footcite"),
+        ("@key", "typst"), ("#cite", "typst-cite"), ("#cite (正文引用)", "typst-prose")
+    ];
+    internal static string Family(string format) => format == "raw" ? "raw" : format.StartsWith("typst", StringComparison.Ordinal) ? "typst" : "latex";
+    internal static (string Label, string Value)[] Commands(string family) => Formats.Where(item => item.Value != "raw" && Family(item.Value) == family).ToArray();
+    internal static string Format
+    {
+        get => NativeSettings.Values["citationFormat"] is string value && Formats.Any(item => item.Value == value) ? value : "raw";
+        set => NativeSettings.Values["citationFormat"] = value;
+    }
+    internal static string Mode
+    {
+        get => NativeSettings.Values["citationMode"] is "individual" ? "individual" : "merged";
+        set => NativeSettings.Values["citationMode"] = value;
+    }
 }

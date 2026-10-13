@@ -6,6 +6,9 @@ mod registry;
 pub use api::*;
 pub use records::*;
 
+mod citation;
+pub use citation::*;
+
 mod search_records;
 pub use search_records::*;
 

@@ -2649,6 +2649,7 @@ impl Workbench {
             self.text("多选", cx).to_string()
         };
         let has_selection = !self.batch_ids.is_empty();
+        let copied = self.copied.as_ref() == Some(&self.selected_citation_keys().join(","));
         div()
             .relative()
             .child(
@@ -2726,6 +2727,18 @@ impl Workbench {
                                         .disabled(!has_selection)
                                         .on_click(cx.listener(|this, _, window, cx| {
                                             this.open_batch_tags(window, cx)
+                                        })),
+                                )
+                                .child(
+                                    Button::new("batch-citation")
+                                        .ghost()
+                                        .small()
+                                        .icon(icon(if copied { "check" } else { "copy" }))
+                                        .label(self.text("引用", cx))
+                                        .accessibility_label(self.text("引用", cx))
+                                        .disabled(!has_selection)
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.cite(this.selected_citation_keys(), cx);
                                         })),
                                 )
                                 .child(div().w(px(1.)).h(px(20.)).bg(cx.theme().border))

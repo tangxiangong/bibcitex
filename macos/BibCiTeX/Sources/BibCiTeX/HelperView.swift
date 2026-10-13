@@ -190,7 +190,7 @@ struct HelperView: View {
             // the paste surface shows its keys as labels, so nothing else can hand
             // it over.
             if let key = model.failedPasteKey {
-                Button(L10n.text("复制引用键")) { model.copyKey(key) }
+                Button(L10n.text("引用")) { model.copyKey(key) }
                     .buttonStyle(.plain)
                     .foregroundStyle(Color.accentColor)
             }

@@ -25,18 +25,41 @@ impl SearchableListItem for Choice {
 }
 type Choices = Entity<SelectState<Vec<Choice>>>;
 
+fn citation_family(format: &str) -> &'static str {
+    if format == "raw"
+        || !bibcitex_service::CITATION_FORMATS
+            .iter()
+            .any(|(id, _)| *id == format)
+    {
+        "raw"
+    } else if format.starts_with("typst") {
+        "typst"
+    } else {
+        "latex"
+    }
+}
+
 fn choices(group: &str, prefs: &Preferences) -> Vec<Choice> {
-    let values = match group {
-        "appearance" => [("system", "跟随系统"), ("light", "浅色"), ("dark", "深色")],
-        "language" => [
+    let values: &[(&str, &str)] = match group {
+        "appearance" => &[("system", "跟随系统"), ("light", "浅色"), ("dark", "深色")],
+        "language" => &[
             ("system", "跟随系统"),
             ("zh-Hans", "简体中文"),
             ("en", "English"),
         ],
-        _ => [("stable", "正式版"), ("beta", "Beta"), ("alpha", "Alpha")],
+        "citation_family" => &[("raw", "key"), ("latex", "LaTeX"), ("typst", "Typst")],
+        "citation_format" => bibcitex_service::CITATION_FORMATS,
+        "citation_mode" => &[("merged", "合并"), ("individual", "逐项")],
+        _ => &[("stable", "正式版"), ("beta", "Beta"), ("alpha", "Alpha")],
     };
     values
-        .into_iter()
+        .iter()
+        .copied()
+        .filter(|(value, _)| {
+            group != "citation_format"
+                || (*value != "raw"
+                    && citation_family(value) == citation_family(&prefs.citation_format))
+        })
         .map(|(value, label)| Choice {
             value: value.into(),
             label: prefs.text(label),
@@ -51,6 +74,9 @@ pub struct Settings {
     appearance: Choices,
     language: Choices,
     channel: Choices,
+    citation_family: Choices,
+    citation_format: Choices,
+    citation_mode: Choices,
     _subscriptions: Vec<Subscription>,
 }
 impl Settings {
@@ -74,8 +100,53 @@ impl Settings {
         let channel = cx.new(|cx| {
             SelectState::new(choices("channel", &p), Some(IndexPath::new(0)), window, cx)
         });
+        let citation_family_state = cx.new(|cx| {
+            SelectState::new(
+                choices("citation_family", &p),
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
+        let citation_format =
+            cx.new(|cx| SelectState::new(choices("citation_format", &p), None, window, cx));
+        let citation_mode = cx.new(|cx| {
+            SelectState::new(
+                choices("citation_mode", &p),
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
         let updater = cx.global::<crate::application::Services>().updater.clone();
         let subscriptions = vec![
+            cx.subscribe_in(
+                &citation_family_state,
+                window,
+                |this, _, event, window, cx| {
+                    if let SelectEvent::Confirm(Some(value)) = event {
+                        if value == citation_family(&this.preferences.read(cx).citation_format) {
+                            return;
+                        }
+                        let command = match value.as_str() {
+                            "latex" => "cite",
+                            "typst" => "typst",
+                            _ => "raw",
+                        };
+                        this.set_citation(true, command, window, cx);
+                    }
+                },
+            ),
+            cx.subscribe_in(&citation_format, window, |this, _, event, window, cx| {
+                if let SelectEvent::Confirm(Some(value)) = event {
+                    this.set_citation(true, value, window, cx);
+                }
+            }),
+            cx.subscribe_in(&citation_mode, window, |this, _, event, window, cx| {
+                if let SelectEvent::Confirm(Some(value)) = event {
+                    this.set_citation(false, value, window, cx);
+                }
+            }),
             cx.observe(&updater, |_, _, cx| cx.notify()),
             cx.subscribe_in(&appearance, window, |this, _, event, window, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
@@ -109,6 +180,9 @@ impl Settings {
             appearance,
             language,
             channel,
+            citation_family: citation_family_state,
+            citation_format,
+            citation_mode,
             _subscriptions: subscriptions,
         };
         this.sync_choices(window, cx);
@@ -116,16 +190,39 @@ impl Settings {
     }
     fn sync_choices(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let p = self.preferences.read(cx).clone();
+        let family = citation_family(&p.citation_format).to_owned();
         for (state, group, value) in [
             (&self.appearance, "appearance", &p.appearance),
             (&self.language, "language", &p.language),
             (&self.channel, "channel", &p.update_channel),
+            (&self.citation_family, "citation_family", &family),
+            (&self.citation_format, "citation_format", &p.citation_format),
+            (&self.citation_mode, "citation_mode", &p.citation_mode),
         ] {
             state.update(cx, |state, cx| {
                 state.set_items(choices(group, &p), window, cx);
                 state.set_selected_value(value, window, cx);
             });
         }
+    }
+    fn set_citation(
+        &mut self,
+        format: bool,
+        value: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.preferences.update(cx, |p, cx| {
+            if format {
+                p.citation_format = value.into();
+            } else {
+                p.citation_mode = value.into();
+            }
+            self.error = p.save().err();
+            cx.notify();
+        });
+        self.sync_choices(window, cx);
+        cx.refresh_windows();
     }
     fn set(&mut self, appearance: bool, value: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.preferences.update(cx, |p, cx| {
@@ -304,6 +401,39 @@ impl Render for Settings {
                             .accessibility_label(p.text("语言")),
                     ),
                 ),
+                cx,
+            ))
+            .child(section(
+                p.text("引用"),
+                Form::horizontal()
+                    .label_width(px(150.))
+                    .child(
+                        Field::new().label(p.text("引用格式")).child(
+                            Select::new(&self.citation_family)
+                                .small()
+                                .icon(icon("chevronDown"))
+                                .accessibility_label(p.text("引用格式")),
+                        ),
+                    )
+                    .when(citation_family(&p.citation_format) != "raw", |form| {
+                        form.child(
+                            Field::new().label(p.text("引用指令")).child(
+                                Select::new(&self.citation_format)
+                                    .small()
+                                    .icon(icon("chevronDown"))
+                                    .accessibility_label(p.text("引用指令")),
+                            ),
+                        )
+                    })
+                    .child(
+                        Field::new().label(p.text("多选输出方式")).child(
+                            Select::new(&self.citation_mode)
+                                .small()
+                                .icon(icon("chevronDown"))
+                                .disabled(citation_family(&p.citation_format) == "raw")
+                                .accessibility_label(p.text("多选输出方式")),
+                        ),
+                    ),
                 cx,
             ))
             .child(section(p.text("更新"), updates, cx))

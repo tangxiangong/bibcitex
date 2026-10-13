@@ -79,7 +79,7 @@ internal sealed class TrayWindow : Window
         Localized.Name(detailToggle, "文献详情"); Localized.Tooltip(detailToggle, "文献详情");
         detailToggle.Click += (_, _) => SetDetailVisible(detailToggle.IsChecked == true);
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } });
-        var buttons = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true), manageTags, detailToggle,
+        var buttons = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true, cite: selected => CopyCitation(selected.Select(reference => reference.Key))), manageTags, detailToggle,
             Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
         // One capsule for the toolbar, as on the macOS tray.
@@ -301,7 +301,7 @@ internal sealed class TrayWindow : Window
         heading.ColumnDefinitions.Add(new());
         heading.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         heading.Children.Add(new ChunkText(reference.Chunks("title"), 14, reference.Title, false, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title)));
-        var key = Views.CiteKey(reference.Key, CopyValue);
+        var key = Views.CiteKey(reference.Key, CopyKey);
         key.HorizontalAlignment = HorizontalAlignment.Right;
         // Keep unusually long keys from consuming the title's column.
         if (key.Content is StackPanel keyContent)
@@ -348,7 +348,7 @@ internal sealed class TrayWindow : Window
             if (value.Length == 0) continue;
             var block = new StackPanel { Spacing = 3 };
             var heading = Views.LocalizedText(label, 12); heading.Opacity = .65;
-            block.Children.Add(label == "引用键" ? Views.Caption(heading, CopyButton("copy", "复制引用键", reference.Key)) : heading);
+            block.Children.Add(label == "引用键" ? Views.Caption(heading, Views.CopyButton("copy", "引用", () => CopyKey(reference.Key), compact: true)) : heading);
             detail.Children.Add(block);
             if (label == "DOI") { block.Children.Add(Views.Link(value, 13, "打开 DOI", () => _ = OpenUrl(value.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? value : "https://doi.org/" + value))); continue; }
             if (label == "URL") { block.Children.Add(Views.Link(value, 13, "打开 URL", () => _ = OpenUrl(value))); continue; }
@@ -366,10 +366,21 @@ internal sealed class TrayWindow : Window
         var source = Views.Text(reference.Text("source"), 12); source.IsTextSelectionEnabled = true; Views.SelectableText(source); source.FontFamily = new FontFamily("Cascadia Mono");
         sourceBlock.Children.Add(source); detail.Children.Add(sourceBlock);
     }
+    private async Task<bool> CopyCitation(IEnumerable<string> keys)
+    {
+        var selected = keys.ToList();
+        if (selected.Count == 0) return false;
+        var revision = version;
+        var current = session;
+        try { var text = await RustCore.FormatCitation(selected); return !disposed && visible && current == session && revision == version && await CopyValue(text); }
+        catch (Exception error) { if (!disposed && visible && current == session && revision == version) ShowError(error); return false; }
+    }
+    private Task<bool> CopyKey(string key) => CopyCitation([key]);
     private async Task<bool> CopyValue(string value)
     {
         var current = session;
-        try { if (loadedVersion != version || !await searchSession.Validate()) { await Search(); return false; } await RustCore.Copy(value); return visible && current == session; }
+        var revision = version;
+        try { if (loadedVersion != revision || !await searchSession.Validate()) { await Search(); return false; } if (!visible || current != session || revision != version || loadedVersion != revision) return false; await RustCore.Copy(value); return visible && current == session; }
         catch (Exception ex) { if (visible && current == session) ShowError(ex); return false; }
     }
     private Button CopyButton(string icon, string label, string value)

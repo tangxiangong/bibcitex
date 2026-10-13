@@ -776,7 +776,7 @@ final class HelperViewModel: ObservableObject {
 
     private func paste(_ references: [Reference], onSuccess: @escaping () -> Void) {
         guard !isPasteOperationPending, !editingCondition, !isSearching, searchContext != nil, !references.isEmpty, references.allSatisfy({ reference in searchResults.contains(where: { $0.id == reference.id }) }) else { return }
-        let key = references.map(\.citeKey).joined(separator: ",")
+        let key = CitationPreferences.format(references.map(\.citeKey))
         let version = searchVersion
         let session = sessionGeneration
         isPasting = true

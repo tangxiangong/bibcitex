@@ -157,23 +157,34 @@ final class TrayWorkbenchModel: ObservableObject {
         let version = searchVersion
         Task { do { guard try await RustCore.shared.validateContext(context), version == searchVersion else { search(); return }; NSWorkspace.shared.open(url) } catch { self.errorDetails = LocalizedMessage(error: error) } }
     }
-    func copy(_ value: String, surface: CopySurface = .list) {
-        guard !loading, loadedVersion == searchVersion, references.contains(where: { $0.citeKey == value || $0.source == value }) else { return }
+    func cite(_ keys: [String], surface: CopySurface = .list) {
+        guard !keys.isEmpty else { return }
+        copy(keys.joined(separator: ","), surface: surface, citationKeys: keys)
+    }
+    func copy(_ value: String, surface: CopySurface = .list, citationKeys: [String]? = nil) {
+        let availableKeys = Set(references.map(\.citeKey))
+        let valid = citationKeys.map { !$0.isEmpty && $0.allSatisfy(availableKeys.contains) }
+            ?? references.contains(where: { $0.citeKey == value || $0.source == value })
+        guard !loading, loadedVersion == searchVersion, valid else { return }
         let currentSession = session
+        let output = citationKeys.map(CitationPreferences.format) ?? value
         let version = searchVersion
         copyTask[surface]?.cancel()
         copied[surface] = nil
         copyTask[surface] = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                guard let context = searchContext, try await RustCore.shared.validateContext(context), version == searchVersion else { search(); return }
-                try await service.copy(value)
-                guard !Task.isCancelled, currentSession == session else { return }
+                guard !Task.isCancelled, currentSession == session, let context = searchContext else { return }
+                let valid = try await RustCore.shared.validateContext(context)
+                guard !Task.isCancelled, currentSession == session, version == searchVersion else { return }
+                guard valid else { search(); return }
+                try await service.copy(output)
+                guard !Task.isCancelled, currentSession == session, version == searchVersion else { return }
                 copied[surface] = value
                 try await Task.sleep(nanoseconds: 1_500_000_000)
                 if !Task.isCancelled { copied[surface] = nil }
             } catch {
-                guard !Task.isCancelled, currentSession == session else { return }
+                guard !Task.isCancelled, currentSession == session, version == searchVersion else { return }
                 self.errorDetails = LocalizedMessage(error: error)
             }
         }

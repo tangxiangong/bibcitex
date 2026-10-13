@@ -3,7 +3,7 @@ import SwiftUI
 import BibCiTeXCore
 
 enum CopySurface: Hashable {
-    case list, detail
+    case list, detail, batch
 }
 
 protocol WorkbenchServing: Sendable {
@@ -261,23 +261,34 @@ final class WorkbenchModel: ObservableObject {
             catch { self.errorDetails = LocalizedMessage(error: error) }
         }
     }
-    func copy(_ text: String, surface: CopySurface = .list) {
-        guard !loading, referencesLibraryPath != nil, references.contains(where: { $0.citeKey == text || $0.source == text }) else { return }
+    func cite(_ keys: [String], surface: CopySurface = .list) {
+        guard !keys.isEmpty else { return }
+        copy(keys.joined(separator: ","), surface: surface, citationKeys: keys)
+    }
+    func copy(_ text: String, surface: CopySurface = .list, citationKeys: [String]? = nil) {
+        let availableKeys = Set(references.map(\.citeKey))
+        let valid = citationKeys.map { !$0.isEmpty && $0.allSatisfy(availableKeys.contains) }
+            ?? references.contains(where: { $0.citeKey == text || $0.source == text })
+        guard !loading, referencesLibraryPath != nil, valid else { return }
+        let output = citationKeys.map(CitationPreferences.format) ?? text
         let version = generation
         copyConfirmation[surface]?.cancel()
         copied[surface] = nil
         copyConfirmation[surface] = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                guard let context = searchContext, try await RustCore.shared.validateContext(context), version == generation else { scheduleSearch(); return }
-                try await service.copy(text)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, let context = searchContext else { return }
+                let valid = try await RustCore.shared.validateContext(context)
+                guard !Task.isCancelled, version == generation else { return }
+                guard valid else { scheduleSearch(); return }
+                try await service.copy(output)
+                guard !Task.isCancelled, version == generation else { return }
                 copied[surface] = text
                 try await Task.sleep(nanoseconds: 1_400_000_000)
                 guard !Task.isCancelled else { return }
                 copied[surface] = nil
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, version == generation else { return }
                 self.errorDetails = LocalizedMessage(error: error)
             }
         }

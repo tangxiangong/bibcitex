@@ -87,7 +87,8 @@ struct WorkbenchView: View {
     }
 
     @ViewBuilder private var toolbarActions: some View {
-        BatchTagControls(selection: batchSelection, references: model.references, showsText: false)
+        BatchTagControls(selection: batchSelection, references: model.references, showsText: false,
+                cite: { model.cite($0.map(\.citeKey), surface: .batch) }, copied: model.copied[.batch])
         Button { showTagManager = true } label: { NativeIcon("tag") }.help(L10n.text("标签管理")).accessibilityLabel(L10n.text("标签管理"))
         Button { HelperPanelController.shared.showPanel() } label: { NativeIcon("search") }.help(L10n.text("快捷助手")).accessibilityLabel(L10n.text("快捷助手"))
         Button { Task { await model.reload() } } label: { NativeIcon("refresh") }.help(L10n.text("刷新")).accessibilityLabel(L10n.text("刷新"))
@@ -232,7 +233,7 @@ struct WorkbenchView: View {
                                 focused: batchSelection.active && model.selectedReference == reference.id))
                             .contextMenu {
                                 Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) }
-                                Button(L10n.text("复制引用键")) { model.copy(reference.citeKey) }
+                                Button(L10n.text("引用")) { model.cite([reference.citeKey]) }
                                 Button(L10n.text("复制 BibTeX")) { model.copy(reference.source) }
                             }
                         }
@@ -328,7 +329,7 @@ private struct ListCiteKey: View {
     var body: some View {
         let copied = model.copied[.list] == reference.citeKey
         Button {
-            model.copy(reference.citeKey)
+            model.cite([reference.citeKey])
         } label: {
             HStack(spacing: 4) {
                 NativeIcon(copied ? "check" : "copy", size: 10)
@@ -341,8 +342,8 @@ private struct ListCiteKey: View {
             .background(PanelPalette.controlSurface, in: Capsule())
         }
         .buttonStyle(.plain)
-        .help(L10n.text("复制引用键"))
-        .accessibilityLabel(L10n.text("复制引用键 {0}", reference.citeKey))
+        .help(L10n.text("引用"))
+        .accessibilityLabel(L10n.text("引用 {0}", reference.citeKey))
     }
 }
 
@@ -363,7 +364,7 @@ struct ReferenceInspector: View {
                                 Text(item.0).font(.caption).foregroundStyle(.secondary)
                                 if item.0 == L10n.text("引用键") {
                                     Spacer()
-                                    copyButton(reference.citeKey, icon: "copy", label: L10n.text("复制引用键"))
+                                    copyButton(reference.citeKey, icon: "copy", label: L10n.text("引用"), citation: true)
                                 }
                             }
                             if let open = opener(for: item.0) {
@@ -391,10 +392,10 @@ struct ReferenceInspector: View {
     }
     /// Both copy actions answer on the button itself: the icon becomes a check for
     /// a moment, so a copy that succeeded says so without an alert to dismiss.
-    private func copyButton(_ text: String, icon: String, label: String) -> some View {
+    private func copyButton(_ text: String, icon: String, label: String, citation: Bool = false) -> some View {
         let copied = model.copied[.detail] == text
         return Button {
-            model.copy(text, surface: .detail)
+            if citation { model.cite([text], surface: .detail) } else { model.copy(text, surface: .detail) }
         } label: {
             if copied {
                 HStack(spacing: 4) {

@@ -77,7 +77,7 @@ impl Windows {
                 }
                 let prefs = preferences.clone();
                 match open_window(
-                    decorated_options(&prefs.read(cx).text("设置"), 480., 480.),
+                    decorated_options(&prefs.read(cx).text("设置"), 520., 580.),
                     cx,
                     |window, cx| cx.new(|cx| Settings::new(prefs, window, cx)),
                 ) {

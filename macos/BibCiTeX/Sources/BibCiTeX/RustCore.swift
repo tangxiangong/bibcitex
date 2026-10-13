@@ -24,7 +24,10 @@ actor RustCore {
     }
     func removeLibrary(name: String) throws { try translated { try BibCiTeXCore.removeLibrary(name: name) } }
     func capturePasteTarget() throws -> String? { try translated { try BibCiTeXCore.capturePasteTarget() } }
-    func copy(_ text: String) throws { try translated { try BibCiTeXCore.copy(text: text) } }
+    func copy(_ text: String) throws {
+        try Task.checkCancellation()
+        try translated { try BibCiTeXCore.copy(text: text) }
+    }
     func paste(_ text: String) throws { try translated { try BibCiTeXCore.paste(text: text) } }
     func search(path: String, query: String, field: String = "all", type: String = "all") throws -> [Reference] {
         try translated { try BibCiTeXCore.search(path: path, query: query, field: field, typeFilter: type) }.map(reference)
@@ -118,5 +121,26 @@ actor RustCore {
             month: value.month ?? "", organization: value.organization, institution: value.institution ?? "", eprint: value.eprint ?? "",
             archivePrefix: value.archivePrefix ?? "", arxivPrimaryClass: value.arxivPrimaryClass ?? "", howPublished: value.howPublished ?? ""
         )
+    }
+}
+
+/// One preference pair for every citation copy and helper paste surface.
+enum CitationPreferences {
+    static let formats: [(value: String, label: String)] = [
+        ("raw", "key"), ("cite", "\\cite"),
+        ("citep", "\\citep (natbib)"), ("citet", "\\citet (natbib)"),
+        ("autocite", "\\autocite (biblatex)"), ("parencite", "\\parencite (biblatex)"),
+        ("textcite", "\\textcite (biblatex)"), ("footcite", "\\footcite (biblatex)"),
+        ("typst", "@key"), ("typst-cite", "#cite"),
+        ("typst-prose", "#cite (正文引用)")
+    ]
+    static func family(_ format: String) -> String {
+        guard format != "raw", formats.contains(where: { $0.value == format }) else { return "raw" }
+        return format.hasPrefix("typst") ? "typst" : "latex"
+    }
+    static func format(_ keys: [String]) -> String {
+        BibCiTeXCore.formatCitation(keys: keys,
+            format: UserDefaults.standard.string(forKey: "citationFormat") ?? "raw",
+            mode: UserDefaults.standard.string(forKey: "citationMode") ?? "merged")
     }
 }

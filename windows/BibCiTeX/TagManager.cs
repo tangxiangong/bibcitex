@@ -46,7 +46,7 @@ internal static class TagManager
         return row;
     }
 
-    internal static Button BatchControls(ListView references, out Func<bool> endSelection, Action? opening = null, Action? closed = null, bool nativeMultiple = false)
+    internal static Button BatchControls(ListView references, out Func<bool> endSelection, Action? opening = null, Action? closed = null, bool nativeMultiple = false, Func<IReadOnlyList<Reference>, Task<bool>>? cite = null)
     {
         var button = new Button
         {
@@ -65,7 +65,10 @@ internal static class TagManager
         var all = ActionButton("check", "全选");
         var clear = ActionButton("trash", "清空");
         var edit = ActionButton("tag", "批量");
-        var actions = Views.Row(all, clear, edit, Views.Divider(vertical: true), mode);
+        var actions = Views.Row(all, clear, edit);
+        var citation = cite is null ? null : Views.CopyButton("copy", "引用", () => cite(Selected()), showLabel: true);
+        if (citation is not null) actions.Children.Add(citation);
+        actions.Children.Add(Views.Divider(vertical: true)); actions.Children.Add(mode);
         actions.Spacing = 4;
         var surface = Views.Capsule(actions);
         surface.Tag = BatchControlsMarker;
@@ -74,7 +77,7 @@ internal static class TagManager
         bool editing = false;
         XamlRoot? observedRoot = null;
         bool Active() => nativeMultiple ? explicitSelection || references.SelectedItems.Count > 1 : references.SelectionMode == ListViewSelectionMode.Multiple;
-        List<Reference> Selected() => references.SelectedItems.OfType<ListViewItem>().Select(item => item.Tag).OfType<Reference>().ToList();
+        List<Reference> Selected() => references.Items.OfType<ListViewItem>().Where(references.SelectedItems.Contains).Select(item => item.Tag).OfType<Reference>().DistinctBy(reference => reference.Id).ToList();
         void Render()
         {
             if (nativeMultiple && references.SelectedItems.Count > 1) explicitSelection = true;
@@ -83,6 +86,7 @@ internal static class TagManager
             ToolTipService.SetToolTip(button, label.Text); AutomationProperties.SetName(button, label.Text);
             all.IsEnabled = Active() && references.Items.OfType<ListViewItem>().Any(item => item.Tag is Reference);
             clear.IsEnabled = edit.IsEnabled = Active() && Selected().Count > 0;
+            if (citation is not null) citation.IsEnabled = Active() && Selected().Count > 0;
             surface.RequestedTheme = button.ActualTheme;
             var show = Active() && !editing && button.IsLoaded && button.XamlRoot?.IsHostVisible == true;
             if (show) popup.XamlRoot = button.XamlRoot;

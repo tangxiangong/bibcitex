@@ -61,3 +61,8 @@ pub fn copy(text: String) -> Result<(), CoreError> {
 pub fn paste(text: String) -> Result<(), CoreError> {
     bibcitex_service::paste(text)
 }
+
+#[uniffi::export]
+pub fn format_citation(keys: Vec<String>, format: String, mode: String) -> String {
+    bibcitex_service::format_citation(&keys, &format, &mode)
+}

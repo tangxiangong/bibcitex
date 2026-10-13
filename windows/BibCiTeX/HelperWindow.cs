@@ -121,11 +121,11 @@ internal sealed class HelperWindow : Window, IDisposable
             selectionCount.Visibility = !selecting && results.SelectedItems.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         };
         Grid.SetRow(listArea, 2); root.Children.Add(listArea);
-        fallback = new Button { Content = L10n.Text("复制引用键"), Visibility = Visibility.Collapsed, FontSize = 11 };
+        fallback = new Button { Content = L10n.Text("引用"), Visibility = Visibility.Collapsed, FontSize = 11 };
         fallback.Click += async (_, _) => { if (failedKey is { } key) { try { await RustCore.Copy(key); } catch (Exception error) { SetErrorStatus(error); } } };
         Grid.SetColumn(fallback, 2); errorBar.Children.Add(fallback);
         Localized.Bind(search, TextBox.PlaceholderTextProperty, "搜索文献、作者、标题");
-        Localized.Bind(fallback, ContentControl.ContentProperty, "复制引用键");
+        Localized.Bind(fallback, ContentControl.ContentProperty, "引用");
         L10n.Changed += LocalizeTitle;
         WindowInterop.LocalizeSystemMenu(this);
         ScrollViewer.SetVerticalScrollBarVisibility(results, ScrollBarVisibility.Hidden);
@@ -352,11 +352,12 @@ internal sealed class HelperWindow : Window, IDisposable
     private async Task Execute(ListViewItem? item, bool clicked = false)
     {
         if (pasting || validatingPaste || busy || searching || !visible || item is null) return;
-        var keys = item.Tag is Reference single
-            ? clicked ? single.Key : string.Join(",", results.Items.Cast<ListViewItem>()
-                .Where(row => results.SelectedItems.Contains(row)).Select(row => ((Reference)row.Tag).Key))
-            : "";
-        if (item.Tag is Reference && keys.Length == 0) return;
+        var selectedKeys = item.Tag is Reference single
+            ? clicked ? new List<string> { single.Key } : results.Items.Cast<ListViewItem>()
+                .Where(row => results.SelectedItems.Contains(row)).Select(row => (Reference)row.Tag).DistinctBy(reference => reference.Id).Select(reference => reference.Key).ToList()
+            : new List<string>();
+        if (item.Tag is Reference && selectedKeys.Count == 0) return;
+        var keys = "";
         var session = lifecycle;
         var request = ++version;
         bool attemptedPaste = false;
@@ -373,6 +374,7 @@ internal sealed class HelperWindow : Window, IDisposable
             else if (item.Tag is Reference reference)
             {
                 validatingPaste = true;
+                keys = await RustCore.FormatCitation(selectedKeys);
                 var valid = await searchSession.Validate();
                 // Validation yields: a query edit, close, or tag refresh can replace
                 // this selection before the clipboard/target may be touched.
