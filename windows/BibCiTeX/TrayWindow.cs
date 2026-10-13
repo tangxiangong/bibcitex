@@ -79,7 +79,7 @@ internal sealed class TrayWindow : Window
         Localized.Name(detailToggle, "文献详情"); Localized.Tooltip(detailToggle, "文献详情");
         detailToggle.Click += (_, _) => SetDetailVisible(detailToggle.IsChecked == true);
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { ShowError(ex); } });
-        var buttons = Views.Row(TagManager.BatchControls(references, nativeMultiple: true), manageTags, detailToggle,
+        var buttons = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true), manageTags, detailToggle,
             Views.Button("refresh", "刷新", () => _ = Reload()),
             Views.Button("externalLink", "显示窗口", () => { Hide(); showMain(); }), Views.Button("x", "关闭", Hide));
         // One capsule for the toolbar, as on the macOS tray.
@@ -192,7 +192,15 @@ internal sealed class TrayWindow : Window
         search.TextCompositionEnded += (_, _) => { composing = false; _ = Search(); };
         search.TextChanged += (_, _) => { searchSession.TextEdited(search.Text); if (!composing) _ = Search(true); };
         search.PreviewKeyDown += SearchKeyDown;
-        root.PreviewKeyDown += (_, args) => { if (!composing && args.Key == VirtualKey.Escape && !Modified()) { args.Handled = true; if (detailPanel.Visibility == Visibility.Visible) SetDetailVisible(false); else Hide(); } };
+        root.PreviewKeyDown += (_, args) => {
+            if (!composing && !TagManager.IsEditing(root.XamlRoot) && args.Key == VirtualKey.Escape && !Modified()) {
+                if (FocusManager.GetFocusedElement(root.XamlRoot) is TextBox editor && !ReferenceEquals(editor, search)) return;
+                if (VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count > 0) return;
+                args.Handled = true;
+                if (endBatchSelection()) return;
+                if (detailPanel.Visibility == Visibility.Visible) SetDetailVisible(false); else Hide();
+            }
+        };
         references.SelectionChanged += (_, _) => ShowDetail(loadedVersion == version ? (references.SelectedItem as ListViewItem)?.Tag as Reference : null);
         Activated += (_, args) => { if (args.WindowActivationState == WindowActivationState.Deactivated) Hide(); };
         AppWindow.Closing += (_, args) => { if (!disposed) { args.Cancel = true; Hide(); } };

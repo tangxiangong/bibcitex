@@ -67,6 +67,7 @@ struct WorkbenchView: View {
         .frame(minWidth: 560, minHeight: 520)
         .scrollIndicators(.never)
         .background(AutoHidingScrollbars(alwaysHidden: true))
+        .background(BatchTagEscapeHandler(selection: batchSelection, focusedID: model.selectedReference))
         .sheet(isPresented: $searchEditor) { AdvancedSearchEditor(text: model.query, draft: model.searchDraft) { model.applyAdvancedQuery($0, draft: $1) } }
         .sheet(isPresented: $showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onChange(of: model.query) { _ in batchSelection.ids.removeAll() }
@@ -187,8 +188,8 @@ struct WorkbenchView: View {
                 }.frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
-                    List(selection: Binding<Set<String>>(get: { batchSelection.ids }, set: { values in
-                        batchSelection.deferListSelection {
+                    List(selection: Binding<Set<String>>(get: { batchSelection.listIDs }, set: { values in
+                        batchSelection.deferListSelection(values) {
                             guard selectionContext == model.referenceSelectionContext else { return }
                             guard values != batchSelection.ids else { return }
                             let added = values.subtracting(batchSelection.ids)
@@ -237,7 +238,9 @@ struct WorkbenchView: View {
                         }
                     }.listStyle(.inset)
                     .onChange(of: model.selectedReference) { key in
-                        if !batchSelection.active { batchSelection.ids = Set(key.map { [$0] } ?? []) }
+                        if !batchSelection.active && !batchSelection.hasPendingListSelection {
+                            batchSelection.ids = Set(key.map { [$0] } ?? [])
+                        }
                         if let key { proxy.scrollTo(key) }
                     }
                 }

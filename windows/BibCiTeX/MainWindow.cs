@@ -79,7 +79,7 @@ internal sealed class MainWindow : Window
         inspectorToggle = PaneToggle("panelRightClose", "文献详情", () => { SetPaneVisibility(false, inspectorToggle.IsChecked == true); });
         toolbar.Children.Add(Views.Row(sidebarToggle, BrandImage(48)));
         var manageTags = Views.Button("tag", "标签管理", async () => { try { await TagManager.Show(root.XamlRoot); } catch (Exception ex) { await Report(ex); } });
-        var primary = Views.Row(TagManager.BatchControls(references, nativeMultiple: true), manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
+        var primary = Views.Row(TagManager.BatchControls(references, out var endBatchSelection, nativeMultiple: true), manageTags, Views.Button("search", "快捷助手", () => _ = App.Helper!.Toggle()),
             Views.Button("refresh", "刷新", () => _ = ReloadLibraries()), Views.Button("settings", "设置", ShowSettings),
             Views.Button("info", "关于 BibCiTeX", () => _ = ShowAbout()), GroupSeparator(), inspectorToggle);
         primary.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(primary, 2); toolbar.Children.Add(primary);
@@ -183,6 +183,14 @@ internal sealed class MainWindow : Window
         search.TextCompositionStarted += (_, _) => { searchComposing = true; searchSession.Invalidate(); searchVersion++; resultsVersion = -1; references.Items.Clear(); ShowDetail(null); };
         search.TextCompositionEnded += (_, _) => { searchComposing = false; _ = Search(); };
         search.PreviewKeyDown += SearchKeyDown;
+        root.PreviewKeyDown += (_, args) => {
+            if (searchComposing || args.Key != VirtualKey.Escape || TagManager.IsEditing(root.XamlRoot)) return;
+            if (FocusManager.GetFocusedElement(root.XamlRoot) is TextBox editor && !ReferenceEquals(editor, search)) return;
+            if (VisualTreeHelper.GetOpenPopupsForXamlRoot(root.XamlRoot).Count > 0) return;
+            if (new[] { VirtualKey.Control, VirtualKey.Menu, VirtualKey.Shift, VirtualKey.LeftWindows, VirtualKey.RightWindows }.Any(key =>
+                Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down))) return;
+            if (endBatchSelection()) args.Handled = true;
+        };
         search.TextChanged += (_, _) => { searchSession.TextEdited(search.Text); if (!searchComposing) _ = Search(true); }; type.SelectionChanged += (_, _) => _ = Search(); field.SelectionChanged += (_, _) => _ = Search();
         root.Loaded += async (_, _) => { SetMinimumSize(); root.XamlRoot.Changed += (_, _) => SetMinimumSize(); if (!initialized) { initialized = true; await ReloadLibraries(); } };
         AppWindow.Closing += (_, args) => { if (!quitting && tray is not null) { args.Cancel = true; AppWindow.Hide(); } };

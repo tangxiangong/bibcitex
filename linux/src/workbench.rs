@@ -1344,7 +1344,7 @@ impl Workbench {
             .border_1()
             .border_color(cx.theme().border)
             .shadow_sm()
-            .when(self.batch_selecting, |bar| {
+            .when(self.batch_selecting && self.batch_ids.len() > 1, |bar| {
                 bar.child(div().px(px(8.)).text_xs().child(format!(
                     "{} {}",
                     self.text("已选", cx),
@@ -2819,6 +2819,12 @@ impl Render for Workbench {
                     this.focus_search(window, cx);
                     cx.notify();
                     cx.stop_propagation();
+                } else if this.batch_selecting && !this.helper {
+                    this.batch_selecting = false;
+                    this.batch_ids.clear();
+                    this.batch_anchor = None;
+                    cx.notify();
+                    cx.stop_propagation();
                 } else if (this.helper || this.tray) && this.search_navigation(window, cx) {
                     window.remove_window();
                     cx.stop_propagation();
@@ -2893,7 +2899,19 @@ impl Render for Workbench {
                         }
                         cx.stop_propagation();
                     }
-                    "escape" if list_focused && this.batch_selecting => {
+                    "escape"
+                        if !this.helper
+                            && this.batch_selecting
+                            && !event.keystroke.modifiers.control
+                            && !event.keystroke.modifiers.platform
+                            && !event.keystroke.modifiers.alt
+                            && !event.keystroke.modifiers.shift
+                            && this.candidates.is_none()
+                            && this.optional_field_value.is_none()
+                            && this.tag_manager.is_none()
+                            && this.condition_editor.is_none()
+                            && this.renaming.is_none() =>
+                    {
                         this.batch_selecting = false;
                         this.batch_ids.clear();
                         this.batch_anchor = None;

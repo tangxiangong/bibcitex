@@ -786,23 +786,86 @@ func advancedSearchPreference(_ preferences: UserDefaults, key: String) -> Bool 
 
 /// Selection is local to the displayed result set. Editors capture immutable UUID pairs.
 final class BatchTagSelection: ObservableObject {
-    @Published var active = false { didSet { selectionRevision &+= 1 } }
-    @Published var ids = Set<String>() { didSet { selectionRevision &+= 1 } }
+    @Published var active = false { didSet { invalidateListSelection() } }
+    @Published var ids = Set<String>() { didSet { invalidateListSelection() } }
     private var selectionRevision: UInt64 = 0
+    private var pendingListSelection: Set<String>?
+    var listIDs: Set<String> { pendingListSelection ?? ids }
+    var hasPendingListSelection: Bool { pendingListSelection != nil }
+
+    private func invalidateListSelection() {
+        selectionRevision &+= 1
+        pendingListSelection = nil
+    }
 
     // AppKit can write List selection while SwiftUI is reconciling its rows.
     // Coalesce those writes and discard callbacks invalidated by another action.
-    func deferListSelection(_ apply: @escaping () -> Void) {
+    func deferListSelection(_ values: Set<String>, _ apply: @escaping () -> Void) {
         selectionRevision &+= 1
+        // Native List must read its new selection during reconciliation, before
+        // publishing it on the next turn. Returning the old singleton resets
+        // Shift/Command selection before it can enter batch mode.
+        pendingListSelection = values
         let revision = selectionRevision
         DispatchQueue.main.async { [weak self] in
             guard let self, self.selectionRevision == revision else { return }
+            self.pendingListSelection = nil
             apply()
         }
     }
 
+    @discardableResult func end(focusedID: String?) -> Bool {
+        guard active || ids.count > 1 || listIDs.count > 1 else { return false }
+        active = false
+        ids = Set(focusedID.map { [$0] } ?? [])
+        return true
+    }
+
     func toggle(_ reference: Reference) {
         if !ids.insert(reference.id).inserted { ids.remove(reference.id) }
+    }
+}
+
+/// Search fields and native Lists both route Escape through AppKit.
+struct BatchTagEscapeHandler: NSViewRepresentable {
+    @ObservedObject var selection: BatchTagSelection
+    let focusedID: String?
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.install(on: view)
+        return view
+    }
+    func updateNSView(_ view: NSView, context: Context) { context.coordinator.parent = self }
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) { coordinator.removeMonitor() }
+
+    final class Coordinator {
+        var parent: BatchTagEscapeHandler
+        private var monitor: Any?
+        init(_ parent: BatchTagEscapeHandler) { self.parent = parent }
+        func install(on view: NSView) {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self, weak view] event in
+                guard let self, let window = view?.window,
+                      window.isKeyWindow, event.window === window, window.attachedSheet == nil,
+                      event.keyCode == 53,
+                      event.modifierFlags.intersection([.command, .control, .option, .shift]).isEmpty
+                else { return event }
+                if let editor = window.firstResponder as? NSTextView {
+                    // SwiftUI text fields use the field editor for inline rename;
+                    // their Escape must cancel editing before ending batch mode.
+                    if editor.isFieldEditor || editor.hasMarkedText() { return event }
+                    if let search = editor as? SearchTextView,
+                       search.isComposing || search.hasActiveMarkedText { return event }
+                }
+                return parent.selection.end(focusedID: parent.focusedID) ? nil : event
+            }
+        }
+        func removeMonitor() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+        deinit { removeMonitor() }
     }
 }
 

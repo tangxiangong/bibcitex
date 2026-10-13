@@ -135,7 +135,7 @@ struct HelperView: View {
         HStack(spacing: 0) {
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                if let selection = model.pasteSelection {
+                if let selection = model.pasteSelection, selection.count > 1 {
                     Text("\(L10n.text("已选")) \(selection.count)")
                         .font(.system(size: 11))
                         .monospacedDigit()

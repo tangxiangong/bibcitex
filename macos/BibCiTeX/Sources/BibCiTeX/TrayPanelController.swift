@@ -83,9 +83,14 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.window === panel, panel?.isKeyWindow == true,
                   panel?.attachedSheet == nil else { return event }
-            if let editor = panel?.firstResponder as? NSTextView, editor.hasMarkedText() { return event }
+            if let editor = panel?.firstResponder as? NSTextView {
+                if editor.hasMarkedText() { return event }
+                if let search = editor as? SearchTextView,
+                   search.isComposing || search.hasActiveMarkedText { return event }
+            }
             guard event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
             if event.keyCode == 53 {
+                if model.batchSelection.end(focusedID: model.selection) { return nil }
                 if model.detailVisible { model.detailVisible = false } else { dismiss() }
                 return nil
             }

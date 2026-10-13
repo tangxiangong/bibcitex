@@ -41,7 +41,7 @@ internal static class TagManager
         return row;
     }
 
-    internal static Button BatchControls(ListView references, Action? opening = null, Action? closed = null, bool nativeMultiple = false)
+    internal static Button BatchControls(ListView references, out Func<bool> endSelection, Action? opening = null, Action? closed = null, bool nativeMultiple = false)
     {
         var button = new Button
         {
@@ -66,7 +66,19 @@ internal static class TagManager
             mode.Text = L10n.Text(Active() ? "结束多选" : "多选");
             all.IsEnabled = clear.IsEnabled = Active(); edit.IsEnabled = Active() && Selected().Count > 0;
         }
-        mode.Click += (_, _) => { explicitSelection = false; if (nativeMultiple) references.SelectedItems.Clear(); else { references.SelectionMode = ListViewSelectionMode.Single; references.SelectedIndex = -1; } Render(); };
+        bool EndSelection()
+        {
+            if (!Active()) return false;
+            var focused = references.SelectedItem;
+            explicitSelection = false;
+            if (!nativeMultiple) references.SelectionMode = ListViewSelectionMode.Single;
+            references.SelectedItems.Clear();
+            references.SelectedItem = focused;
+            Render();
+            return true;
+        }
+        endSelection = EndSelection;
+        mode.Click += (_, _) => EndSelection();
         all.Click += (_, _) => { foreach (var item in references.Items.OfType<ListViewItem>().Where(item => item.Tag is Reference)) if (!references.SelectedItems.Contains(item)) references.SelectedItems.Add(item); };
         clear.Click += (_, _) => references.SelectedItems.Clear();
         edit.Click += async (_, _) => { var selected = Selected(); if (selected.Count == 0) return; try { opening?.Invoke(); await ShowBatch(button.XamlRoot, selected); } catch (Exception ex) { await Views.Error(button, ex); } finally { closed?.Invoke(); } };

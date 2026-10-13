@@ -15,13 +15,20 @@ struct TrayWorkbenchView: View {
     let dismiss: () -> Void
     @State private var searchEditor = false
     @State private var showTagManager = false
-    @StateObject private var batchSelection = BatchTagSelection()
+    @ObservedObject private var batchSelection: BatchTagSelection
     @State private var taggingReference: TagAssignmentTarget?
     @State private var searchFocused = false
     @FocusState private var detailToggleFocused: Bool
     @FocusState private var detailCloseFocused: Bool
     private var types: [(String, String)] { [("all", L10n.text("全部类型")), ("Article", L10n.text("期刊论文")), ("Book", L10n.text("图书")), ("Thesis", L10n.text("学位论文")), ("TechReport", L10n.text("技术报告")), ("Misc", L10n.text("其他")), ("Booklet", L10n.text("小册子")), ("InBook", L10n.text("书籍章节")), ("InCollection", L10n.text("文集章节")), ("InProceedings", L10n.text("会议论文"))] }
     private var fields: [(String, String)] { [("all", L10n.text("全部字段")), ("author", L10n.text("作者")), ("title", L10n.text("标题")), ("journal", L10n.text("期刊")), ("year", L10n.text("年份"))] }
+
+    init(model: TrayWorkbenchModel, showMain: @escaping () -> Void, dismiss: @escaping () -> Void) {
+        self.model = model
+        self.showMain = showMain
+        self.dismiss = dismiss
+        batchSelection = model.batchSelection
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -168,8 +175,8 @@ struct TrayWorkbenchView: View {
     private var results: some View {
         let selectionVersion = model.referenceSelectionVersion
         return ScrollViewReader { proxy in
-            List(selection: Binding<Set<String>>(get: { batchSelection.ids }, set: { values in
-                batchSelection.deferListSelection {
+            List(selection: Binding<Set<String>>(get: { batchSelection.listIDs }, set: { values in
+                batchSelection.deferListSelection(values) {
                     guard selectionVersion == model.referenceSelectionVersion,
                           values != batchSelection.ids else { return }
                     let added = values.subtracting(batchSelection.ids)
@@ -209,7 +216,9 @@ struct TrayWorkbenchView: View {
                     }
                 }
                 .onChange(of: model.selection) { key in
-                    if !batchSelection.active { batchSelection.ids = Set(key.map { [$0] } ?? []) }
+                    if !batchSelection.active && !batchSelection.hasPendingListSelection {
+                        batchSelection.ids = Set(key.map { [$0] } ?? [])
+                    }
                     if let key { proxy.scrollTo(key) }
                 }
         }
