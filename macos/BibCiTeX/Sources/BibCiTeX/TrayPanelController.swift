@@ -34,8 +34,9 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         let current = presentation
         if let panel {
             let alpha = panel.isVisible ? panel.alphaValue : 0
-            panel.makeKeyAndOrderFront(nil)
+            // Show only this nonactivating panel; keep Cmd+H-hidden windows hidden.
             panel.orderFrontRegardless()
+            panel.makeKey()
             PanelSurface.refreshShadow(panel)
             PanelSurface.fadeIn(panel, from: alpha)
         }
@@ -64,6 +65,8 @@ final class TrayPanelController: NSObject, NSWindowDelegate {
         let panel = TrayPanel(contentRect: NSRect(x: 0, y: 0, width: 680, height: 580),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.canHide = false
         panel.level = .floating
         panel.collectionBehavior = [.transient, .moveToActiveSpace, .fullScreenAuxiliary]
         panel.isOpaque = false; panel.hasShadow = true
