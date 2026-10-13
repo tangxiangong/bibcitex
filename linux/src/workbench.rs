@@ -1849,6 +1849,24 @@ impl Workbench {
         for (tag_index, tag) in record.tags.iter().take(2).enumerate() {
             let color =
                 u32::from_str_radix(tag.color.trim_start_matches('#'), 16).unwrap_or(0x64748B);
+            if self.helper {
+                tag_line = tag_line.child(
+                    div()
+                        .h(px(18.))
+                        .px_1()
+                        .rounded_full()
+                        .text_size(px(10.))
+                        .bg(cx.theme().muted)
+                        .max_w(px(65.))
+                        .overflow_hidden()
+                        .flex()
+                        .items_center()
+                        .gap_1()
+                        .child(icon("tag").size(px(10.)).text_color(gpui::rgb(color)))
+                        .child(div().min_w_0().truncate().child(tag.name.clone())),
+                );
+                continue;
+            }
             tag_line = tag_line.child(
                 Button::new(("reference-tag", tag_index))
                     .ghost()
@@ -1871,19 +1889,24 @@ impl Workbench {
             );
         }
         if record.tags.len() > 2 {
-            tag_line = tag_line.child(
-                Button::new(("reference-tags-overflow", index))
-                    .ghost()
-                    .small()
-                    .label(format!("+{}", record.tags.len() - 2))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        cx.stop_propagation();
-                        if this.generation == generation && this.current_results_valid(cx) {
-                            this.selected = Some(index);
-                            this.open_tags(window, cx);
-                        }
-                    })),
-            );
+            let count = format!("+{}", record.tags.len() - 2);
+            tag_line = if self.helper {
+                tag_line.child(div().text_size(px(10.)).child(count))
+            } else {
+                tag_line.child(
+                    Button::new(("reference-tags-overflow", index))
+                        .ghost()
+                        .small()
+                        .label(count)
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            cx.stop_propagation();
+                            if this.generation == generation && this.current_results_valid(cx) {
+                                this.selected = Some(index);
+                                this.open_tags(window, cx);
+                            }
+                        })),
+                )
+            };
         }
         let row = div()
             .id(("reference", index))
@@ -2048,22 +2071,25 @@ impl Workbench {
                     .when(!record.tags.is_empty(), |column| column.child(tag_line)),
             );
         let tag_label = self.text("标签", cx);
+        let helper = self.helper;
         row.context_menu(move |menu, _, _| {
             let key_owner = owner.clone();
             let source_owner = owner.clone();
             let key = menu_key.clone();
             let source = menu_source.clone();
             let tag_owner = owner.clone();
-            menu.item(
-                PopupMenuItem::new(tag_label.clone()).on_click(move |_, window, cx| {
-                    let _ = tag_owner.update(cx, |this, cx| {
-                        if this.generation == generation && this.current_results_valid(cx) {
-                            this.selected = Some(index);
-                            this.open_tags(window, cx);
-                        }
-                    });
-                }),
-            )
+            menu.when(!helper, |menu| {
+                menu.item(
+                    PopupMenuItem::new(tag_label.clone()).on_click(move |_, window, cx| {
+                        let _ = tag_owner.update(cx, |this, cx| {
+                            if this.generation == generation && this.current_results_valid(cx) {
+                                this.selected = Some(index);
+                                this.open_tags(window, cx);
+                            }
+                        });
+                    }),
+                )
+            })
             .item(
                 PopupMenuItem::new(copy_label.clone()).on_click(move |_, _, cx| {
                     let _ = key_owner.update(cx, |this, cx| {

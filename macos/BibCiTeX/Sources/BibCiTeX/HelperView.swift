@@ -9,7 +9,6 @@ struct HelperView: View {
     var onHidePanel: () -> Void = {}
     @FocusState private var searchFocused: Bool
 
-    @State private var taggingReference: TagAssignmentTarget?
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -346,17 +345,13 @@ struct HelperView: View {
             Spacer(minLength: 6)
             VStack(alignment: .trailing, spacing: 6) {
                 citeKeyLabel(reference)
-                TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
+                TagChips(tags: reference.tags)
             }
-            .modifier(TagAssignmentPopover(reference: reference, target: $taggingReference))
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: HelperMetrics.referenceRow, alignment: .top)
         .background(selection(selected))
-        .contextMenu {
-            Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) }
-        }
     }
 
     /// The same key in the same place, shown but not clickable: on the paste

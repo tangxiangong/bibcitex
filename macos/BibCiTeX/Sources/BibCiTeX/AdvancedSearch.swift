@@ -281,9 +281,14 @@ struct TagChips: View {
                     else { chip(tag) }
                 }
                 if tags.count > 2 {
-                    Menu("+\(tags.count - 2)") {
-                        ForEach(tags, id: \.id) { tag in Button(tag.name) { edit?() } }
-                    }.menuStyle(.borderlessButton).fixedSize()
+                    if let edit {
+                        Menu("+\(tags.count - 2)") {
+                            ForEach(tags, id: \.id) { tag in Button(tag.name, action: edit) }
+                        }.menuStyle(.borderlessButton).fixedSize()
+                    } else {
+                        Text("+\(tags.count - 2)").fixedSize()
+                            .help(tags.map(\.name).joined(separator: ", "))
+                    }
                 }
             }.font(.system(size: 10)).frame(maxWidth: 160, alignment: .trailing)
         }

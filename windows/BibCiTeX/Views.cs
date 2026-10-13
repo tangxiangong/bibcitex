@@ -430,7 +430,7 @@ internal static class Views
         if (!citeKeyCopies) { ((TextBlock)key).ClearValue(TextBlock.ForegroundProperty); ThemeForeground(key, "SystemControlForegroundAccentBrush"); }
         var accessory = new StackPanel { Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right, MaxWidth = 160 };
         accessory.Children.Add(key);
-        if (reference.Data.tags.Count > 0) accessory.Children.Add(TagManager.Chips(reference));
+        if (reference.Data.tags.Count > 0) accessory.Children.Add(TagManager.Chips(reference, editable: citeKeyCopies));
         Grid.SetColumn(accessory, citeKeyCopies ? 1 : 2); row.Children.Add(accessory);
 
         var item = new ListViewItem { Content = row, Tag = reference, HorizontalContentAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(RowRadius) };
@@ -446,10 +446,13 @@ internal static class Views
             }
             item.ContextFlyout = menu;
         }
-        var tagMenu = item.ContextFlyout as MenuFlyout ?? new MenuFlyout();
-        var tags = new MenuFlyoutItem { Text = L10n.Text("标签") };
-        tags.Click += async (_, _) => { try { await TagManager.Show(item.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, item); } catch (Exception ex) { await Error(item, ex); } };
-        tagMenu.Items.Add(tags); item.ContextFlyout = tagMenu;
+        if (citeKeyCopies)
+        {
+            var tagMenu = item.ContextFlyout as MenuFlyout ?? new MenuFlyout();
+            var tags = new MenuFlyoutItem { Text = L10n.Text("标签") };
+            tags.Click += async (_, _) => { try { await TagManager.Show(item.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, item); } catch (Exception ex) { await Error(item, ex); } };
+            tagMenu.Items.Add(tags); item.ContextFlyout = tagMenu;
+        }
         Localized.BindValue(item, AutomationProperties.NameProperty, () => reference.Title + " " + reference.Authors); return item;
     }
     /// <summary>

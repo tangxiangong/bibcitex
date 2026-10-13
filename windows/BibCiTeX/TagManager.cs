@@ -21,26 +21,46 @@ internal static class TagManager
     private static readonly string[] Palette = ["#64748B", "#EF4444", "#F59E0B", "#22C55E", "#14B8A6", "#3B82F6", "#8B5CF6", "#EC4899"];
     internal static Color Color(string value) => Windows.UI.Color.FromArgb(255, Convert.ToByte(value.Substring(1, 2), 16), Convert.ToByte(value.Substring(3, 2), 16), Convert.ToByte(value.Substring(5, 2), 16));
 
-    internal static FrameworkElement Chips(Reference reference)
+    internal static FrameworkElement Chips(Reference reference, bool editable = true)
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         foreach (var tag in reference.Data.tags.Take(2))
         {
-            var button = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
-                Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 } };
             var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
             content.Children.Add(new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color(tag.color)), VerticalAlignment = VerticalAlignment.Center });
             content.Children.Add(new TextBlock { Text = tag.name, FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 40 });
-            button.Content = content; ToolTipService.SetToolTip(button, tag.name); AutomationProperties.SetName(button, tag.name);
-            button.Click += async (_, _) => { try { await Show(button.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, button); } catch (Exception ex) { await Views.Error(button, ex); } };
-            row.Children.Add(button);
+            FrameworkElement chip;
+            if (editable)
+            {
+                var button = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
+                    Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 }, Content = content };
+                button.Click += async (_, _) => { try { await Show(button.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, button); } catch (Exception ex) { await Views.Error(button, ex); } };
+                chip = button;
+            }
+            else
+            {
+                chip = new Border { Height = 20, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
+                    Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 }, Child = content };
+            }
+            ToolTipService.SetToolTip(chip, tag.name); AutomationProperties.SetName(chip, tag.name);
+            row.Children.Add(chip);
         }
         if (reference.Data.tags.Count > 2)
         {
-            var overflow = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Content = "+" + (reference.Data.tags.Count - 2), FontSize = 10, Padding = new Thickness(4, 2, 4, 2) };
+            var count = "+" + (reference.Data.tags.Count - 2);
+            FrameworkElement overflow;
+            if (editable)
+            {
+                var button = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Content = count, FontSize = 10, Padding = new Thickness(4, 2, 4, 2) };
+                button.Click += async (_, _) => { try { await Show(button.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, button); } catch (Exception ex) { await Views.Error(button, ex); } };
+                overflow = button;
+            }
+            else
+            {
+                overflow = new Border { Height = 20, Padding = new Thickness(4, 2, 4, 2), Child = new TextBlock { Text = count, FontSize = 10 } };
+            }
             ToolTipService.SetToolTip(overflow, string.Join(", ", reference.Data.tags.Select(t => t.name)));
             Localized.Name(overflow, "标签");
-            overflow.Click += async (_, _) => { try { await Show(overflow.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, overflow); } catch (Exception ex) { await Views.Error(overflow, ex); } };
             row.Children.Add(overflow);
         }
         return row;
