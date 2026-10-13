@@ -29,7 +29,6 @@ struct HelperView: View {
         .clipShape(RoundedRectangle(cornerRadius: HelperMetrics.panelRadius, style: .continuous))
         .ignoresSafeArea()
         .scrollIndicators(.never)
-        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .sheet(isPresented: $model.showTagManager) { TagManagerView(path: "", citeKey: "") }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in model.tagsChanged() }
         .onAppear { searchFocused = true }
@@ -349,6 +348,7 @@ struct HelperView: View {
                 citeKeyLabel(reference)
                 TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
             }
+            .modifier(TagAssignmentPopover(reference: reference, target: $taggingReference))
         }
         .padding(.horizontal, 10).padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)

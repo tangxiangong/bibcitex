@@ -147,7 +147,6 @@ struct TrayWorkbenchView: View {
         .onChange(of: model.libraryName) { _ in batchSelection.ids.removeAll() }
         .onChange(of: model.advancedSearchEnabled) { _ in batchSelection.ids.removeAll() }
         .onReceive(model.$references) { _ in batchSelection.ids.removeAll() }
-        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .onChange(of: model.detailVisible) { visible in
             if visible { detailCloseFocused = true } else { detailToggleFocused = true }
@@ -204,6 +203,7 @@ struct TrayWorkbenchView: View {
                             citeKeyButton(reference.citeKey).frame(maxWidth: 160, alignment: .trailing)
                             TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
                         }
+                        .modifier(TagAssignmentPopover(reference: reference, target: $taggingReference))
                     }.padding(.vertical, 7).tag(reference.id).id(reference.id)
                     .contextMenu { Button(L10n.text("标签")) { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) } }
                     .foregroundStyle(Color(nsColor: .labelColor))
@@ -247,8 +247,9 @@ struct TrayWorkbenchView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         DetailTagChips(tags: reference.tags) {
-                            taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
+                            TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
                         }
+                        .id(reference.id)
                         metadata(L10n.text("引用键"), reference.citeKey) {
                             copyButton(reference.citeKey, icon: "copy", label: L10n.text("引用"), citation: true)
                         }

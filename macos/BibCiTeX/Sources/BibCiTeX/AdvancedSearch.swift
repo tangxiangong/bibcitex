@@ -243,6 +243,25 @@ struct TagAssignmentTarget: Identifiable {
     var id: String { recordUID }
 }
 
+/// Each result keeps its presentation attached to its own tag area.
+struct TagAssignmentPopover: ViewModifier {
+    let reference: Reference
+    @Binding var target: TagAssignmentTarget?
+
+    private var matchesTarget: Bool {
+        target?.libraryUID == reference.libraryUID && target?.recordUID == reference.id
+    }
+
+    func body(content: Content) -> some View {
+        content.popover(item: Binding(
+            get: { matchesTarget ? target : nil },
+            set: { value in if matchesTarget { target = value } }
+        ), attachmentAnchor: .rect(.bounds), arrowEdge: .top) { reference in
+            TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID)
+        }
+    }
+}
+
 extension TagRecord {
     var displayColor: Color {
         let value = UInt32(color.dropFirst(), radix: 16) ?? 0x64748B
@@ -282,7 +301,8 @@ struct TagChips: View {
 /// The detail pane shows every assigned tag and keeps assignment one click away.
 struct DetailTagChips: View {
     let tags: [TagRecord]
-    let edit: () -> Void
+    let edit: () -> TagAssignmentTarget?
+    @State private var taggingReference: TagAssignmentTarget?
 
     var body: some View {
         DetailTagLayout {
@@ -295,8 +315,11 @@ struct DetailTagChips: View {
                 .modifier(DetailTagAppearance(background: tag.displayColor.opacity(0.14)))
                 .help(tag.name).accessibilityLabel(tag.name)
             }
-            Button(action: edit) { NativeIcon("add", size: 12) }
+            Button { taggingReference = edit() } label: { NativeIcon("add", size: 12) }
                 .help(L10n.text("添加")).accessibilityLabel(L10n.text("添加"))
+                .popover(item: $taggingReference, attachmentAnchor: .rect(.bounds), arrowEdge: .top) { reference in
+                    TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID)
+                }
         }
         .buttonStyle(DetailTagButtonStyle())
         .frame(maxWidth: .infinity, alignment: .leading)

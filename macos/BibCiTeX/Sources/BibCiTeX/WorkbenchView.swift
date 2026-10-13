@@ -76,7 +76,6 @@ struct WorkbenchView: View {
         .onChange(of: model.selectedLibrary) { _ in batchSelection.ids.removeAll() }
         .onChange(of: model.advancedSearchEnabled) { _ in batchSelection.ids.removeAll() }
         .onReceive(model.$references) { _ in batchSelection.ids.removeAll() }
-        .popover(item: $taggingReference) { reference in TagManagerView(citeKey: reference.citeKey, libraryUID: reference.libraryUID, recordUID: reference.recordUID) }
         .onReceive(NotificationCenter.default.publisher(for: .searchTagsChanged)) { _ in Task { await model.reload() } }
         .sheet(isPresented: $model.adding) { AddLibrarySheet(model: model) }
         .sheet(item: $editingLibrary) { library in AddLibrarySheet(model: model, library: library) }
@@ -226,6 +225,7 @@ struct WorkbenchView: View {
                                     ListCiteKey(reference: reference, model: model)
                                     TagChips(tags: reference.tags, edit: { taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey) })
                                 }
+                                .modifier(TagAssignmentPopover(reference: reference, target: $taggingReference))
                             }.padding(.vertical, 8).tag(reference.id).id(reference.id)
                             .foregroundStyle(Color(nsColor: .labelColor))
                             .listRowBackground(RowSelectionBackground(selected: batchSelection.ids.contains(reference.id),
@@ -263,8 +263,8 @@ struct WorkbenchView: View {
                 let selectionContext = model.referenceSelectionContext
                 ReferenceInspector(reference: reference, context: selectionContext, model: model) {
                     guard !libraryPath.isEmpty, selectionContext == model.referenceSelectionContext,
-                          model.selectedReference == reference.id else { return }
-                    taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
+                          model.selectedReference == reference.id else { return nil }
+                    return TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
                 }
             } else {
                 Text(L10n.text("选择一条文献查看字段和操作")).foregroundStyle(.secondary).padding().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -352,11 +352,12 @@ struct ReferenceInspector: View {
     let reference: Reference
     let context: WorkbenchModel.ReferenceSelectionContext
     @ObservedObject var model: WorkbenchModel
-    let editTags: () -> Void
+    let editTags: () -> TagAssignmentTarget?
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 DetailTagChips(tags: reference.tags, edit: editTags)
+                    .id(reference.id)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
