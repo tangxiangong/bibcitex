@@ -90,6 +90,14 @@ shared bibliography registry. Invalid preference files are reported, not replace
 
 ## Desktop integration requirements
 
+`xpaste::linux::Paste` owns the cross-application backend: target tracking,
+identity validation, focus restoration, XTest input, and Wayland RemoteDesktop
+authorization/session cleanup. The Linux client owns global helper shortcuts,
+tray integration, and GPUI's long-lived clipboard provider. It prepares input
+access before closing the helper, then calls the backend after focus restoration.
+X11 capture refreshes the foreground target before freezing the helper session;
+each paste validates the same window/PID snapshot throughout its operation.
+
 X11 registers the global shortcut through XGrabKey. It captures the previous
 external window and process, requests focus, checks the target again, waits for
 modifier release, then injects Ctrl+V through XTest. A shortcut conflict is reported

@@ -60,6 +60,16 @@ syntax itself: the hosts first call the shared `formatCitation(keys, format, mod
 operation (`format_citation(CitationRequest)` in C#) and pass its exact output to
 copy/paste. Formatting is pure and does not access the clipboard.
 
+The Linux host uses `xpaste::linux::Paste` for its asynchronous two-phase paste:
+capture the external target before opening the helper, prepare keyboard access
+before hiding it, then inject after closing the helper. `xpaste` owns X11 foreground
+tracking, window/PID validation, focus restoration and XTest injection, as well as
+Wayland RemoteDesktop registration, authorization and session cleanup. GPUI keeps
+clipboard ownership for the application lifetime and handles its clipboard snapshot
+and restoration; tray menus and global helper shortcuts belong to the Linux host.
+The existing X11 and Wayland implementations are maintained in `xpaste`, independently
+of EcoPaste's discontinued Linux implementation.
+
 All three surfaces read the same platform-local `citationFormat` and `citationMode`
 preferences for each operation. The settings picker first selects `key`, `LaTeX`,
 or `Typst`; only the latter two show a second picker containing their commands.

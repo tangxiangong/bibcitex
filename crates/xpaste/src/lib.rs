@@ -10,6 +10,9 @@
 
 use std::sync::Mutex;
 
+#[cfg(target_os = "linux")]
+pub mod linux;
+
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]
@@ -24,7 +27,7 @@ use macos as platform;
 use windows as platform;
 
 /// Shared validation used immediately before focus/key injection.
-#[cfg(any(target_os = "macos", target_os = "windows", test))]
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux", test))]
 fn validate_target_process(expected: u32, actual: u32) -> Result<(), String> {
     if expected == 0 || expected == std::process::id() || actual != expected {
         Err("Previous application is no longer a valid paste target".into())

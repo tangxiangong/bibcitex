@@ -748,6 +748,7 @@ dependencies = [
  "wayland-client",
  "wayland-protocols",
  "x11rb 0.14.0",
+ "xpaste",
 ]
 
 [[package]]
@@ -9236,12 +9237,16 @@ name = "xpaste"
 version = "0.8.1"
 dependencies = [
  "arboard",
+ "ashpd",
+ "async-channel",
  "dispatch2",
  "enigo",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
  "objc2-foundation 0.3.2",
+ "smol",
  "windows 0.62.2",
+ "x11rb 0.14.0",
 ]
 
 [[package]]

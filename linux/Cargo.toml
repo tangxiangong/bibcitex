@@ -16,6 +16,7 @@ wayland-backend.workspace = true
 wayland-client.workspace = true
 wayland-protocols.workspace = true
 x11rb.workspace = true
+xpaste.workspace = true
 
 [dependencies]
 async-channel.workspace = true
