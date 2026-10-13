@@ -356,7 +356,7 @@ struct ReferenceInspector: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Button(L10n.text("标签"), action: editTags)
+                DetailTagChips(tags: reference.tags, edit: editTags)
                 ForEach(metadata, id: \.0) { item in
                     if !item.1.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {

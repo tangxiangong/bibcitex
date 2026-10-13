@@ -72,6 +72,7 @@ final class WorkbenchModel: ObservableObject {
     private var registryGeneration = 0
     private var referencesRevision = 0
     private var referencesLibraryPath: String?
+    private var pendingReferenceSelection: String?
 
     init(service: any WorkbenchServing, preferences: UserDefaults = .standard) {
         self.service = service
@@ -200,6 +201,8 @@ final class WorkbenchModel: ObservableObject {
         }
     }
     private func commit(_ request: Request, version: Int) {
+        let previousSelection = selectedLibrary == request.library ? selectedReference ?? pendingReferenceSelection : nil
+        pendingReferenceSelection = previousSelection
         queryAnalysis = nil; matchEvidence = [:]
         references = []
         selectedReference = nil
@@ -215,6 +218,7 @@ final class WorkbenchModel: ObservableObject {
         if field != request.field { field = request.field }
         if type != request.type { type = request.type }
         guard let library, library.available else {
+            pendingReferenceSelection = nil
             searchTask?.cancel()
             if !references.isEmpty { references = []; referencesRevision += 1 }
             referencesLibraryPath = nil
@@ -241,11 +245,13 @@ final class WorkbenchModel: ObservableObject {
                 referencesLibraryPath = response.analysis.status == .valid ? library.path : nil
                 referencesRevision += 1
                 references = found
-                if !found.contains(where: { $0.id == self.selectedReference }) { selectedReference = found.first?.id }
+                selectedReference = found.first(where: { $0.id == previousSelection })?.id ?? found.first?.id
+                pendingReferenceSelection = nil
                 if loading { loading = false }
                 if error != nil { error = nil }
             } catch {
                 guard !Task.isCancelled, generation == version else { return }
+                pendingReferenceSelection = nil
                 referencesLibraryPath = nil
                 referencesRevision += 1
                 if loading { loading = false }

@@ -48,6 +48,7 @@ internal sealed class MainWindow : Window
     private Library? current;
     private int searchVersion;
     private int resultsVersion;
+    private string? pendingReferenceSelection;
     private bool searchComposing;
     private GlobalShortcut? shortcut;
     private TrayIcon? tray;
@@ -201,7 +202,7 @@ internal sealed class MainWindow : Window
         LayoutPanes();
     }
 
-    private void TagsChanged() { searchSession.Invalidate(); searchVersion++; if (TagManager.IsEditing(root.XamlRoot)) return; references.Items.Clear(); ShowDetail(null); _ = ReloadLibraries(); }
+    private void TagsChanged() { searchSession.Invalidate(); searchVersion++; if (TagManager.IsEditing(root.XamlRoot)) return; _ = ReloadLibraries(); }
 
     private static void SetPaneBackground(Grid pane, string resource) =>
         pane.Style = (Style)Application.Current.Resources[resource];
@@ -381,8 +382,10 @@ internal sealed class MainWindow : Window
         if (searchSession.Restoring) return;
         searchSession.Invalidate();
         var version = ++searchVersion; var library = current;
+        var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id ?? pendingReferenceSelection;
+        pendingReferenceSelection = selected;
         resultsVersion = -1; references.Items.Clear(); ShowDetail(null);
-        if (library is not { Available: true }) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
+        if (library is not { Available: true }) { pendingReferenceSelection = null; references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); emptyState.Visibility = Visibility.Visible; SetBusy(false); return; }
         var query = search.Text; var searchField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all"; var searchType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         SetBusy(true);
         try
@@ -395,14 +398,14 @@ internal sealed class MainWindow : Window
             searchSession.Publish(response); searchSession.SyncProjection(search);
             queryDiagnostic.Text = SearchSession.Diagnostic(response.analysis);
             queryDiagnostic.Visibility = queryDiagnostic.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-            var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
+            resultsVersion = version;
             references.Items.Clear();
             foreach (var reference in rows) { var item = Views.ReferenceItem(reference, citeKeyCopies: true, copy: Copy, cite: CopyKey); references.Items.Add(item); if (reference.Id == selected) references.SelectedItem = item; }
-            resultsVersion = version;
             if (references.SelectionMode == ListViewSelectionMode.Single && references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
+            pendingReferenceSelection = null;
             Localized.Count(count, rows.Count); emptyState.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
-        catch (Exception error) { if (version == searchVersion) { references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); await Report(error); } }
+        catch (Exception error) { if (version == searchVersion) { pendingReferenceSelection = null; references.Items.Clear(); ShowDetail(null); Localized.Count(count, 0); await Report(error); } }
         finally { if (version == searchVersion) SetBusy(false); }
     }
     private void BeginLibraryRename(Library library, Grid row, UIElement content, Button more)
@@ -573,9 +576,7 @@ internal sealed class MainWindow : Window
         detail.Children.Clear(); detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
         detailHeading.Child = reference is null ? Views.LocalizedText("文献详情", 16) : new ChunkText(reference.Chunks("title"), 18, reference.Title, fallbackKey: "暂无标题", highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
-        var tags = new Button { Content = L10n.Text("标签") };
-        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, tags); } catch (Exception ex) { await Report(ex); } };
-        detail.Children.Add(tags);
+        detail.Children.Add(TagManager.DetailChips(reference));
         var libraryPath = current?.Path;
         foreach (var (key, label) in Metadata)
         {

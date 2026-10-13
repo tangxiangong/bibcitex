@@ -46,6 +46,69 @@ internal static class TagManager
         return row;
     }
 
+    internal static FrameworkElement DetailChips(Reference reference)
+    {
+        var panel = new DetailTagPanel();
+        foreach (var tag in reference.Data.tags)
+        {
+            var capsule = new Border { Height = 26, Padding = new Thickness(8, 0, 8, 0), CornerRadius = new CornerRadius(13),
+                Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 } };
+            var content = new Grid { ColumnSpacing = 5 };
+            content.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+            content.ColumnDefinitions.Add(new() { Width = new GridLength(1, GridUnitType.Star) });
+            content.Children.Add(new Border { Width = 6, Height = 6, CornerRadius = new CornerRadius(3), Background = new SolidColorBrush(Color(tag.color)), VerticalAlignment = VerticalAlignment.Center });
+            var label = new TextBlock { Text = tag.name, FontSize = 12, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(label, 1); content.Children.Add(label);
+            capsule.Child = content; ToolTipService.SetToolTip(capsule, tag.name);
+            panel.Children.Add(capsule);
+        }
+        var add = new Button { Content = new SvgIcon("add", 12), Height = 26, MinHeight = 0, MinWidth = 0, Padding = new Thickness(8, 0, 8, 0), CornerRadius = new CornerRadius(13), BorderThickness = new Thickness(0) };
+        Localized.Name(add, "添加"); Localized.Tooltip(add, "添加");
+        add.Click += async (_, _) =>
+        {
+            try { await Show(add.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, add); }
+            catch (Exception ex) { await Views.Error(add, ex); }
+        };
+        panel.Children.Add(add);
+        return panel;
+    }
+
+    private sealed class DetailTagPanel : Panel
+    {
+        private const double Spacing = 6;
+
+        protected override Windows.Foundation.Size MeasureOverride(Windows.Foundation.Size availableSize)
+        {
+            foreach (var child in Children)
+            {
+                child.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+                if (child.DesiredSize.Width > availableSize.Width)
+                    child.Measure(new Windows.Foundation.Size(availableSize.Width, double.PositiveInfinity));
+            }
+            return Layout(availableSize.Width, arrange: false);
+        }
+
+        protected override Windows.Foundation.Size ArrangeOverride(Windows.Foundation.Size finalSize)
+        {
+            Layout(finalSize.Width, arrange: true);
+            return finalSize;
+        }
+
+        private Windows.Foundation.Size Layout(double width, bool arrange)
+        {
+            double x = 0, y = 0, rowHeight = 0, contentWidth = 0;
+            foreach (var child in Children)
+            {
+                var size = child.DesiredSize;
+                if (x > 0 && x + size.Width > width) { x = 0; y += rowHeight + Spacing; rowHeight = 0; }
+                if (arrange) child.Arrange(new Windows.Foundation.Rect(x, y, Math.Min(size.Width, width), size.Height));
+                contentWidth = Math.Max(contentWidth, x + size.Width);
+                x += size.Width + Spacing; rowHeight = Math.Max(rowHeight, size.Height);
+            }
+            return new Windows.Foundation.Size(double.IsFinite(width) ? width : contentWidth, y + rowHeight);
+        }
+    }
+
     internal static Button BatchControls(ListView references, out Func<bool> endSelection, Action? opening = null, Action? closed = null, bool nativeMultiple = false, Func<IReadOnlyList<Reference>, Task<bool>>? cite = null)
     {
         var button = new Button
@@ -188,6 +251,7 @@ internal static class TagManager
     {
         var request = new TagSnapshotRequest { library_uid = libraryUid, record_uid = recordUid, path = "", cite_key = "" };
         var state = await RustCore.TagSnapshot(request);
+        if (anchor is not null && anchor.XamlRoot is null) return;
         var assignment = recordUid.Length > 0;
         var panel = new StackPanel { Spacing = 8, Width = assignment ? 330 : 430 };
         var controls = new ContentControl { Content = panel, HorizontalContentAlignment = HorizontalAlignment.Stretch };

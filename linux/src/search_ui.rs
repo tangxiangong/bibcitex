@@ -961,6 +961,9 @@ impl Workbench {
             }
         }
         // A tag revision invalidates every result, including pure negative tag queries.
+        if let Some(record) = self.selected.and_then(|i| self.references.get(i)) {
+            self.pending_reference_id = Some(record.id.clone());
+        }
         self.preferences.update(cx, |_, cx| cx.notify());
         self.generation += 1;
         self.result_context = None;

@@ -41,6 +41,7 @@ final class TrayWorkbenchModel: ObservableObject {
     private var loadedVersion = -1
     private var reloadVersion = 0
     private var session = 0
+    private var pendingReferenceSelection: String?
 
     init(service: any WorkbenchServing, preferences: UserDefaults = .standard) {
         self.service = service
@@ -104,6 +105,8 @@ final class TrayWorkbenchModel: ObservableObject {
     func refreshSearch() { search() }
     private func search() {
         guard !restoringDraft else { return }
+        let previousSelection = selection ?? pendingReferenceSelection
+        pendingReferenceSelection = previousSelection
         queryAnalysis = nil; matchEvidence = [:]
         references = []; selection = nil; loadedVersion = -1; searchContext = nil
         loading = true
@@ -118,6 +121,7 @@ final class TrayWorkbenchModel: ObservableObject {
             loading = true
             error = nil
             guard let library, library.available else {
+                pendingReferenceSelection = nil
                 references = []; selection = nil; loading = false
                 return
             }
@@ -135,10 +139,12 @@ final class TrayWorkbenchModel: ObservableObject {
                 queryAnalysis = response.analysis; searchContext = response.context
                 references = rows
                 loadedVersion = version
-                if !rows.contains(where: { $0.id == self.selection }) { selection = rows.first?.id }
+                selection = rows.first(where: { $0.id == previousSelection })?.id ?? rows.first?.id
+                pendingReferenceSelection = nil
                 loading = false
             } catch {
                 guard !Task.isCancelled, version == searchVersion else { return }
+                pendingReferenceSelection = nil
                 references = []; selection = nil; loading = false
                 self.errorDetails = LocalizedMessage(error: error)
             }

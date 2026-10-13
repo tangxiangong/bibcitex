@@ -31,6 +31,7 @@ internal sealed class TrayWindow : Window
     private readonly Border detailTitle = new() { VerticalAlignment = VerticalAlignment.Center, Child = Views.LocalizedText("文献详情", 14) };
     private readonly ProgressRing progress = new() { Width = 16, Height = 16, IsActive = false, Visibility = Visibility.Collapsed };
     private int version, reloadVersion, session, loadedVersion = -1;
+    private string? pendingReferenceSelection;
     private bool visible, disposed, composing, updating, loading;
 
     internal TrayWindow(Action showMain)
@@ -256,23 +257,24 @@ internal sealed class TrayWindow : Window
         catch (Exception ex) { if (visible && request == reloadVersion) { ClearResults(); ShowError(ex); SetBusy(false); } }
         finally { updating = false; }
     }
-    private void TagsChanged() { searchSession.Invalidate(); version++; if (TagManager.IsEditing(root.XamlRoot)) return; references.Items.Clear(); ShowDetail(null); if (visible) _ = Reload(); }
+    private void TagsChanged() { searchSession.Invalidate(); version++; if (TagManager.IsEditing(root.XamlRoot)) return; if (visible) _ = Reload(); }
 
     private async Task Search(bool debounce = false)
     {
         if (!visible || updating || searchSession.Restoring) return;
         searchSession.Invalidate();
         var request = ++version;
+        var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id ?? pendingReferenceSelection;
+        pendingReferenceSelection = selected;
         loadedVersion = -1; references.Items.Clear();
-        var selected = ((references.SelectedItem as ListViewItem)?.Tag as Reference)?.Id;
         var current = library.SelectedItem as Library;
         var query = search.Text;
         var selectedField = (field.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         var selectedType = (type.SelectedItem as ComboBoxItem)?.Tag as string ?? "all";
         SetBusy(true); ShowDetail(null); SetError(null);
-        if (current is null) { ClearResults(); SetBusy(false); return; }
+        if (current is null) { pendingReferenceSelection = null; ClearResults(); SetBusy(false); return; }
         NativeSettings.Values["trayLibrary"] = current.Name;
-        if (!current.Available) { ClearResults(); SetBusy(false); return; }
+        if (!current.Available) { pendingReferenceSelection = null; ClearResults(); SetBusy(false); return; }
         try
         {
             if (debounce) await Task.Delay(100);
@@ -289,9 +291,10 @@ internal sealed class TrayWindow : Window
                 if (reference.Id == selected) references.SelectedItem = item;
             }
             if (references.SelectionMode == ListViewSelectionMode.Single && references.SelectedItem is null && rows.Count > 0) references.SelectedIndex = 0;
+            pendingReferenceSelection = null;
             Localized.Count(count, rows.Count); empty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
-        catch (Exception ex) { if (visible && request == version) { ClearResults(); ShowError(ex); } }
+        catch (Exception ex) { if (visible && request == version) { pendingReferenceSelection = null; ClearResults(); ShowError(ex); } }
         finally { if (request == version) SetBusy(false); }
     }
     private ListViewItem ReferenceRow(Reference reference)
@@ -340,9 +343,7 @@ internal sealed class TrayWindow : Window
         detailEmpty.Visibility = reference is null ? Visibility.Visible : Visibility.Collapsed;
         detailTitle.Child = reference is null ? Views.LocalizedText("文献详情", 14) : new ChunkText(reference.Chunks("title"), 14, reference.Title, true, "暂无标题", maxLines: 2, highlights: SearchHighlights.Ranges(reference, "title", reference.Title));
         if (reference is null) return;
-        var tags = new Button { Content = L10n.Text("标签") };
-        tags.Click += async (_, _) => { try { await TagManager.Show(root.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, tags); } catch (Exception ex) { ShowError(ex); } };
-        detail.Children.Add(tags);
+        detail.Children.Add(TagManager.DetailChips(reference));
         foreach (var (label, value) in new[] { ("引用键", reference.Key), ("作者", reference.Authors), ("类型", reference.TypeLabel), ("年份", reference.Text("year")), ("期刊", reference.Venue), ("DOI", reference.Text("doi")), ("URL", reference.Text("url")) })
         {
             if (value.Length == 0) continue;

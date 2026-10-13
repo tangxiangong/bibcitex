@@ -137,6 +137,7 @@ pub struct Workbench {
     selected_library: Option<String>,
     references: Vec<ReferenceRecord>,
     selected: Option<usize>,
+    pending_reference_id: Option<String>,
     field: usize,
     kind: usize,
     loading: bool,
@@ -453,6 +454,7 @@ impl Workbench {
             selected_library,
             references: vec![],
             selected: None,
+            pending_reference_id: None,
             field: 0,
             kind: 0,
             loading: false,
@@ -674,7 +676,9 @@ impl Workbench {
         let selected_id = self
             .selected
             .and_then(|i| self.references.get(i))
-            .map(|r| r.id.clone());
+            .map(|r| r.id.clone())
+            .or_else(|| self.pending_reference_id.clone());
+        self.pending_reference_id = selected_id.clone();
         self.result_context = None;
         self.query_notice = None;
         self.query_diagnostics.clear();
@@ -700,6 +704,7 @@ impl Workbench {
             return;
         }
         let Some(path) = path else {
+            self.pending_reference_id = None;
             cx.notify();
             return;
         };
@@ -858,11 +863,15 @@ impl Workbench {
                             .as_ref()
                             .and_then(|id| this.references.iter().position(|r| &r.id == id))
                             .or_else(|| (!this.references.is_empty()).then_some(0));
+                        this.pending_reference_id = None;
                         this.error = None;
                         this.scroll
                             .scroll_to_item(this.selected.unwrap_or(0), ScrollStrategy::Top);
                     }
-                    Err(error) => this.error = Some(error.to_string()),
+                    Err(error) => {
+                        this.pending_reference_id = None;
+                        this.error = Some(error.to_string());
+                    }
                 }
                 cx.notify();
             });
@@ -877,6 +886,7 @@ impl Workbench {
         if self.selected_library.as_ref() != Some(&name) {
             self.references.clear();
             self.selected = None;
+            self.pending_reference_id = None;
         }
         self.selected_library = Some(name.clone());
         if self.helper {
@@ -2467,6 +2477,60 @@ impl Workbench {
             .into_any_element()
     }
 
+    fn detail_tags(&self, record: &ReferenceRecord, cx: &mut Context<Self>) -> impl IntoElement {
+        let generation = self.generation;
+        let selected = self.selected;
+        let mut tags = div().flex().flex_wrap().items_center().gap(px(6.));
+        for tag in &record.tags {
+            let color =
+                u32::from_str_radix(tag.color.trim_start_matches('#'), 16).unwrap_or(0x64748B);
+            tags = tags.child(
+                div()
+                    .id(SharedString::from(format!("detail-tag-{}", tag.id)))
+                    .h(px(26.))
+                    .px(px(8.))
+                    .flex()
+                    .items_center()
+                    .gap(px(5.))
+                    .rounded_full()
+                    .text_size(px(12.))
+                    .bg(gpui::rgb(color).opacity(0.14))
+                    .max_w_full()
+                    .overflow_hidden()
+                    .tooltip({
+                        let name = tag.name.clone();
+                        move |window, cx| Tooltip::new(name.clone()).build(window, cx)
+                    })
+                    .child(
+                        div()
+                            .size(px(6.))
+                            .flex_shrink_0()
+                            .rounded_full()
+                            .bg(gpui::rgb(color)),
+                    )
+                    .child(div().min_w_0().truncate().child(tag.name.clone())),
+            );
+        }
+        tags.child(
+            Button::new("detail-add-tag")
+                .ghost()
+                .small()
+                .h(px(26.))
+                .w(px(28.))
+                .px(px(8.))
+                .rounded_full()
+                .bg(cx.theme().muted)
+                .icon(icon("add").size(px(12.)))
+                .accessibility_label(self.text("添加", cx))
+                .tooltip(self.text("添加", cx))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    if this.generation == generation && this.selected == selected {
+                        this.open_tags(window, cx);
+                    }
+                })),
+        )
+    }
+
     fn tray_inspector(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let selected = self.selected.and_then(|i| self.references.get(i));
         let heading = match selected {
@@ -2513,7 +2577,8 @@ impl Workbench {
                 .p(px(14.))
                 .flex()
                 .flex_col()
-                .gap_3();
+                .gap_3()
+                .child(self.detail_tags(record, cx));
             for (i, (label, value)) in crate::metadata::fields(record).into_iter().enumerate() {
                 if value.is_empty()
                     || !matches!(
@@ -2582,6 +2647,7 @@ impl Workbench {
             .gap_4();
         if let Some(record) = self.selected.and_then(|i| self.references.get(i)) {
             let generation = self.generation;
+            body = body.child(self.detail_tags(record, cx));
             let bibliography = self
                 .libraries
                 .iter()

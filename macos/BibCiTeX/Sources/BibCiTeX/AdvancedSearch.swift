@@ -279,6 +279,99 @@ struct TagChips: View {
     }
 }
 
+/// The detail pane shows every assigned tag and keeps assignment one click away.
+struct DetailTagChips: View {
+    let tags: [TagRecord]
+    let edit: () -> Void
+
+    var body: some View {
+        DetailTagLayout {
+            ForEach(tags, id: \.id) { tag in
+                HStack(spacing: 5) {
+                    Circle().fill(tag.displayColor).frame(width: 6, height: 6)
+                        .accessibilityHidden(true)
+                    Text(tag.name).lineLimit(1).truncationMode(.tail)
+                }
+                .modifier(DetailTagAppearance(background: tag.displayColor.opacity(0.14)))
+                .help(tag.name).accessibilityLabel(tag.name)
+            }
+            Button(action: edit) { NativeIcon("add", size: 12) }
+                .help(L10n.text("添加")).accessibilityLabel(L10n.text("添加"))
+        }
+        .buttonStyle(DetailTagButtonStyle())
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct DetailTagButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .modifier(DetailTagAppearance())
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+private struct DetailTagAppearance: ViewModifier {
+    var background = PanelPalette.controlSurface
+
+    func body(content: Content) -> some View {
+        content
+            .font(.caption)
+            .foregroundStyle(Color.primary)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(background, in: Capsule())
+    }
+}
+
+private struct DetailTagLayout: Layout {
+    private let spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrangement(width: proposal.width ?? .infinity, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let layout = arrangement(width: bounds.width, subviews: subviews)
+        for (view, frame) in zip(subviews, layout.frames) {
+            view.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                       anchor: .topLeading, proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func arrangement(width: CGFloat, subviews: Subviews) -> (size: CGSize, frames: [CGRect]) {
+        let limit = max(0, width)
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var contentWidth: CGFloat = 0
+        var rowStart = 0
+        func centerRow() {
+            for index in rowStart..<frames.count {
+                frames[index].origin.y += (rowHeight - frames[index].height) / 2
+            }
+        }
+        for view in subviews {
+            let size = view.sizeThatFits(ProposedViewSize(width: limit.isFinite ? limit : nil, height: nil))
+            if x > 0 && x + size.width > limit {
+                centerRow()
+                rowStart = frames.count
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
+            contentWidth = max(contentWidth, x + size.width)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        centerRow()
+        return (CGSize(width: limit.isFinite ? limit : contentWidth, height: y + rowHeight), frames)
+    }
+}
+
 private struct TagColorEditor: View {
     let tag: TagRecord
     let save: (String) -> Void

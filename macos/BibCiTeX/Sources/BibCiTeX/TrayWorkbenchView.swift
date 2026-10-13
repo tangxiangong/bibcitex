@@ -246,6 +246,9 @@ struct TrayWorkbenchView: View {
             VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
+                        DetailTagChips(tags: reference.tags) {
+                            taggingReference = TagAssignmentTarget(libraryUID: reference.libraryUID, recordUID: reference.id, citeKey: reference.citeKey)
+                        }
                         metadata(L10n.text("引用键"), reference.citeKey) {
                             copyButton(reference.citeKey, icon: "copy", label: L10n.text("引用"), citation: true)
                         }
