@@ -31,8 +31,7 @@ internal sealed class SettingsWindow : Window
 
         var family = CitationPreferences.Family(CitationPreferences.Format);
         var format = Choice("引用格式", [("key", "raw"), ("LaTeX", "latex"), ("Typst", "typst")], family);
-        var command = Choice("引用指令", CitationPreferences.Commands(family), CitationPreferences.Format);
-        command.Width = 220;
+        var command = Choice("引用指令", CitationPreferences.Commands(family), CitationPreferences.Format, CommandItem);
         var commandRow = SettingRow("引用指令", command);
         commandRow.Visibility = family == "raw" ? Visibility.Collapsed : Visibility.Visible;
         var mode = Choice("多选输出方式", [("合并", "merged"), ("逐项", "individual")], CitationPreferences.Mode);
@@ -48,7 +47,7 @@ internal sealed class SettingsWindow : Window
                 command.Items.Clear();
                 foreach (var (label, id) in CitationPreferences.Commands(value))
                 {
-                    var item = Localized.ComboItem(label, id); command.Items.Add(item);
+                    var item = CommandItem(label, id); command.Items.Add(item);
                     if (id == CitationPreferences.Format) command.SelectedItem = item;
                 }
             }
@@ -149,15 +148,44 @@ internal sealed class SettingsWindow : Window
         return row;
     }
 
-    private static ComboBox Choice(string label, (string Label, string Value)[] options, string selected)
+    private static ComboBox Choice(string label, (string Label, string Value)[] options, string selected,
+        Func<string, string, ComboBoxItem>? itemFactory = null)
     {
-        var choice = new ComboBox { Width = 156, HorizontalAlignment = HorizontalAlignment.Right };
+        var choice = new ComboBox { Width = 128, HorizontalAlignment = HorizontalAlignment.Right };
         Localized.Name(choice, label);
         foreach (var (text, value) in options)
         {
-            var item = Localized.ComboItem(text, value); choice.Items.Add(item);
+            var item = itemFactory?.Invoke(text, value) ?? Localized.ComboItem(text, value); choice.Items.Add(item);
             if (value == selected) choice.SelectedItem = item;
         }
         return choice;
+    }
+
+    private static ComboBoxItem CommandItem(string label, string value)
+    {
+        var item = Localized.ComboItem(label, value);
+        var dropdownTemplate = item.ContentTemplate;
+        var command = label.Split(" (", 2)[0];
+        var selectionTemplate = (DataTemplate)Microsoft.UI.Xaml.Markup.XamlReader.Load($"""
+            <DataTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+                <TextBlock Text="{System.Security.SecurityElement.Escape(command)}" />
+            </DataTemplate>
+            """);
+        item.ContentTemplate = null;
+        item.ContentTemplateSelector = new CommandTemplateSelector(dropdownTemplate, selectionTemplate);
+        return item;
+    }
+
+    private sealed class CommandTemplateSelector(DataTemplate dropdownTemplate, DataTemplate selectionTemplate) : DataTemplateSelector
+    {
+        protected override DataTemplate SelectTemplateCore(object item, DependencyObject container)
+        {
+            for (DependencyObject? parent = container; parent is not null; parent = VisualTreeHelper.GetParent(parent))
+            {
+                if (parent is ComboBoxItem) return dropdownTemplate;
+                if (parent is ComboBox) break;
+            }
+            return selectionTemplate;
+        }
     }
 }
