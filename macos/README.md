@@ -14,6 +14,12 @@ Target dependencies, declared script inputs/outputs and a discovered Rust depend
 
 The main window includes library registration/removal, the `.bib` picker, field/type search, metadata and BibTeX inspection, citation copying, and attachment/link opening. Closing it leaves the menu-bar app running. Cmd+Shift+K opens the compact helper; Arrow keys, Return, Tab and Escape preserve IME composition. Rust xpaste captures the foreground target before activating the panel. Native glass uses `NSGlassEffectView` on macOS 26+, and `NSVisualEffectView` on earlier systems.
 
+## Citations, selection and tags
+
+Settings stores one global key / LaTeX / Typst format and merged/individual preference for the main window, tray and Helper. The main/tray Cite action copies a single reference or the selected references in list order; Helper pastes the same formatted text. See the [citation and selection guide](../README.md#citation-and-selection-guide) for commands and output examples.
+
+Command/Shift selection can enter batch mode directly. The floating toolbar provides Cite, Batch tags, Select all, Clear and End; clicking Select multiple again or pressing Escape exits, after editor, popup and IME handling. Detail panes show every assigned tag as a passive colored capsule beside an add button. List tag editors anchor to the tag area in the main, tray and Helper views; detail editors anchor to the add button and close when the selected reference changes. A second menu-bar icon click closes the open tray window. Helper shows the selection count only for two or more references.
+
 ## Command line
 
 The root Justfile invokes the same Xcode project:
@@ -29,6 +35,8 @@ On systems where `linkd` requires a validated bundle, unsigned/ad-hoc apps can l
 ## Helper accessibility authorization
 
 The helper shows a nonactivating panel without activating the main application. Before sending a citation it orders the panel out, preserving the captured target and paste session; a paste failure restores the panel and its error. Return and keypad Enter both activate the selected result.
+
+Successful paste attempts to restore the previous clipboard items and all readable data formats after a short grace period. Pasteboard change counts prevent overwriting a newer copy, including a new copy of identical text. Snapshot/restoration failures do not interrupt paste; failure fallback copies the already formatted citation. This is best-effort preservation, not confirmation that the target editor consumed the text.
 
 Rust calls arrive on background actors, but Enigo's macOS keyboard-layout lookup and key injection run on the main dispatch queue. Calling the layout APIs from the actor executor triggers a system queue assertion on newer macOS versions. Target activation polling remains outside this main-queue section.
 
@@ -60,8 +68,6 @@ The workflow does not require Apple Developer ID or notarization. It uses ad-hoc
 See [the release configuration and COS protocol](../ci/README.md#cos-primary-source-and-github-fallback). There is no legacy Tauri migration feed.
 
 ## Verification
-
-The user confirmed on 2026-10-12 that the additions and fixes planned for v0.8.0 passed real-device validation on macOS and Windows. This acceptance record is separate from the build history below and from release-artifact signing and online update validation.
 
 The Xcode project has built the arm64 app with an empty DerivedData directory and no repository-local generated bindings. Default Debug architecture selection and the x86_64 command-line cross-build both pass. Cargo discovery also passes with a GUI-style minimal PATH. Generated Swift/Rust ABI tests pass against Xcode's static library products. An unchanged build skips the Rust binding script. Both architecture products contain all 31 SVG icons, MathJax resources and the embedded Sparkle framework; neither GUI was launched. Release distribution signing and notarization remain unverified.
 

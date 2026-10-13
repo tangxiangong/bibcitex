@@ -31,16 +31,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -52,12 +52,13 @@
 
 It supports macOS and Windows, with bibliography search, citation copying, and cross-application pasting.
 
-v0.8.1 fixes doubled backslashes in mathematical commands, restores narrow formula glyphs on macOS, and keeps macOS workbench and tray scrollbars hidden. Details: [English release notes](release-notes/0.8.1/en.md) · [Chinese release notes](release-notes/0.8.1/zh-Hans.md).
+v0.8.2 adds global key / LaTeX / Typst citation formats, main/tray batch copying, floating selection toolbars, assigned tags in details, and improved Helper clipboard preservation and tray toggling. Details: [English release notes](release-notes/0.8.2/en.md) · [Chinese release notes](release-notes/0.8.2/zh-Hans.md).
 
 ### Core Features
 
-- **One-click copying**: Copy citations with ease.
-- **Cross-application pasting**: Paste citations directly into your workflow.
+- **Citation copying**: Copy one or more references in list order using key, LaTeX, or Typst formats.
+- **Cross-application pasting**: Search and paste through the compact Helper using the same global citation format.
+- **Search and tags**: Ordinary and advanced search, colored tags, stable reference identities, and atomic batch tag editing.
 
 ## Installation
 
@@ -104,6 +105,24 @@ Copy a reference's citation from the bibliography list.
 Open the compact Helper while editing in another application, search for a reference, and paste its citation into the editor.
 
 [<img src="assets/cross_paste.gif" alt="Search in the Helper and paste a citation into another application" width="800">](./assets/cross_paste.gif)
+
+## Citation and Selection Guide
+
+1. In the Cite section of Settings, choose `key`, `LaTeX`, or `Typst`. LaTeX and Typst show a second Citation command picker. Multiple citations offers Merge or Individual output. Preferences are saved and shared by the main window, tray, and Helper.
+2. Select a reference in the main window or tray and use Cite to copy it. Click Select multiple or extend selection with Command/Ctrl and Shift, then click Cite N in the floating toolbar to copy the selected references in result-list order.
+3. In Helper, an ordinary click pastes immediately; after selecting multiple references, press Enter to paste the group. A failed paste copies the same formatted text and restores Helper with the error.
+
+For two references with the keys `Knuth1984` and `Lamport1994`:
+
+| Citation command | Merged | Individual |
+| --- | --- | --- |
+| key (default) | `Knuth1984,Lamport1994` | `Knuth1984,Lamport1994` |
+| LaTeX / `\cite` | `\cite{Knuth1984,Lamport1994}` | `\cite{Knuth1984} \cite{Lamport1994}` |
+| Typst / `@key` | `@Knuth1984 @Lamport1994` | `@Knuth1984 #box[] @Lamport1994` |
+
+LaTeX also supports natbib's `\citep` / `\citet` and biblatex's `\autocite`, `\parencite`, `\textcite`, and `\footcite`; configure the corresponding package in your writing document. Typst also supports `#cite(label("key"))` and prose citations with `#cite(label("key"), form: "prose")`. Keys unsuitable for `@key` shorthand use an escaped label string. Individual Typst output uses `#box[]` to separate citation groups without visible content. Key output always uses commas, and its Multiple citations control is disabled. Copying BibTeX source preserves the original content.
+
+After a successful Helper paste, previous clipboard content is restored where supported. Content copied during the paste is retained. Unsupported formats or restoration failures do not prevent pasting.
 
 ## Advanced Search Guide
 
@@ -170,11 +189,11 @@ Type values are case-insensitive: `article`, `book`, `thesis`, `mastersthesis`, 
 
 ### Tags
 
-The main window and tray support Command-click (Ctrl-click on Windows/Linux) to toggle selection, Shift-click for ranges, Command/Ctrl+A to select all, and Shift+arrow keys to extend selection. Shortcuts follow focus: select all in a search field still selects its text. In Helper, ordinary clicks paste immediately. Command/Ctrl-click toggles selection, Shift-click or Shift+arrow extends a range, and Command/Ctrl+A selects all current results, including while the search input is focused. Enter pastes selected cite keys in list order joined with commas. Helper has no selection-mode button; selection serves paste only.
+The main window and tray support Command-click (Ctrl-click on Windows/Linux) to toggle selection, Shift-click for ranges, Command/Ctrl+A to select all, and Shift+arrow keys to extend selection. Shortcuts follow focus: select all in a search field still selects its text. In Helper, ordinary clicks paste immediately. Command/Ctrl-click toggles selection, Shift-click or Shift+arrow extends a range, and Command/Ctrl+A selects all current results, including while the search input is focused. Enter formats selected references in list order using the global citation preference, then pastes them; the default key format joins keys with commas. Helper has no selection-mode button; selection serves paste only.
 
-In the main window or tray, choose “Select multiple”, check the current results, then open “Batch tags” from the “Selected N” menu. The menu also provides select all, clear selection, and end selection. The editor distinguishes tags added to all, some, or none of the selected references, and supports adding, removing, or creating and assigning a tag. Searching, filtering, changing libraries, or refreshing results clears selection; an open batch editor retains its captured UUID targets. Every write validates all targets and the metadata revision before applying the whole operation atomically.
+In the main window or tray, choose Select multiple, check the current results, then open Batch tags from the horizontal floating toolbar. The toolbar also offers Cite, Select all, Clear, and End. Click Select multiple again or press Esc to exit; editors, popup menus, and IME composition retain their own Escape handling first. The editor distinguishes tags added to all, some, or none of the selected references, and supports adding, removing, or creating and assigning a tag. Searching, filtering, changing libraries, or refreshing results clears selection; an open batch editor retains its captured UUID targets. Every write validates all targets and the metadata revision before applying the whole operation atomically.
 
-Reference lists show colored tags. Click a tag or the reference’s tag action to search, toggle assignments, or create and assign a tag in one step. Tag menus offer rename and color editing; global management contains merge/delete and broken tag association recovery. The recovery entry is hidden when no broken associations exist. To relocate a file, edit its library in library management, choose “Relocate source”, select the new file, and save.
+Reference lists show colored tags; click the list's tag area to open the single-reference editor. Main/tray details display all assigned tags as passive colored capsules, with a separate add button for editing. The editor supports searching, toggling assignments, or creating and assigning a tag in one step. On macOS, editors appear beside the list's tag area or the detail add button and close when the selected reference changes. Tag mutations preserve the selected reference and validate asynchronous results. Tag menus offer rename and color editing; global management contains merge/delete and broken tag association recovery. The recovery entry is hidden when no broken associations exist. To relocate a file, edit its library in library management, choose “Relocate source”, select the new file, and save.
 
 Library, reference and tag UUIDs are their UIDs. A library keeps its UUID when renamed or relocated, even when file content also changes. Global tags work across libraries; associations store UUIDs rather than `.bib` paths. Tags never modify `.bib` files. Back up both `setting.json` (UUIDs and file locations) and `search-metadata.json` (tags and record associations) in the configuration directory. Existing library registrations receive UUIDs on first use; ordinary BibTeX import/export does not include tags.
 
@@ -209,8 +228,11 @@ See [TODO.md](./TODO.md) for the detailed roadmap.
 - [x] **Tags**: Single-reference assignment, catalog management, stable identities and tag filtering.
 - [x] **Bulk tags**: Three-platform selection, mixed assignment state, and atomic add/remove operations.
 - [x] **Helper filter commands**: Floating `@` / `$` / `#` candidates, inline name filtering, optional field values and removable capsules on all three platforms.
-- [ ] **Multiple selection refinements**: Bulk copy and output presets remain planned; Helper supports comma-separated bulk paste.
-- [ ] **Copy and paste formats**: Bare citation keys, LaTeX and Typst citation presets, and combined citations for multiple references.
+- [x] **Multiple citations**: Main/tray floating toolbars support batch copying; Helper pastes multiple references using the global format.
+- [x] **Copy and paste formats**: Key, LaTeX, and Typst presets, saved global settings, and merged/individual output.
+- [ ] **Independent tag expression filter**: Main/tray AND / OR / NOT conditions, nested groups, and compact previews; advanced `tag:` queries are already available.
+- [ ] **Linux acceptance**: Complete the x86-64 native client build and desktop acceptance; Linux is outside the v0.8.2 release scope.
+- [ ] **Custom citation templates**: Evaluate after the common presets are stable.
 
 ## Third-Party Code Attribution
 

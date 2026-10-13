@@ -599,7 +599,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.8.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",
@@ -736,7 +736,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 0.8.1;
+				MARKETING_VERSION = 0.8.2;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(BIBCITEX_BINDINGS_DIR)/libbibcitex_ffi.a",

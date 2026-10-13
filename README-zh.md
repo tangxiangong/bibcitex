@@ -31,16 +31,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-arm64.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-x86_64.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.1/BibCiTeX-0.8.1-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -52,12 +52,13 @@
 
 支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
 
-v0.8.1 修复数学命令中的双反斜杠兼容问题、macOS 窄公式字符显示，并隐藏 macOS 工作台和托盘滚动条。更新详情：[中文发布说明](release-notes/0.8.1/zh-Hans.md) · [English release notes](release-notes/0.8.1/en.md)。
+v0.8.2 新增全局 key / LaTeX / Typst 引用格式、主窗口和托盘批量复制、多选浮动工具栏及详情标签展示，并改善 Helper 剪贴板保护和托盘开关。更新详情：[中文发布说明](release-notes/0.8.2/zh-Hans.md) · [English release notes](release-notes/0.8.2/en.md)。
 
 ### 核心特性
 
-- **一键复制**: 便捷的引用复制功能
-- **跨应用粘贴**: 无缝集成到您的工作流程
+- **引用复制**：单篇或多篇文献按列表顺序复制，支持 key、LaTeX 和 Typst 格式。
+- **跨应用粘贴**：通过紧凑的 Helper 搜索并直接粘贴，复用全局引用格式。
+- **搜索与标签**：普通及高级搜索、彩色标签、稳定文献身份和原子批量标签编辑。
 
 ## 安装指南
 
@@ -104,6 +105,24 @@ sudo xattr -dr com.apple.quarantine /Applications/BibCiTeX.app
 在其他应用中编辑时唤出紧凑的 Helper，搜索文献，并将引用粘贴到编辑器中。
 
 [<img src="assets/cross_paste.gif" alt="通过 Helper 搜索文献并将引用粘贴到其他应用" width="800">](./assets/cross_paste.gif)
+
+## 引用与多选使用方法
+
+1. 在设置的“引用”区域选择 `key`、`LaTeX` 或 `Typst`。LaTeX / Typst 另有“引用指令”下拉；“多选输出方式”可选“合并”或“逐项”。设置自动保存，主窗口、托盘和 Helper 共用。
+2. 在主窗口或托盘选中文献后使用“引用”复制。点击“多选”或用 ⌘/Ctrl、Shift 扩选后，在浮动工具栏点击“引用 N”，按当前结果列表顺序复制所选文献。
+3. 在 Helper 中，普通点击直接粘贴；多选后按 Enter 粘贴整组引用。粘贴失败时复制同一份已格式化文本，并恢复 Helper 和错误提示。
+
+以下示例选择两篇引用键为 `Knuth1984`、`Lamport1994` 的文献：
+
+| 引用指令 | 合并 | 逐项 |
+| --- | --- | --- |
+| key（默认） | `Knuth1984,Lamport1994` | `Knuth1984,Lamport1994` |
+| LaTeX / `\cite` | `\cite{Knuth1984,Lamport1994}` | `\cite{Knuth1984} \cite{Lamport1994}` |
+| Typst / `@key` | `@Knuth1984 @Lamport1994` | `@Knuth1984 #box[] @Lamport1994` |
+
+LaTeX 还支持 natbib 的 `\citep` / `\citet`，以及 biblatex 的 `\autocite`、`\parencite`、`\textcite`、`\footcite`，需在写作文档中配置相应宏包。Typst 另支持 `#cite(label("key"))` 及正文引用 `#cite(label("key"), form: "prose")`；不适合 `@key` 简写的引用键自动转为转义后的 `label` 字符串。Typst 逐项输出中的 `#box[]` 用于分隔引用组，不显示额外内容。key 始终用逗号连接，“多选输出方式”在 key 格式下禁用；BibTeX 源码复制保留原文。
+
+Helper 成功粘贴后尽量恢复原先的剪贴板内容；如果期间复制了新内容，则保留新内容。系统格式不支持保留或恢复失败时，粘贴仍可继续。
 
 ## 高级搜索使用方法
 
@@ -170,11 +189,11 @@ macOS、Windows 和 Linux 共用 Rust 高级搜索引擎，词法和语法解析
 
 ### 标签
 
-主窗口和托盘支持 ⌘（Windows/Linux 为 Ctrl）点选增减、Shift 范围选择、⌘/Ctrl+A 全选及 Shift+方向键扩选。快捷键只作用于当前焦点：搜索框中的全选仍选择文字。Helper 普通点击直接粘贴；⌘/Ctrl 点选增减选择，Shift 点选或 Shift+方向键范围选择，⌘/Ctrl+A 全选当前结果（搜索框聚焦时也生效）。回车按列表顺序将所选 cite key 以逗号连接后粘贴。Helper 不显示多选按钮，多选只用于粘贴。
+主窗口和托盘支持 ⌘（Windows/Linux 为 Ctrl）点选增减、Shift 范围选择、⌘/Ctrl+A 全选及 Shift+方向键扩选。快捷键只作用于当前焦点：搜索框中的全选仍选择文字。Helper 普通点击直接粘贴；⌘/Ctrl 点选增减选择，Shift 点选或 Shift+方向键范围选择，⌘/Ctrl+A 全选当前结果（搜索框聚焦时也生效）。回车按列表顺序将所选文献按全局引用格式生成后粘贴，默认 key 以逗号连接。Helper 不显示多选按钮，多选只用于粘贴。
 
-主窗口和托盘可通过“多选”勾选当前结果，再从“已选 N”菜单进入“批量标签”；菜单也提供全选、清空和结束多选。批量编辑区分全部已添加、部分已添加和未添加，支持添加到全部、从全部移除，以及创建并添加。搜索、筛选、库切换或结果刷新会清空选择；已打开的批量编辑器固定所选 UUID。写入会校验全部目标和元数据修订，失败时不会只修改部分文献。
+主窗口和托盘可通过“多选”勾选当前结果，再从横向浮动工具栏进入“批量标签”；工具栏也提供引用、全选、清空和结束多选。再次点击“多选”或按 Esc 可退出，编辑框、弹出菜单和输入法优先处理自己的 Esc。批量编辑区分全部已添加、部分已添加和未添加，支持添加到全部、从全部移除，以及创建并添加。搜索、筛选、库切换或结果刷新会清空选择；已打开的批量编辑器固定所选 UUID。写入会校验全部目标和元数据修订，失败时不会只修改部分文献。
 
-文献列表直接显示彩色标签。点击标签或文献的标签入口，即可搜索、勾选添加/移除，或一步创建并添加标签。标签菜单支持改名、改色；全局管理提供合并、删除和失效标签关联恢复；没有失效关联时隐藏恢复入口。重新定位文件请在文献库管理中编辑文献库，点击“重新定位来源”，选择新文件后保存。
+文献列表直接显示彩色标签，点击列表标签区域可打开单篇编辑器。主窗口和托盘的详情展示全部已分配标签，彩色胶囊用于显示，旁边独立的添加按钮打开编辑器；可搜索、勾选添加/移除，或一步创建并添加标签。macOS 编辑器紧邻列表标签区域或详情添加按钮显示，切换文献时关闭旧编辑器。修改标签后保持当前文献选择，并校验异步结果。标签菜单支持改名、改色；全局管理提供合并、删除和失效标签关联恢复；没有失效关联时隐藏恢复入口。重新定位文件请在文献库管理中编辑文献库，点击“重新定位来源”，选择新文件后保存。
 
 文献库、文献记录和标签的 UUID 就是各自的 UID。库改名或重新定位时 UUID 保持不变，即使文件内容同时改变。全局标签可跨库使用，关联只保存 UUID，不保存 `.bib` 路径，也不改写 `.bib` 文件。备份时同时保留配置目录中的 `setting.json`（UUID 与文件位置）和 `search-metadata.json`（标签与文献关联）。已有文献库注册信息在首次使用时分配 UUID；普通 BibTeX 导入导出不携带标签。
 
@@ -209,8 +228,11 @@ Esc 取消候选并恢复触发前草稿。候选列表悬浮在小输入框附�
 - [x] **Tag 功能**：单篇标签分配、目录管理、稳定身份与标签筛选。
 - [x] **批量标签**：三端多选、混合状态展示与原子添加/移除。
 - [x] **Helper 筛选指令**：三端悬浮 `@ / $ / #` 候选、栏内名称筛选、可选字段值与可删除胶囊。
-- [ ] **多选完善**：批量复制和输出格式预设待实现；Helper 已支持逗号连接的批量粘贴。
-- [ ] **复制与粘贴格式**：支持裸 cite key、LaTeX 和 Typst 引用预设，以及多篇引用组合。
+- [x] **多选引用**：主窗口和托盘浮动工具栏批量复制，Helper 按全局格式批量粘贴。
+- [x] **复制与粘贴格式**：key、LaTeX 和 Typst 预设，全局设置及合并/逐项输出。
+- [ ] **独立标签表达式筛选**：主窗口和托盘增加 AND / OR / NOT、嵌套分组和紧凑预览；现有 `tag:` 高级查询已可使用。
+- [ ] **Linux 验收**：完整 x86-64 客户端原生构建及桌面人工验收；Linux 不纳入 v0.8.2 发布。
+- [ ] **自定义引用模板**：在常用预设稳定后评估。
 
 ## 第三方代码版权声明
 

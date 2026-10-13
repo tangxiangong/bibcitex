@@ -68,12 +68,20 @@ and tray actions. It does not start the application.
   mathematical chunks, shared Chinese/English catalogs, and light/dark/system
   appearance. Math uses embedded STIX Two Math and local Rust SVG rendering;
   unsupported TeX retains its source instead of losing content.
+- Global key / LaTeX / Typst formats and merged/individual output preferences,
+  shared by main/tray single or batch copying and Helper paste. See the
+  [citation and selection guide](../README.md#citation-and-selection-guide).
+- Floating main/tray selection actions for Cite, Batch tags, Select all, Clear
+  and End; repeated selection-button clicks or Escape leave batch mode after
+  editor, popup and IME handling. Details show all assigned tags as colored
+  capsules beside a separate add control and retain selection after tag changes.
 - A compact search helper: its idle state is a search bar; typing expands results;
   Tab selects a library; up/down select; Enter or a row click pastes; Escape closes.
   Copy buttons remain available when desktop input permission or focus restoration
   fails. IME composition retains control of its keys.
 - StatusNotifier tray icon/menu and a separate compact tray workbench with library
-  switching, search, filters, details, refresh, and a main-window action.
+  switching, search, filters, details, refresh, and a main-window action. Clicking
+  the tray icon again closes the current tray window.
 - Single-instance activation using a private per-user Unix socket and a held file
   lock. Second launches forward commands, including Wayland activation tokens.
   Closing a window leaves the shortcut/tray service running. Quit from the tray,
@@ -97,6 +105,13 @@ tray integration, and GPUI's long-lived clipboard provider. It prepares input
 access before closing the helper, then calls the backend after focus restoration.
 X11 capture refreshes the foreground target before freezing the helper session;
 each paste validates the same window/PID snapshot throughout its operation.
+
+The Helper formats selected references in result-list order before writing the
+clipboard. After successful paste, the GPUI host attempts to restore a previous
+text-only clipboard snapshot. A unique ownership marker protects newer copies,
+including copies of identical text. Image/file entries are not restored through
+the text-only writer. Snapshot or restoration failures do not prevent paste;
+failure fallback retains the same formatted citation text.
 
 X11 registers the global shortcut through XGrabKey. It captures the previous
 external window and process, requests focus, checks the target again, waits for
@@ -160,7 +175,7 @@ variable and a `LINUX_UPDATE_PRIVATE_KEY` secret containing the base64 32-byte
 private seed. No private key is compiled into the client. Builds without a public
 key can run, but cannot accept updates.
 
-Linux Release CI is temporarily disabled until the client is ready. The planned v0.8.1 release continues to
+Linux Release CI is temporarily disabled until the client is ready. The v0.8.2 release continues to
 ship only macOS and Windows: no Linux release binaries or packages are built,
 signed, uploaded, or published to GitHub/COS. Ordinary Linux Check CI remains
 enabled. See [release configuration](../ci/README.md#linux-releases) for the
@@ -181,3 +196,8 @@ checks do not launch the GPUI application and do not prove GNOME/KDE desktop
 interaction, real cross-application paste, or signed production update delivery.
 The Check workflow includes native Ubuntu x86-64 and ARM64 jobs; Linux Release
 jobs remain disabled.
+
+On 2026-10-13, the xpaste migration and detail-tag changes passed native ARM64
+container Clippy, non-UI tests and a complete client build. The v0.8.2 acceptance
+record still requires a complete x86-64 native client build and desktop validation
+on both architectures. See [the roadmap](../TODO.md#验收与待定事项).

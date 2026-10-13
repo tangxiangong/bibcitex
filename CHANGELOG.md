@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2] - 2026-10-13
+
+### Citation formats, selection and tags
+
+- Add saved global key, LaTeX and Typst citation formats, with merged or individual output; use the same format for main/tray copying and Helper paste and copy fallback.
+- Add single and batch citation copying in result-list order, while preserving comma-separated key output and original BibTeX source copying.
+- Replace main/tray selection menus with compact floating action toolbars, allow repeated-button and Escape exits, and preserve editor, popup and IME Escape handling.
+- Show all assigned tags directly in main/tray reference details with colored capsules and a separate add control; preserve selection across tag changes and reject stale refreshes.
+
+### Bug fixes
+
+- Restore previous clipboard content after Helper paste where supported without overwriting newer copies.
+- Fix repeated tray-icon clicks immediately reopening the window, and suppress duplicate Windows double-click toggles.
+- Restore direct Shift/Command selection in macOS main/tray lists and show Helper selection counts only for two or more references.
+- Anchor macOS tag editors to list tag areas or detail add buttons and close stale editors when the selected reference changes.
+- Make Windows Settings selectors compact and show concise selected citation commands while retaining dropdown descriptions.
+
+### Release scope
+
+- Continue to target macOS and Windows; Linux release builds remain disabled pending native desktop acceptance.
+
+Release notes: [简体中文](release-notes/0.8.2/zh-Hans.md) · [English](release-notes/0.8.2/en.md) · [GitHub announcement](release-notes/0.8.2/release-body.md).
+
 ## [0.8.1] - 2026-10-12
 
 ### Bug fixes
@@ -34,7 +57,6 @@ Release notes: [简体中文](release-notes/0.8.1/zh-Hans.md) · [English](relea
 
 ### Release scope
 
-- Windows and macOS additions and fixes passed real-device validation, confirmed by the user on 2026-10-12.
 - Publish macOS and Windows only; Linux releases remain disabled pending native build and desktop acceptance.
 - Main/tray batch copying and LaTeX/Typst citation-format presets remain planned.
 

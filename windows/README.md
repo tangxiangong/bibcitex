@@ -4,13 +4,19 @@ C# / WinUI 3（Windows App SDK 2.5.1 稳定版）主窗口与 Spotlight helper�
 
 最低运行系统为 Windows 10 1809（内部版本 17763），支持 x64 和 ARM64。编译使用的 Windows SDK 版本与最低运行版本分别配置。
 
+## 引用、多选与标签
+
+主窗口、托盘和 Helper 共用全局 key / LaTeX / Typst 引用格式及合并/逐项偏好。主窗口和托盘的“引用”支持单篇或按列表顺序批量复制，Helper 按同一格式粘贴；命令与输出示例见 [引用与多选指南](../README-zh.md#引用与多选使用方法)。设置下拉框保持紧凑，选中的引用指令仅显示命令，展开时保留说明。
+
+多选浮动工具栏提供引用、批量标签、全选、清空和结束；再次点击多选按钮或按 Esc 可退出，编辑框、弹出菜单和 IME 优先处理自己的 Esc。详情展示全部已分配标签，彩色胶囊旁的独立添加按钮打开编辑器；修改后保持当前文献选择。托盘图标再次点击可收起，双击只执行一次开关。
+
 ## Visual Studio
 
 安装 Visual Studio 2026 的 Windows 应用开发、C++ 桌面开发工具和对应 Windows SDK，.NET 10 LTS、Rust MSVC 工具链。首次选择架构时，有 rustup 则自动补齐所选目标和生成器宿主目标。直接打开 `windows/BibCiTeX.sln`，选择 `Debug` / `Release` 和 `x64` / `ARM64`，执行“生成解决方案”即可。
 
 MSBuild 会自动构建 Rust DLL、运行 Interoptopus 生成器，再编译 WinUI；干净检出不需要预先执行脚本、Just 或手工生成绑定。Rust 源码变化会触发构建检查，设计时 IntelliSense 不启动 Cargo。找不到 Cargo 时检查 PATH，再检查 `%USERPROFILE%/.cargo/bin/cargo.exe`，缺失时输出明确错误。工具链沿用当前 rustup / `RUSTUP_TOOLCHAIN`，不固定版本；没有 rustup 则使用已安装目标。显式设置 `CargoExecutable` 时不会自动改用其他工具链，除非同时指定匹配的 `RustupExecutable`。
 
-项目使用普通 `Project` 启动项，Visual Studio F5 运行非打包 WinUI 程序，不依赖包身份。运行由用户操作。用户于 2026-10-12 确认 v0.8.0 的新增与修复内容已通过 Windows 实机验证；此前 macOS 宿主上的 C# 语义检查记录不等同于 Windows 原生构建记录。
+项目使用普通 `Project` 启动项，Visual Studio F5 运行非打包 WinUI 程序，不依赖包身份。运行由用户操作。
 
 CLI 和 IDE 使用同一构建链：
 
@@ -26,7 +32,7 @@ dotnet build windows/BibCiTeX.sln -c Release -p:Platform=ARM64
 Windows uses unpackaged, framework-dependent WinUI 3 with Velopack 1.2.161. EXE and MSI installers detect and install the matching .NET 10 runtime and Visual C++ runtime when missing. Before starting WinUI on the first application launch, `WindowsRuntime` checks Windows App Runtime 2.5.1, downloads the matching Microsoft installer if needed, verifies its pinned SHA-256, installs it and retries initialization. Existing compatible installations are reused; missing dependencies require internet access. Silent installation defers Windows App Runtime provisioning until the first application launch. `Program.Main` handles Velopack hooks before this bootstrap, so packaging and uninstall hooks do not download runtimes. When upgrading the Windows App SDK runtime package, update the bootstrap version, URLs and verified hashes together. Settings are stored outside the replaceable application folder. EXE and MSI share the Velopack update layout; the updater supports download progress, cancellation, size/hash verification and restart. Automatic mode downloads in the background and applies on the next launch.
 
 ```powershell
-./windows/scripts/publish.ps1 -Architecture x64 -Version 0.8.1 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
+./windows/scripts/publish.ps1 -Architecture x64 -Version 0.8.2 -Channel stable -BuildNumber 1 -OutputDirectory dist/release/windows-x64
 ```
 
 Use an empty output directory. This generates EXE, MSI, a full `.nupkg`, and `releases.win-x64-stable.json`. ARM64 uses `-Architecture ARM64`. Release builds require reviewed `release-notes/<version>/zh-Hans.md` and `en.md`. The workflow publishes verified artifacts to GitHub Releases and then COS. The client checks COS first and falls back to GitHub on feed or download failure, retaining the selected package filename and SHA-256. Cancellation stops downloads without starting fallback. See [COS configuration](../ci/README.md#cos-primary-source-and-github-fallback). It does not require a Windows code-signing certificate or Microsoft Store. Unsigned installers can still trigger OS warnings.
@@ -47,7 +53,7 @@ UI 图标均加载独立 SVG 文件；浅色资源链接 `public/icons/windows`�
 dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -- $RustLibraryPath
 ```
 
-该集成测试只访问临时 BibTeX 文件，验证 Unicode、完整字段、数学块、错误、并发、Wire 内存所有权以及文件缓存更新，不调用文献库配置、剪贴板、粘贴或界面。
+该集成测试只访问临时 BibTeX 文件，验证 Unicode、完整字段、数学块、错误、并发、Wire 内存所有权、文件缓存更新以及共享引用格式化，不调用文献库配置、剪贴板、粘贴或界面。
 
 本地化使用由原生控件持有的 XAML Binding，避免 C# 控件包装对象被 GC 回收后，菜单和既有列表退出语言刷新。`Strings/en-US` 与 `Strings/zh-CN` 声明原生资源语言，界面词典仍共用根目录 JSON。
 
@@ -57,8 +63,8 @@ dotnet run --project windows/Tests/BibCiTeX.IntegrationTests.csproj -c Release -
 
 主窗口保留现有三栏 Grid。侧栏和详情栏使用系统透明 layer brush，让 Mica（不支持时 Acrylic）透出；内容列使用 `LayerFillColorDefaultBrush`。App.xaml 的 Grid Style 通过 `ThemeResource` 保持窗口主题切换时的动态解析，不使用不透明的 SolidBackground 覆盖材质，也不在代码中一次性获取背景 brush。分隔线使用 `DividerStrokeColorDefaultBrush`。
 
-托盘和助手保留 Acrylic 及现有布局。v0.8.0 新增与修复内容已通过 Windows 实机验证（用户确认，2026-10-12）。浅色、深色、高对比、应用内主题切换及 Windows 10 Acrylic 回退继续作为人工验收项目；非 UI 集成测试不替代 WinUI/XAML 编译。
+托盘和助手保留 Acrylic 及现有布局。材质验收项目涵盖浅色、深色、高对比、应用内主题切换及 Windows 10 Acrylic 回退；非 UI 集成测试不替代 WinUI/XAML 编译。
 
 ## Helper 粘贴失败处理
 
-粘贴前先隐藏 helper 并保留目标快照；失败时自动复制引用键到剪贴板，再恢复 helper 并显示原生错误弹窗。弹窗只显示失败原因，不显示复制结果，也不要求用户选择复制。Windows 沿用自身的前台窗口检查与 Ctrl+V 注入，不使用 macOS 的 TCC 授权或主队列键盘布局调用。
+粘贴前先按全局引用格式生成文本，隐藏 helper 并保留目标快照；失败时自动复制同一份已格式化文本到剪贴板，再恢复 helper 并显示原生错误弹窗。弹窗只显示失败原因，不显示复制结果，也不要求用户选择复制。成功粘贴后尽量恢复原剪贴板的内存格式，使用系统写入代次避免覆盖期间的新复制；存在不支持的句柄格式或保留失败时继续正常粘贴。Windows 沿用自身的前台窗口检查与 Ctrl+V 注入，不使用 macOS 的 TCC 授权或主队列键盘布局调用。

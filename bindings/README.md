@@ -60,6 +60,15 @@ syntax itself: the hosts first call the shared `formatCitation(keys, format, mod
 operation (`format_citation(CitationRequest)` in C#) and pass its exact output to
 copy/paste. Formatting is pure and does not access the clipboard.
 
+After successful injection, macOS/Windows `xpaste` waits a short grace period and
+attempts to restore the previous clipboard snapshot only if it still owns the
+write generation. macOS materializes every readable item representation; Windows
+supports memory-backed formats and declines snapshots containing unsupported
+handle formats. A new copy of identical text also invalidates restoration.
+Snapshot/restoration errors remain silent so preservation never blocks ordinary
+paste; injection failure leaves the formatted text available for manual paste.
+The grace period is not an acknowledgement from the target application.
+
 The Linux host uses `xpaste::linux::Paste` for its asynchronous two-phase paste:
 capture the external target before opening the helper, prepare keyboard access
 before hiding it, then inject after closing the helper. `xpaste` owns X11 foreground
@@ -69,6 +78,11 @@ clipboard ownership for the application lifetime and handles its clipboard snaps
 and restoration; tray menus and global helper shortcuts belong to the Linux host.
 The existing X11 and Wayland implementations are maintained in `xpaste`, independently
 of EcoPaste's discontinued Linux implementation.
+
+Linux restoration is limited to text-only GPUI clipboard entries and checks the
+temporary write's unique metadata before restoring. The host must retain its
+long-lived clipboard provider; image/file snapshots must not be sent through the
+text-only writer.
 
 All three surfaces read the same platform-local `citationFormat` and `citationMode`
 preferences for each operation. The settings picker first selects `key`, `LaTeX`,

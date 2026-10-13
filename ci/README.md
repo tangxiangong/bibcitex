@@ -50,6 +50,16 @@ The COS publisher validates all four platform/architecture payloads, Sparkle sig
 
 The COS appcasts point to COS archives and localized notes; GitHub appcasts retain GitHub links. Velopack packages live beside each source's channel feeds and have identical bytes on both hosts. Publishing GitHub first ensures the fallback is ready before COS advances. If COS publication fails, GitHub remains valid; rerun the failed publish job, or use **Publish existing release to COS** with the existing tag. That manual workflow downloads and verifies already published GitHub assets without rebuilding or changing their signatures. Do not rebuild a populated release to repair a mirror.
 
+If a maintainer has explicitly rebuilt and replaced a version's GitHub assets,
+dispatch **Publish existing release to COS** with that tag and
+`replace_existing=true`. This opt-in invokes `xtask replace-cos-release`: it
+requires an existing valid COS catalog, validates the complete signed release,
+replaces only that version's COS assets and matching Windows feed packages, then
+refreshes eligible channel pointers. Other versions remain intact and older
+repairs cannot downgrade channels. Ordinary mirroring defaults to
+`replace_existing=false` and continues to reject conflicting bytes. The manual
+workflow reads GitHub assets; it does not rebuild or replace GitHub files itself.
+
 Verification: `just check-rust`, `just test-ci`, macOS compilation, and non-UI C#/Rust transport/integration checks. GUI update acceptance, real CAM permissions, global acceleration and signed in-place upgrades still require validation against a published release. Compilation or a local simulated transport test is not a live deployment test.
 
 ## Automatic Homebrew tap updates
