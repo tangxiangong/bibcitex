@@ -333,12 +333,12 @@ internal static class Views
         ThemeForeground(label, "TextFillColorSecondaryBrush");
         var glyph = new TextBlock { Text = key, FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         ThemeForeground(glyph, "TextFillColorSecondaryBrush");
-        var cap = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" MinWidth=\"18\" Height=\"18\" Padding=\"3,0,3,0\" CornerRadius=\"6\" BorderThickness=\"1\" VerticalAlignment=\"Center\" BorderBrush=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\" />");
+        var cap = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("<Border xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" MinWidth=\"18\" MinHeight=\"18\" Padding=\"3,0,3,0\" CornerRadius=\"6\" BorderThickness=\"1\" VerticalAlignment=\"Center\" BorderBrush=\"{ThemeResource ControlStrongStrokeColorDefaultBrush}\" />");
         cap.Child = glyph;
         var content = Row(label, cap); content.Spacing = 6;
         var button = new Button
         {
-            Content = content, Height = 28, MinWidth = 0, Padding = new Thickness(10, 0, 10, 0),
+            Content = content, MinHeight = 28, MinWidth = 0, Padding = new Thickness(10, 0, 10, 0),
             CornerRadius = new CornerRadius(14), BorderThickness = new Thickness(0),
             Background = new SolidColorBrush(Colors.Transparent),
             AllowFocusOnInteraction = false, IsTabStop = false,
@@ -381,7 +381,7 @@ internal static class Views
         if (sidebar ? library.Pinned : current) markers.Children.Add(new SvgIcon(sidebar ? "pin" : "check", 13) { VerticalAlignment = VerticalAlignment.Center });
         if (markers.Children.Count > 0) { Grid.SetColumn(markers, 2); row.Children.Add(markers); }
         var item = new ListViewItem { Content = row, Tag = library, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(0), CornerRadius = new CornerRadius(RowRadius) };
-        if (!sidebar) item.Height = 58;
+        if (!sidebar) item.MinHeight = 58;
         AutomationProperties.SetName(item, library.Name); return item;
     }
     /// <summary>

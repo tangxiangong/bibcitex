@@ -81,12 +81,12 @@ internal sealed class HelperWindow : Window, IDisposable
             if (modal) Resize(600);
             if (!editing) _ = Refresh();
         }, () => tailInput.IsComposing || candidates?.IsComposing == true, () => tailInput.Epoch + (candidates?.InputEpoch ?? 0), () => _ = candidates.Begin(search.Text, '$'));
-        root.RowDefinitions.Add(new() { Height = new GridLength(Header) });
+        root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         root.RowDefinitions.Add(new());
         root.RowDefinitions.Add(new() { Height = new GridLength(0) });
 
-        var header = new Grid { Padding = new Thickness(18, 0, 18, 0), ColumnSpacing = 14 };
+        var header = new Grid { MinHeight = Header, Padding = new Thickness(18, 0, 18, 0), ColumnSpacing = 14 };
         header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new()); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); header.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         header.Children.Add(new SvgIcon("search", 18) { VerticalAlignment = VerticalAlignment.Center }); Grid.SetColumn(queryBar.View, 1); header.Children.Add(queryBar.View);
         Localized.Name(search, "搜索");
@@ -134,6 +134,9 @@ internal sealed class HelperWindow : Window, IDisposable
         Views.HideScrollbars(results);
         Views.HideScrollbars(search);
         Content = root;
+        header.SizeChanged += (_, _) => { if (!busy) ResizeContent(); };
+        bottomBar.SizeChanged += (_, _) => { if (!busy) ResizeContent(); };
+        errorBar.SizeChanged += (_, _) => { if (!busy) ResizeContent(); };
         candidates = new HelperCandidates(search, () => _ = Refresh(), open =>
         {
             version++; searchSession.Invalidate(); failedKey = null; fallback.Visibility = Visibility.Collapsed;
@@ -458,12 +461,35 @@ internal sealed class HelperWindow : Window, IDisposable
     {
         if (!visible) return;
         var rows = results.Items.Count;
-        var list = searching || emptyState.Visibility == Visibility.Visible ? EmptyRow : rows == 0 ? 0 : Math.Min(MaxList, rows * ((selecting ? LibraryRow : ReferenceRow) + 2) + ListPadding);
+        var width = Math.Max(1, root.ActualWidth > 0 ? root.ActualWidth : PanelWidth);
+        var available = new Windows.Foundation.Size(width, double.PositiveInfinity);
+        var header = (FrameworkElement)root.Children[0];
+        header.Measure(available);
+        var headerHeight = Math.Max(Header, header.DesiredSize.Height);
+        double list = rows == 0 ? 0 : ListPadding;
+        if (searching || emptyState.Visibility == Visibility.Visible)
+        {
+            emptyState.Measure(available);
+            list = Math.Max(EmptyRow, emptyState.DesiredSize.Height);
+        }
+        else
+        {
+            foreach (var item in results.Items.OfType<ListViewItem>())
+            {
+                item.Measure(new Windows.Foundation.Size(Math.Max(1, width - 16), double.PositiveInfinity));
+                list += Math.Max((selecting ? LibraryRow : ReferenceRow) + 2, item.DesiredSize.Height);
+                if (list >= MaxList) { list = MaxList; break; }
+            }
+        }
         listArea.Visibility = list > 0 ? Visibility.Visible : Visibility.Collapsed;
         var bar = !selecting && !searching && !busy && rows > 0 && (search.Text.Trim().Length > 0 || queryBar.HasPrefix);
         bottomBar.Visibility = bar ? Visibility.Visible : Visibility.Collapsed;
-        root.RowDefinitions[3].Height = new GridLength(bar ? BottomBar : 0);
-        Resize(Header + list + (bar ? BottomBar : 0) + (errorBar.Visibility == Visibility.Visible ? StatusRow : 0));
+        bottomBar.Measure(available);
+        var barHeight = bar ? Math.Max(BottomBar, bottomBar.DesiredSize.Height) : 0;
+        root.RowDefinitions[3].Height = new GridLength(barHeight);
+        errorBar.Measure(available);
+        var errorHeight = errorBar.Visibility == Visibility.Visible ? Math.Max(StatusRow, errorBar.DesiredSize.Height) : 0;
+        Resize(headerHeight + list + barHeight + errorHeight);
     }
     private void Resize(double height)
     {

@@ -32,14 +32,14 @@ internal static class TagManager
             FrameworkElement chip;
             if (editable)
             {
-                var button = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
+                var button = new Button { MinHeight = 20, MinWidth = 0, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
                     Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 }, Content = content };
                 button.Click += async (_, _) => { try { await Show(button.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, button); } catch (Exception ex) { await Views.Error(button, ex); } };
                 chip = button;
             }
             else
             {
-                chip = new Border { Height = 20, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
+                chip = new Border { MinHeight = 20, Padding = new Thickness(6, 2, 6, 2), CornerRadius = new CornerRadius(10), MaxWidth = 64,
                     Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 }, Child = content };
             }
             ToolTipService.SetToolTip(chip, tag.name); AutomationProperties.SetName(chip, tag.name);
@@ -51,13 +51,13 @@ internal static class TagManager
             FrameworkElement overflow;
             if (editable)
             {
-                var button = new Button { Height = 20, MinHeight = 0, MinWidth = 0, Content = count, FontSize = 10, Padding = new Thickness(4, 2, 4, 2) };
+                var button = new Button { MinHeight = 20, MinWidth = 0, Content = count, FontSize = 10, Padding = new Thickness(4, 2, 4, 2) };
                 button.Click += async (_, _) => { try { await Show(button.XamlRoot, reference.Data.library_uid, reference.Id, reference.Key, button); } catch (Exception ex) { await Views.Error(button, ex); } };
                 overflow = button;
             }
             else
             {
-                overflow = new Border { Height = 20, Padding = new Thickness(4, 2, 4, 2), Child = new TextBlock { Text = count, FontSize = 10 } };
+                overflow = new Border { MinHeight = 20, Padding = new Thickness(4, 2, 4, 2), Child = new TextBlock { Text = count, FontSize = 10 } };
             }
             ToolTipService.SetToolTip(overflow, string.Join(", ", reference.Data.tags.Select(t => t.name)));
             Localized.Name(overflow, "标签");
@@ -71,7 +71,7 @@ internal static class TagManager
         var panel = new DetailTagPanel();
         foreach (var tag in reference.Data.tags)
         {
-            var capsule = new Border { Height = 26, Padding = new Thickness(8, 0, 8, 0), CornerRadius = new CornerRadius(13),
+            var capsule = new Border { MinHeight = 26, Padding = new Thickness(8, 0, 8, 0), CornerRadius = new CornerRadius(13),
                 Background = new SolidColorBrush(Color(tag.color)) { Opacity = .14 } };
             var content = new Grid { ColumnSpacing = 5 };
             content.ColumnDefinitions.Add(new() { Width = GridLength.Auto });

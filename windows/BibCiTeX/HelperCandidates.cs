@@ -13,7 +13,11 @@ internal sealed class HelperCandidates
     /// <summary>The inline editor searches catalog names; its optional second stage can add a selected field constraint.</summary>
     internal Border InlineEditor { get; } = new() { Visibility = Visibility.Collapsed };
     private readonly TextBlock marker = new() { FontSize = 16, VerticalAlignment = VerticalAlignment.Center };
-    private readonly Border editorBorder = new() { CornerRadius = new CornerRadius(6), BorderThickness = new Thickness(1) };
+    private readonly Border editorBorder = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+        <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                CornerRadius="6" BorderThickness="1"
+                BorderBrush="{ThemeResource SystemControlForegroundAccentBrush}" />
+        """);
     private readonly SearchTextBox filter = new() { MinWidth = 110, MaxWidth = 220, FontSize = 16, BorderThickness = new Thickness(0), Padding = new Thickness(8, 5, 8, 5) };
     private readonly ListView items = new() { IsItemClickEnabled = true, Padding = new Thickness(0), HorizontalContentAlignment = HorizontalAlignment.Stretch };
     private readonly Popup popup = new() { IsLightDismissEnabled = false, ShouldConstrainToRootBounds = false,
@@ -53,11 +57,17 @@ internal sealed class HelperCandidates
         this.search = search; this.changed = changed; this.visibility = visibility; this.analyze = analyze;
         this.commit = commit; this.selectField = selectField; this.workArea = workArea; this.tailComposing = tailComposing; this.currentField = currentField;
         Localized.Name(filter, "筛选"); Localized.Name(items, "候选");
-        editorBorder.BorderBrush = Views.Brush("SystemControlForegroundAccentBrush"); editorBorder.Child = filter;
+        editorBorder.Child = filter;
         InlineEditor.Child = Views.Row(marker, editorBorder);
         popup.PlacementTarget = editorBorder;
-        popup.Child = new Border { Child = items, Width = 320, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1),
-            Background = Views.Brush("SolidBackgroundFillColorBaseBrush"), BorderBrush = Views.Brush("SurfaceStrokeColorDefaultBrush") };
+        var surface = (Border)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    Width="320" CornerRadius="9" BorderThickness="1"
+                    Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
+                    BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}" />
+            """);
+        surface.Child = items; popup.Child = surface;
+        search.ActualThemeChanged += (_, _) => surface.RequestedTheme = search.ActualTheme;
         ScrollViewer.SetVerticalScrollMode(items, ScrollMode.Enabled);
         ScrollViewer.SetVerticalScrollBarVisibility(items, ScrollBarVisibility.Hidden);
         ScrollViewer.SetHorizontalScrollMode(items, ScrollMode.Disabled);
@@ -153,7 +163,11 @@ internal sealed class HelperCandidates
             if (item.Tag is Candidate candidate) { var label = new TextBlock { Text = candidate.Label, FontSize = 13 }; label.Measure(new Size(double.PositiveInfinity, 32)); desired = Math.Max(desired, label.DesiredSize.Width + 40); }
         double width = Math.Min(Math.Clamp(desired, 140, 220), Math.Max(120, area.Width - 16));
         double height = Math.Min(Math.Clamp(items.Items.Count, 1, 6) * 32 + 14, Math.Max(40, area.Height - 16));
-        if (popup.Child is Border border) { border.Width = width; border.Padding = new Thickness(6); }
+        if (popup.Child is Border border)
+        {
+            border.RequestedTheme = search.ActualTheme;
+            border.Width = width; border.Padding = new Thickness(6);
+        }
         // Give the native list a finite viewport so wheel/trackpad input can scroll it.
         items.Height = Math.Max(32, height - 14);
         popup.IsOpen = true;
