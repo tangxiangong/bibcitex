@@ -64,11 +64,43 @@ fn cos_verifies_payloads_then_reserves_versions_before_feeds() {
     let feed =
         String::from_utf8(objects["update-feed/appcast-arm64-stable-zh-Hans.xml"].clone()).unwrap();
     assert!(feed.contains(&format!(
-        "{PUBLIC_ROOT}/releases/v1.2.3/BibCiTeX-1.2.3-macos-arm64.app.zip"
+        "{PUBLIC_ROOT}/releases/v1.2.3/BibCiTeX-1.2.3-macos-universal.app.zip"
     )));
     assert!(feed.contains(&format!("{PUBLIC_ROOT}/releases/v1.2.3/notes-zh-Hans.md")));
     assert!(!feed.contains("github.com"));
     assert!(feed.contains("sparkle:edSignature="));
+}
+
+#[test]
+fn legacy_macos_clients_receive_universal_archives_after_a_split_release() {
+    let store = MemoryStore::default();
+    let (legacy, key) = crate::tests::fixture_with_macos("v0.8.2", &["arm64", "x86_64"]);
+    publish_to("v0.8.2", legacy.path(), "owner/repo", &key, &store).unwrap();
+    for arch in ["arm64", "x86_64"] {
+        let name = format!("update-feed/appcast-{arch}-stable-en.xml");
+        let feed = String::from_utf8(store.objects.borrow()[&name].clone()).unwrap();
+        assert!(feed.contains(&format!("/v0.8.2/BibCiTeX-0.8.2-macos-{arch}.app.zip")));
+    }
+    let (universal, key) = crate::tests::fixture("v0.8.3");
+    publish_to("v0.8.3", universal.path(), "owner/repo", &key, &store).unwrap();
+    let objects = store.objects.borrow();
+    for arch in ["arm64", "x86_64"] {
+        for audience in ["stable", "beta", "alpha"] {
+            for locale in ["en", "zh-Hans"] {
+                let name = format!("update-feed/appcast-{arch}-{audience}-{locale}.xml");
+                let feed = String::from_utf8(objects[&name].clone()).unwrap();
+                assert!(feed.contains(&format!(
+                    "{PUBLIC_ROOT}/releases/v0.8.3/BibCiTeX-0.8.3-macos-universal.app.zip"
+                )));
+                assert!(feed.contains(&format!("{PUBLIC_ROOT}/releases/v0.8.3/notes-{locale}.md")));
+                assert!(!feed.contains("github.com"));
+            }
+        }
+    }
+    assert!(objects.contains_key("releases/v0.8.2/BibCiTeX-0.8.2-macos-arm64.app.zip"));
+    assert!(objects.contains_key("releases/v0.8.3/BibCiTeX-0.8.3-macos-universal.app.zip"));
+    assert!(!objects.contains_key("releases/v0.8.3/BibCiTeX-0.8.3-macos-arm64.app.zip"));
+    assert!(!objects.contains_key("releases/v0.8.3/BibCiTeX-0.8.3-macos-x86_64.app.zip"));
 }
 
 #[test]
@@ -152,8 +184,8 @@ fn replacement_rejects_invalid_signature_before_any_upload() {
     publish_to("v1.2.3", dir.path(), "owner/repo", &key, &store).unwrap();
     store.uploads.borrow_mut().clear();
     fs::write(
-        dir.path().join("BibCiTeX-1.2.3-macos-arm64.app.zip"),
-        b"tampered",
+        dir.path().join("BibCiTeX-1.2.3-macos-universal.app.zip"),
+        b"corrupt-universal",
     )
     .unwrap();
     assert!(replace_release_to("v1.2.3", dir.path(), "owner/repo", &key, &store).is_err());

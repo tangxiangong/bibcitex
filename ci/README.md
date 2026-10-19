@@ -2,7 +2,7 @@
 
 The Check workflow builds the Rust workspace and both native applications on x86_64 and ARM64. IDE builds own binding generation. macOS command-line builds do not launch an application. Windows XAML compilation runs on Windows; C# semantic builds on macOS are supplementary.
 
-The Release workflow accepts `vMAJOR.MINOR.PATCH`, `-alpha.N`, and `-beta.N` tags. Publishing a GitHub Release triggers Check and builds both architectures from the resolved tag commit. The workflow validates the full artifact set, uploads it to that existing public Release, and only then advances the separate `update-feed` release. It then publishes the same verified payloads and COS-specific feeds to the primary COS mirror. There is no Tauri migration, MSIX or App Installer output.
+The Release workflow accepts `vMAJOR.MINOR.PATCH`, `-alpha.N`, and `-beta.N` tags. Publishing a GitHub Release triggers Check and builds from the resolved tag commit: one macOS Universal 2 app for Apple Silicon and Intel, plus separate Windows x64 and ARM64 packages. The workflow validates the full artifact set, uploads it to that existing public Release, and only then advances the separate `update-feed` release. It then publishes the same verified payloads and COS-specific feeds to the primary COS mirror. There is no Tauri migration, MSIX or App Installer output.
 
 ## Required configuration
 
@@ -29,6 +29,24 @@ Before publication, `xtask sign-windows <assets>` requires both Windows keys, pr
 
 The installer build sequence is `github.run_number`; preserve monotonicity if replacing this workflow. The first release using this mechanism is manually installed. Later releases update in place.
 
+macOS produces `BibCiTeX-<version>-macos-universal.dmg`,
+`BibCiTeX-<version>-macos-universal.app.zip` and `appcast-universal.xml`.
+The release script builds both Rust targets, then verifies that every Mach-O binary
+in the app, including embedded Sparkle code, contains both `arm64` and `x86_64`
+before packaging. Publication verifies the archive's Sparkle signature and generates
+the existing `appcast-arm64-<channel>-<locale>.xml` and
+`appcast-x86_64-<channel>-<locale>.xml` names from that single signed appcast.
+Both architectures receive the same Universal archive; keep these feed names on
+both hosts because existing clients and Universal builds continue requesting them.
+Preserve the app's bundle identifier and Sparkle key, and increase the semantic
+version and build number so installed releases can update directly.
+
+The publisher also accepts complete legacy macOS releases containing both
+architecture-specific archives and appcasts. Their signatures and payload URLs
+remain architecture-specific, so mirroring or retrying an older release does not
+require rebuilding it. An incomplete Universal release fails validation rather
+than falling back to legacy packages.
+
 ## COS primary source and GitHub fallback
 
 The release bucket is `app-release-1302963684` in `ap-guangzhou`. This application's publisher writes only under `bibcitex/`, leaving other apps in the shared bucket untouched. Clients use:
@@ -50,7 +68,7 @@ bibcitex/
     channels.json
 ```
 
-The COS publisher validates all four platform/architecture payloads, Sparkle signatures and Windows hashes before network writes. Existing objects are checked using anonymous downloads and SHA-256; different contents fail rather than being overwritten. Uploads retry transient errors and use COS's forbid-overwrite header for immutable objects (the service only enforces that header when bucket versioning has never been enabled). Keep all publishing workflows in the shared `release-feeds` concurrency group; do not run independent writers concurrently. Initial catalogs and mutable feed pointers use `no-cache, max-age=60`; versioned assets use `public, max-age=31536000, immutable`. All payloads are uploaded and publicly verified before channel feeds advance. `channels.json` reserves the highest target version for each audience before client-facing feeds change; equal-version retries regenerate pointers so interrupted runs can finish without allowing an older repair to downgrade partially published feeds. Do not delete the catalog or configure automatic expiry/archival for referenced packages. Each source maintains its own monotonically advancing stable/beta/alpha audiences; failure halfway through feed upload can temporarily leave audiences on different valid versions, and retry completes publication.
+The COS publisher validates the macOS Universal archive (or both legacy architecture archives), Sparkle signatures and both Windows payloads before network writes. Existing objects are checked using anonymous downloads and SHA-256; different contents fail rather than being overwritten. Uploads retry transient errors and use COS's forbid-overwrite header for immutable objects (the service only enforces that header when bucket versioning has never been enabled). Keep all publishing workflows in the shared `release-feeds` concurrency group; do not run independent writers concurrently. Initial catalogs and mutable feed pointers use `no-cache, max-age=60`; versioned assets use `public, max-age=31536000, immutable`. All payloads are uploaded and publicly verified before channel feeds advance. `channels.json` reserves the highest target version for each audience before client-facing feeds change; equal-version retries regenerate pointers so interrupted runs can finish without allowing an older repair to downgrade partially published feeds. Do not delete the catalog or configure automatic expiry/archival for referenced packages. Each source maintains its own monotonically advancing stable/beta/alpha audiences; failure halfway through feed upload can temporarily leave audiences on different valid versions, and retry completes publication.
 
 The COS appcasts point to COS archives and localized notes; GitHub appcasts retain GitHub links. Velopack packages live beside each source's channel feeds and have identical bytes on both hosts. Publishing GitHub first ensures the fallback is ready before COS advances. If COS publication fails, GitHub remains valid; rerun the failed publish job, or use **Publish existing release to COS** with the existing tag. That manual workflow downloads and verifies already published GitHub assets without rebuilding or changing their signatures. Do not rebuild a populated release to repair a mirror.
 
@@ -70,8 +88,12 @@ Verification: `just check-rust`, `just test-ci`, macOS compilation, and non-UI C
 
 After **Release** completes successfully, **Update Homebrew tap** runs through a
 `workflow_run` completion event. No scheduled polling is used. It downloads and
-verifies both macOS archives from the newest complete stable release, then
-commits the version and SHA-256 changes to `tangxiangong/homebrew-tap`.
+verifies the macOS Universal archive from the newest complete stable release,
+then commits the version, URL and SHA-256 changes to `tangxiangong/homebrew-tap`.
+The tap updater migrates the cask from architecture-specific URLs/checksums to a
+single Universal URL/checksum when that asset becomes available, and continues
+to support older releases with separate archives. Deploy the tap updater change
+to the tap's `main` branch before publishing the first Universal release.
 The tap updater ignores prereleases and incomplete releases and prevents
 version downgrades. Its tests and commit helper live in the tap repository.
 

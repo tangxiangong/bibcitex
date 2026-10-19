@@ -218,7 +218,7 @@ pub struct Manifest {
     pub channel: String,
     pub assets: BTreeMap<String, Asset>,
 }
-/// Validate the complete four-target release before any network mutation.
+/// Validate the complete signed release before any network mutation.
 pub fn prepare(
     directory: &Path,
     tag: &str,
@@ -231,7 +231,23 @@ pub fn prepare(
         .try_into()
         .map_err(|_| "Invalid Sparkle public key")?;
     let key = VerifyingKey::from_bytes(&key)?;
-    for arch in ["arm64", "x86_64"] {
+    // Older releases retain separate archives and must remain mirrorable without rebuilding.
+    let macos_architectures: &[&str] = if directory.join("appcast-universal.xml").try_exists()?
+        || directory
+            .join(format!(
+                "BibCiTeX-{}-macos-universal.app.zip",
+                version.version
+            ))
+            .try_exists()?
+        || directory
+            .join(format!("BibCiTeX-{}-macos-universal.dmg", version.version))
+            .try_exists()?
+    {
+        &["universal"]
+    } else {
+        &["arm64", "x86_64"]
+    };
+    for arch in macos_architectures {
         let filename = format!("BibCiTeX-{}-macos-{arch}.app.zip", version.version);
         let archive = safe_file(directory, &filename)?;
         safe_file(
@@ -423,7 +439,13 @@ fn feeds_at(
             continue;
         }
         for arch in ["arm64", "x86_64"] {
-            let source = fs::read_to_string(directory.join(format!("appcast-{arch}.xml")))?;
+            // Installed clients, including Universal builds, keep their architecture feed URLs.
+            let source_arch = if manifest.assets.contains_key("appcast-universal.xml") {
+                "universal"
+            } else {
+                arch
+            };
+            let source = fs::read_to_string(directory.join(format!("appcast-{source_arch}.xml")))?;
             let root = parse_xml(&source)?;
             root.one("", "channel")?.one("", "item")?;
             for locale in ["zh-Hans", "en"] {

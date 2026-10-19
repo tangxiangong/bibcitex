@@ -63,6 +63,14 @@ Sparkle 2 owns archive verification, automatic download/install and relaunch. Se
 
 COS is the primary update source, with GitHub Releases as fallback. Sparkle retries a failed primary feed or archive transport once through the GitHub feed; cancellation, signature failures and installation errors do not retry. Each new cycle starts with COS. Versioned releases contain the DMG, `.app.zip`, localized notes and SHA256SUMS; the separate `update-feed` release contains architecture/channel/language appcasts. Formal releases can advance stable/beta/alpha feeds, beta can advance beta/alpha, and alpha only alpha. A feed never moves to an older semantic version.
 
+Release CI builds one Universal 2 app and publishes `macos-universal.dmg` and
+`macos-universal.app.zip` assets with the version prefix. Before packaging, it
+checks that the app and embedded Mach-O binaries contain both `arm64` and
+`x86_64`. Both architecture/channel/language appcast addresses remain available
+and point to the same signed Universal archive, allowing installed architecture-specific
+releases to update directly without an intermediate client release. The publisher
+also retains support for mirroring complete older releases with separate archives.
+
 The workflow does not require Apple Developer ID or notarization. It uses ad-hoc application signing plus a separate, self-generated Sparkle Ed25519 update key. Configure release-environment secret `SPARKLE_PRIVATE_ED_KEY` and variable `SPARKLE_PUBLIC_ED_KEY` from Sparkle's `generate_keys`; keep that key pair across releases. These are not paid certificates. Without a configured public key, local builds leave update checks disabled. macOS Gatekeeper may still require user approval for a non-notarized first installation; update verification does not remove OS checks.
 
 See [the release configuration and COS protocol](../ci/README.md#cos-primary-source-and-github-fallback). There is no legacy Tauri migration feed.

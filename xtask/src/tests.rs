@@ -13,10 +13,17 @@ fn release_hash_matches_standard_sha256_encoding() {
 }
 
 pub(crate) fn fixture(tag: &str) -> (tempfile::TempDir, UpdateKeys) {
+    fixture_with_macos(tag, &["universal"])
+}
+
+pub(crate) fn fixture_with_macos(
+    tag: &str,
+    architectures: &[&str],
+) -> (tempfile::TempDir, UpdateKeys) {
     let dir = tempfile::tempdir().unwrap();
     let key = SigningKey::from_bytes(&[17; 32]);
     let version = versions(tag).unwrap();
-    for arch in ["arm64", "x86_64"] {
+    for arch in architectures {
         let name = format!("BibCiTeX-{}-macos-{arch}.app.zip", version.version);
         let bytes = format!("fixture-{arch}").into_bytes();
         fs::write(dir.path().join(&name), &bytes).unwrap();
@@ -142,12 +149,138 @@ fn complete_release_checks_signatures_hashes_and_locales() {
     assert_eq!(result.channel, "beta");
     assert!(dir.path().join("SHA256SUMS").exists());
     fs::write(
-        dir.path().join("BibCiTeX-0.7.0-beta.1-macos-arm64.app.zip"),
-        b"tampered",
+        dir.path()
+            .join("BibCiTeX-0.7.0-beta.1-macos-universal.app.zip"),
+        b"corrupt-universal",
     )
     .unwrap();
     assert!(prepare(dir.path(), "v0.7.0-beta.1", "owner/repo", &key).is_err());
 }
+
+#[test]
+fn universal_archive_reaches_both_architectures_in_every_channel_and_locale() {
+    let (dir, key) = fixture("v1.0.0");
+    let manifest = prepare(dir.path(), "v1.0.0", "owner/repo", &key).unwrap();
+    let macos_packages: Vec<_> = manifest
+        .assets
+        .keys()
+        .filter(|name| name.contains("-macos-"))
+        .map(String::as_str)
+        .collect();
+    assert_eq!(
+        macos_packages,
+        [
+            "BibCiTeX-1.0.0-macos-universal.app.zip",
+            "BibCiTeX-1.0.0-macos-universal.dmg"
+        ]
+    );
+    let source =
+        parse_xml(&fs::read_to_string(dir.path().join("appcast-universal.xml")).unwrap()).unwrap();
+    let signature = source
+        .one("", "channel")
+        .unwrap()
+        .one("", "item")
+        .unwrap()
+        .one("", "enclosure")
+        .unwrap()
+        .attr(SPARKLE, "edSignature");
+    let output = tempfile::tempdir().unwrap();
+    let names = feeds(
+        dir.path(),
+        output.path(),
+        "owner/repo",
+        &manifest,
+        &mut Channels::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        names.iter().filter(|name| name.ends_with(".xml")).count(),
+        12
+    );
+    for arch in ["arm64", "x86_64"] {
+        for audience in ["stable", "beta", "alpha"] {
+            for locale in ["en", "zh-Hans"] {
+                let name = format!("appcast-{arch}-{audience}-{locale}.xml");
+                assert!(names.contains(&name));
+                let xml =
+                    parse_xml(&fs::read_to_string(output.path().join(&name)).unwrap()).unwrap();
+                let item = xml.one("", "channel").unwrap().one("", "item").unwrap();
+                let enclosure = item.one("", "enclosure").unwrap();
+                assert_eq!(
+                    enclosure.attr("", "url"),
+                    "https://github.com/owner/repo/releases/download/v1.0.0/BibCiTeX-1.0.0-macos-universal.app.zip"
+                );
+                assert_eq!(enclosure.attr(SPARKLE, "edSignature"), signature);
+                assert_eq!(
+                    item.one(SPARKLE, "releaseNotesLink").unwrap().text,
+                    format!(
+                        "https://github.com/owner/repo/releases/download/v1.0.0/notes-{locale}.md"
+                    )
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn legacy_macos_archives_keep_their_signed_architecture_feeds() {
+    let (dir, key) = fixture_with_macos("v0.8.2", &["arm64", "x86_64"]);
+    let manifest = prepare(dir.path(), "v0.8.2", "owner/repo", &key).unwrap();
+    let output = tempfile::tempdir().unwrap();
+    feeds(
+        dir.path(),
+        output.path(),
+        "owner/repo",
+        &manifest,
+        &mut Channels::default(),
+    )
+    .unwrap();
+    for arch in ["arm64", "x86_64"] {
+        let feed = fs::read_to_string(output.path().join(format!("appcast-{arch}-stable-en.xml")))
+            .unwrap();
+        assert!(feed.contains(&format!("/v0.8.2/BibCiTeX-0.8.2-macos-{arch}.app.zip")));
+    }
+    fs::write(
+        dir.path().join("BibCiTeX-0.8.2-macos-x86_64.app.zip"),
+        b"corrupt-x86_64",
+    )
+    .unwrap();
+    assert!(prepare(dir.path(), "v0.8.2", "owner/repo", &key).is_err());
+}
+
+#[test]
+fn missing_universal_assets_block_publication_before_network_writes() {
+    for name in [
+        "appcast-universal.xml",
+        "BibCiTeX-1.0.0-macos-universal.app.zip",
+        "BibCiTeX-1.0.0-macos-universal.dmg",
+    ] {
+        let (dir, key) = fixture("v1.0.0");
+        fs::remove_file(dir.path().join(name)).unwrap();
+        let error = publish_release("v1.0.0", dir.path(), "owner/repo", &key, |_| {
+            panic!("Incomplete Universal releases must not reach GitHub")
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains(name), "{error}");
+    }
+}
+
+#[test]
+fn universal_feed_cannot_substitute_a_different_payload() {
+    let (dir, key) = fixture("v1.0.0");
+    let path = dir.path().join("appcast-universal.xml");
+    let xml = fs::read_to_string(&path)
+        .unwrap()
+        .replace("macos-universal.app.zip", "macos-arm64.app.zip");
+    fs::write(path, xml).unwrap();
+    assert!(
+        publish_release("v1.0.0", dir.path(), "owner/repo", &key, |_| {
+            panic!("Mismatched Universal metadata must not reach GitHub")
+        })
+        .is_err()
+    );
+}
+
 #[test]
 fn corrupted_windows_package_and_missing_installer_block_release() {
     let (dir, key) = fixture("v1.0.0");

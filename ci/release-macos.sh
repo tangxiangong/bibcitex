@@ -1,7 +1,7 @@
 #!/bin/bash
 # Invoked by the release workflow; no commercial certificate or GUI launch required.
 set -euo pipefail
-for name in SPARKLE_PRIVATE_ED_KEY SPARKLE_PUBLIC_ED_KEY APP_VERSION BUILD_NUMBER ARCH RELEASE_TAG GITHUB_REPOSITORY RUNNER_TEMP; do
+for name in SPARKLE_PRIVATE_ED_KEY SPARKLE_PUBLIC_ED_KEY APP_VERSION BUILD_NUMBER RELEASE_TAG GITHUB_REPOSITORY RUNNER_TEMP; do
     [[ -n "${!name:-}" ]] || { echo "::error::Missing release configuration: $name" >&2; exit 1; }
 done
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,9 +10,15 @@ trap 'rm -rf "$work"' EXIT
 umask 077
 printf '%s' "$SPARKLE_PRIVATE_ED_KEY" > "$work/sparkle.key"
 export UPDATE_BASE_URL="https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed"
-export CONFIGURATION=release BUILD_ONLY=0 CODE_SIGN_IDENTITY=-
+export ARCH=universal CONFIGURATION=release BUILD_ONLY=0 CODE_SIGN_IDENTITY=-
 bash "$root/macos/build.sh"
 app="$root/dist/macos/$ARCH/BibCiTeX.app"
+# Check the app and embedded Sparkle code before creating or signing update archives.
+while IFS= read -r -d '' binary; do
+    if [[ "$(file -b "$binary")" == Mach-O* ]]; then
+        xcrun lipo "$binary" -verify_arch arm64 x86_64
+    fi
+done < <(find "$app/Contents" -type f -print0)
 out="$root/dist/release/macos-$ARCH"
 mkdir -p "$out" "$work/archives" "$work/dmg"
 archive="BibCiTeX-$APP_VERSION-macos-$ARCH.app.zip"
