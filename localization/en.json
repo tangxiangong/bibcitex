@@ -512,5 +512,17 @@
   "逐项": "Individual",
   "key": "key",
   "引用指令": "Citation command",
-  "#cite (正文引用)": "#cite (prose)"
+  "#cite (正文引用)": "#cite (prose)",
+  "自动检查更新": "Automatically check for updates",
+  "自动更新不可用": "Automatic updates are unavailable",
+  "在 GitHub 查看发布说明": "View release notes on GitHub",
+  "BibCiTeX {0} 现已推出，当前版本为 {1}。": "BibCiTeX {0} is available. Your current version is {1}.",
+  "BibCiTeX {0} 已下载，将在退出时安装。": "BibCiTeX {0} has been downloaded and will be installed when you quit.",
+  "请等待当前操作完成后检查更新。": "Wait for the current operation to finish before checking for updates.",
+  "正在下载…": "Downloading…",
+  "将在当前操作完成后重新启动…": "Restarting after the current operation finishes…",
+  "正在重新启动…": "Restarting…",
+  "暂时无法获取更新信息，请稍后重试。": "Update information is temporarily unavailable. Try again later.",
+  "无法连接到更新服务器，请检查网络后重试。": "Unable to connect to the update server. Check your connection and try again.",
+  "更新文件验证失败，请稍后重试。": "Update verification failed. Try again later."
 }

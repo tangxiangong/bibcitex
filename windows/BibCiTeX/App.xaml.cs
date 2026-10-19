@@ -44,7 +44,7 @@ public partial class App : Application
         try { await RustCore.Initialize(); } catch (Exception error) { initializationError = error; }
         main = new MainWindow(); Helper = new HelperWindow();
         Tray = new TrayWindow(() => { main.AppWindow.Show(); main.Activate(); });
-        main.Closed += (_, _) => { Tray.Shutdown(); Helper.Dispose(); Helper.Close(); };
+        main.Closed += (_, _) => { Updater.ApplyOnExit(); Tray.Shutdown(); Helper.Dispose(); Helper.Close(); };
         ((FrameworkElement)main.Content).Loaded += (_, _) => _ = Updater.Start((FrameworkElement)main.Content);
         L10n.Changed += RefreshWindowLanguages;
         languageTimer = dispatcher.CreateTimer();

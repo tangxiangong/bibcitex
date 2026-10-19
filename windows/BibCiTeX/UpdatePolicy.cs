@@ -10,11 +10,16 @@ internal static class UpdatePolicy
     internal static string FeedChannel(string architecture, string channel) => architecture is "x64" or "arm64"
         && channel is "stable" or "beta" or "alpha" ? $"win-{architecture}-{channel}" : throw new ArgumentException("Invalid update target");
     internal static bool CanSchedule(long startedRevision, long currentRevision, bool enabled) => enabled && startedRevision == currentRevision;
+    internal static bool AcceptsVersion(string version, string channel)
+        => System.Text.RegularExpressions.Regex.IsMatch(version, @"\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta)\.(0|[1-9][0-9]*))?\z")
+            && channel switch { "alpha" => true, "beta" => DefaultChannel(version) != "alpha", "stable" => DefaultChannel(version) == "stable", _ => false };
+    internal static TimeSpan CheckDelay(DateTimeOffset now, DateTimeOffset? last)
+        => last is { } recorded && recorded <= now && recorded + TimeSpan.FromHours(6) > now
+            ? recorded + TimeSpan.FromHours(6) - now : TimeSpan.Zero;
     internal static bool CanApplyPending(bool enabled, string? requestedVersion, string? downloadedVersion, string channel)
     {
         if (!enabled || string.IsNullOrEmpty(requestedVersion) || requestedVersion != downloadedVersion) return false;
-        var preview = DefaultChannel(requestedVersion);
-        return channel switch { "alpha" => true, "beta" => preview != "alpha", "stable" => preview == "stable", _ => false };
+        return AcceptsVersion(requestedVersion, channel);
     }
     internal static string Notes(string markdown, string language)
     {

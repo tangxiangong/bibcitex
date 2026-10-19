@@ -1,6 +1,7 @@
 pub mod cos;
 pub mod linux;
 pub mod notes;
+pub mod windows;
 
 use base64::Engine;
 use ed25519_dalek::{Signature, VerifyingKey};
@@ -11,6 +12,22 @@ use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, error::Error, fs, path::Path, process::Command};
 pub type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 const SPARKLE: &str = "http://www.andymatuschak.org/xml-namespaces/sparkle";
+
+/// Public keys used to verify release artifacts before publication.
+#[derive(Clone)]
+pub struct UpdateKeys {
+    pub sparkle: String,
+    pub windows: String,
+}
+
+impl UpdateKeys {
+    pub fn from_env() -> Result<Self> {
+        Ok(Self {
+            sparkle: std::env::var("SPARKLE_PUBLIC_ED_KEY")?,
+            windows: std::env::var("WINDOWS_UPDATE_PUBLIC_KEY")?,
+        })
+    }
+}
 const HUB: &str = "update-feed";
 fn ensure(value: bool, message: &str) -> Result<()> {
     if value { Ok(()) } else { Err(message.into()) }
@@ -206,11 +223,11 @@ pub fn prepare(
     directory: &Path,
     tag: &str,
     repository: &str,
-    public_key: &str,
+    keys: &crate::UpdateKeys,
 ) -> Result<Manifest> {
     let version = versions(tag)?;
     let key: [u8; 32] = base64::engine::general_purpose::STANDARD
-        .decode(public_key.trim())?
+        .decode(keys.sparkle.trim())?
         .try_into()
         .map_err(|_| "Invalid Sparkle public key")?;
     let key = VerifyingKey::from_bytes(&key)?;
@@ -253,6 +270,13 @@ pub fn prepare(
                 &format!("BibCiTeX-{}-windows-{arch}.{ext}", version.version),
             )?;
         }
+        windows::verify(
+            directory,
+            arch,
+            &version.version,
+            &version.channel,
+            &keys.windows,
+        )?;
         let filename = format!("releases.win-{arch}-{}.json", version.channel);
         let feed: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(safe_file(directory, &filename)?)?)?;
@@ -418,6 +442,15 @@ fn feeds_at(
             let source = directory.join(format!("releases.win-{arch}-{}.json", manifest.channel));
             fs::copy(source, output.join(&name))?;
             result.push(name);
+            let name = format!("releases.win-{arch}-{audience}.signed.json");
+            fs::copy(
+                directory.join(format!(
+                    "releases.win-{arch}-{}.signed.json",
+                    manifest.channel
+                )),
+                output.join(&name),
+            )?;
+            result.push(name);
         }
         channels
             .versions
@@ -455,10 +488,10 @@ pub fn publish_release(
     tag: &str,
     directory: &Path,
     repository: &str,
-    public_key: &str,
+    keys: &crate::UpdateKeys,
     mut gh: impl FnMut(&[String]) -> Result<CommandResult>,
 ) -> Result<()> {
-    let manifest = prepare(directory, tag, repository, public_key)?;
+    let manifest = prepare(directory, tag, repository, keys)?;
     // The version release is published by the maintainer before this workflow runs.
     // Never delete or replace public assets: retry only the missing files.
     let existing = gh(&args(&[

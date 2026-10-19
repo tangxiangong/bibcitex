@@ -91,6 +91,7 @@ jobs:
           if-no-files-found: error
   windows:
     needs: [prepare, checks]
+    environment: release
     strategy:
       fail-fast: false
       matrix:
@@ -123,6 +124,7 @@ jobs:
           APP_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_CHANNEL: ${{ needs.prepare.outputs.channel }}
           BUILD_NUMBER: ${{ github.run_number }}
+          WINDOWS_UPDATE_PUBLIC_KEY: ${{ vars.WINDOWS_UPDATE_PUBLIC_KEY }}
       - uses: actions/upload-artifact@v7
         with:
           name: release-windows-${{ matrix.arch }}
@@ -211,11 +213,14 @@ jobs:
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
           BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
           VERSION: ${{ needs.prepare.outputs.version }}
+          WINDOWS_UPDATE_PUBLIC_KEY: ${{ vars.WINDOWS_UPDATE_PUBLIC_KEY }}
+          WINDOWS_UPDATE_PRIVATE_KEY: ${{ secrets.WINDOWS_UPDATE_PRIVATE_KEY }}
           RELEASE_REVISION: ${{ needs.prepare.outputs.revision }}
           INCLUDE_LINUX: ${{ needs.prepare.outputs.linux }}
         run: |
           test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_REVISION"
           cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- release-notes "release-notes/$VERSION" release-assets
+          cargo run --locked --manifest-path automation/Cargo.toml -p xtask -- sign-windows release-assets
           if test "$INCLUDE_LINUX" != true; then
             rm -f release-assets/notes-linux-en.md release-assets/notes-linux-zh-Hans.md
           fi
@@ -225,6 +230,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_ASSETS: release-assets
           SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+          WINDOWS_UPDATE_PUBLIC_KEY: ${{ vars.WINDOWS_UPDATE_PUBLIC_KEY }}
           BIBCITEX_LINUX_UPDATE_PUBLIC_KEY: ${{ vars.BIBCITEX_LINUX_UPDATE_PUBLIC_KEY }}
           COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
           COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}

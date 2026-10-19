@@ -12,7 +12,7 @@ fn release_hash_matches_standard_sha256_encoding() {
     );
 }
 
-pub(crate) fn fixture(tag: &str) -> (tempfile::TempDir, String) {
+pub(crate) fn fixture(tag: &str) -> (tempfile::TempDir, UpdateKeys) {
     let dir = tempfile::tempdir().unwrap();
     let key = SigningKey::from_bytes(&[17; 32]);
     let version = versions(tag).unwrap();
@@ -52,9 +52,14 @@ pub(crate) fn fixture(tag: &str) -> (tempfile::TempDir, String) {
     )
     .unwrap();
     fs::write(dir.path().join("notes-zh-Hans.md"), "# 更新\n\n- 修复引用").unwrap();
+    let windows = crate::windows::test_sign(dir.path(), &version.version, &version.channel);
     (
         dir,
-        base64::engine::general_purpose::STANDARD.encode(key.verifying_key().as_bytes()),
+        UpdateKeys {
+            sparkle: base64::engine::general_purpose::STANDARD
+                .encode(key.verifying_key().as_bytes()),
+            windows,
+        },
     )
 }
 #[test]
@@ -76,6 +81,58 @@ fn release_versions_accept_channels_and_reject_ambiguous_tags() {
         "v1.0.0-alpha.1.2",
     ] {
         assert!(versions(tag).is_err(), "{tag}");
+    }
+}
+
+#[test]
+fn missing_windows_signatures_block_publication_before_network_writes() {
+    let (directory, keys) = fixture("v1.0.0");
+    fs::remove_file(directory.path().join("releases.win-x64-stable.signed.json")).unwrap();
+    assert!(
+        publish_release("v1.0.0", directory.path(), "owner/repo", &keys, |_| {
+            panic!("Unverified Windows metadata must not reach GitHub")
+        })
+        .is_err()
+    );
+}
+
+#[test]
+fn stable_windows_signatures_are_preserved_in_every_promoted_audience() {
+    let (directory, keys) = fixture("v1.0.0");
+    let manifest = prepare(directory.path(), "v1.0.0", "owner/repo", &keys).unwrap();
+    let output = tempfile::tempdir().unwrap();
+    feeds(
+        directory.path(),
+        output.path(),
+        "owner/repo",
+        &manifest,
+        &mut Channels::default(),
+    )
+    .unwrap();
+    for arch in ["x64", "arm64"] {
+        let signed = fs::read(
+            directory
+                .path()
+                .join(format!("releases.win-{arch}-stable.signed.json")),
+        )
+        .unwrap();
+        for audience in ["stable", "beta", "alpha"] {
+            assert_eq!(
+                signed,
+                fs::read(
+                    output
+                        .path()
+                        .join(format!("releases.win-{arch}-{audience}.signed.json"))
+                )
+                .unwrap()
+            );
+            assert!(
+                output
+                    .path()
+                    .join(format!("releases.win-{arch}-{audience}.json"))
+                    .exists()
+            );
+        }
     }
 }
 #[test]
@@ -111,8 +168,11 @@ fn corrupted_windows_package_and_missing_installer_block_release() {
 #[test]
 fn missing_language_and_wrong_sparkle_key_block_release() {
     let (dir, key) = fixture("v1.0.0");
-    let wrong = base64::engine::general_purpose::STANDARD
-        .encode(SigningKey::from_bytes(&[18; 32]).verifying_key().as_bytes());
+    let wrong = UpdateKeys {
+        sparkle: base64::engine::general_purpose::STANDARD
+            .encode(SigningKey::from_bytes(&[18; 32]).verifying_key().as_bytes()),
+        ..key.clone()
+    };
     assert!(prepare(dir.path(), "v1.0.0", "owner/repo", &wrong).is_err());
     fs::write(dir.path().join("notes-en.md"), " ").unwrap();
     assert!(prepare(dir.path(), "v1.0.0", "owner/repo", &key).is_err());

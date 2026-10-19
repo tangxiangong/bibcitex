@@ -9,6 +9,11 @@ internal static class UpdatePolicyTests
         Equal("beta", UpdatePolicy.Channel("bad", "0.7.0-beta.1"));
         Equal("stable", UpdatePolicy.Channel("stable", "0.7.0-alpha.1"));
         Equal("win-arm64-beta", UpdatePolicy.FeedChannel("arm64", "beta"));
+        var now = DateTimeOffset.UtcNow;
+        if (UpdatePolicy.CheckDelay(now, now - TimeSpan.FromHours(2)) != TimeSpan.FromHours(4)
+            || UpdatePolicy.CheckDelay(now, now + TimeSpan.FromHours(1)) != TimeSpan.Zero
+            || UpdatePolicy.CheckDelay(now, null) != TimeSpan.Zero)
+            throw new InvalidOperationException("Persistent check scheduling regression");
         static void Assert(bool value) { if (!value) throw new InvalidOperationException("Update policy regression"); }
         Assert(UpdatePolicy.CanSchedule(1, 1, true));
         Assert(!UpdatePolicy.CanSchedule(1, 2, true));

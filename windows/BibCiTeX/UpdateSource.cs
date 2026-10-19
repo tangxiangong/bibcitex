@@ -12,8 +12,8 @@ internal sealed class UpdateSource : IUpdateSource
     private readonly IUpdateSource[] downloads;
     private int selected;
 
-    internal UpdateSource() : this(
-        [new SimpleWebSource(UpdatePolicy.BaseUrl, timeout: 0.5), new SimpleWebSource(UpdatePolicy.FallbackUrl, timeout: 0.5)],
+    internal UpdateSource(ECDsa publicKey) : this(
+        [new SignedWebSource(UpdatePolicy.BaseUrl, publicKey), new SignedWebSource(UpdatePolicy.FallbackUrl, publicKey)],
         [new SimpleWebSource(UpdatePolicy.BaseUrl), new SimpleWebSource(UpdatePolicy.FallbackUrl)]) { }
 
     internal UpdateSource(IUpdateSource[] feeds, IUpdateSource[] downloads)
@@ -39,27 +39,50 @@ internal sealed class UpdateSource : IUpdateSource
         string localFile, Action<int> progress, CancellationToken cancelToken = default)
     {
         // Generated feeds use basenames. An absolute URL would bypass mirror selection.
-        if (string.IsNullOrEmpty(releaseEntry.FileName) || releaseEntry.FileName is "." or ".."
-            || releaseEntry.FileName.IndexOfAny(['/', '\\', ':']) >= 0)
-            throw new InvalidDataException("Invalid update package filename");
-        for (var index = selected; index < downloads.Length; index++)
+        UpdateFeed.RequireSafeFileName(releaseEntry.FileName);
+        try
         {
-            cancelToken.ThrowIfCancellationRequested();
-            try
+            for (var index = selected; index < downloads.Length; index++)
             {
-                await downloads[index].DownloadReleaseEntry(logger, releaseEntry, localFile, progress, cancelToken);
-                using var file = File.OpenRead(localFile);
-                var checksum = Convert.ToHexString(await SHA256.HashDataAsync(file, cancelToken));
-                if (file.Length != releaseEntry.Size || !checksum.Equals(releaseEntry.SHA256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Update package checksum mismatch");
-                return;
-            }
-            catch (Exception error) when (index == 0 && !cancelToken.IsCancellationRequested)
-            {
-                System.Diagnostics.Trace.TraceWarning("COS update download failed; trying GitHub: {0}", error.Message);
-                File.Delete(localFile);
-                progress(0);
+                cancelToken.ThrowIfCancellationRequested();
+                try
+                {
+                    await downloads[index].DownloadReleaseEntry(logger, releaseEntry, localFile, progress, cancelToken);
+                    using var file = File.OpenRead(localFile);
+                    var checksum = Convert.ToHexString(await SHA256.HashDataAsync(file, cancelToken));
+                    if (file.Length != releaseEntry.Size || !checksum.Equals(releaseEntry.SHA256, StringComparison.OrdinalIgnoreCase))
+                        throw new InvalidDataException("Update package checksum mismatch");
+                    return;
+                }
+                catch (Exception error) when (index == 0 && !cancelToken.IsCancellationRequested)
+                {
+                    System.Diagnostics.Trace.TraceWarning("COS update download failed; trying GitHub: {0}", error.Message);
+                    File.Delete(localFile);
+                    progress(0);
+                }
             }
         }
+        catch
+        {
+            try { File.Delete(localFile); }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            throw;
+        }
     }
+}
+
+internal sealed class SignedWebSource(string baseUrl, ECDsa key, IFileDownloader? downloader = null) : IUpdateSource
+{
+    private readonly IFileDownloader downloader = downloader ?? new HttpClientFileDownloader();
+    public async Task<VelopackAssetFeed> GetReleaseFeed(IVelopackLogger logger, string? appId, string channel,
+        Guid? stagingId = null, VelopackAsset? latestLocalRelease = null)
+    {
+        if (appId is not null && appId != "BibCiTeX") throw new InvalidDataException("Invalid update app ID");
+        UpdateFeed.Architecture(channel);
+        var envelope = await downloader.DownloadBytes($"{baseUrl}/releases.{channel}.signed.json", null, 0.5);
+        return UpdateFeed.Open(envelope, key, channel);
+    }
+    public Task DownloadReleaseEntry(IVelopackLogger logger, VelopackAsset releaseEntry,
+        string localFile, Action<int> progress, CancellationToken cancelToken = default)
+        => new SimpleWebSource(baseUrl).DownloadReleaseEntry(logger, releaseEntry, localFile, progress, cancelToken);
 }

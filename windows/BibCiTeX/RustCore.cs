@@ -11,18 +11,18 @@ internal static class RustCore
     {
         if (error is not null) throw new LocalizedException(error);
     }
-    internal static Task Initialize() => Task.Run(() =>
+    internal static Task Initialize() => UpdateActivity.Run(() =>
     {
         using var wire = Interop.initialize().AsOk();
         Check(wire.Unwire().error);
     });
-    internal static Task<List<Library>> Libraries() => Task.Run(() =>
+    internal static Task<List<Library>> Libraries() => UpdateActivity.Run(() =>
     {
         using var wire = Interop.libraries().AsOk();
         var response = wire.Unwire(); Check(response.error);
         return response.payload.Select(Library.From).ToList();
     });
-    internal static Task<List<Reference>> Search(string path, string query, string field = "all", string type = "all") => Task.Run(() =>
+    internal static Task<List<Reference>> Search(string path, string query, string field = "all", string type = "all") => UpdateActivity.Run(() =>
     {
         using var request = new SearchRequest { path = path, query = query, search_field = field, type_filter = type }.Wire();
         using var wire = Interop.search(request).AsOk();
@@ -31,130 +31,130 @@ internal static class RustCore
     });
     /// <summary>Executes an explicit-mode request against one immutable library snapshot. Bound tag nodes require their expected revision; invalid or incomplete queries return diagnostics without actionable references.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<AdvancedSearchResponse> AdvancedSearch(AdvancedSearchRequest value) => Task.Run(() =>
+    internal static Task<AdvancedSearchResponse> AdvancedSearch(AdvancedSearchRequest value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.advanced_search(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing search response");
     });
     /// <summary>Parses advanced query text in the shared Rust grammar and returns its status, source spans and editable tree. An incomplete query is data, not a storage exception.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> AnalyzeQuery(TextRequest value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> AnalyzeQuery(TextRequest value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.analyze_query(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Applies an actual UTF-8 source edit to a bound document, preserving untouched tag identities. Full replacements deliberately resolve names again.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> EditQueryText(QueryTextEdit value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> EditQueryText(QueryTextEdit value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.edit_query_text(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing query response");
     });
     /// <summary>Serializes a validated ordered query tree without changing field provenance or tag identity. Invalid trees return diagnostics.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> RenderQuery(QueryDocumentRecord value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> RenderQuery(QueryDocumentRecord value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.render_query(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Applies a semantic operation to the requested node, or the root when target is absent. Append and replace operations require an operand.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> EditQuery(QueryEdit value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> EditQuery(QueryEdit value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.edit_query(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Constructs and validates one typed condition. A tag ID binds a catalog identity; ordinary text and phrase matching remain distinct.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> BuildCondition(QueryCondition value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> BuildCondition(QueryCondition value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.build_condition(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Refreshes tag names and merge redirects while retaining bound identities. Deleted bindings return diagnostics and must be removed or reselected.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<QueryAnalysis> RefreshQuery(QueryDocumentRecord value) => Task.Run(() =>
+    internal static Task<QueryAnalysis> RefreshQuery(QueryDocumentRecord value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.refresh_query(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Reads the global tag catalog and pending records; a path and exact cite key additionally request the selected reference associations.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<TagSnapshot> TagSnapshot(TagSnapshotRequest value) => Task.Run(() =>
+    internal static Task<TagSnapshot> TagSnapshot(TagSnapshotRequest value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.tag_snapshot(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Applies one metadata mutation only at its expected revision. Conflicts and storage failures throw and never silently overwrite newer metadata.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<BatchTagSnapshot> BatchTagSnapshot(BatchTagRequest value) => Task.Run(() =>
+    internal static Task<BatchTagSnapshot> BatchTagSnapshot(BatchTagRequest value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.batch_tag_snapshot(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
-    internal static Task<BatchTagSnapshot> MutateBatchTag(BatchTagMutation value) => Task.Run(() =>
+    internal static Task<BatchTagSnapshot> MutateBatchTag(BatchTagMutation value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.mutate_batch_tag(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
-    internal static Task<TagSnapshot> MutateTag(TagMutation value) => Task.Run(() =>
+    internal static Task<TagSnapshot> MutateTag(TagMutation value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.mutate_tag(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Checks that a displayed result still belongs to the current file and tag snapshots before copy, paste or opening an attachment.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<ContextValidity> ValidateSearchContext(SearchContext value) => Task.Run(() =>
+    internal static Task<ContextValidity> ValidateSearchContext(SearchContext value) => UpdateActivity.Run(() =>
     {
         using var request = value.Wire(); using var wire = Interop.validate_search_context(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing service response");
     });
     /// <summary>Returns the supported field and type names used by native condition editors and helper candidates.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
-    internal static Task<SearchCatalog> SearchCatalog() => Task.Run(() =>
+    internal static Task<SearchCatalog> SearchCatalog() => UpdateActivity.Run(() =>
     {
         using var wire = Interop.search_catalog().AsOk(); var result = wire.Unwire();
         Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing catalog");
     });
-    internal static Task AddLibrary(string name, string path, string? description) => Task.Run(() =>
+    internal static Task AddLibrary(string name, string path, string? description) => UpdateActivity.Run(() =>
     {
         using var request = new AddLibraryRequest { name = name, path = path, description = description }.Wire();
         using var wire = Interop.add_library(request).AsOk();
         Check(wire.Unwire().error);
     });
-    internal static Task<Library> UpdateLibrary(string name, string newName, string? path, string? description) => Task.Run(() =>
+    internal static Task<Library> UpdateLibrary(string name, string newName, string? path, string? description) => UpdateActivity.Run(() =>
     {
         using var request = new UpdateLibraryRequest { name = name, new_name = newName, path = path, description = description }.Wire();
         using var wire = Interop.update_library(request).AsOk();
         var response = wire.Unwire(); Check(response.error);
         return Library.From(response.payload ?? throw new LocalizedException("Bibliography not found"));
     });
-    internal static Task SetLibraryPinned(string name, bool pinned) => Task.Run(() =>
+    internal static Task SetLibraryPinned(string name, bool pinned) => UpdateActivity.Run(() =>
     {
         using var request = new PinLibraryRequest { name = name, pinned = pinned }.Wire();
         using var wire = Interop.set_library_pinned(request).AsOk();
         Check(wire.Unwire().error);
     });
-    internal static Task RemoveLibrary(string name) => Task.Run(() =>
+    internal static Task RemoveLibrary(string name) => UpdateActivity.Run(() =>
     {
         using var request = new NameRequest { name = name }.Wire();
         using var wire = Interop.remove_library(request).AsOk();
         Check(wire.Unwire().error);
     });
-    internal static Task<Library?> HelperCurrent() => Task.Run(() =>
+    internal static Task<Library?> HelperCurrent() => UpdateActivity.Run(() =>
     {
         using var wire = Interop.helper_current().AsOk();
         var response = wire.Unwire(); Check(response.error);
         return response.payload is { } library ? Library.From(library) : null;
     });
-    internal static Task<Library> HelperSelect(string name, string path) => Task.Run(() =>
+    internal static Task<Library> HelperSelect(string name, string path) => UpdateActivity.Run(() =>
     {
         using var request = new SelectLibraryRequest { name = name, path = path }.Wire();
         using var wire = Interop.helper_select(request).AsOk();
         var response = wire.Unwire(); Check(response.error);
         return Library.From(response.payload ?? throw new LocalizedException("Missing bibliography response."));
     });
-    internal static Task<string?> CapturePasteTarget() => Task.Run(() =>
+    internal static Task<string?> CapturePasteTarget() => UpdateActivity.Run(() =>
     {
         using var wire = Interop.capture_paste_target().AsOk();
         var response = wire.Unwire(); Check(response.error);
@@ -171,13 +171,13 @@ internal static class RustCore
             return wire.Unwire().text;
         });
     }
-    internal static Task Copy(string text) => Task.Run(() =>
+    internal static Task Copy(string text) => UpdateActivity.Run(() =>
     {
         using var request = new TextRequest { text = text }.Wire();
         using var wire = Interop.copy(request).AsOk();
         Check(wire.Unwire().error);
     });
-    internal static Task Paste(string text) => Task.Run(() =>
+    internal static Task Paste(string text) => UpdateActivity.Run(() =>
     {
         using var request = new TextRequest { text = text }.Wire();
         using var wire = Interop.paste(request).AsOk();

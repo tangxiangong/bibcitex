@@ -1,5 +1,5 @@
 use std::{env, fs::OpenOptions, io::Write, path::Path, process::ExitCode};
-use xtask::{Result, github, publish_release, versions};
+use xtask::{Result, UpdateKeys, github, publish_release, versions};
 fn run() -> Result<()> {
     let args: Vec<String> = env::args().skip(1).collect();
     match args
@@ -10,6 +10,7 @@ fn run() -> Result<()> {
     {
         ["release-notes", source, destination] => xtask::notes::generate(Path::new(source), Path::new(destination)),
         ["package-linux", binary, directory, arch] => xtask::linux::package(Path::new(binary), Path::new(directory), arch),
+        ["sign-windows", directory] => xtask::windows::sign(Path::new(directory), &env::var("RELEASE_TAG")?, &env::var("WINDOWS_UPDATE_PUBLIC_KEY")?),
         ["sign-linux", directory, arch] => xtask::linux::sign(Path::new(directory), arch),
         ["release-metadata"] => {
             let version = versions(&env::var("RELEASE_TAG")?)?;
@@ -31,30 +32,30 @@ fn run() -> Result<()> {
             Path::new(directory),
             &env::var("RELEASE_TAG")?,
             &env::var("GITHUB_REPOSITORY")?,
-            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+            &UpdateKeys::from_env()?,
         )
         .map(|_| ()),
         ["publish-release"] => publish_release(
             &env::var("RELEASE_TAG")?,
             Path::new(&env::var("RELEASE_ASSETS")?),
             &env::var("GITHUB_REPOSITORY")?,
-            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+            &UpdateKeys::from_env()?,
             github,
         ),
         ["publish-cos"] => xtask::cos::publish(
             &env::var("RELEASE_TAG")?,
             Path::new(&env::var("RELEASE_ASSETS")?),
             &env::var("GITHUB_REPOSITORY")?,
-            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+            &UpdateKeys::from_env()?,
         ),
         ["replace-cos-release"] => xtask::cos::replace_release(
             &env::var("RELEASE_TAG")?,
             Path::new(&env::var("RELEASE_ASSETS")?),
             &env::var("GITHUB_REPOSITORY")?,
-            &env::var("SPARKLE_PUBLIC_ED_KEY")?,
+            &UpdateKeys::from_env()?,
         ),
         _ => Err(
-            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | replace-cos-release | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch>".into(),
+            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | replace-cos-release | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch> | sign-windows <directory>".into(),
         ),
     }
 }

@@ -68,6 +68,9 @@ internal sealed class SettingsWindow : Window
         var automatic = new ToggleSwitch { IsOn = Updater.AutomaticDownloads, OnContent = "", OffContent = "", MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Right };
         Localized.Name(automatic, "自动下载并安装更新");
         automatic.Toggled += (_, _) => Updater.AutomaticDownloads = automatic.IsOn;
+        var automaticChecks = new ToggleSwitch { IsOn = Updater.AutomaticChecks, OnContent = "", OffContent = "", MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Right };
+        Localized.Name(automaticChecks, "自动检查更新");
+        automaticChecks.Toggled += (_, _) => Updater.AutomaticChecks = automaticChecks.IsOn;
         var check = new Button { HorizontalAlignment = HorizontalAlignment.Right }; Localized.Bind(check, ContentControl.ContentProperty, "检查更新");
         check.Click += async (_, _) =>
         {
@@ -81,9 +84,23 @@ internal sealed class SettingsWindow : Window
                     catch (Exception) when (closed) { }
                 }
             }
-            finally { if (!closed) check.IsEnabled = true; }
+            finally { if (!closed) check.IsEnabled = Updater.CanCheck; }
         };
-        Section("更新", SettingRow(version, check), SettingRow("更新通道", channel), SettingRow("自动下载并安装更新", automatic));
+        var updateStatus = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(14, 8, 14, 8) };
+        void RefreshUpdates()
+        {
+            check.IsEnabled = Updater.CanCheck;
+            channel.IsEnabled = automaticChecks.IsEnabled = Updater.UnavailableReason is null;
+            automatic.IsEnabled = automaticChecks.IsEnabled && Updater.AutomaticChecks;
+            updateStatus.Text = Updater.UnavailableReason is { } reason ? L10n.Text(reason)
+                : Updater.PendingVersion is { } pending ? L10n.Text("BibCiTeX {0} 已下载，将在退出时安装。", pending) : "";
+            updateStatus.Visibility = updateStatus.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        }
+        Updater.Changed += RefreshUpdates;
+        L10n.Changed += RefreshUpdates;
+        Closed += (_, _) => { Updater.Changed -= RefreshUpdates; L10n.Changed -= RefreshUpdates; };
+        RefreshUpdates();
+        Section("更新", SettingRow(version, check), SettingRow("更新通道", channel), SettingRow("自动检查更新", automaticChecks), SettingRow("自动下载并安装更新", automatic), updateStatus);
         Content = Views.AutoHideScrollbars(new ScrollViewer { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         ApplyTheme();
         WindowInterop.ConfigureTitleBar(this);

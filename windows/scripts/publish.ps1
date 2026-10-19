@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory
 )
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($env:WINDOWS_UPDATE_PUBLIC_KEY)) { throw 'WINDOWS_UPDATE_PUBLIC_KEY is required for a release build.' }
 $Repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $Arch = $Architecture.ToLowerInvariant()
 $Rid = "win-$Arch"
@@ -22,7 +23,7 @@ $Notes = Join-Path $Repo "release-notes/$Version"
 foreach ($Language in @('zh-Hans', 'en')) {
     if (-not (Test-Path (Join-Path $Notes "$Language.md"))) { throw "Missing $Language release notes for $Version" }
 }
-& dotnet publish (Join-Path $Repo 'windows/BibCiTeX/BibCiTeX.csproj') -c Release "-p:Platform=$Architecture" "-p:RuntimeIdentifier=$Rid" "-p:Version=$Version" -o $Publish
+& dotnet publish (Join-Path $Repo 'windows/BibCiTeX/BibCiTeX.csproj') -c Release "-p:Platform=$Architecture" "-p:RuntimeIdentifier=$Rid" "-p:Version=$Version" "-p:UpdatePublicKey=$env:WINDOWS_UPDATE_PUBLIC_KEY" -o $Publish
 if ($LASTEXITCODE -ne 0) { throw 'WinUI publish failed.' }
 foreach ($BundledRuntime in @('coreclr.dll', 'Microsoft.ui.xaml.dll', 'DirectML.dll', 'onnxruntime.dll')) {
     if (Test-Path (Join-Path $Publish $BundledRuntime)) { throw "Unexpected bundled runtime: $BundledRuntime" }

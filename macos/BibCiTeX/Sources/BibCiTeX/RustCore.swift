@@ -92,7 +92,7 @@ actor RustCore {
             context: valid ? result.context : nil, evidence: evidence, matchRanges: ranges, refreshedText: refreshedText, refreshedDraft: refreshedDraft)
     }
     private func translated<T>(_ operation: () throws -> T) throws -> T {
-        do { return try operation() }
+        do { return try UpdateActivity.perform(operation) }
         catch let error as CoreError {
             switch error { case .Operation(let message): throw HelperError.ffiError(message) }
         }

@@ -141,6 +141,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
+      - name: Update authentication, scheduling and mirror tests (no GUI)
+        run: dotnet run --project windows/Tests/BibCiTeX.UpdateTests.csproj
       - uses: extractions/setup-just@v4
       - name: Windows Rust checks and non-GUI tests
         run: just check-rust-windows

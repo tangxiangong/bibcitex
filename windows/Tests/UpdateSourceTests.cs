@@ -44,10 +44,12 @@ internal static class UpdateSourceTests
             try { await source.DownloadReleaseEntry(null!, asset, path, _ => { }, cancellation.Token); throw new InvalidOperationException("Cancellation ignored"); }
             catch (OperationCanceledException) { }
             Assert(fallback.Downloads == 3, "Cancellation must not start fallback download");
+            Assert(!File.Exists(path), "Cancelled partial packages must be removed");
             primary.OnDownload = null;
             fallback.Bytes = [8];
             try { await source.DownloadReleaseEntry(null!, asset, path, _ => { }); throw new InvalidOperationException("Corrupt fallback accepted"); }
             catch (InvalidDataException) { }
+            Assert(!File.Exists(path), "Invalid fallback packages must be removed");
             fallback.FeedError = true;
             primary.FeedError = true;
             try { await source.GetReleaseFeed(null!, "BibCiTeX", "win-x64-stable"); throw new InvalidOperationException("Both-source failure was hidden"); }

@@ -244,8 +244,13 @@ fn content_type(key: &str) -> &'static str {
     }
 }
 
-pub fn publish(tag: &str, directory: &Path, repository: &str, public_key: &str) -> Result<()> {
-    publish_to(tag, directory, repository, public_key, &Cos::new()?)
+pub fn publish(
+    tag: &str,
+    directory: &Path,
+    repository: &str,
+    keys: &crate::UpdateKeys,
+) -> Result<()> {
+    publish_to(tag, directory, repository, keys, &Cos::new()?)
 }
 
 /// Explicitly replace a rebuilt release, then refresh its channel feeds.
@@ -254,19 +259,19 @@ pub fn replace_release(
     tag: &str,
     directory: &Path,
     repository: &str,
-    public_key: &str,
+    keys: &crate::UpdateKeys,
 ) -> Result<()> {
-    replace_release_to(tag, directory, repository, public_key, &Cos::new()?)
+    replace_release_to(tag, directory, repository, keys, &Cos::new()?)
 }
 
 fn replace_release_to(
     tag: &str,
     directory: &Path,
     repository: &str,
-    public_key: &str,
+    keys: &crate::UpdateKeys,
     store: &impl Store,
 ) -> Result<()> {
-    let manifest = prepare(directory, tag, repository, public_key)?;
+    let manifest = prepare(directory, tag, repository, keys)?;
     let catalog = store
         .catalog()?
         .ok_or("Cannot replace a release without an existing COS catalog")?;
@@ -285,17 +290,17 @@ fn replace_release_to(
             store.upload(&format!("update-feed/{name}"), &path, false)?;
         }
     }
-    publish_to(tag, directory, repository, public_key, store)
+    publish_to(tag, directory, repository, keys, store)
 }
 
 fn publish_to(
     tag: &str,
     directory: &Path,
     repository: &str,
-    public_key: &str,
+    keys: &crate::UpdateKeys,
     store: &impl Store,
 ) -> Result<()> {
-    let manifest = prepare(directory, tag, repository, public_key)?;
+    let manifest = prepare(directory, tag, repository, keys)?;
     let catalog = store.catalog()?;
     let mut channels: Channels = match &catalog {
         Some(bytes) => serde_json::from_slice(bytes)?,

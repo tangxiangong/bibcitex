@@ -246,7 +246,10 @@ private struct PreferencesView: View {
                     Text("Beta").tag("beta")
                     Text("Alpha").tag("alpha")
                 }
+                Toggle(L10n.text("自动检查更新"), isOn: $updates.automaticChecks)
+                    .disabled(updates.unavailableReason != nil)
                 Toggle(L10n.text("自动下载并安装更新"), isOn: $updates.automaticDownloads)
+                    .disabled(updates.unavailableReason != nil || !updates.automaticChecks)
                 Button(L10n.text("检查更新")) { updates.check() }.disabled(!updates.canCheck)
                 if let reason = updates.unavailableReason {
                     Text(L10n.text(reason)).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)

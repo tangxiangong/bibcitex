@@ -59,7 +59,7 @@ xcodebuild -project macos/BibCiTeX.xcodeproj -scheme BibCiTeX \
 
 ## Updates
 
-Sparkle 2 owns archive verification, automatic download/install and relaunch. The app menu exposes stable, beta and alpha channels and automatic download/install. Announcement feeds follow the application language (`zh-Hans` or `en`) and the running binary architecture. Native Markdown release notes are enabled; no WebView is added.
+Sparkle 2 owns archive verification, automatic download/install and relaunch. Settings expose stable, beta and alpha channels, an independent automatic-check preference and automatic download/install. Checks default to on; automatic downloads retain their existing default of off. The saved check preference is respected across launches. All workbench/helper service calls share activity tracking: checks wait while service work is running, and Sparkle defers update relaunch until it finishes. Announcement feeds follow the application language (`zh-Hans` or `en`) and the running binary architecture. Native Markdown release notes are enabled; no WebView is added.
 
 COS is the primary update source, with GitHub Releases as fallback. Sparkle retries a failed primary feed or archive transport once through the GitHub feed; cancellation, signature failures and installation errors do not retry. Each new cycle starts with COS. Versioned releases contain the DMG, `.app.zip`, localized notes and SHA256SUMS; the separate `update-feed` release contains architecture/channel/language appcasts. Formal releases can advance stable/beta/alpha feeds, beta can advance beta/alpha, and alpha only alpha. A feed never moves to an older semantic version.
 

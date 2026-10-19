@@ -60,7 +60,16 @@ private final class MirrorUpdateDriver: SPUStandardUserDriver {
 /// Sparkle verifies the update archive, replaces the bundle and relaunches the app.
 @MainActor
 final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
-    @Published private(set) var canCheck = false
+    @Published private var ready = false
+    var canCheck: Bool { ready && pendingFallback == nil && !UpdateActivity.isBusy }
+    @Published var automaticChecks: Bool {
+        didSet {
+            UserDefaults.standard.set(automaticChecks, forKey: "SUEnableAutomaticChecks")
+            if updater?.automaticallyChecksForUpdates != automaticChecks {
+                updater?.automaticallyChecksForUpdates = automaticChecks
+            }
+        }
+    }
     @Published var channel: String {
         didSet { UserDefaults.standard.set(channel, forKey: "updateChannel"); updater?.resetUpdateCycle() }
     }
@@ -72,7 +81,7 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
             }
         }
     }
-    private(set) var unavailableReason: String?
+    @Published private(set) var unavailableReason: String?
     private var updater: SPUUpdater?
     private var observations = Set<AnyCancellable>()
     private let baseURL: String
@@ -81,20 +90,23 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
     private var pendingFallback: SPUUpdateCheck?
     private var checkedChannel = ""
     private var checkedLanguage = ""
+    private var pendingRelaunch: (() -> Void)?
+    private var resumeTask: Task<Void, Never>?
 
     override init() {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
         let initial = version.contains("-alpha.") ? "alpha" : version.contains("-beta.") ? "beta" : "stable"
         let saved = UserDefaults.standard.string(forKey: "updateChannel") ?? initial
         channel = ["stable", "beta", "alpha"].contains(saved) ? saved : initial
+        automaticChecks = UserDefaults.standard.object(forKey: "SUEnableAutomaticChecks") as? Bool ?? true
         automaticDownloads = UserDefaults.standard.bool(forKey: "SUAutomaticallyUpdate")
         baseURL = Bundle.main.object(forInfoDictionaryKey: "UpdateBaseURL") as? String
             ?? "https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/update-feed"
         super.init()
         UserDefaults.standard.set(channel, forKey: "updateChannel")
-        guard URL(string: baseURL)?.scheme == "https" else { unavailableReason = "更新地址无效"; return }
+        guard let url = URL(string: baseURL), url.scheme == "https", url.host?.isEmpty == false else { unavailableReason = "更新地址无效"; return }
         guard let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
-              !key.isEmpty else { unavailableReason = "此构建未配置更新验证公钥"; return }
+              Data(base64Encoded: key)?.count == 32 else { unavailableReason = "此构建未配置更新验证公钥"; return }
         let driver = MirrorUpdateDriver(hostBundle: .main, delegate: nil)
         driver.shouldRetry = { [weak self] error in
             guard let self else { return false }
@@ -103,17 +115,25 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
         }
         let updater = SPUUpdater(hostBundle: .main, applicationBundle: .main, userDriver: driver, delegate: self)
         self.updater = updater
-        updater.automaticallyChecksForUpdates = true
+        updater.automaticallyChecksForUpdates = automaticChecks
         updater.updateCheckInterval = 6 * 60 * 60
         updater.automaticallyDownloadsUpdates = automaticDownloads
         do { try updater.start() }
         catch { unavailableReason = error.localizedDescription; return }
         updater.publisher(for: \.canCheckForUpdates)
             .receive(on: RunLoop.main).sink { [weak self] ready in
-                self?.canCheck = ready
+                self?.ready = ready
                 self?.retryFallbackIfReady()
             }
             .store(in: &observations)
+        updater.publisher(for: \.automaticallyChecksForUpdates)
+            .receive(on: RunLoop.main).sink { [weak self] enabled in
+                if self?.automaticChecks != enabled { self?.automaticChecks = enabled }
+            }.store(in: &observations)
+        UpdateActivity.changed.receive(on: RunLoop.main).sink { [weak self] in
+            self?.objectWillChange.send()
+            self?.retryFallbackIfReady()
+        }.store(in: &observations)
         updater.publisher(for: \.automaticallyDownloadsUpdates)
             .receive(on: RunLoop.main).sink { [weak self] enabled in
                 if self?.automaticDownloads != enabled { self?.automaticDownloads = enabled }
@@ -161,13 +181,14 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     private func retryFallbackIfReady() {
         guard let check = pendingFallback, let updater = updater,
-              updater.canCheckForUpdates else { return }
+              updater.canCheckForUpdates, !UpdateActivity.isBusy else { return }
         pendingFallback = nil
         guard checkedChannel == channel, checkedLanguage == L10n.language else {
             usingFallback = false
             return
         }
-        canCheck = false
+        guard check != .updatesInBackground || automaticChecks else { usingFallback = false; return }
+        ready = false
         switch check {
         case .updates: updater.checkForUpdates()
         case .updatesInBackground: updater.checkForUpdatesInBackground()
@@ -178,4 +199,47 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     func languageChanged() { updater?.resetUpdateCycle() }
     func check() { guard canCheck, pendingFallback == nil else { return }; updater?.checkForUpdates() }
+
+    func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+        if updateCheck == .updatesInBackground && !automaticChecks {
+            throw NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
+        }
+        if UpdateActivity.isBusy {
+            throw NSError(domain: "com.bibcitex.updates", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: L10n.text("请等待当前操作完成后检查更新。")])
+        }
+    }
+
+    func updater(_ updater: SPUUpdater, shouldPostponeRelaunchForUpdate item: SUAppcastItem,
+                 untilInvokingBlock installHandler: @escaping () -> Void) -> Bool {
+        guard UpdateActivity.isBusy else { return false }
+        pendingRelaunch = installHandler
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            while self?.pendingRelaunch != nil {
+                do { try await Task.sleep(for: .seconds(1)) }
+                catch { return }
+                guard !UpdateActivity.isBusy, let install = self?.pendingRelaunch else { continue }
+                self?.pendingRelaunch = nil
+                self?.resumeTask = nil
+                install()
+            }
+        }
+        return true
+    }
+}
+
+/// Includes service calls made by all helper and workbench actors.
+enum UpdateActivity {
+    private static let lock = NSLock()
+    private static var active = 0
+    static let changed = PassthroughSubject<Void, Never>()
+    static var isBusy: Bool { lock.withLock { active != 0 } }
+
+    static func perform<T>(_ operation: () throws -> T) rethrows -> T {
+        lock.withLock { active += 1 }
+        changed.send()
+        defer { lock.withLock { active -= 1 }; changed.send() }
+        return try operation()
+    }
 }
