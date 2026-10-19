@@ -5,9 +5,10 @@
 BibCiTeX is being rewritten on the `native` branch:
 macOS uses SwiftUI/AppKit, Windows uses C#/WinUI, and Linux uses Rust/GPUI Kit.
 All three call a shared Rust core.
-The former desktop host and Web frontend have been removed. Verify the generated
-bindings, Rust checks, and platform compilation. Distinguish compilation and unit
-tests from GUI acceptance and signed update deployment.
+The former desktop host and Web frontend have been removed. Verify only the
+platform changed by the task and its directly affected shared code. Generate
+bindings and compile platform code when the change requires them. Distinguish
+compilation and unit tests from GUI acceptance and signed update deployment.
 
 ## Architecture
 
@@ -44,8 +45,25 @@ tests from GUI acceptance and signed update deployment.
   layout, control, and visual rendering regressions. Use compilation and non-UI
   core/integration tests; GUI acceptance is manual.
 
-- The latest user instruction authorizes binding generation, compilation, tests,
-  and Cargo clippy. Run them and fix failures; static parsing alone is insufficient.
+- Build and test only the platform changed by the task. A macOS-only change must
+  not compile or test Windows or Linux clients; apply the same rule to each
+  platform. The host operating system does not determine the validation target.
+  Check multiple client platforms only when the user requests work on those
+  platforms or explicitly requests cross-platform verification.
+- Shared Rust or release-tooling changes require focused checks of the changed
+  package and the affected platform paths. Use relevant test filters. A shared
+  package is not permission to test unrelated platform paths or clients.
+- Use umbrella commands such as `just check-rust`, `just check-rust-shared`,
+  `just test-ci`, `cargo test --workspace`, or `cargo clippy --workspace` only
+  when their entire scope matches the user's request. Inspect recipes before
+  running them; invoke scoped commands when a recipe includes unrelated work.
+- Run the smallest relevant compilation, non-UI tests and linters, and fix
+  failures within that scope. Documentation/instruction-only edits need text
+  checks, not builds, binding generation or runtime tests.
+- When the requested platform's toolchain is unavailable, report that limitation
+  and complete the relevant checks available in the environment. Do not
+  substitute another platform or install unrelated SDKs, GUI frameworks or
+  system libraries to satisfy a broad check command.
 - Do not launch/open GUI applications, publish, or locally package releases unless
   requested. CI may define the requested build and signed update release jobs.
 - Do not add `rust-version` or a pinned Rust toolchain file. Use the available
@@ -54,21 +72,37 @@ tests from GUI acceptance and signed update deployment.
 - macOS UI icons prefer SF Symbols available on the running OS, falling back to
   the existing standalone SVG assets when a symbol is unavailable. Preserve brand assets.
 - Windows UI icons remain standalone SVG files; never embed SVG/data URLs/icon fonts.
-- Main windows and the Spotlight helper are all in scope on all three platforms.
+- UI work covers affected main-window and Spotlight-helper surfaces on the
+  requested platform. Do not expand the task to other platform clients.
 - Keep the helper compact. Do not restore the oversized idle search panel.
 - Never commit or push unless requested. Preserve unrelated uncommitted work.
-- Use `sb` to inspect source structure before reading function bodies.
+- Inspect source structure with `sb` when available, otherwise use `rg`.
+  Do not install a source-inspection tool solely to satisfy this preference.
 - Report actual changed files with clickable absolute links in every final response.
 - Act on authorized work immediately; do not ask again whether to proceed.
 
 ## Checks
 
-```bash
-just check-rust
-just test-ci
-just --fmt --check
-git diff --check
-```
+Choose checks from the changed files and requested platform:
+
+| Change | Verification scope |
+| --- | --- |
+| Documentation or instructions | Check the edited text, synchronized guidance files and `git diff --check`; no compilation or runtime tests. |
+| macOS app or FFI | macOS compilation and focused non-UI Swift/Rust tests; compile both architectures when Universal support is affected. |
+| macOS release workflow or scripts | Changed Bash/workflow checks and macOS-specific release-tool tests; build the macOS app when the packaging/build change requires it. |
+| Windows app or bindings | Windows compilation and focused non-UI C#/Rust tests. |
+| Linux app | Linux compilation and focused non-UI Rust tests. |
+| Shared Rust or release tooling | `-p <changed-package>` with test filters for the changed behavior and requested platform. |
+| Justfile | Inspect affected recipes and run `just --fmt --check`. |
+
+For a macOS Universal release change, focused release tests include
+`cargo test --locked -p xtask universal` and
+`cargo test --locked -p xtask legacy_macos`. These do not require building the
+Linux or Windows clients.
+
+Check formatting for edited files/packages and run `git diff --check` after
+edits. Expand verification only for a relevant failure or an explicit user
+request; do not turn a platform-specific task into repository-wide testing.
 
 ## Sibling Guidance
 
