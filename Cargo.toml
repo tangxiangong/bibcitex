@@ -58,7 +58,7 @@ minisign-verify = "0.3"
 objc2 = "0.6"
 objc2-app-kit = "0.3"
 objc2-foundation = "0.3"
-p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+p256 = { version = "0.14", features = ["ecdsa", "pkcs8"] }
 quick-xml = "0.42"
 raw-window-handle = "0.6"
 rayon = "1"
