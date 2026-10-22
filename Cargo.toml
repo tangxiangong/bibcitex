@@ -43,7 +43,7 @@ enigo = "0.6"
 flate2 = "1"
 fs-err = "3"
 futures-util = "0.3"
-gpui-kit = "0.7"
+gpui-kit = "0.8"
 hmac = "0.13"
 image = { version = "0.25", default-features = false, features = [
     "png",
@@ -52,13 +52,13 @@ image = { version = "0.25", default-features = false, features = [
 interoptopus = "0.16"
 interoptopus_csharp = "0.16"
 ksni = { version = "0.3", default-features = false, features = ["async-io"] }
-latex-rust = "2.1.1"
+latex-rust = "3.0"
 minisign = "0.10"
 minisign-verify = "0.3"
 objc2 = "0.6"
 objc2-app-kit = "0.3"
 objc2-foundation = "0.3"
-p256 = { version = "0.13", features = ["ecdsa", "pkcs8"] }
+p256 = { version = "0.14", features = ["ecdsa", "pkcs8"] }
 quick-xml = "0.42"
 raw-window-handle = "0.6"
 rayon = "1"
