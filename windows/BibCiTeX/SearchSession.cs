@@ -120,7 +120,7 @@ internal sealed class SearchSession
         return Bound?.text == text ? Bound : await RustCore.AnalyzeQuery(new() { text = text });
     }
     /// <summary>Executes the current mode and draft, refreshing stale bound tag projections before one retry.</summary>
-    internal async Task<AdvancedSearchResponse> Search(string path, string text, string field, string type, int version)
+    internal async Task<AdvancedSearchResponse> Search(string path, string text, string field, string type, int version, TagFilter? tagFilter = null)
     {
         await ResolveEdit(text);
         var bound = Advanced && Bound?.text == text ? Bound : null;
@@ -131,13 +131,16 @@ internal sealed class SearchSession
             text = text, document = bound?.document, expected_tag_revision = bound?.tag_revision,
             default_field = field, type_filter = type, query_version = (ulong)version
         };
-        var response = await RustCore.AdvancedSearch(request);
+        var filter = tagFilter is { IsEmpty: false } ? tagFilter.Document() : null;
+        Task<AdvancedSearchResponse> Execute() => filter is null
+            ? RustCore.AdvancedSearch(request) : RustCore.FilteredSearch(request, filter);
+        var response = await Execute();
         if (response.analysis.status.IsStaleQuery && bound?.document is { } document)
         {
             var refreshed = await RustCore.RefreshQuery(document);
             if (!refreshed.status.IsValid) return new() { analysis = refreshed, references = [], evidence = [], context = null };
             request.document = refreshed.document; request.text = refreshed.text; request.expected_tag_revision = refreshed.tag_revision;
-            response = await RustCore.AdvancedSearch(request);
+            response = await Execute();
             if (ReferenceEquals(Bound, bound)) Bound = refreshed;
         }
         return response;

@@ -58,18 +58,25 @@ actor RustCore {
     /// Checks file and tag revisions immediately before acting on a result.
     func validateContext(_ context: SearchContext) throws -> Bool { try translated { try BibCiTeXCore.validateSearchContext(context: context) } }
     /// Executes an explicit mode and refreshes stale bound IDs before one retry.
-    func searchExplicit(path: String, query: String, field: String = "all", type: String = "all", advanced: Bool, draft: SearchDraft = SearchDraft(), version: UInt64) throws -> NativeSearchResult {
+    func searchExplicit(path: String, query: String, field: String = "all", type: String = "all", advanced: Bool, draft: SearchDraft = SearchDraft(), version: UInt64, tagFilter: TagFilter = TagFilter()) throws -> NativeSearchResult {
         var request = AdvancedSearchRequest(path: path, mode: advanced ? .advanced : .ordinary,
             inputKind: advanced && draft.document != nil ? .bound : .text, text: query, document: advanced ? draft.document : nil,
             expectedTagRevision: advanced ? draft.tagRevision : nil, defaultField: field, typeFilter: type, queryVersion: version)
         var refreshedText: String?
         var refreshedDraft: SearchDraft?
-        var result = try translated { try BibCiTeXCore.advancedSearch(request: request) }
+        let filter = tagFilter.isEmpty ? nil : tagFilter.document
+        func execute(_ request: AdvancedSearchRequest) throws -> AdvancedSearchResponse {
+            try translated {
+                if let filter { return try BibCiTeXCore.filteredSearch(request: request, filter: filter) }
+                return try BibCiTeXCore.advancedSearch(request: request)
+            }
+        }
+        var result = try execute(request)
         if result.analysis.status == .staleQuery, let document = request.document {
             let refreshed = try refreshQuery(document)
             if refreshed.status == .valid {
                 request.document = refreshed.document; request.text = refreshed.text; request.expectedTagRevision = refreshed.tagRevision
-                result = try translated { try BibCiTeXCore.advancedSearch(request: request) }
+                result = try execute(request)
                 if result.analysis.status == .valid {
                     refreshedText = refreshed.text
                     refreshedDraft = SearchDraft(document: refreshed.document, tagRevision: refreshed.tagRevision)

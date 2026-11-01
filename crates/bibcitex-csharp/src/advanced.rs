@@ -78,6 +78,27 @@ pub fn advanced_search(
         })
     })
 }
+/// Execute an independent tag filter in the shared search engine.
+#[ffi]
+pub fn filtered_search(
+    wire: Wire<AdvancedSearchRequest>,
+    filter: Wire<QueryDocumentRecord>,
+) -> ffi::Result<Wire<AdvancedSearchResponseResult>, BridgeError> {
+    invoke(|| {
+        let input = request(wire)?;
+        let filter = request(filter)?;
+        Ok(match bibcitex_service::filtered_search(input, filter) {
+            Ok(payload) => AdvancedSearchResponseResult {
+                payload: Some(payload),
+                error: None,
+            },
+            Err(e) => AdvancedSearchResponseResult {
+                payload: None,
+                error: Some(e.to_string()),
+            },
+        })
+    })
+}
 /// Generated-wire entry point for the shared `analyze_query` operation.
 #[ffi]
 pub fn analyze_query(

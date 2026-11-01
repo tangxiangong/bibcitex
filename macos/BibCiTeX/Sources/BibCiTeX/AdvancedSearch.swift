@@ -353,7 +353,7 @@ private struct DetailTagAppearance: ViewModifier {
     }
 }
 
-private struct DetailTagLayout: Layout {
+struct DetailTagLayout: Layout {
     private let spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

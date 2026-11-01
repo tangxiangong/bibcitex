@@ -290,6 +290,7 @@ pub fn inventory() -> RustInventory {
         .register(function!(set_library_pinned))
         .register(function!(search))
         .register(function!(advanced::advanced_search))
+        .register(function!(advanced::filtered_search))
         .register(function!(advanced::analyze_query))
         .register(function!(advanced::render_query))
         .register(function!(advanced::edit_query))

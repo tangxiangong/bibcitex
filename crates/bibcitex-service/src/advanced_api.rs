@@ -1,3 +1,4 @@
+use crate::core::search::SearchField;
 use crate::core::search::query::{self, Document, Node, NodeKind};
 use crate::*;
 use std::{collections::HashMap, fs};
@@ -613,12 +614,30 @@ pub fn validate_search_context(context: SearchContext) -> Result<bool, CoreError
 pub fn advanced_search(
     request: AdvancedSearchRequest,
 ) -> Result<AdvancedSearchResponse, CoreError> {
-    if !matches!(
-        request.default_field.as_str(),
-        "all" | "title" | "author" | "journal" | "year"
-    ) {
-        return Err("UnknownSearchField".to_string().into());
-    }
+    execute_search(request, None)
+}
+
+/// Intersect an independent stable-ID tag expression with ordinary or advanced search.
+/// Both expressions use the existing query engine and the same immutable snapshots.
+pub fn filtered_search(
+    request: AdvancedSearchRequest,
+    filter: QueryDocumentRecord,
+) -> Result<AdvancedSearchResponse, CoreError> {
+    execute_search(request, Some(filter))
+}
+
+fn execute_search(
+    request: AdvancedSearchRequest,
+    tag_filter: Option<QueryDocumentRecord>,
+) -> Result<AdvancedSearchResponse, CoreError> {
+    let ordinary_field = match request.default_field.as_str() {
+        "all" => SearchField::All,
+        "title" => SearchField::Title,
+        "author" => SearchField::Author,
+        "journal" => SearchField::Journal,
+        "year" => SearchField::Year,
+        _ => return Err("UnknownSearchField".to_string().into()),
+    };
     let mut analysis = match request.input_kind {
         QueryInputKind::Text => analyze_query(request.text.clone()),
         QueryInputKind::Bound => {
@@ -799,43 +818,91 @@ pub fn advanced_search(
                 .collect()
         })
         .unwrap_or_default();
-    let type_filter = crate::api::search_type(&request.type_filter)?;
-    if request.mode == SearchMode::Ordinary {
-        response.references = crate::search(
-            request.path.clone(),
-            request.text,
-            request.default_field,
-            request.type_filter,
-        )?;
-    } else {
+    let filter_hits = if let Some(filter) = tag_filter {
+        let checked = render_query(filter);
+        if checked.status != QueryStatus::Valid {
+            response.analysis = checked;
+            return Ok(response);
+        }
+        let mut filter = checked.document.map(document).unwrap_or_default();
+        let snapshot = metadata
+            .as_ref()
+            .ok_or_else(|| CoreError::from("MissingTagBinding".to_string()))?;
+        for node in &mut filter.nodes {
+            if matches!(node.kind, NodeKind::Word | NodeKind::Phrase) {
+                let Some(tag) = node
+                    .tag_id
+                    .as_deref()
+                    .and_then(|id| snapshot.redirected(id))
+                else {
+                    response.analysis = error("MissingTagBinding");
+                    return Ok(response);
+                };
+                node.tag_id = Some(tag.id.clone());
+                node.value = tag.name.clone();
+            }
+        }
         let index = source.advanced();
         crate::api::account_advanced_index()?;
         let hits = index
             .search(
-                &doc,
-                &request.default_field,
-                |i| {
-                    type_filter.as_ref().is_none_or(|filter| {
-                        let kind = &source.references[i].type_;
-                        kind == filter
-                            || (*filter == biblatex::EntryType::Thesis
-                                && matches!(
-                                    kind,
-                                    biblatex::EntryType::MastersThesis
-                                        | biblatex::EntryType::PhdThesis
-                                ))
-                    })
-                },
-                |i, name, id| {
-                    let tag =
-                        id.or_else(|| query_tags.get(name).copied().flatten().map(String::as_str));
-                    tag.is_some_and(|id| {
+                &filter,
+                "all",
+                |_| true,
+                |i, _, id| {
+                    id.is_some_and(|id| {
                         associations
                             .get(source.references[i].cite_key.as_str())
                             .is_some_and(|tags| tags.contains(id))
                     })
                 },
             )
+            .map_err(|e| CoreError::from(e.code))?;
+        Some(
+            hits.into_iter()
+                .map(|hit| hit.index)
+                .collect::<std::collections::HashSet<_>>(),
+        )
+    } else {
+        None
+    };
+    let type_filter = crate::api::search_type(&request.type_filter)?;
+    let include = |i: usize| {
+        filter_hits.as_ref().is_none_or(|hits| hits.contains(&i))
+            && type_filter.as_ref().is_none_or(|filter| {
+                let kind = &source.references[i].type_;
+                kind == filter
+                    || (*filter == biblatex::EntryType::Thesis
+                        && matches!(
+                            kind,
+                            biblatex::EntryType::MastersThesis | biblatex::EntryType::PhdThesis
+                        ))
+            })
+    };
+    if request.mode == SearchMode::Ordinary {
+        // Apply every candidate constraint before the engine's fuzzy-result threshold.
+        response.references = source
+            .search
+            .search_filtered(&request.text, ordinary_field, include)
+            .into_iter()
+            .map(|i| {
+                ReferenceRecord::from_reference(&source.references[i], &request.path)
+                    .map_err(CoreError::from)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+    } else {
+        let index = source.advanced();
+        crate::api::account_advanced_index()?;
+        let hits = index
+            .search(&doc, &request.default_field, include, |i, name, id| {
+                let tag =
+                    id.or_else(|| query_tags.get(name).copied().flatten().map(String::as_str));
+                tag.is_some_and(|id| {
+                    associations
+                        .get(source.references[i].cite_key.as_str())
+                        .is_some_and(|tags| tags.contains(id))
+                })
+            })
             .map_err(|e| CoreError::from(e.code))?;
         for hit in hits {
             let reference =
@@ -1117,6 +1184,259 @@ mod tests {
                 .all(|n| n.tag_id.is_none())
         );
     }
+    #[test]
+    fn filtered_search_combines_nested_tags_with_text_field_and_type() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        for mask in 0..8 {
+            let kind = if mask % 2 == 0 { "book" } else { "article" };
+            let author = if mask % 2 == 0 { "Bob" } else { "Alice" };
+            let title = if mask == 1 {
+                "network OR robot"
+            } else {
+                "network"
+            };
+            writeln!(
+                file,
+                "@{kind}{{R{mask},title={{{title}}},author={{{author}}},year={{2020}}}}"
+            )
+            .unwrap();
+        }
+        let path = file.path().to_str().unwrap();
+        let mut snapshot = tag_snapshot(path.into(), "R0".into()).unwrap();
+        let mut ids = Vec::new();
+        for name in ["filter-a", "filter-b", "filter-c"] {
+            snapshot =
+                mutate_tag(mutation(TagAction::Create, "", name, "", snapshot.revision)).unwrap();
+            ids.push(
+                snapshot
+                    .tags
+                    .iter()
+                    .find(|tag| tag.name == name)
+                    .unwrap()
+                    .id
+                    .clone(),
+            );
+        }
+        for mask in 0..8 {
+            let key = format!("R{mask}");
+            for (bit, id) in ids.iter().enumerate() {
+                if mask & (1 << bit) != 0 {
+                    let assigned = tag_snapshot(path.into(), key.clone()).unwrap();
+                    let mut edit = mutation(TagAction::Assign, id, "", "", assigned.revision);
+                    edit.library_uid = assigned.library_uid;
+                    edit.record_uid = assigned.record_uid;
+                    edit.path = path.into();
+                    edit.cite_key = key.clone();
+                    snapshot = mutate_tag(edit).unwrap();
+                }
+            }
+        }
+        let mut filter =
+            analyze_query("NOT (tag:filter-a AND (tag:filter-b OR tag:filter-c))".into())
+                .document
+                .unwrap();
+        for node in &mut filter.nodes {
+            node.tag_id = match node.text_value.as_str() {
+                "filter-a" => Some(ids[0].clone()),
+                "filter-b" => Some(ids[1].clone()),
+                "filter-c" => Some(ids[2].clone()),
+                _ => None,
+            };
+        }
+        let keys = |response: AdvancedSearchResponse| {
+            assert_eq!(response.analysis.status, QueryStatus::Valid);
+            assert!(response.context.is_some());
+            response
+                .references
+                .into_iter()
+                .map(|r| r.cite_key)
+                .collect::<std::collections::BTreeSet<_>>()
+        };
+        let expected = ["R0", "R1", "R2", "R4", "R6"]
+            .map(String::from)
+            .into_iter()
+            .collect();
+        let mut req = request(path, "network");
+        req.mode = SearchMode::Ordinary;
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            expected
+        );
+        // Native editors send placeholder text with stable IDs, not current tag names.
+        let mut placeholder_filter = filter.clone();
+        for node in &mut placeholder_filter.nodes {
+            if node.tag_id.is_some() {
+                node.text_value = "tag".into();
+            }
+        }
+        assert_eq!(
+            keys(filtered_search(req.clone(), placeholder_filter.clone()).unwrap()),
+            expected
+        );
+        req.type_filter = "Article".into();
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            ["R1".into()].into()
+        );
+        req.default_field = "author".into();
+        req.text = "Alice".into();
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            ["R1".into()].into()
+        );
+        req.default_field = "title".into();
+        assert!(keys(filtered_search(req.clone(), filter.clone()).unwrap()).is_empty());
+        req.text = "network OR robot".into();
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            ["R1".into()].into()
+        );
+        req.mode = SearchMode::Advanced;
+        req.default_field = "all".into();
+        req.text = "title:network OR author:Alice".into();
+        let result = filtered_search(req.clone(), filter.clone()).unwrap();
+        assert_eq!(result.analysis.text, req.text);
+        assert!(
+            result
+                .evidence
+                .iter()
+                .all(|e| result.references.iter().any(|r| r.id == e.reference_id))
+        );
+        assert_eq!(keys(result), ["R1".into()].into());
+        req.type_filter = "all".into();
+        req.text.clear();
+        assert_eq!(
+            keys(filtered_search(req.clone(), QueryDocumentRecord::default()).unwrap()).len(),
+            8
+        );
+        snapshot = mutate_tag(mutation(
+            TagAction::Rename,
+            &ids[0],
+            "renamed",
+            "",
+            snapshot.revision,
+        ))
+        .unwrap();
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            expected
+        );
+        let mut merge = mutation(TagAction::Merge, &ids[0], "", "", snapshot.revision);
+        merge.target_id = ids[1].clone();
+        snapshot = mutate_tag(merge).unwrap();
+        assert_eq!(
+            keys(filtered_search(req.clone(), filter.clone()).unwrap()),
+            ["R0".into(), "R4".into()].into()
+        );
+        let refreshed = refresh_query(placeholder_filter.clone()).unwrap();
+        assert_eq!(refreshed.status, QueryStatus::Valid);
+        assert!(
+            !refreshed
+                .document
+                .unwrap()
+                .nodes
+                .iter()
+                .any(|node| node.tag_id.as_ref() == Some(&ids[0]))
+        );
+        mutate_tag(mutation(
+            TagAction::Delete,
+            &ids[1],
+            "",
+            "",
+            snapshot.revision,
+        ))
+        .unwrap();
+        assert_eq!(
+            refresh_query(placeholder_filter).unwrap().status,
+            QueryStatus::Invalid
+        );
+        let invalid = filtered_search(req, filter).unwrap();
+        assert_eq!(invalid.analysis.status, QueryStatus::Invalid);
+        assert!(invalid.references.is_empty());
+        assert!(invalid.context.is_none());
+    }
+
+    #[test]
+    fn filtered_search_applies_tag_candidates_before_fuzzy_supplementation() {
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        for index in 0..20 {
+            writeln!(file, "@article{{Exact{index},title={{network}}}}").unwrap();
+        }
+        writeln!(file, "@article{{A,title={{netwrok}}}}").unwrap();
+        let path = file.path().to_str().unwrap();
+        let snapshot = tag_snapshot(path.into(), "A".into()).unwrap();
+        let snapshot = mutate_tag(mutation(
+            TagAction::Create,
+            "",
+            "fuzzy-filter",
+            path,
+            snapshot.revision,
+        ))
+        .unwrap();
+        let id = snapshot
+            .tags
+            .iter()
+            .find(|tag| tag.name == "fuzzy-filter")
+            .unwrap()
+            .id
+            .clone();
+        mutate_tag(mutation(
+            TagAction::Assign,
+            &id,
+            "",
+            path,
+            snapshot.revision,
+        ))
+        .unwrap();
+        let filter = build_condition(QueryCondition {
+            field_name: "tag".into(),
+            text_value: "fuzzy-filter".into(),
+            tag_id: Some(id),
+            phrase: false,
+            exclude: false,
+        })
+        .document
+        .unwrap();
+        let mut req = request(path, "network");
+        req.mode = SearchMode::Ordinary;
+        req.default_field = "title".into();
+        let result = filtered_search(req, filter).unwrap();
+        assert_eq!(result.analysis.status, QueryStatus::Valid);
+        assert_eq!(
+            result
+                .references
+                .iter()
+                .map(|row| row.cite_key.as_str())
+                .collect::<Vec<_>>(),
+            vec!["A"]
+        );
+    }
+
+    #[test]
+    fn filtered_search_rejects_unbound_or_empty_nested_conditions() {
+        let file = library();
+        let req = request(file.path().to_str().unwrap(), "");
+        let name_only = analyze_query("NOT tag:unknown".into()).document.unwrap();
+        let result = filtered_search(req.clone(), name_only).unwrap();
+        assert_eq!(result.analysis.status, QueryStatus::Invalid);
+        assert!(result.references.is_empty());
+        let invalid = QueryDocumentRecord {
+            root: Some(0),
+            nodes: vec![QueryNodeRecord {
+                kind: QueryNodeKind::And,
+                text_value: String::new(),
+                tag_id: None,
+                children: vec![],
+                start: 0,
+                end: 0,
+            }],
+        };
+        assert_eq!(
+            filtered_search(req, invalid).unwrap().analysis.status,
+            QueryStatus::Invalid
+        );
+    }
+
     #[test]
     fn ordinary_mode_does_not_interpret_advanced_syntax_and_context_rejects_rewrites() {
         let file = library();

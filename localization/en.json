@@ -524,5 +524,18 @@
   "正在重新启动…": "Restarting…",
   "暂时无法获取更新信息，请稍后重试。": "Update information is temporarily unavailable. Try again later.",
   "无法连接到更新服务器，请检查网络后重试。": "Unable to connect to the update server. Check your connection and try again.",
-  "更新文件验证失败，请稍后重试。": "Update verification failed. Try again later."
+  "更新文件验证失败，请稍后重试。": "Update verification failed. Try again later.",
+  "标签筛选": "Tag filter",
+  "未启用": "Inactive",
+  "已启用": "Active",
+  "筛选标签已删除，请替换或移除": "A filter tag was deleted. Replace or remove it.",
+  "请为每个分组添加条件": "Add a condition to each group.",
+  "添加到当前分组": "Add to current group",
+  "替换标签": "Replace tag",
+  "搜索标签": "Search tags",
+  "无匹配标签": "No matching tags",
+  "已删除标签": "Deleted tag",
+  "＋条件": "+ Condition",
+  "＋分组": "+ Group",
+  "重试": "Retry"
 }

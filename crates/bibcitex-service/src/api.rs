@@ -52,7 +52,7 @@ pub(crate) struct LibraryData {
     advanced: OnceLock<Arc<core::search::advanced::AdvancedIndex>>,
     pub(crate) version: String,
     pub(crate) references: Vec<Reference>,
-    search: SearchIndex,
+    pub(crate) search: SearchIndex,
     search_bytes: usize,
 }
 impl LibraryData {

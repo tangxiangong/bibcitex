@@ -85,6 +85,7 @@ struct TrayWorkbenchView: View {
                     Picker(L10n.text("字段筛选"), selection: $model.field) {
                         ForEach(fields, id: \.0) { Text($0.1).tag($0.0) }
                     }.labelsHidden().accessibilityLabel(L10n.text("字段筛选"))
+                    TagFilterButton(filter: model.tagFilter, apply: model.setTagFilter)
                     Spacer()
                     if model.loading { ProgressView().controlSize(.small) }
                     Text(L10n.references(model.references.count)).font(.caption).foregroundStyle(.secondary)

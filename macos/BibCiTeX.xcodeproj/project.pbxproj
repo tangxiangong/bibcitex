@@ -21,6 +21,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		AF1100000000000000000011 /* TagFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1100000000000000000012 /* TagFilterView.swift */; };
+		AF1100000000000000000001 /* TagFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF1100000000000000000002 /* TagFilter.swift */; };
 		A77AC4000000000000000001 /* AttachmentPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77AC4000000000000000002 /* AttachmentPath.swift */; };
 		ABCD00000000000000000001 /* AdvancedSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABCD00000000000000000002 /* AdvancedSearch.swift */; };
 		012BAC6B9103B7AAF7D74AB5 /* refresh.svg in Resources */ = {isa = PBXBuildFile; fileRef = 18D1244D5E41DA43FACF65D8 /* refresh.svg */; };
@@ -112,6 +114,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AF1100000000000000000012 /* TagFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFilterView.swift; sourceTree = "<group>"; };
+		AF1100000000000000000002 /* TagFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagFilter.swift; sourceTree = "<group>"; };
 		A77AC4000000000000000002 /* AttachmentPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentPath.swift; sourceTree = "<group>"; };
 		ABCD00000000000000000002 /* AdvancedSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvancedSearch.swift; sourceTree = "<group>"; };
 		038019CE5A12DC6539F82108 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -225,6 +229,8 @@
 				A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */,
 				3549826455F426169DFEA202 /* HelperModels.swift */,
 				ABCD00000000000000000002 /* AdvancedSearch.swift */,
+				AF1100000000000000000012 /* TagFilterView.swift */,
+				AF1100000000000000000002 /* TagFilter.swift */,
 				B3427E0196B1D54D70378C9D /* HelperPanelController.swift */,
 				22666F6B8718AD1E87409835 /* HelperTheme.swift */,
 				A761A35383E18EC4F83041CE /* HelperView.swift */,
@@ -527,6 +533,8 @@
 				9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */,
 				69F3C736783CD2D04127FDC4 /* HelperModels.swift in Sources */,
 				ABCD00000000000000000001 /* AdvancedSearch.swift in Sources */,
+				AF1100000000000000000011 /* TagFilterView.swift in Sources */,
+				AF1100000000000000000001 /* TagFilter.swift in Sources */,
 				41303FCE78232CDB53AF2714 /* HelperPanelController.swift in Sources */,
 				54EB8E20C98FC88AF7374428 /* HelperTheme.swift in Sources */,
 				E66057EC9183F1E51C8F15BE /* HelperView.swift in Sources */,

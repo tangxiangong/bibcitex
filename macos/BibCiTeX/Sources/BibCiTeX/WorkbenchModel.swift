@@ -26,12 +26,14 @@ final class WorkbenchModel: ObservableObject {
         var type = "all"
         var advanced = false
         var draft = SearchDraft()
+        var tagFilter = TagFilter()
     }
 
     @Published private(set) var libraries: [Bibliography] = []
     @Published private(set) var selectedLibrary: String?
     @Published private(set) var references: [Reference] = []
     @Published private(set) var selectedReference: String?
+    @Published private(set) var tagFilter = TagFilter()
     @Published private(set) var query = ""
     @Published private(set) var field = "all"
     @Published private(set) var type = "all"
@@ -102,8 +104,10 @@ final class WorkbenchModel: ObservableObject {
         guard requested.advanced != enabled else { return }
         if requested.advanced { advancedDraft = requested } else { ordinaryDraft = requested }
         let library = requested.library
+        let filter = requested.tagFilter
         requested = enabled ? advancedDraft : ordinaryDraft
         requested.library = library
+        requested.tagFilter = filter
         requested.advanced = enabled
         advancedSearchEnabled = enabled
         preferences.set(enabled, forKey: "mainAdvancedSearchEnabled")
@@ -118,6 +122,10 @@ final class WorkbenchModel: ObservableObject {
     /// Replaces the query with a validated visual edit, retaining stable tag IDs.
     func applyAdvancedQuery(_ text: String, draft: SearchDraft) {
         requested.query = text; requested.draft = draft
+        scheduleSearch()
+    }
+    func setTagFilter(_ filter: TagFilter) {
+        requested.tagFilter = filter
         scheduleSearch()
     }
     func refreshSearch() { scheduleSearch() }
@@ -215,6 +223,7 @@ final class WorkbenchModel: ObservableObject {
             selectedLibrary = request.library
         }
         if query != request.query { query = request.query }
+        if tagFilter != request.tagFilter { tagFilter = request.tagFilter }
         if field != request.field { field = request.field }
         if type != request.type { type = request.type }
         guard let library, library.available else {
@@ -232,7 +241,7 @@ final class WorkbenchModel: ObservableObject {
             guard let self else { return }
             do {
                 try await Task.sleep(nanoseconds: 100_000_000)
-                let response = try await RustCore.shared.searchExplicit(path: library.path, query: request.query, field: request.field, type: request.type, advanced: request.advanced, draft: request.draft, version: UInt64(version))
+                let response = try await RustCore.shared.searchExplicit(path: library.path, query: request.query, field: request.field, type: request.type, advanced: request.advanced, draft: request.draft, version: UInt64(version), tagFilter: request.tagFilter)
                 let found = response.references
                 guard !Task.isCancelled, generation == version else { return }
                 if let text = response.refreshedText, let draft = response.refreshedDraft {

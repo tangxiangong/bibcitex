@@ -170,6 +170,7 @@ struct WorkbenchView: View {
                             .accessibilityLabel(L10n.text("类型筛选"))
                         Picker(L10n.text("字段筛选"), selection: Binding(get: { model.field }, set: model.setField)) { ForEach(fields, id: \.0) { Text($0.1).tag($0.0) } }.labelsHidden()
                             .accessibilityLabel(L10n.text("字段筛选"))
+                        TagFilterButton(filter: model.tagFilter, apply: model.setTagFilter)
                     }.controlSize(.small)
                     QueryDiagnostics(analysis: model.queryAnalysis)
                 }.padding(16)

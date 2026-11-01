@@ -12,6 +12,7 @@ final class TrayWorkbenchModel: ObservableObject {
     @Published var query = "" { didSet { if oldValue != query { if !restoringDraft { boundDraft = SearchDraft() }; search() } } }
     @Published var field = "all" { didSet { if oldValue != field { search() } } }
     @Published var type = "all" { didSet { if oldValue != type { search() } } }
+    @Published private(set) var tagFilter = TagFilter()
     @Published private(set) var advancedSearchEnabled = false
     @Published private(set) var matchRanges: [String: [SearchMatchRange]] = [:]
     @Published private(set) var matchEvidence: [String: String] = [:]
@@ -102,6 +103,10 @@ final class TrayWorkbenchModel: ObservableObject {
         restoringDraft = true; query = text; restoringDraft = false
         boundDraft.document = result.document; queryAnalysis = result; search()
     }
+    func setTagFilter(_ filter: TagFilter) {
+        tagFilter = filter
+        search()
+    }
     func refreshSearch() { search() }
     private func search() {
         guard !restoringDraft else { return }
@@ -115,6 +120,7 @@ final class TrayWorkbenchModel: ObservableObject {
         let library = libraries.first { $0.name == libraryName }
         let query = query, field = field, type = type
         let advanced = advancedSearchEnabled, draft = boundDraft
+        let tagFilter = tagFilter
         searchTask?.cancel()
         searchTask = Task { @MainActor [weak self] in
             guard let self, !Task.isCancelled else { return }
@@ -128,7 +134,7 @@ final class TrayWorkbenchModel: ObservableObject {
             preferences.set(library.name, forKey: "trayLibrary")
             do {
                 try await Task.sleep(nanoseconds: 100_000_000)
-                let response = try await RustCore.shared.searchExplicit(path: library.path, query: query, field: field, type: type, advanced: advanced, draft: draft, version: UInt64(version))
+                let response = try await RustCore.shared.searchExplicit(path: library.path, query: query, field: field, type: type, advanced: advanced, draft: draft, version: UInt64(version), tagFilter: tagFilter)
                 let rows = response.references
                 guard !Task.isCancelled, version == searchVersion else { return }
                 if let text = response.refreshedText, let draft = response.refreshedDraft {

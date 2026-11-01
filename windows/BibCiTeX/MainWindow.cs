@@ -26,6 +26,7 @@ internal sealed class MainWindow : Window
     };
     private readonly TextBlock librariesEmpty = Views.LocalizedText("暂无文献库");
     private readonly SearchTextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinWidth = 160 };
+    private TagFilter tagFilter = new();
     private readonly SearchSession searchSession = new("mainAdvancedSearch");
     private readonly ComboBox field = new() { MinWidth = 110 };
     private readonly ComboBox type = new() { MinWidth = 110 };
@@ -141,7 +142,7 @@ internal sealed class MainWindow : Window
             try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
             catch (Exception error) { advanced.IsChecked = searchSession.Advanced; await Report(error); }
         };
-        var filters = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field),
+        var filters = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field, TagFilterFlyout.CreateButton(() => tagFilter, async value => { tagFilter = value; await Search(); })),
             HorizontalScrollMode = ScrollMode.Enabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
             VerticalScrollMode = ScrollMode.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, ZoomMode = ZoomMode.Disabled };
         referenceHeader.Children.Add(filters); referenceHeader.Children.Add(queryDiagnostic);
@@ -392,7 +393,7 @@ internal sealed class MainWindow : Window
         {
             if (debounce) await Task.Delay(100);
             if (version != searchVersion) return;
-            var response = await searchSession.Search(library.Path, query, searchField, searchType, version);
+            var response = await searchSession.Search(library.Path, query, searchField, searchType, version, tagFilter);
             var rows = response.references.Select(x => new Reference(x) { Evidence = response.evidence.FirstOrDefault(e => e.reference_id == x.id) }).ToList();
             if (version != searchVersion) return;
             searchSession.Publish(response); searchSession.SyncProjection(search);

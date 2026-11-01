@@ -36,6 +36,13 @@ internal static class RustCore
         using var request = value.Wire(); using var wire = Interop.advanced_search(request).AsOk();
         var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing search response");
     });
+    /// <summary>Combine a stable-ID tag filter with the existing search in Rust.</summary>
+    internal static Task<AdvancedSearchResponse> FilteredSearch(AdvancedSearchRequest value, QueryDocumentRecord filter) => UpdateActivity.Run(() =>
+    {
+        using var request = value.Wire(); using var predicate = filter.Wire();
+        using var wire = Interop.filtered_search(request, predicate).AsOk();
+        var result = wire.Unwire(); Check(result.error); return result.payload ?? throw new InvalidOperationException("Missing search response");
+    });
     /// <summary>Parses advanced query text in the shared Rust grammar and returns its status, source spans and editable tree. An incomplete query is data, not a storage exception.</summary>
     /// <returns>Owned managed data. Transport and storage failures throw a localized exception.</returns>
     internal static Task<QueryAnalysis> AnalyzeQuery(TextRequest value) => UpdateActivity.Run(() =>

@@ -15,6 +15,7 @@ internal sealed class TrayWindow : Window
     private readonly Grid root = new() { Padding = new Thickness(16), RowSpacing = 12 };
     private readonly LibraryPicker library = new() { Width = 150, PlaceholderText = L10n.Text("文献库"), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBox search = new() { PlaceholderText = L10n.Text("搜索文献"), MinHeight = 34 };
+    private TagFilter tagFilter = new();
     private readonly SearchSession searchSession = new("trayAdvancedSearch");
     private readonly ComboBox type = new() { MinWidth = 110 };
     private readonly ComboBox field = new() { MinWidth = 110 };
@@ -143,7 +144,7 @@ internal sealed class TrayWindow : Window
             try { searchSession.Switch(advanced.IsChecked == true, search, field, type); conditions.IsEnabled = searchSession.Advanced; await Search(); }
             catch (Exception ex) { advanced.IsChecked = searchSession.Advanced; ShowError(ex); }
         };
-        var filterControls = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field),
+        var filterControls = new ScrollViewer { Content = Views.Row(advanced, conditions, type, field, TagFilterFlyout.CreateButton(() => tagFilter, async value => { tagFilter = value; await Search(); })),
             HorizontalScrollMode = ScrollMode.Enabled, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
             VerticalScrollMode = ScrollMode.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, ZoomMode = ZoomMode.Disabled };
         filters.Children.Add(filterControls);
@@ -283,7 +284,7 @@ internal sealed class TrayWindow : Window
         {
             if (debounce) await Task.Delay(100);
             if (!visible || request != version) return;
-            var response = await searchSession.Search(current.Path, query, selectedField, selectedType, request);
+            var response = await searchSession.Search(current.Path, query, selectedField, selectedType, request, tagFilter);
             var rows = response.references.Select(x => new Reference(x) { Evidence = response.evidence.FirstOrDefault(e => e.reference_id == x.id) }).ToList();
             if (!visible || request != version) return;
             searchSession.Publish(response); searchSession.SyncProjection(search);

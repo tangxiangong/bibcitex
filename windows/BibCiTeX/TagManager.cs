@@ -93,7 +93,7 @@ internal static class TagManager
         return panel;
     }
 
-    private sealed class DetailTagPanel : Panel
+    internal sealed class DetailTagPanel : Panel
     {
         private const double Spacing = 6;
 

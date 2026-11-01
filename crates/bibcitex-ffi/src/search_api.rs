@@ -7,6 +7,14 @@ pub fn advanced_search(
 ) -> Result<AdvancedSearchResponse, CoreError> {
     bibcitex_service::advanced_search(request)
 }
+/// Execute an independent tag filter in the shared search engine.
+#[uniffi::export]
+pub fn filtered_search(
+    request: AdvancedSearchRequest,
+    filter: QueryDocumentRecord,
+) -> Result<AdvancedSearchResponse, CoreError> {
+    bibcitex_service::filtered_search(request, filter)
+}
 /// Typed Swift entry point for `bibcitex_service::analyze_query`; preserves shared validation and diagnostics.
 #[uniffi::export]
 pub fn analyze_query(text: String) -> QueryAnalysis {
