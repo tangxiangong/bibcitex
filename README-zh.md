@@ -31,16 +31,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-arm64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-macos-universal.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-macos-x86_64.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-macos-universal.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.2/BibCiTeX-0.8.2-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -52,7 +52,7 @@
 
 支持 macOS 与 Windows，提供文献搜索、引用复制和跨应用粘贴功能。
 
-v0.8.2 新增全局 key / LaTeX / Typst 引用格式、主窗口和托盘批量复制、多选浮动工具栏及详情标签展示，并改善 Helper 剪贴板保护和托盘开关。更新详情：[中文发布说明](release-notes/0.8.2/zh-Hans.md) · [English release notes](release-notes/0.8.2/en.md)。
+v0.8.3 新增嵌套 AND / OR / NOT 标签筛选、自动更新控制和 Windows 更新元数据签名，提供 macOS Universal 安装包，并修复托盘和 Helper 问题。更新详情：[中文发布说明](release-notes/0.8.3/zh-Hans.md) · [English release notes](release-notes/0.8.3/en.md)。
 
 ### 核心特性
 
@@ -230,8 +230,8 @@ Esc 取消候选并恢复触发前草稿。候选列表悬浮在小输入框附�
 - [x] **Helper 筛选指令**：三端悬浮 `@ / $ / #` 候选、栏内名称筛选、可选字段值与可删除胶囊。
 - [x] **多选引用**：主窗口和托盘浮动工具栏批量复制，Helper 按全局格式批量粘贴。
 - [x] **复制与粘贴格式**：key、LaTeX 和 Typst 预设，全局设置及合并/逐项输出。
-- [ ] **独立标签表达式筛选**：主窗口和托盘增加 AND / OR / NOT、嵌套分组和紧凑预览；现有 `tag:` 高级查询已可使用。
-- [ ] **Linux 验收**：完整 x86-64 客户端原生构建及桌面人工验收；Linux 不纳入 v0.8.2 发布。
+- [x] **独立标签表达式筛选**：macOS / Windows 主窗口和托盘增加 AND / OR / NOT、嵌套分组和紧凑预览；现有 `tag:` 高级查询已可使用。
+- [ ] **Linux 验收**：完整 x86-64 客户端原生构建及桌面人工验收；Linux 不纳入 v0.8.3 发布。
 - [ ] **自定义引用模板**：在常用预设稳定后评估。
 
 ## 第三方代码版权声明

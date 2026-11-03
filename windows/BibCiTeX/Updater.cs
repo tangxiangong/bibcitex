@@ -10,7 +10,7 @@ namespace BibCiTeX;
 
 internal static class Updater
 {
-    internal static string CurrentVersion => typeof(Updater).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.8.2";
+    internal static string CurrentVersion => typeof(Updater).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.8.3";
     private static readonly Lazy<ECDsa?> PublicKey = new(() => UpdateFeed.ImportPublicKey(typeof(Updater).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>().FirstOrDefault(attribute => attribute.Key == "UpdatePublicKey")?.Value));
     private static readonly string Architecture = RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64";

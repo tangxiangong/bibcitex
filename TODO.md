@@ -1,11 +1,11 @@
 # BibCiTeX Roadmap TODO
 
 整理日期：2026-10-09
-更新日期：2026-10-13
+更新日期：2026-11-03
 
-状态：普通搜索增强、高级搜索、单篇/批量标签管理、三端高级搜索交互、主窗口/托盘批量引用及全局 key / LaTeX / Typst 设置已实现；Helper 按同一格式粘贴，多选支持合并/逐项输出。具体用法见 [README 中文指南](README-zh.md#引用与多选使用方法) / [English guide](README.md#citation-and-selection-guide)。v0.8.2 发布范围为 macOS、Windows。
+状态：普通搜索增强、高级搜索、单篇/批量标签管理、三端高级搜索交互、主窗口/托盘批量引用及全局 key / LaTeX / Typst 设置已实现；Helper 按同一格式粘贴，多选支持合并/逐项输出。具体用法见 [README 中文指南](README-zh.md#引用与多选使用方法) / [English guide](README.md#citation-and-selection-guide)。v0.8.3 发布范围为 macOS、Windows。
 
-Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Linux x86-64 完整客户端原生构建及桌面人工验收仍待完成，不纳入 v0.8.2 发布。
+Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Linux x86-64 完整客户端原生构建及桌面人工验收仍待完成，不纳入 v0.8.3 发布。
 
 ## 目标与范围
 
@@ -22,7 +22,7 @@ Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Lin
 - [x] 普通搜索、高级搜索与 helper 筛选共用 Rust 服务、文件快照与排名基础；普通模式保留原有语义。
 - [x] 完成普通搜索核心和服务回归测试、Rust 检查、CI 检查、Swift/C# 绑定生成与非 UI 集成测试，以及 macOS 编译验证。
 - [x] Linux ARM64 容器原生构建、Clippy 及非 UI 测试（2026-10-13）。
-- [ ] Linux x86-64 完整客户端原生构建及桌面人工验收；不纳入 v0.8.2 发布。
+- [ ] Linux x86-64 完整客户端原生构建及桌面人工验收；不纳入 v0.8.3 发布。
 
 排序依次比较：完整 cite key 命中 → 各关键词中最弱的匹配强度 → 整个查询连续命中 → 关键词集中在同一字段文本 → 字段加权分数 → 关键词间距 → cite key 和原始顺序。匹配强度为完整字段、完整词、前缀、子串、拼写容错；重音或标点折叠命中在同级中略低。字段权重为 cite key 6、标题 5、作者 4、期刊 3、年份 2、备注 1；空查询保留原始顺序。
 
@@ -58,10 +58,10 @@ type:article -tag:已读
 
 ## 3. 增加 Tag 功能
 
-- [ ] 主窗口与 tray window 的“高级搜索 / 类型 / 字段”一行增加独立标签筛选，覆盖 macOS、Windows、Linux。本轮实现已撤销，后续重新实现。
-- [ ] 标签筛选采用逐条条件编辑：逐条添加标签，条件之间选择 AND / OR，NOT 独立修饰标签或条件组，支持括号和嵌套分组，例如 `(A OR B) AND NOT C`；不采用互斥的全局逻辑、每个标签旁三个逻辑按钮或固定 AND/OR/NOT 分桶。
-- [ ] 为标签表达式设计紧凑摘要和完整预览，清晰展示连接关系、否定与分组；支持编辑、删除条件、清空以及取消 / 应用，保持 tray window 紧凑。
-- [ ] 标签表达式与搜索词、类型、字段筛选取交集，在普通搜索和高级搜索中均可使用；保留标签稳定 ID 与结果快照校验。
+- [x] macOS / Windows main and tray windows now provide independent nested tag filters; Linux integration remains pending.
+- [x] macOS / Windows: 标签筛选采用逐条条件编辑：逐条添加标签，条件之间选择 AND / OR，NOT 独立修饰标签或条件组，支持括号和嵌套分组，例如 `(A OR B) AND NOT C`；不采用互斥的全局逻辑、每个标签旁三个逻辑按钮或固定 AND/OR/NOT 分桶。
+- [x] macOS / Windows: 为标签表达式设计紧凑摘要和完整预览，清晰展示连接关系、否定与分组；支持编辑、删除条件、清空以及取消 / 应用，保持 tray window 紧凑。
+- [x] macOS / Windows: 标签表达式与搜索词、类型、字段筛选取交集，在普通搜索和高级搜索中均可使用；保留标签稳定 ID 与结果快照校验。
 - [x] 支持标签创建、重命名、删除及一篇文献关联多个标签。
 - [x] 支持给文献添加、移除标签，并按标签筛选。
 - [x] 标签跨文献库共享；文献库直接以 UUID 作为 UID，关联按文献库/文献 UUID 保存，移动或重新定位 .bib 后保持身份稳定。
@@ -74,7 +74,7 @@ type:article -tag:已读
 - [x] 实现 cite key 修改、文件移动、来源替换、重新导入及歧义关联恢复规则。
 - [x] 实现同名标签、大小写、重命名合并、删除、未知标签及 BibTeX 导入导出边界。
 
-标签目录采用扁平结构；现有高级搜索支持 `tag:`、AND / OR / NOT 及括号。单篇管理、跨库共享、颜色、查询、关联恢复、批量标签管理及批量引用已实现；搜索栏中的独立标签表达式筛选仍为待办。Linux 的剩余验收见下方记录。
+标签目录采用扁平结构；现有高级搜索支持 `tag:`、AND / OR / NOT 及括号。单篇管理、跨库共享、颜色、查询、关联恢复、批量标签管理及批量引用已实现；macOS / Windows independent tag filters are implemented; Linux integration remains pending.
 
 ## 4. Helper 指令与候选交互
 
@@ -134,7 +134,7 @@ Helper 默认开启高级搜索；三端使用同一字段/类型目录和共享
 1. 普通搜索增强（已实现）。
 2. 高级搜索、单篇标签管理及三端主窗口、tray 和 helper 接入（已实现，Linux 待验收）。
 3. 批量引用复制与粘贴格式预设（已实现，Linux 待验收）。
-4. 独立标签表达式筛选（待实现，按逐条条件及嵌套分组设计）。
+4. Independent nested tag filters (implemented on macOS / Windows; Linux pending).
 
 上述状态描述实现与验收情况，不承诺版本号、工期或发布日期。
 

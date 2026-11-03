@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.3] - 2026-11-03
+
+### Features and fixes
+
+- Add nested AND / OR / NOT tag filters to macOS and Windows main/tray windows, combined with keyword, field and type filters.
+- Add automatic update-check preferences and guard updates during active application operations.
+- Authenticate Windows update metadata and add persisted scheduling, installation on exit, timeout reporting and stale-package rejection.
+- Publish one macOS Universal installer and app archive for Apple Silicon and Intel, including compatibility with existing architecture-specific update feeds.
+- Keep the hidden macOS main window hidden when opening the tray panel.
+- Preserve Windows Helper candidate themes and accommodate scaled text without clipping.
+
+### Release scope
+
+- Continue to target macOS and Windows; Linux release builds remain disabled pending native desktop acceptance.
+
+Release notes: [简体中文](release-notes/0.8.3/zh-Hans.md) · [English](release-notes/0.8.3/en.md) · [GitHub announcement](release-notes/0.8.3/release-body.md).
+
 ## [0.8.2] - 2026-10-13
 
 ### Citation formats, selection and tags
