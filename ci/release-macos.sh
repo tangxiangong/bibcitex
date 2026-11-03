@@ -16,7 +16,10 @@ app="$root/dist/macos/$ARCH/BibCiTeX.app"
 # Check the app and embedded Sparkle code before creating or signing update archives.
 while IFS= read -r -d '' binary; do
     if [[ "$(file -b "$binary")" == Mach-O* ]]; then
-        xcrun lipo "$binary" -verify_arch arm64 x86_64
+        # Xcode 27.2 lipo rejects multiple architectures in one verification call.
+        for architecture in arm64 x86_64; do
+            xcrun lipo "$binary" -verify_arch "$architecture"
+        done
     fi
 done < <(find "$app/Contents" -type f -print0)
 out="$root/dist/release/macos-$ARCH"
