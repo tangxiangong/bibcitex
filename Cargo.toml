@@ -43,7 +43,7 @@ enigo = "0.6"
 flate2 = "1"
 fs-err = "3"
 futures-util = "0.3"
-gpui-kit = "0.8"
+gpui-kit = "0.9"
 hmac = "0.13"
 image = { version = "0.25", default-features = false, features = [
     "png",
