@@ -3,8 +3,7 @@ namespace BibCiTeX;
 internal sealed record HelperShortcut(uint Modifiers, uint Key, string Value)
 {
     internal const string DefaultValue = "Win+Shift+K";
-    internal string DisplayValue => Value.Replace("Win+", "⊞").Replace("Ctrl+", "⌃")
-        .Replace("Alt+", "⌥").Replace("Shift+", "⇧").Replace("Space", "␣");
+    internal string DisplayValue => Value.Replace("+", " + ");
 
     internal static HelperShortcut? FromKey(uint key, uint modifiers)
     {

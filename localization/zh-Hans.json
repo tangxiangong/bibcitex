@@ -550,7 +550,7 @@
   "自定义快捷键": "自定义快捷键",
   "未设置": "未设置",
   "error.helperShortcutFormatMac": "快捷键需包含 ⌘、⌃ 或 ⌥，并搭配字母、数字、空格或 F1–F12。",
-  "error.helperShortcutFormatWindows": "快捷键需包含 ⊞、⌃ 或 ⌥，并搭配字母、数字、空格或 F1–F12。",
+  "error.helperShortcutFormatWindows": "快捷键需包含 Win、Ctrl 或 Alt，并搭配字母、数字、空格或 F1–F12。",
   "error.helperShortcutFormatLinux": "快捷键需包含 ⊞、⌃ 或 ⌥，并搭配字母、数字、空格或 F1–F12。",
   "error.helperShortcutUnavailable": "无法注册快捷键，可能已被占用。",
   "error.helperShortcutPortalVersion": "当前桌面不支持快捷键配置，请在系统设置中修改。",

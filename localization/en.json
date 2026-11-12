@@ -550,7 +550,7 @@
   "自定义快捷键": "Customize shortcut",
   "未设置": "Not set",
   "error.helperShortcutFormatMac": "Use ⌘, ⌃ or ⌥ with a letter, digit, Space or F1–F12.",
-  "error.helperShortcutFormatWindows": "Use ⊞, ⌃ or ⌥ with a letter, digit, Space or F1–F12.",
+  "error.helperShortcutFormatWindows": "Use Win, Ctrl or Alt with a letter, digit, Space or F1–F12.",
   "error.helperShortcutFormatLinux": "Use ⊞, ⌃ or ⌥ with a letter, digit, Space or F1–F12.",
   "error.helperShortcutUnavailable": "Unable to register the shortcut. It may already be in use.",
   "error.helperShortcutPortalVersion": "This desktop does not support shortcut configuration. Change the shortcut in system settings.",

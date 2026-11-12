@@ -10,7 +10,7 @@ internal sealed class SettingsWindow : Window
 {
     private readonly StackPanel content = new() { Spacing = 20, Padding = new Thickness(20) };
     private bool closed;
-    private readonly ToggleButton shortcutRecorder = new() { Width = 150 };
+    private readonly ToggleButton shortcutRecorder = new() { MinWidth = 150 };
     private Action<string>? captureShortcut;
 
     internal bool CaptureCurrentShortcut()
