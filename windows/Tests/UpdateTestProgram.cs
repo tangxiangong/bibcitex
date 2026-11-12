@@ -1,5 +1,7 @@
 if (args is ["--export-fixture", var exportDirectory]) { UpdateFeedTests.ExportFixture(exportDirectory); return; }
 if (args is ["--verify-fixture", var verifyDirectory]) { UpdateFeedTests.VerifyFixture(verifyDirectory); return; }
+WindowsRuntimeTests.Run();
+if (args is ["--runtime-only"]) return;
 UpdatePolicyTests.Run();
 UpdateFeedTests.Run();
 await UpdateSourceTests.Run();

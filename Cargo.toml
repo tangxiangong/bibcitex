@@ -21,7 +21,7 @@ version = "0.8.3"
 
 [workspace.dependencies]
 arboard = "3"
-ashpd = { version = "0.13", default-features = false, features = [
+ashpd = { version = "0.14", default-features = false, features = [
     "async-io",
     "global_shortcuts",
     "remote_desktop",

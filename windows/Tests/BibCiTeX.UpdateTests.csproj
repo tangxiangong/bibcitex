@@ -18,12 +18,15 @@
     <Compile Include="UpdatePolicyTests.cs" />
     <Compile Include="UpdateFeedTests.cs" />
     <Compile Include="UpdateSourceTests.cs" />
+    <Compile Include="WindowsRuntimeTests.cs" />
+    <Compile Include="../BibCiTeX/WindowsRuntime.cs" Link="WindowsRuntime.cs" />
     <Compile Include="../BibCiTeX/UpdatePolicy.cs" Link="UpdatePolicy.cs" />
     <Compile Include="../BibCiTeX/UpdateFeed.cs" Link="UpdateFeed.cs" />
     <Compile Include="../BibCiTeX/UpdateSource.cs" Link="UpdateSource.cs" />
     <Compile Include="../BibCiTeX/NativeSettings.cs" Link="NativeSettings.cs" />
     <Compile Include="../BibCiTeX/UpdateActivity.cs" Link="UpdateActivity.cs" />
     <PackageReference Include="Velopack" Version="1.2.161" />
+    <EmbeddedResource Include="../BibCiTeX/BibCiTeX.csproj" LogicalName="BibCiTeX.Tests.AppProject" />
   </ItemGroup>
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
 </Project>

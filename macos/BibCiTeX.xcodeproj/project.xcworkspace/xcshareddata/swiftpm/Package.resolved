@@ -1,5 +1,5 @@
 {
-  "originHash": "f72582605a29bcb2c9d1f80fadcf18cb8e9d8ca937f15cfeda6328b683f3fef8",
+  "originHash": "278a69b70d868e47505c71a2b3c5f58202a04234c7585c6007e66409d9ccfa4a",
   "pins": [
     {
       "identity": "mathjaxswift",
@@ -15,8 +15,8 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/sparkle-project/Sparkle",
       "state": {
-        "revision": "eef1a539a373c1f1a320624b1130fc5de7b2e100",
-        "version": "2.10.0"
+        "revision": "ab7d71291238df6e0492143b120c9b696a35f603",
+        "version": "2.10.1"
       }
     },
     {

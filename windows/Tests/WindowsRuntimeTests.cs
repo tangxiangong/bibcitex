@@ -1,12 +1,26 @@
 using BibCiTeX;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 
 internal static class WindowsRuntimeTests
 {
     internal static void Run()
     {
         static void Assert(bool value) { if (!value) throw new InvalidOperationException("Runtime bootstrap regression"); }
+        using var project = typeof(WindowsRuntimeTests).Assembly.GetManifestResourceStream("BibCiTeX.Tests.AppProject")
+            ?? throw new InvalidOperationException("Missing application dependency manifest");
+        var packageVersion = XDocument.Load(project).Descendants("PackageReference")
+            .Single(package => (string?)package.Attribute("Include") == "Microsoft.WindowsAppSDK.Runtime")
+            .Attribute("Version")!.Value;
+        if (WindowsRuntime.Version != packageVersion)
+            throw new InvalidOperationException("Runtime bootstrap version must match Microsoft.WindowsAppSDK.Runtime");
+        var version = System.Version.Parse(packageVersion);
+        var majorMinor = (uint)typeof(WindowsRuntime).GetField("MajorMinor", BindingFlags.Static | BindingFlags.NonPublic)!.GetRawConstantValue()!;
+        var minimumVersion = (ulong)typeof(WindowsRuntime).GetField("MinimumVersion", BindingFlags.Static | BindingFlags.NonPublic)!.GetRawConstantValue()!;
+        Assert(majorMinor == ((uint)version.Major << 16 | (uint)version.Minor));
+        Assert(minimumVersion == ((ulong)version.Major << 48 | (ulong)version.Minor << 32 | (ulong)version.Build << 16));
         var installs = 0;
         WindowsRuntime.Ensure(() => 0, () => installs++);
         Assert(installs == 0);

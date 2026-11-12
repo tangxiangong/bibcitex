@@ -9,18 +9,18 @@ namespace BibCiTeX;
 internal static class WindowsRuntime
 {
     // Keep in sync with Microsoft.WindowsAppSDK.Runtime in the project file.
-    internal const string Version = "2.5.1";
-    private const uint MajorMinor = 0x00020005;
-    private const ulong MinimumVersion = 0x0002000500010000;
+    internal const string Version = "2.6.5";
+    private const uint MajorMinor = 0x00020006;
+    private const ulong MinimumVersion = 0x0002000600050000;
 
     internal static (string Url, string Hash) Installer(Architecture architecture) => architecture switch
     {
         Architecture.X64 => (
-            "https://download.microsoft.com/download/de664922-b046-432f-bb2a-54aec3c5f1f6/WindowsAppRuntimeInstall-x64.exe",
-            "931a421e8dc3e6e67724806cb67fecdbb88dfe323f0170842eb4a4b4b149f1e2"),
+            "https://download.microsoft.com/download/81f35163-9c63-4b4d-a293-6dcf1b32320a/WindowsAppRuntimeInstall-x64.exe",
+            "908e9a8ed8ad2ac765d6679543b0758812437e3ad6e3223f08d1730635cec8ec"),
         Architecture.Arm64 => (
-            "https://download.microsoft.com/download/83fdef97-1ca8-491d-80f3-a94b5adc5b1c/WindowsAppRuntimeInstall-arm64.exe",
-            "d5e4d34547eb4e31c64bf1532415b3019c0d92b750e72eb18d3d95bd00feacbb"),
+            "https://download.microsoft.com/download/1346f044-de9e-4d14-826c-98215cf54e6e/WindowsAppRuntimeInstall-arm64.exe",
+            "4cafe57b5e03384a39cca9c6c0dbbbf837cf76ac828e66238cf6160ed2575b13"),
         _ => throw new PlatformNotSupportedException($"Unsupported architecture: {architecture}")
     };
 

@@ -167,7 +167,7 @@ async fn remote_session() -> Result<(RemoteDesktop, Session<RemoteDesktop>), Str
         proxy
             .select_devices(
                 &session,
-                SelectDevicesOptions::default().set_devices(Some(DeviceType::Keyboard.into())),
+                SelectDevicesOptions::default().set_devices(DeviceType::KEYBOARD),
             )
             .await
             .map_err(|e| e.to_string())?
@@ -179,7 +179,7 @@ async fn remote_session() -> Result<(RemoteDesktop, Session<RemoteDesktop>), Str
             .map_err(|e| e.to_string())?
             .response()
             .map_err(|e| e.to_string())?;
-        if !response.devices().contains(DeviceType::Keyboard) {
+        if !response.devices().contains(DeviceType::KEYBOARD) {
             return Err("Keyboard access was not granted".into());
         }
         Ok::<_, String>(())
