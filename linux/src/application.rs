@@ -22,7 +22,7 @@ struct Windows {
     main: Option<(AnyWindowHandle, Entity<Workbench>)>,
     helper: Option<(AnyWindowHandle, Entity<Workbench>)>,
     tray: Option<(AnyWindowHandle, Entity<Workbench>)>,
-    settings: Option<AnyWindowHandle>,
+    settings: Option<(AnyWindowHandle, Entity<Settings>)>,
     about: Option<AnyWindowHandle>,
 }
 
@@ -42,6 +42,15 @@ pub fn listen(
 
 impl Windows {
     fn handle(&mut self, command: Command, preferences: &Entity<Preferences>, cx: &mut App) {
+        if matches!(command, Command::Helper | Command::HelperToken(_))
+            && let Some((handle, settings)) = &self.settings
+            && handle
+                .update(cx, |_, window, _| window.is_window_active())
+                .unwrap_or(false)
+            && settings.update(cx, |settings, cx| settings.capture_current_shortcut(cx))
+        {
+            return;
+        }
         match command {
             Command::Quit => cx.quit(),
             Command::CheckUpdates => {
@@ -68,7 +77,7 @@ impl Windows {
                 }
             }
             Command::Settings => {
-                if self.settings.is_some_and(|window| {
+                if self.settings.as_ref().is_some_and(|(window, _)| {
                     window
                         .update(cx, |_, window, _| window.activate_window())
                         .is_ok()
@@ -81,7 +90,7 @@ impl Windows {
                     cx,
                     |window, cx| cx.new(|cx| Settings::new(prefs, window, cx)),
                 ) {
-                    Ok((window, _)) => self.settings = Some(window),
+                    Ok((window, view)) => self.settings = Some((window, view)),
                     Err(error) => self.error(error.to_string(), preferences, cx),
                 }
             }
@@ -98,10 +107,14 @@ impl Windows {
                 }
             }
             Command::TrayAvailable(available) => {
+                if !available && let Some((handle, _)) = self.tray.take() {
+                    let _ = handle.update(cx, |_, window, _| window.remove_window());
+                }
                 if !available && cx.windows().is_empty() {
                     self.handle(Command::Main, preferences, cx);
                 }
             }
+            Command::ShortcutChanged => cx.refresh_windows(),
             command => {
                 let token = match &command {
                     Command::HelperToken(token) | Command::MainToken(token) => Some(token.clone()),

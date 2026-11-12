@@ -119,14 +119,18 @@ fn main() {
         return;
     }
     #[cfg(target_os = "linux")]
-    let desktop =
-        match bibcitex_linux::desktop::Desktop::start(events.clone(), preferences.chinese()) {
-            Ok(desktop) => Some(desktop),
-            Err(error) => {
-                let _ = events.try_send(Command::Error(error));
-                None
-            }
-        };
+    let desktop = match bibcitex_linux::desktop::Desktop::start(
+        events.clone(),
+        preferences.chinese(),
+        preferences.tray_icon_enabled,
+        &preferences.helper_shortcut,
+    ) {
+        Ok(desktop) => Some(desktop),
+        Err(error) => {
+            let _ = events.try_send(Command::Error(error));
+            None
+        }
+    };
     application().with_assets(Assets).run(move |cx| {
         init(cx);
         cx.bind_keys([KeyBinding::new("ctrl-q", Quit, None)]);

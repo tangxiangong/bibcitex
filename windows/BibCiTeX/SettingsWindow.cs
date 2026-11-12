@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 using Windows.System;
 
@@ -9,12 +10,93 @@ internal sealed class SettingsWindow : Window
 {
     private readonly StackPanel content = new() { Spacing = 20, Padding = new Thickness(20) };
     private bool closed;
+    private readonly ToggleButton shortcutRecorder = new() { Width = 150 };
+    private Action<string>? captureShortcut;
 
-    internal SettingsWindow()
+    internal bool CaptureCurrentShortcut()
+    {
+        if (shortcutRecorder.IsChecked != true) return false;
+        captureShortcut?.Invoke(MainWindow.HelperShortcutValue);
+        return true;
+    }
+
+    internal SettingsWindow(MainWindow owner)
     {
         Title = L10n.Text("设置");
         SystemBackdrop = Microsoft.UI.Composition.SystemBackdrops.MicaController.IsSupported() ? new MicaBackdrop() : new DesktopAcrylicBackdrop();
         Localized.BindValue(content, FrameworkElement.LanguageProperty, () => L10n.Language);
+
+        var tray = new ToggleSwitch { IsOn = MainWindow.TrayIconEnabled, OnContent = "", OffContent = "", MinWidth = 0, HorizontalAlignment = HorizontalAlignment.Right };
+        Localized.Name(tray, "显示托盘图标");
+        Localized.Name(shortcutRecorder, "助手快捷键");
+        Localized.Tooltip(shortcutRecorder, "录制快捷键");
+        var resetShortcut = new Button(); Localized.Bind(resetShortcut, ContentControl.ContentProperty, "恢复默认");
+        var desktopError = (TextBlock)Microsoft.UI.Xaml.Markup.XamlReader.Load("""
+            <TextBlock xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                TextWrapping="Wrap" Margin="14,8" Visibility="Collapsed"
+                Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+            """);
+        Exception? desktopFailure = null;
+        void RefreshDesktopError()
+        {
+            desktopError.Text = desktopFailure is null ? "" : L10n.ErrorMessage(desktopFailure);
+            desktopError.Visibility = desktopFailure is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+        L10n.Changed += RefreshDesktopError;
+        Closed += (_, _) => L10n.Changed -= RefreshDesktopError;
+        var changingTray = false;
+        tray.Toggled += (_, _) =>
+        {
+            if (changingTray) return;
+            try { owner.SetTrayIconEnabled(tray.IsOn); desktopFailure = null; }
+            catch (Exception error)
+            {
+                desktopFailure = error;
+                changingTray = true;
+                tray.IsOn = MainWindow.TrayIconEnabled;
+                changingTray = false;
+            }
+            RefreshDesktopError();
+        };
+        void ApplyShortcut(string value)
+        {
+            shortcutRecorder.IsChecked = false;
+            try { owner.SetHelperShortcut(value); desktopFailure = null; }
+            catch (Exception error) { desktopFailure = error; }
+            RefreshRecorder();
+            RefreshDesktopError();
+        }
+        void RefreshRecorder() => shortcutRecorder.Content = shortcutRecorder.IsChecked == true
+            ? L10n.Text("请按快捷键…") : HelperShortcut.Parse(MainWindow.HelperShortcutValue)!.DisplayValue;
+        captureShortcut = ApplyShortcut;
+        shortcutRecorder.Checked += (_, _) => RefreshRecorder();
+        shortcutRecorder.Unchecked += (_, _) => RefreshRecorder();
+        shortcutRecorder.LostFocus += (_, _) => shortcutRecorder.IsChecked = false;
+        Activated += (_, args) => { if (args.WindowActivationState == WindowActivationState.Deactivated) shortcutRecorder.IsChecked = false; };
+        L10n.Changed += RefreshRecorder;
+        Closed += (_, _) => { shortcutRecorder.IsChecked = false; captureShortcut = null; L10n.Changed -= RefreshRecorder; };
+        shortcutRecorder.PreviewKeyDown += (_, args) =>
+        {
+            if (shortcutRecorder.IsChecked != true) return;
+            if (args.Key == VirtualKey.Tab) { shortcutRecorder.IsChecked = false; return; }
+            args.Handled = true;
+            if (args.Key == VirtualKey.Escape) { shortcutRecorder.IsChecked = false; return; }
+            if (args.Key is VirtualKey.Control or VirtualKey.LeftControl or VirtualKey.RightControl
+                or VirtualKey.Shift or VirtualKey.LeftShift or VirtualKey.RightShift
+                or VirtualKey.Menu or VirtualKey.LeftMenu or VirtualKey.RightMenu
+                or VirtualKey.LeftWindows or VirtualKey.RightWindows) return;
+            bool Down(VirtualKey key) => Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key)
+                .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+            uint modifiers = (Down(VirtualKey.Control) ? 2u : 0) | (Down(VirtualKey.Menu) ? 1u : 0)
+                | (Down(VirtualKey.Shift) ? 4u : 0) | (Down(VirtualKey.LeftWindows) || Down(VirtualKey.RightWindows) ? 8u : 0);
+            if (HelperShortcut.FromKey((uint)args.Key, modifiers) is { } shortcut) ApplyShortcut(shortcut.Value);
+            else { desktopFailure = new LocalizedException("error.helperShortcutFormatWindows"); RefreshDesktopError(); }
+        };
+        RefreshRecorder();
+        resetShortcut.Click += (_, _) => ApplyShortcut(HelperShortcut.DefaultValue);
+        var shortcutControls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        shortcutControls.Children.Add(shortcutRecorder); shortcutControls.Children.Add(resetShortcut);
+        Section("通用", SettingRow("显示托盘图标", tray), SettingRow("助手快捷键", shortcutControls), desktopError);
 
         var theme = Choice("主题", [("跟随系统", "Default"), ("浅色", "Light"), ("深色", "Dark")], App.Theme.ToString());
         theme.SelectionChanged += (_, _) =>

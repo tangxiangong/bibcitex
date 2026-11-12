@@ -12,6 +12,7 @@ struct BibCiTeXApp: App {
     @Environment(\.openWindow) private var openWindow
     @AppStorage("language") private var language = "system"
     @AppStorage("appearance") private var appearance = "system"
+    @AppStorage("helperShortcut") private var helperShortcut = HelperShortcut.defaultValue
     var body: some Scene {
         Window("BibCiTeX", id: "main") {
             WorkbenchView(model: model)
@@ -56,13 +57,14 @@ struct BibCiTeXApp: App {
                 Button(L10n.text("新增文献库")) { delegate.showMainWindow(); model.adding = true }.keyboardShortcut("o")
             }
             CommandMenu(L10n.text("文献")) {
-                Button(L10n.text("快捷助手")) { HelperPanelController.shared.showPanel() }.keyboardShortcut("k", modifiers: [.command, .shift])
+                Button(L10n.text("快捷助手")) { HelperPanelController.shared.showPanel() }
+                    .keyboardShortcut(HelperShortcut(helperShortcut)?.keyboardShortcut)
                 Button(L10n.text("引用")) { if let reference = model.reference { model.cite([reference.citeKey]) } }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(model.reference == nil)
                 Button(L10n.text("刷新")) { Task { await model.reload() } }.keyboardShortcut("r")
             }
         }
         Window(L10n.text("设置"), id: "settings") {
-            PreferencesView(updates: updates)
+            PreferencesView(updates: updates, delegate: delegate)
                 .environment(\.locale, L10n.locale)
                 .onAppear { applyAppearance(appearance) }
                 .onChange(of: appearance) { value in applyAppearance(value) }
@@ -79,6 +81,7 @@ struct BibCiTeXApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuItemValidation {
     var reopenMain: (() -> Void)?
     var updates: Updater?
+    var recordCurrentShortcut: (() -> Void)?
     private let mainMenuLocalizer = MainMenuLocalizer(menu: { NSApp?.mainMenu })
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
@@ -89,6 +92,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         NSApp.setActivationPolicy(.regular)
         configureMainWindow()
         mainMenuLocalizer.start()
+        updateTrayIcon(UserDefaults.standard.object(forKey: "trayIconEnabled") as? Bool ?? true)
+        registerShortcut()
+    }
+
+    func updateTrayIcon(_ enabled: Bool) {
+        guard enabled else {
+            TrayPanelController.shared.dismiss()
+            if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+            statusItem = nil
+            statusMenu = nil
+            return
+        }
+        guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let image = NSImage(svgNamed: "tray-template.svg", in: .appResources) {
             image.isTemplate = true; image.size = NSSize(width: 18, height: 18); item.button?.image = image
@@ -115,7 +131,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         statusItem = item
-        registerShortcut()
     }
 
     @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
@@ -176,18 +191,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc private func showHelper() { HelperPanelController.shared.showPanel() }
     private func registerShortcut() {
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
-            guard let event else { return OSStatus(eventNotHandledErr) }
+        let status = InstallEventHandler(GetApplicationEventTarget(), { _, event, context in
+            guard let event, let context else { return OSStatus(eventNotHandledErr) }
+            let delegate = Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue()
             var identifier = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil, MemoryLayout<EventHotKeyID>.size, nil, &identifier)
             guard identifier.signature == 0x42494243 && identifier.id == 1 else { return OSStatus(eventNotHandledErr) }
-            Task { @MainActor in HelperPanelController.shared.showPanel() }
+            Task { @MainActor in
+                if let record = delegate.recordCurrentShortcut { record() }
+                else { HelperPanelController.shared.showPanel() }
+            }
             return noErr
-        }, 1, &spec, nil, &eventHandler)
+        }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), &eventHandler)
         guard status == noErr else { return }
+        do {
+            try setHelperShortcut(UserDefaults.standard.string(forKey: "helperShortcut") ?? HelperShortcut.defaultValue)
+        } catch { NSLog("BibCiTeX: %@", error.localizedDescription) }
+    }
+
+    func setHelperShortcut(_ value: String) throws {
+        guard let shortcut = HelperShortcut(value) else {
+            throw NSError(domain: "BibCiTeX", code: 1, userInfo: [NSLocalizedDescriptionKey: L10n.text("error.helperShortcutFormatMac")])
+        }
+        if hotKey != nil && UserDefaults.standard.string(forKey: "helperShortcut") == shortcut.value { return }
+        guard eventHandler != nil else {
+            throw NSError(domain: "BibCiTeX", code: 2, userInfo: [NSLocalizedDescriptionKey: L10n.text("error.helperShortcutUnavailable")])
+        }
         let identifier = EventHotKeyID(signature: 0x42494243, id: 1)
-        let result = RegisterEventHotKey(UInt32(kVK_ANSI_K), UInt32(cmdKey | shiftKey), identifier, GetApplicationEventTarget(), 0, &hotKey)
-        if result != noErr { NSLog("BibCiTeX: Cmd+Shift+K registration failed (%d)", result) }
+        var replacement: EventHotKeyRef?
+        let result = RegisterEventHotKey(shortcut.keyCode, shortcut.modifiers, identifier, GetApplicationEventTarget(), 0, &replacement)
+        guard result == noErr else {
+            throw NSError(domain: "BibCiTeX", code: Int(result), userInfo: [NSLocalizedDescriptionKey: L10n.text("error.helperShortcutUnavailable")])
+        }
+        if let hotKey { UnregisterEventHotKey(hotKey) }
+        hotKey = replacement
+        UserDefaults.standard.set(shortcut.value, forKey: "helperShortcut")
     }
 }
 
@@ -195,8 +233,22 @@ private struct PreferencesView: View {
     @AppStorage("citationFormat") private var citationFormat = "raw"
     @AppStorage("citationMode") private var citationMode = "merged"
     @ObservedObject var updates: Updater
+    let delegate: AppDelegate
     @AppStorage("language") private var language = "system"
     @AppStorage("appearance") private var appearance = "system"
+    @AppStorage("trayIconEnabled") private var trayIconEnabled = true
+    @State private var shortcutDraft = UserDefaults.standard.string(forKey: "helperShortcut") ?? HelperShortcut.defaultValue
+    @State private var shortcutErrorKey: String?
+
+    private func applyShortcut(_ value: String) {
+        do {
+            try delegate.setHelperShortcut(value)
+            shortcutDraft = UserDefaults.standard.string(forKey: "helperShortcut") ?? value
+            shortcutErrorKey = nil
+        } catch {
+            shortcutErrorKey = HelperShortcut(value) == nil ? "error.helperShortcutFormatMac" : "error.helperShortcutUnavailable"
+        }
+    }
 
     private var citationFamily: String { CitationPreferences.family(citationFormat) }
     private var citationFamilySelection: Binding<String> {
@@ -207,14 +259,30 @@ private struct PreferencesView: View {
     }
     var body: some View {
         Form {
+            Section(L10n.text("通用")) {
+                Toggle(L10n.text("显示菜单栏图标"), isOn: $trayIconEnabled)
+                    .onChange(of: trayIconEnabled) { delegate.updateTrayIcon($0) }
+                LabeledContent(L10n.text("助手快捷键")) {
+                    HStack(spacing: 8) {
+                        HelperShortcutRecorder(value: shortcutDraft, delegate: delegate,
+                            onChange: applyShortcut,
+                            onInvalid: { shortcutErrorKey = "error.helperShortcutFormatMac" })
+                            .frame(width: 150, height: 26)
+                        Button(L10n.text("恢复默认")) { applyShortcut(HelperShortcut.defaultValue) }.fixedSize()
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                if let shortcutErrorKey {
+                    Text(L10n.text(shortcutErrorKey)).font(.callout).foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Section(L10n.text("外观")) {
                 Picker(L10n.text("主题"), selection: $appearance) {
                     Text(L10n.text("跟随系统")).tag("system")
                     Text(L10n.text("浅色")).tag("light")
                     Text(L10n.text("深色")).tag("dark")
                 }
-            }
-            Section(L10n.text("语言")) {
                 Picker(L10n.text("语言"), selection: $language) {
                     Text(L10n.text("跟随系统")).tag("system")
                     Text("简体中文").tag("zh-Hans")

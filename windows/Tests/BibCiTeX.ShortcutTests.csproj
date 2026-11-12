@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>obj/shortcuts/</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>obj/shortcuts/</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <OutputPath>bin/shortcuts/</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="ShortcutTestProgram.cs" />
+    <Compile Include="../BibCiTeX/HelperShortcut.cs" Link="HelperShortcut.cs" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

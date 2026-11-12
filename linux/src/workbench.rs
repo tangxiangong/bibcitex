@@ -3129,13 +3129,6 @@ impl Render for Workbench {
                         this.search.update(cx, |input, cx| input.focus(window, cx));
                         cx.stop_propagation();
                     }
-                    "k" if event.keystroke.modifiers.control
-                        && event.keystroke.modifiers.shift
-                        && !this.helper =>
-                    {
-                        this.open_helper(cx);
-                        cx.stop_propagation();
-                    }
                     _ => {}
                 }
             }));

@@ -217,7 +217,6 @@ internal sealed class MainWindow : Window
             root.KeyboardAccelerators.Add(accelerator);
         }
         Add(VirtualKey.O, () => _ = AddLibrary());
-        Add(VirtualKey.K, () => _ = App.Helper!.Toggle(), VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
         Add(VirtualKey.C, () => { if ((references.SelectedItem as ListViewItem)?.Tag is Reference selected) _ = CopyKey(selected.Key); }, VirtualKeyModifiers.Control | VirtualKeyModifiers.Shift);
         Add(VirtualKey.R, () => _ = ReloadLibraries());
     }
@@ -313,10 +312,56 @@ internal sealed class MainWindow : Window
 
     internal void InstallShortcut()
     {
-        try { shortcut = new GlobalShortcut(this, () => _ = App.Helper!.Toggle()); }
+        try { shortcut = new GlobalShortcut(this, HelperShortcut.Parse(HelperShortcutValue)!, ActivateHelperShortcut); }
         catch (Exception error) { _ = Report(error); }
-        try { tray = new TrayIcon(this, Activate, () => App.Tray!.Toggle(), () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); }); }
+        try { UpdateTrayIcon(TrayIconEnabled); }
         catch (Exception error) { _ = Report(error); }
+    }
+    internal static bool TrayIconEnabled => !bool.TryParse(NativeSettings.Values["trayIconEnabled"] as string, out var enabled) || enabled;
+    internal static string HelperShortcutValue => HelperShortcut.Parse(NativeSettings.Values["helperShortcut"] as string ?? "")?.Value ?? HelperShortcut.DefaultValue;
+    private void UpdateTrayIcon(bool enabled)
+    {
+        if (enabled && tray is null)
+            tray = new TrayIcon(this, Activate, () => App.Tray!.Toggle(), () => _ = App.Helper!.Toggle(), () => { Activate(); _ = CheckUpdates(); }, () => { quitting = true; Close(); });
+        else if (!enabled)
+        {
+            App.Tray?.Hide();
+            tray?.Dispose();
+            tray = null;
+        }
+    }
+    internal void SetTrayIconEnabled(bool enabled)
+    {
+        if (enabled)
+        {
+            var alreadyEnabled = tray is not null;
+            UpdateTrayIcon(true);
+            try { NativeSettings.Values["trayIconEnabled"] = true; }
+            catch { if (!alreadyEnabled) UpdateTrayIcon(false); throw; }
+        }
+        else
+        {
+            NativeSettings.Values["trayIconEnabled"] = false;
+            UpdateTrayIcon(false);
+        }
+    }
+    internal string SetHelperShortcut(string value)
+    {
+        var next = HelperShortcut.Parse(value) ?? throw new LocalizedException("error.helperShortcutFormatWindows");
+        void Persist() => NativeSettings.Values["helperShortcut"] = next.Value;
+        if (shortcut is not null) shortcut.Update(next, Persist);
+        else
+        {
+            var replacement = new GlobalShortcut(this, next, ActivateHelperShortcut);
+            try { Persist(); }
+            catch { replacement.Dispose(); throw; }
+            shortcut = replacement;
+        }
+        return next.Value;
+    }
+    private void ActivateHelperShortcut()
+    {
+        if (Settings?.CaptureCurrentShortcut() != true) _ = App.Helper!.Toggle();
     }
     private async Task Report(Exception error)
     {
@@ -663,7 +708,7 @@ internal sealed class MainWindow : Window
     private void ShowSettings()
     {
         if (Settings is not null) { Settings.Activate(); return; }
-        var window = new SettingsWindow();
+        var window = new SettingsWindow(this);
         Settings = window;
         window.Closed += (_, _) => Settings = null;
         window.AppWindow.Move(new Windows.Graphics.PointInt32(AppWindow.Position.X + (AppWindow.Size.Width - window.AppWindow.Size.Width) / 2, AppWindow.Position.Y + (AppWindow.Size.Height - window.AppWindow.Size.Height) / 2));

@@ -3,6 +3,7 @@
 pub mod desktop;
 pub mod files;
 pub mod instance;
+pub mod shortcut;
 pub mod updates;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -29,6 +30,8 @@ pub enum Command {
     Error(String),
     #[serde(skip)]
     TrayAvailable(bool),
+    #[serde(skip)]
+    ShortcutChanged,
     #[serde(skip)]
     PasteFailed {
         error: String,

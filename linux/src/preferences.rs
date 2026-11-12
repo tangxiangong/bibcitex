@@ -15,6 +15,8 @@ pub struct Preferences {
     pub appearance: String,
     pub update_channel: String,
     pub automatic_updates: bool,
+    pub tray_icon_enabled: bool,
+    pub helper_shortcut: String,
     #[serde(rename = "citationFormat")]
     pub citation_format: String,
     #[serde(rename = "citationMode")]
@@ -52,6 +54,8 @@ impl Default for Preferences {
             appearance: "system".into(),
             update_channel: "stable".into(),
             automatic_updates: false,
+            tray_icon_enabled: true,
+            helper_shortcut: bibcitex_linux::shortcut::DEFAULT_SHORTCUT.into(),
             citation_format: "raw".into(),
             citation_mode: "merged".into(),
             main_advanced_search_enabled: false,

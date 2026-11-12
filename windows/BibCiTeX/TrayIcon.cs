@@ -100,6 +100,7 @@ internal sealed class TrayIcon : IDisposable
     public void Dispose()
     {
         if (disposed) return; disposed = true;
+        if (ReferenceEquals(current, this)) current = null;
         Shell_NotifyIconW(2, ref data); WindowInterop.RemoveWindowSubclass(hwnd, callback, Message); DestroyIcon(icon); GC.KeepAlive(callback);
     }
 }

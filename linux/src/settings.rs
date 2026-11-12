@@ -25,6 +25,11 @@ impl SearchableListItem for Choice {
 }
 type Choices = Entity<SelectState<Vec<Choice>>>;
 
+enum DesktopSetting {
+    Tray(bool),
+    Shortcut(String),
+}
+
 fn citation_family(format: &str) -> &'static str {
     if format == "raw"
         || !bibcitex_service::CITATION_FORMATS
@@ -77,6 +82,10 @@ pub struct Settings {
     citation_family: Choices,
     citation_format: Choices,
     citation_mode: Choices,
+    shortcut_focus: FocusHandle,
+    recording_shortcut: bool,
+    desktop_busy: bool,
+    desktop_error: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
 impl Settings {
@@ -86,6 +95,22 @@ impl Settings {
         cx: &mut Context<Self>,
     ) -> Self {
         let p = preferences.read(cx).clone();
+        let shortcut_focus = cx.focus_handle();
+        let focus_out = cx.listener(|this: &mut Self, _, _, cx| {
+            this.recording_shortcut = false;
+            cx.notify();
+        });
+        let focus_subscription =
+            window.on_focus_out(&shortcut_focus, cx, move |event, window, cx| {
+                focus_out(&event, window, cx)
+            });
+        let activation_subscription =
+            cx.observe_window_activation(window, |this: &mut Self, window, cx| {
+                if !window.is_window_active() {
+                    this.recording_shortcut = false;
+                    cx.notify();
+                }
+            });
         let appearance = cx.new(|cx| {
             SelectState::new(
                 choices("appearance", &p),
@@ -120,6 +145,8 @@ impl Settings {
         });
         let updater = cx.global::<crate::application::Services>().updater.clone();
         let subscriptions = vec![
+            focus_subscription,
+            activation_subscription,
             cx.subscribe_in(
                 &citation_family_state,
                 window,
@@ -183,10 +210,119 @@ impl Settings {
             citation_family: citation_family_state,
             citation_format,
             citation_mode,
+            shortcut_focus,
+            recording_shortcut: false,
+            desktop_busy: false,
+            desktop_error: None,
             _subscriptions: subscriptions,
         };
         this.sync_choices(window, cx);
         this
+    }
+    pub fn capture_current_shortcut(&mut self, cx: &mut Context<Self>) -> bool {
+        if !self.recording_shortcut {
+            return false;
+        }
+        self.recording_shortcut = false;
+        let value = self.preferences.read(cx).helper_shortcut.clone();
+        self.set_desktop(DesktopSetting::Shortcut(value), cx);
+        true
+    }
+    fn set_desktop(&mut self, setting: DesktopSetting, cx: &mut Context<Self>) {
+        if self.desktop_busy {
+            return;
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let Some(desktop) = cx.global::<crate::application::Services>().desktop.clone() else {
+                self.desktop_error = Some("error.desktopUnavailable".into());
+                cx.notify();
+                return;
+            };
+            let p = self.preferences.read(cx);
+            let previous_tray = p.tray_icon_enabled;
+            let preferences = self.preferences.clone();
+            self.desktop_busy = true;
+            self.desktop_error = None;
+            cx.notify();
+            cx.spawn(async move |this, cx| {
+                let result = match &setting {
+                    DesktopSetting::Tray(enabled) => {
+                        desktop.set_tray_enabled(*enabled).await.map(|_| None)
+                    }
+                    DesktopSetting::Shortcut(value) => {
+                        desktop.prepare_shortcut(value.clone()).await.map(Some)
+                    }
+                };
+                let applied = result.is_ok();
+                let mut prepared = None;
+                let mut result = result.and_then(|change| {
+                    prepared = change;
+                    if desktop.wayland && matches!(setting, DesktopSetting::Shortcut(_)) {
+                        return Ok(());
+                    }
+                    preferences
+                        .update(cx, |p, cx| {
+                            let before = p.clone();
+                            match &setting {
+                                DesktopSetting::Tray(enabled) => p.tray_icon_enabled = *enabled,
+                                DesktopSetting::Shortcut(_) => {
+                                    if let Some(change) = &prepared {
+                                        p.helper_shortcut = change.value.clone();
+                                    }
+                                }
+                            }
+                            if let Err(error) = p.save() {
+                                *p = before;
+                                return Err(error);
+                            }
+                            cx.notify();
+                            Ok(())
+                        })
+                        .map_err(|error| error.to_string())
+                });
+                if result.is_ok()
+                    && let Some(change) = prepared.take()
+                {
+                    result = change.commit().await;
+                }
+                drop(prepared);
+                if applied
+                    && result.is_err()
+                    && matches!(setting, DesktopSetting::Tray(_))
+                    && let Err(error) = desktop.set_tray_enabled(previous_tray).await
+                {
+                    result = Err(error);
+                }
+                let failure = result.as_ref().err().cloned();
+                let updated = this.update(cx, |this, cx| {
+                    this.desktop_error = result.err();
+                    this.desktop_busy = false;
+                    cx.notify();
+                });
+                if updated.is_err()
+                    && let Some(error) = failure
+                {
+                    cx.update(|cx| {
+                        crate::application::send(bibcitex_linux::Command::Error(error), cx)
+                    });
+                }
+            })
+            .detach();
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            match setting {
+                DesktopSetting::Tray(value) => {
+                    let _ = value;
+                }
+                DesktopSetting::Shortcut(value) => {
+                    let _ = value;
+                }
+            }
+            self.desktop_error = Some("error.desktopUnavailable".into());
+            cx.notify();
+        }
     }
     fn sync_choices(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let p = self.preferences.read(cx).clone();
@@ -270,6 +406,117 @@ impl Render for Settings {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = self.preferences.read(cx).clone();
         window.set_window_title(&p.text("设置"));
+        #[cfg(target_os = "linux")]
+        let desktop = cx.global::<crate::application::Services>().desktop.as_ref();
+        #[cfg(target_os = "linux")]
+        let (available, portal, description) = (
+            desktop.is_some(),
+            desktop.is_some_and(|desktop| desktop.wayland),
+            desktop
+                .map(|desktop| desktop.shortcut_description())
+                .unwrap_or_default(),
+        );
+        #[cfg(not(target_os = "linux"))]
+        let (available, portal, description) = (false, false, String::new());
+        let disabled = self.desktop_busy || !available;
+        let mut general = div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap_3()
+                    .child(p.text("显示托盘图标"))
+                    .child(
+                        Switch::new("tray-icon")
+                            .small()
+                            .checked(p.tray_icon_enabled)
+                            .disabled(disabled)
+                            .accessibility_label(p.text("显示托盘图标"))
+                            .on_change(cx.listener(|this, enabled, _, cx| {
+                                this.set_desktop(DesktopSetting::Tray(*enabled), cx)
+                            })),
+                    ),
+            )
+            .child(
+                Form::horizontal().label_width(px(125.)).child(
+                    Field::new().label(p.text("助手快捷键")).child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(
+                                Button::new("record-shortcut")
+                                    .track_focus(&self.shortcut_focus)
+                                    .small()
+                                    .min_w(px(150.))
+                                    .label(if self.recording_shortcut {
+                                        p.text("请按快捷键…")
+                                    } else {
+                                        let value = if portal {
+                                            &description
+                                        } else {
+                                            &p.helper_shortcut
+                                        };
+                                        bibcitex_linux::shortcut::Shortcut::parse(value)
+                                            .map(|s| s.display_value().into())
+                                            .unwrap_or_else(|_| {
+                                                if value.is_empty() {
+                                                    p.text("未设置")
+                                                } else {
+                                                    value.clone().into()
+                                                }
+                                            })
+                                    })
+                                    .accessibility_label(p.text("助手快捷键"))
+                                    .tooltip(p.text("录制快捷键"))
+                                    .disabled(disabled)
+                                    .on_click(cx.listener(move |this, _, window, cx| {
+                                        if portal {
+                                            this.set_desktop(
+                                                DesktopSetting::Shortcut(String::new()),
+                                                cx,
+                                            );
+                                        } else {
+                                            this.recording_shortcut = !this.recording_shortcut;
+                                            this.desktop_error = None;
+                                            this.shortcut_focus.focus(window, cx);
+                                            cx.notify();
+                                        }
+                                    })),
+                            )
+                            .when(!portal, |row| {
+                                row.child(
+                                    Button::new("reset-shortcut")
+                                        .small()
+                                        .label(p.text("恢复默认"))
+                                        .disabled(disabled)
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.recording_shortcut = false;
+                                            this.set_desktop(
+                                                DesktopSetting::Shortcut(
+                                                    bibcitex_linux::shortcut::DEFAULT_SHORTCUT
+                                                        .into(),
+                                                ),
+                                                cx,
+                                            );
+                                        })),
+                                )
+                            }),
+                    ),
+                ),
+            );
+        if let Some(error) = &self.desktop_error {
+            general = general.child(
+                div()
+                    .text_sm()
+                    .text_color(cx.theme().danger)
+                    .child(p.text(error)),
+            );
+        }
         let managed = std::env::current_exe()
             .is_ok_and(|path| bibcitex_linux::updates::managed_install(&path));
         let updater = self.updater.read(cx);
@@ -379,28 +626,27 @@ impl Render for Settings {
             .bg(cx.theme().sidebar)
             .text_color(cx.theme().foreground)
             .text_size(px(13.))
+            .child(section(p.text("通用"), general, cx))
             .child(section(
                 p.text("外观"),
-                Form::horizontal().label_width(px(150.)).child(
-                    Field::new().label(p.text("主题")).child(
-                        Select::new(&self.appearance)
-                            .small()
-                            .icon(icon("chevronDown"))
-                            .accessibility_label(p.text("主题")),
+                Form::horizontal()
+                    .label_width(px(150.))
+                    .child(
+                        Field::new().label(p.text("主题")).child(
+                            Select::new(&self.appearance)
+                                .small()
+                                .icon(icon("chevronDown"))
+                                .accessibility_label(p.text("主题")),
+                        ),
+                    )
+                    .child(
+                        Field::new().label(p.text("语言")).child(
+                            Select::new(&self.language)
+                                .small()
+                                .icon(icon("chevronDown"))
+                                .accessibility_label(p.text("语言")),
+                        ),
                     ),
-                ),
-                cx,
-            ))
-            .child(section(
-                p.text("语言"),
-                Form::horizontal().label_width(px(150.)).child(
-                    Field::new().label(p.text("语言")).child(
-                        Select::new(&self.language)
-                            .small()
-                            .icon(icon("chevronDown"))
-                            .accessibility_label(p.text("语言")),
-                    ),
-                ),
                 cx,
             ))
             .child(section(
@@ -442,6 +688,46 @@ impl Render for Settings {
             });
         div()
             .size_full()
+            .capture_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+                if !this.recording_shortcut {
+                    return;
+                }
+                let key = event.keystroke.key.as_str();
+                if key == "tab" {
+                    this.recording_shortcut = false;
+                    cx.notify();
+                    return;
+                }
+                cx.stop_propagation();
+                if key == "escape" {
+                    this.recording_shortcut = false;
+                    cx.notify();
+                    return;
+                }
+                if event.is_held
+                    || matches!(
+                        key,
+                        "control" | "ctrl" | "alt" | "shift" | "super" | "meta" | "cmd"
+                    )
+                {
+                    return;
+                }
+                let m = event.keystroke.modifiers;
+                let modifiers = (u16::from(m.control) * 4)
+                    | (u16::from(m.alt) * 8)
+                    | u16::from(m.shift)
+                    | (u16::from(m.platform) * 64);
+                match bibcitex_linux::shortcut::Shortcut::from_key(key, modifiers) {
+                    Ok(shortcut) => {
+                        this.recording_shortcut = false;
+                        this.set_desktop(DesktopSetting::Shortcut(shortcut.value), cx);
+                    }
+                    Err(error) => {
+                        this.desktop_error = Some(error);
+                        cx.notify();
+                    }
+                }
+            }))
             .flex()
             .flex_col()
             .bg(cx.theme().sidebar)

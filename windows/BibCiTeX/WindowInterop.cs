@@ -84,22 +84,36 @@ internal sealed class GlobalShortcut : IDisposable
     private readonly nint hwnd;
     private readonly WindowInterop.SubclassProc callback;
     private bool disposed;
-    internal GlobalShortcut(Window window, Action action)
+    private int activeId;
+    private HelperShortcut? current;
+    internal GlobalShortcut(Window window, HelperShortcut shortcut, Action action)
     {
         hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
         callback = (handle, message, wparam, lparam, _, _) =>
         {
-            if (message == 0x0312 && wparam == Id) { action(); return 0; }
+            if (message == 0x0312 && wparam == (nuint)activeId) { action(); return 0; }
             return WindowInterop.DefSubclassProc(handle, message, wparam, lparam);
         };
         if (!WindowInterop.SetWindowSubclass(hwnd, callback, Id, 0)) throw new Win32Exception(Marshal.GetLastWin32Error());
-        if (!WindowInterop.RegisterHotKey(hwnd, Id, 0x0008 | 0x0004 | 0x4000, 0x4B))
-        { WindowInterop.RemoveWindowSubclass(hwnd, callback, Id); throw new Win32Exception(Marshal.GetLastWin32Error()); }
+        try { Update(shortcut); }
+        catch { WindowInterop.RemoveWindowSubclass(hwnd, callback, Id); throw; }
+    }
+    internal void Update(HelperShortcut shortcut, Action? persist = null)
+    {
+        if (current == shortcut) { persist?.Invoke(); return; }
+        var nextId = activeId == Id ? Id + 1 : Id;
+        if (!WindowInterop.RegisterHotKey(hwnd, nextId, shortcut.Modifiers | 0x4000, shortcut.Key))
+            throw new LocalizedException("error.helperShortcutUnavailable");
+        try { persist?.Invoke(); }
+        catch { WindowInterop.UnregisterHotKey(hwnd, nextId); throw; }
+        if (activeId != 0) WindowInterop.UnregisterHotKey(hwnd, activeId);
+        activeId = nextId;
+        current = shortcut;
     }
     public void Dispose()
     {
         if (disposed) return; disposed = true;
-        WindowInterop.UnregisterHotKey(hwnd, Id); WindowInterop.RemoveWindowSubclass(hwnd, callback, Id);
+        WindowInterop.UnregisterHotKey(hwnd, activeId); WindowInterop.RemoveWindowSubclass(hwnd, callback, Id);
         GC.KeepAlive(callback);
     }
 }

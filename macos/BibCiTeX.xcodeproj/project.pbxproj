@@ -74,6 +74,8 @@
 		AB10CA120000000000000002 /* ../localization/zh-Hans.json in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA110000000000000002 /* ../localization/zh-Hans.json */; };
 		AB10CA130000000000000000 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = AB10CA140000000000000000 /* InfoPlist.strings */; };
 		AB10CA160000000000000000 /* MainMenuLocalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB10CA170000000000000000 /* MainMenuLocalizer.swift */; };
+		B1BC17000000000000000001 /* HelperShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BC17000000000000000002 /* HelperShortcut.swift */; };
+		B1BC18000000000000000001 /* HelperShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BC18000000000000000002 /* HelperShortcutRecorder.swift */; };
 		B32B21823410132E47277CE3 /* HelperViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9998A610BABDEF2BA01672A9 /* HelperViewModel.swift */; };
 		B53283C7D509A479590CD4BF /* WorkbenchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A007B874B60852F7D5CA410 /* WorkbenchModel.swift */; };
 		B58EE2C0B3F5293B39E5D01E /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91C61546766387505A3A82CF /* AppKit.framework */; };
@@ -155,6 +157,8 @@
 		AB10CA150000000000000000 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = SOURCE_ROOT; };
 		AB10CA150000000000000001 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = SOURCE_ROOT; };
 		AB10CA170000000000000000 /* MainMenuLocalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuLocalizer.swift; sourceTree = "<group>"; };
+		B1BC17000000000000000002 /* HelperShortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperShortcut.swift; sourceTree = "<group>"; };
+		B1BC18000000000000000002 /* HelperShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperShortcutRecorder.swift; sourceTree = "<group>"; };
 		B175C23E24258D56DD93E5F2 /* add.svg */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; path = add.svg; sourceTree = "<group>"; };
 		B1C2D3E4F5A60718293A4B5C /* TrayPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrayPanelController.swift; sourceTree = "<group>"; };
 		B3427E0196B1D54D70378C9D /* HelperPanelController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelperPanelController.swift; sourceTree = "<group>"; };
@@ -226,6 +230,8 @@
 				A77AC4000000000000000002 /* AttachmentPath.swift */,
 				AB10CA110000000000000000 /* L10n.swift */,
 				AB10CA170000000000000000 /* MainMenuLocalizer.swift */,
+				B1BC17000000000000000002 /* HelperShortcut.swift */,
+				B1BC18000000000000000002 /* HelperShortcutRecorder.swift */,
 				A9E0BB9A5E608DF1DA71D6CB /* BibCiTeXApp.swift */,
 				3549826455F426169DFEA202 /* HelperModels.swift */,
 				ABCD00000000000000000002 /* AdvancedSearch.swift */,
@@ -530,6 +536,8 @@
 				A77AC4000000000000000001 /* AttachmentPath.swift in Sources */,
 				AB10CA120000000000000000 /* L10n.swift in Sources */,
 				AB10CA160000000000000000 /* MainMenuLocalizer.swift in Sources */,
+				B1BC17000000000000000001 /* HelperShortcut.swift in Sources */,
+				B1BC18000000000000000001 /* HelperShortcutRecorder.swift in Sources */,
 				9D12E6E679E1105FC33911DD /* BibCiTeXApp.swift in Sources */,
 				69F3C736783CD2D04127FDC4 /* HelperModels.swift in Sources */,
 				ABCD00000000000000000001 /* AdvancedSearch.swift in Sources */,
