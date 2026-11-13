@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.4] - 2026-11-13
+
+### Features and fixes
+
+- Add a saved tray-icon visibility setting on macOS and Windows.
+- Record Helper shortcuts directly from the keyboard, apply them immediately, and provide an inline reset to the default shortcut while preserving the previous binding if replacement fails.
+- Group language and theme controls under appearance settings.
+- Use native modifier symbols on macOS and Windows key names on Windows.
+- Update shared and native dependencies, including Sparkle and the Windows App SDK, and align Windows runtime installation and bootstrap versions.
+
+### Release scope
+
+- Continue to ship macOS Universal and Windows x64/ARM64 packages; Linux release builds remain disabled pending native desktop acceptance.
+
+Release notes: [简体中文](release-notes/0.8.4/zh-Hans.md) · [English](release-notes/0.8.4/en.md) · [GitHub announcement](release-notes/0.8.4/release-body.md).
+
 ## [0.8.3] - 2026-11-03
 
 ### Features and fixes

@@ -1,11 +1,11 @@
 # BibCiTeX Roadmap TODO
 
 整理日期：2026-10-09
-更新日期：2026-11-03
+更新日期：2026-11-13
 
-状态：普通搜索增强、高级搜索、单篇/批量标签管理、三端高级搜索交互、主窗口/托盘批量引用及全局 key / LaTeX / Typst 设置已实现；Helper 按同一格式粘贴，多选支持合并/逐项输出。具体用法见 [README 中文指南](README-zh.md#引用与多选使用方法) / [English guide](README.md#citation-and-selection-guide)。v0.8.3 发布范围为 macOS、Windows。
+状态：普通搜索增强、高级搜索、单篇/批量标签管理、三端高级搜索交互、主窗口/托盘批量引用及全局 key / LaTeX / Typst 设置已实现；Helper 按同一格式粘贴，多选支持合并/逐项输出。具体用法见 [README 中文指南](README-zh.md#引用与多选使用方法) / [English guide](README.md#citation-and-selection-guide)。v0.8.4 发布范围为 macOS、Windows。
 
-Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Linux x86-64 完整客户端原生构建及桌面人工验收仍待完成，不纳入 v0.8.3 发布。
+Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Linux x86-64 完整客户端原生构建及桌面人工验收仍待完成，不纳入 v0.8.4 发布。
 
 ## 目标与范围
 
@@ -22,7 +22,7 @@ Linux ARM64 容器原生构建、Clippy 与非 UI 测试已有通过记录，Lin
 - [x] 普通搜索、高级搜索与 helper 筛选共用 Rust 服务、文件快照与排名基础；普通模式保留原有语义。
 - [x] 完成普通搜索核心和服务回归测试、Rust 检查、CI 检查、Swift/C# 绑定生成与非 UI 集成测试，以及 macOS 编译验证。
 - [x] Linux ARM64 容器原生构建、Clippy 及非 UI 测试（2026-10-13）。
-- [ ] Linux x86-64 完整客户端原生构建及桌面人工验收；不纳入 v0.8.3 发布。
+- [ ] Linux x86-64 完整客户端原生构建及桌面人工验收；不纳入 v0.8.4 发布。
 
 排序依次比较：完整 cite key 命中 → 各关键词中最弱的匹配强度 → 整个查询连续命中 → 关键词集中在同一字段文本 → 字段加权分数 → 关键词间距 → cite key 和原始顺序。匹配强度为完整字段、完整词、前缀、子串、拼写容错；重音或标点折叠命中在同级中略低。字段权重为 cite key 6、标题 5、作者 4、期刊 3、年份 2、备注 1；空查询保留原始顺序。
 

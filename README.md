@@ -31,16 +31,16 @@
   </p>
 
   <p>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-macos-universal.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.4/BibCiTeX-0.8.4-macos-universal.dmg">
       <img src="https://img.shields.io/badge/macOS-Apple Silicon-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Apple Silicon">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-macos-universal.dmg">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.4/BibCiTeX-0.8.4-macos-universal.dmg">
       <img src="https://img.shields.io/badge/macOS-Intel-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS Intel">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-windows-arm64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.4/BibCiTeX-0.8.4-windows-arm64.exe">
       <img src="https://img.shields.io/badge/Windows-ARM64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows ARM64">
     </a>
-    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.3/BibCiTeX-0.8.3-windows-x64.exe">
+    <a href="https://github.com/tangxiangong/bibcitex/releases/download/v0.8.4/BibCiTeX-0.8.4-windows-x64.exe">
       <img src="https://img.shields.io/badge/Windows-x86__64-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Windows x86_64">
     </a>
   </p>
@@ -52,7 +52,7 @@
 
 It supports macOS and Windows, with bibliography search, citation copying, and cross-application pasting.
 
-v0.8.3 adds nested AND / OR / NOT tag filters, automatic update controls, signed Windows update metadata, and a macOS Universal installer, with tray and Helper fixes. Details: [English release notes](release-notes/0.8.3/en.md) · [Chinese release notes](release-notes/0.8.3/zh-Hans.md).
+v0.8.4 adds tray-icon visibility controls and direct Helper shortcut recording, refines appearance settings, updates native dependencies, and aligns Windows runtime installation and startup. Details: [English release notes](release-notes/0.8.4/en.md) · [Chinese release notes](release-notes/0.8.4/zh-Hans.md).
 
 ### Core Features
 
@@ -231,7 +231,7 @@ See [TODO.md](./TODO.md) for the detailed roadmap.
 - [x] **Multiple citations**: Main/tray floating toolbars support batch copying; Helper pastes multiple references using the global format.
 - [x] **Copy and paste formats**: Key, LaTeX, and Typst presets, saved global settings, and merged/individual output.
 - [x] **Independent tag expression filter**: macOS / Windows Main/tray AND / OR / NOT conditions, nested groups, and compact previews; advanced `tag:` queries are already available.
-- [ ] **Linux acceptance**: Complete the x86-64 native client build and desktop acceptance; Linux is outside the v0.8.3 release scope.
+- [ ] **Linux acceptance**: Complete the x86-64 native client build and desktop acceptance; Linux is outside the v0.8.4 release scope.
 - [ ] **Custom citation templates**: Evaluate after the common presets are stable.
 
 ## Third-Party Code Attribution
