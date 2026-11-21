@@ -22,3 +22,5 @@ windows/**/bin/
 windows/**/obj/
 windows/**/AppPackages/
 __pycache__/
+
+skills/
