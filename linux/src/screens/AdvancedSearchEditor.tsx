@@ -88,7 +88,16 @@ export function AdvancedSearchEditor(props: {
   const matchMode = () => (field() === "" ? "text" : (descriptor()?.matchMode ?? ""));
   const supportsPhrase = () => field() === "" || descriptor()?.supportsPhrase === true;
   const conditionValue = () => (matchMode() === "year" ? `${yearFrom()}..${yearTo()}` : value());
-  const ready = () => (matchMode() === "tag" ? tagId() !== null : conditionValue().replace("..", "") !== "");
+  const ready = () => {
+    switch (matchMode()) {
+      case "tag":
+        return tagId() !== null;
+      case "year":
+        return yearFrom() !== "" || yearTo() !== "";
+      default:
+        return value() !== "";
+    }
+  };
 
   const load = async (fromCurrent: boolean) => {
     const version = ++generation;
