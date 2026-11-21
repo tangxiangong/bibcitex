@@ -19,21 +19,20 @@ build architecture=host_arch profile="release":
 build architecture=host_arch profile="release":
     dotnet build windows/BibCiTeX.sln -c '{{ replace(profile, "'", "''") }}' '-p:Platform={{ replace(architecture, "'", "''") }}'
 
-# Compile the GPUI Kit Linux client without launching or packaging it.
+# Bundle the NSH Linux client without launching or packaging it.
 [linux]
-build profile="release":
-    cargo build --locked -p bibcitex-linux --profile {{ if profile == "debug" { "dev" } else { quote(profile) } }}
+build:
+    cd linux && nsh build
 
 # Create the macOS .app bundle; never launch it.
 [macos]
 bundle architecture=host_arch profile="release":
     ARCH={{ quote(architecture) }} CONFIGURATION={{ quote(lowercase(profile)) }} BUILD_ONLY=0 bash macos/build.sh
 
-# Build Linux portable and Debian packages without launching the app.
+# Package the NSH Linux client without launching it.
 [linux]
-bundle architecture=host_arch:
-    cargo build --locked --release -p bibcitex-linux
-    cargo run --locked -p xtask -- package-linux target/release/bibcitex target/linux-packages {{ quote(architecture) }}
+bundle:
+    cd linux && nsh package --target linux
 
 # Check shared crates and only the current host's native Rust packages.
 check-rust: check-rust-shared
@@ -126,3 +125,23 @@ ci-publish-release:
 
 ci-publish-cos:
     cargo run --locked -p xtask -- publish-cos
+
+# Type check the mixed NSH client on this host.
+[working-directory("linux")]
+nsh-check:
+    nsh check
+
+# Compile Rust interfaces and bundle TSX without launch.
+[working-directory("linux")]
+nsh-build:
+    nsh build
+
+# Launch the NSH development host (only when requested).
+[working-directory("linux")]
+nsh-run:
+    nsh run
+
+# Package the NSH client for the requested platform; never launch it.
+[working-directory("linux")]
+nsh-package target=os():
+    nsh package --target {{ quote(target) }}

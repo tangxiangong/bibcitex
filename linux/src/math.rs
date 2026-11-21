@@ -1,174 +1,169 @@
-//! Native, cached TeX layout. No browser or external renderer is involved.
-use bibcitex_service::{ChunkKind, ChunkRecord};
-use gpui_kit::component::ActiveTheme;
-use gpui_kit::{prelude::FluentBuilder as _, *};
-use latex_rust::{MathFont, SvgOptions, latex_to_svg};
-use sha2::{Digest, Sha256};
+//! Cached, local typesetting for bibliography fields containing TeX.
+use base64::{Engine as _, engine::general_purpose::STANDARD};
+use latex_rust::{
+    Color, Dim, MathFont, MathStyle, SvgOptions, layout_with_em_size_pt, parse,
+    render_svg_with_metrics,
+};
+use nsh_core::{element::blocking, prelude::*};
 use std::{
-    borrow::Cow,
-    collections::HashMap,
+    collections::VecDeque,
     sync::{Mutex, OnceLock},
 };
 
-#[derive(Clone)]
-struct Formula {
-    data: Vec<u8>,
-    width: f32,
-    height: f32,
-}
-#[derive(Clone)]
-enum Entry {
-    Pending,
-    Ready(Formula),
-    Failed,
-}
-static CACHE: OnceLock<Mutex<HashMap<String, Entry>>> = OnceLock::new();
-fn asset_key(source: &str) -> String {
-    let digest: String = Sha256::digest(source.as_bytes())
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
-    format!("math/{digest}.svg")
-}
-fn cache() -> &'static Mutex<HashMap<String, Entry>> {
-    CACHE.get_or_init(Default::default)
+/// A formula's text, typeset artwork and layout metrics in logical points.
+#[derive(Clone, Debug, PartialEq, JsObject)]
+pub struct FormulaDto {
+    /// Original TeX, including when the renderer cannot typeset it.
+    pub source: String,
+    /// A self-contained SVG URL that can be passed directly to an Image.
+    pub data_url: Option<String>,
+    /// The complete vector artwork as SVG markup.
+    pub svg: Option<String>,
+    /// Width of the artwork in logical points.
+    pub width: f32,
+    /// Height of the artwork in logical points.
+    pub height: f32,
+    /// Distance from the top of the artwork to the text baseline.
+    pub baseline: f32,
 }
 
-pub fn asset(path: &str) -> Option<Cow<'static, [u8]>> {
-    match cache().lock().ok()?.get(path)? {
-        Entry::Ready(formula) => Some(Cow::Owned(formula.data.clone())),
-        _ => None,
-    }
-}
-fn dimension(svg: &str, name: &str) -> Option<f32> {
-    svg.split_once(&format!("{name}=\""))?
-        .1
-        .split_once("pt\"")?
-        .0
-        .parse::<f32>()
-        .ok()
-        .map(|v| v * 4. / 3.)
-}
-fn request(source: &str, cx: &mut App) -> Option<Formula> {
-    let key = asset_key(source);
-    let mut entries = cache().lock().ok()?;
-    match entries.get(&key) {
-        Some(Entry::Ready(formula)) => return Some(formula.clone()),
-        Some(_) => return None,
-        None => {}
-    }
-    if source.len() > 8192 {
-        return None;
-    }
-    // Keep memory bounded across many libraries. GPU assets are still keyed by content.
-    if entries.len() >= 512 {
-        entries.retain(|_, entry| matches!(entry, Entry::Pending));
-    }
-    entries.insert(key.clone(), Entry::Pending);
-    drop(entries);
-    let source = source.to_owned();
-    let job = cx.background_executor().spawn(async move {
-        let result = MathFont::stix_two_math()
-            .and_then(|font| latex_to_svg(&source, &font, &SvgOptions::new()));
-        let entry = match result {
-            Ok(svg) => {
-                let width = dimension(&svg, "width").unwrap_or(32.).clamp(1., 4096.);
-                let height = dimension(&svg, "height").unwrap_or(20.).clamp(1., 4096.);
-                Entry::Ready(Formula {
-                    data: svg.into_bytes(),
-                    width,
-                    height,
-                })
-            }
-            Err(_) => Entry::Failed,
-        };
-        if let Ok(mut entries) = cache().lock() {
-            entries.insert(key, entry);
+impl FormulaDto {
+    fn fallback(tex: &str) -> Self {
+        Self {
+            source: tex.to_owned(),
+            data_url: None,
+            svg: None,
+            width: 0.,
+            height: 0.,
+            baseline: 0.,
         }
-    });
-    cx.spawn(async move |cx| {
-        job.await;
-        cx.update(|cx| cx.refresh_windows());
+    }
+    fn bytes(&self) -> usize {
+        self.source.len()
+            + self.data_url.as_ref().map_or(0, String::len)
+            + self.svg.as_ref().map_or(0, String::len)
+    }
+}
+
+#[derive(Default)]
+struct FormulaCache {
+    entries: VecDeque<(u32, bool, FormulaDto)>,
+    bytes: usize,
+}
+impl FormulaCache {
+    fn get(&mut self, tex: &str, font_size: f32, dark: bool) -> Option<FormulaDto> {
+        let index = self.entries.iter().position(|(bits, tone, item)| {
+            *bits == font_size.to_bits() && *tone == dark && item.source == tex
+        })?;
+        let entry = self.entries.remove(index)?;
+        let formula = entry.2.clone();
+        self.entries.push_back(entry);
+        Some(formula)
+    }
+    fn insert(&mut self, font_size: f32, dark: bool, formula: FormulaDto) {
+        const MAX_BYTES: usize = 16 * 1024 * 1024;
+        let bytes = formula.bytes();
+        if bytes > MAX_BYTES {
+            return;
+        }
+        while self.entries.len() >= 512 || self.bytes + bytes > MAX_BYTES {
+            if let Some((_, _, evicted)) = self.entries.pop_front() {
+                self.bytes -= evicted.bytes();
+            }
+        }
+        self.bytes += bytes;
+        self.entries.push_back((font_size.to_bits(), dark, formula));
+    }
+}
+
+fn typeset(tex: &str, font_size: f32, dark: bool) -> Option<FormulaDto> {
+    static FONT: OnceLock<Option<MathFont>> = OnceLock::new();
+    let font = FONT
+        .get_or_init(|| MathFont::stix_two_math().ok())
+        .as_ref()?;
+    let color = if dark {
+        Color::rgb(255, 255, 255)
+    } else {
+        Color::rgb(0, 0, 0)
+    };
+    let options = SvgOptions {
+        font_size_pt: Dim::from_ieee32_bits(font_size.to_bits()),
+        color,
+        display: false,
+    };
+    let ast = parse(tex).ok()?;
+    let tree = layout_with_em_size_pt(&ast, font, MathStyle::Text, &options.font_size_pt).ok()?;
+    let image = render_svg_with_metrics(&tree, font, &options).ok()?;
+    let data = STANDARD.encode(image.svg.as_bytes());
+    Some(FormulaDto {
+        source: tex.into(),
+        data_url: Some(format!("data:image/svg+xml;base64,{data}")),
+        svg: Some(image.svg),
+        width: f32::from_bits(image.width_pt.to_ieee32_bits()),
+        height: f32::from_bits(image.height_pt.to_ieee32_bits()),
+        baseline: f32::from_bits(image.baseline_pt.to_ieee32_bits()),
     })
-    .detach();
-    None
 }
 
-/// Render original text and mathematical chunks without search highlighting.
-pub fn rich(chunks: &[ChunkRecord], cx: &mut App) -> AnyElement {
-    rich_highlighted(chunks, &[], cx)
-}
-
-/// Render bibliography chunks with match ranges in the original concatenated
-/// UTF-8 source. Invalid ranges are ignored; formulas keep their native layout
-/// and are marked as a whole when a source range overlaps the formula.
-pub fn rich_highlighted(
-    chunks: &[ChunkRecord],
-    ranges: &[(usize, usize)],
-    cx: &mut App,
-) -> AnyElement {
-    let mut line = div().flex().flex_wrap().items_center().gap_x_0().min_w_0();
-    let mut offset = 0;
-    for chunk in chunks {
-        let end = offset + chunk.text.len();
-        let local: Vec<_> = ranges
-            .iter()
-            .filter_map(|&(start, finish)| {
-                let start = start.max(offset).saturating_sub(offset);
-                let finish = finish.min(end).saturating_sub(offset);
-                (start < finish
-                    && chunk.text.is_char_boundary(start)
-                    && chunk.text.is_char_boundary(finish))
-                .then_some(start..finish)
-            })
-            .collect();
-        offset = end;
-        if matches!(chunk.kind, ChunkKind::Math) {
-            if let Some(formula) = request(&chunk.text, cx) {
-                let key = asset_key(&chunk.text);
-                line = line.child(
-                    div()
-                        .when(!local.is_empty(), |node| {
-                            node.border_b_1().border_color(cx.theme().link)
-                        })
-                        .child(
-                            svg()
-                                .path(key)
-                                .text_color(cx.theme().foreground)
-                                .w(px(formula.width))
-                                .h(px(formula.height))
-                                .flex_shrink_0(),
-                        ),
-                );
-            } else {
-                line = line.child(
-                    div()
-                        .when(!local.is_empty(), |node| {
-                            node.text_color(cx.theme().link)
-                                .font_weight(FontWeight::SEMIBOLD)
-                        })
-                        .child(format!("${}$", chunk.text)),
-                );
-            }
-        } else {
-            let highlights = local.into_iter().map(|range| {
-                (
-                    range,
-                    HighlightStyle {
-                        color: Some(cx.theme().link),
-                        font_weight: Some(FontWeight::SEMIBOLD),
-                        ..Default::default()
-                    },
-                )
-            });
-            line =
-                line.child(div().min_w_0().child(
-                    StyledText::new(chunk.text.clone()).with_highlights(
-                        combine_highlights(vec![], highlights).collect::<Vec<_>>(),
-                    ),
-                ));
-        }
+fn cached_formula(tex: String, font_size: f32, dark: bool) -> FormulaDto {
+    static CACHE: OnceLock<Mutex<FormulaCache>> = OnceLock::new();
+    if tex.is_empty() || tex.len() > 8192 || !font_size.is_finite() || font_size <= 0. {
+        return FormulaDto::fallback(&tex);
     }
-    line.when(chunks.is_empty(), |line| line.child("—"))
-        .into_any_element()
+    // All calls run on blocking workers. Holding this lock through rendering also
+    // coalesces concurrent requests by multiple windows for the same formula.
+    let mut cache = CACHE
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(|p| p.into_inner());
+    if let Some(formula) = cache.get(&tex, font_size, dark) {
+        return formula;
+    }
+    let formula = typeset(&tex, font_size, dark).unwrap_or_else(|| FormulaDto::fallback(&tex));
+    cache.insert(font_size, dark, formula.clone());
+    formula
+}
+
+/// Renders inline TeX with the bundled STIX Two Math face.
+#[module]
+pub struct MathRender;
+
+#[module]
+impl MathRender {
+    /// Typesets a formula at the given point size and appearance. Unsupported TeX retains its source.
+    pub async fn formula(tex: String, font_size: f32, dark: bool) -> Result<FormulaDto, String> {
+        blocking(move || cached_formula(tex, font_size, dark))
+            .await
+            .map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn formula_preserves_baseline_size_appearance_and_original_tex() {
+        let tex = r"\frac{1}{2}";
+        let normal = cached_formula(tex.into(), 12., false);
+        assert_eq!(normal.source, tex);
+        assert!(normal.width > 0. && normal.baseline > 0. && normal.baseline < normal.height);
+        let data = normal
+            .data_url
+            .as_ref()
+            .unwrap()
+            .strip_prefix("data:image/svg+xml;base64,")
+            .unwrap();
+        assert_eq!(
+            STANDARD.decode(data).unwrap(),
+            normal.svg.as_ref().unwrap().as_bytes()
+        );
+        let large = cached_formula(tex.into(), 24., false);
+        assert!(large.height > normal.height);
+        assert_ne!(cached_formula(tex.into(), 12., true).svg, normal.svg);
+        assert!(cached_formula(tex.into(), 0., false).svg.is_none());
+        let mut cache = FormulaCache::default();
+        cache.insert(12., false, normal.clone());
+        assert_eq!(cache.get(tex, 12., false).unwrap(), normal);
+        assert!(cache.get(tex, 12., true).is_none());
+    }
 }

@@ -1,203 +1,194 @@
-# Linux client
+# BibCiTeX NSH desktop client
 
-**Work in progress / 半成品：仍有许多未解决的问题，尚未完成 Linux 桌面验收。**
-The current implementation is an unfinished development snapshot, not a complete
-or production-ready Linux client. UI layout, tray behavior, helper/paste and
-Wayland integration still need fixes and native desktop validation. The GNOME
-extension and recent logo rendering changes have not been accepted on Ubuntu.
-Builds and non-GUI tests do not establish runtime correctness or parity with
-macOS and Windows.
+`linux/` is the **NSH 0.6.1 mixed Rust + TSX client for macOS, Windows and
+Linux**. `App.tsx` owns the windows, stores and existing native-style UI; Rust
+exports library, search, tags, preferences, math and paste operations through
+`bibcitex/native`. The shared `bibcitex-service` remains the business core.
+The separate SwiftUI macOS and WinUI Windows clients and their recipes remain
+available; these NSH packages are built independently.
 
-BibCiTeX's Linux client uses **GPUI Kit 0.7.1** and calls `bibcitex-service`
-directly. The macOS client is the reference for its workbench, compact helper,
-independent tray workbench, terminology, and interactions. SwiftUI and WinUI
-remain the platform implementations on macOS and Windows.
+Compilation and packaging do not establish GUI parity, real cross-application
+paste, compositor acceptance, or successful production update delivery.
 
-## Native layout reference
+## Commands
 
-The interface is composed from GPUI Kit components: `TitleBar`, `Button`, `Icon`,
-`Input`, `Textarea`, `Form`, `Select`, `Switch`, `Spinner`, menus, and resizable
-panels. Icons load the existing standalone SVG files in `public/icons/`.
-
-- The main workbench keeps the native 220-point sidebar and 350-point inspector,
-  including inline library renaming, reference context menus, and a single row of
-  inspector actions. List and detail copy feedback are independent.
-- The helper uses the existing native metrics: a 720-point maximum width,
-  56-point search header, 80-point reference rows, 56-point library rows, and a
-  460-point maximum list. Its borderless surface grows with the number of results
-  and returns to the search header when cleared.
-- The independent tray workbench uses a 680-by-580-point surface, an integrated
-  search/library selector, and a 282-point detail overlay with its own close and
-  copy controls.
-- Settings use a 480-by-480-point window with a Kit title bar and grouped form. Library editing uses a
-  520-point-wide form with a file-selection card and multiline description.
-
-Source alignment and compilation are separate from platform GUI acceptance.
-
-## Build and install
-
-Use stable Rust. Ubuntu 24.04 build dependencies:
+Install the matching NSH CLI/runtime and stable Rust. From the repository root:
 
 ```sh
-sudo apt-get install clang libclang-dev cmake ninja-build pkg-config libssl-dev \
-  libfontconfig1-dev libfreetype6-dev libxkbcommon-dev libxkbcommon-x11-dev \
-  libwayland-dev libx11-xcb-dev libxcb1-dev libvulkan-dev libasound2-dev
-cargo build --locked --release -p bibcitex-linux
-cargo run --locked -p xtask -- package-linux target/release/bibcitex target/linux-packages arm64
+just nsh-check
+just nsh-build
+just nsh-package macos
+just nsh-package windows
+just nsh-package linux
 ```
 
-Use `x86_64` instead of `arm64` on an x86-64 host. `just build debug` builds the
-Linux development executable; `just bundle` builds release packages. Cargo and
-IDEs do not require a prior Just invocation or generated language bindings.
+Run each package build on its platform with that platform's native toolchain and
+NSH components. The local validation below covers macOS packaging, not Windows or
+Linux packages. `just nsh-run` launches a development GUI only when explicitly
+requested. Packaging never passes `--run`.
 
-Packaging produces `.deb`, `.tar.gz`, and Linux update metadata. The Debian
-package targets Ubuntu 24.04-compatible library versions. Install it with
-`sudo apt install ./BibCiTeX-VERSION-linux-ARCH.deb`. Extract the portable archive
-and run its `install.sh` for a user-local installation, or run `bin/bibcitex`
-directly. The installer adds the application icon, desktop launcher, and helper
-and tray actions. It does not start the application.
-
-## Current implementation (incomplete and not fully validated)
-
-- Three-pane workbench with adjustable widths, persistent sidebar/inspector
-  visibility, virtualized references, background search, field/type filtering,
-  stale-result protection, and keyboard selection.
-- Library add/edit/rename, pin/unpin, open file, and removal through the shared
-  registry. Removing a library does not delete its bibliography file.
-- Citation/BibTeX copying, selectable metadata, DOI/URL/file actions, typeset
-  mathematical chunks, shared Chinese/English catalogs, and light/dark/system
-  appearance. Math uses embedded STIX Two Math and local Rust SVG rendering;
-  unsupported TeX retains its source instead of losing content.
-- Global key / LaTeX / Typst formats and merged/individual output preferences,
-  shared by main/tray single or batch copying and Helper paste. See the
-  [citation and selection guide](../README.md#citation-and-selection-guide).
-- Floating main/tray selection actions for Cite, Batch tags, Select all, Clear
-  and End; repeated selection-button clicks or Escape leave batch mode after
-  editor, popup and IME handling. Details show all assigned tags as colored
-  capsules beside a separate add control and retain selection after tag changes.
-- A compact search helper: its idle state is a search bar; typing expands results;
-  Tab selects a library; up/down select; Enter or a row click pastes; Escape closes.
-  Copy buttons remain available when desktop input permission or focus restoration
-  fails. IME composition retains control of its keys.
-- StatusNotifier tray icon/menu and a separate compact tray workbench with library
-  switching, search, filters, details, refresh, and a main-window action. Clicking
-  the tray icon again closes the current tray window.
-- Single-instance activation using a private per-user Unix socket and a held file
-  lock. Second launches forward commands, including Wayland activation tokens.
-  Closing a window leaves the shortcut/tray service running. Quit from the tray,
-  Ctrl+Q, or `bibcitex --quit`.
-- Signed updates with stable/beta/alpha channels, periodic checks, an available
-  update indicator, and portable automatic installation. COS is primary; GitHub
-  is the fallback. Both archive and Debian payload hashes are authenticated.
-
-Commands: `bibcitex`, `--helper`, `--tray`, `--settings`, `--quit`, `--version`,
-`--help`. Ctrl+F focuses search; the default helper shortcut is Ctrl+Shift+K.
-
-Preferences live in `$XDG_CONFIG_HOME/bibcitex/linux.json`, separately from the
-shared bibliography registry. Invalid preference files are reported, not replaced.
-
-## Desktop integration requirements
-
-`xpaste::linux::Paste` owns the cross-application backend: target tracking,
-identity validation, focus restoration, XTest input, and Wayland RemoteDesktop
-authorization/session cleanup. The Linux client owns global helper shortcuts,
-tray integration, and GPUI's long-lived clipboard provider. It prepares input
-access before closing the helper, then calls the backend after focus restoration.
-X11 capture refreshes the foreground target before freezing the helper session;
-each paste validates the same window/PID snapshot throughout its operation.
-
-The Helper formats selected references in result-list order before writing the
-clipboard. After successful paste, the GPUI host attempts to restore a previous
-text-only clipboard snapshot. A unique ownership marker protects newer copies,
-including copies of identical text. Image/file entries are not restored through
-the text-only writer. Snapshot or restoration failures do not prevent paste;
-failure fallback retains the same formatted citation text.
-
-X11 registers the global shortcut through XGrabKey. It captures the previous
-external window and process, requests focus, checks the target again, waits for
-modifier release, then injects Ctrl+V through XTest. A shortcut conflict is reported
-without disabling library management or clipboard copying.
-
-Wayland registers shortcuts through the GlobalShortcuts portal and consumes
-compositor-issued activation tokens. Automatic paste requests keyboard access
-through RemoteDesktop, closes the helper so the compositor can restore focus,
-then sends the paste chord. Access is subject to the user's authorization and the
-desktop's portal implementation. The app does not bypass those policies or claim
-success when an interface rejects the request. It refuses to inject into an owned
-application window when no external target was captured. Unlike X11, portable
-Wayland APIs do not expose the identity of another app's focused window, so actual
-focus restoration must be accepted on each supported compositor.
-
-Tray activation preserves the host's screen-coordinate hint and selects that
-monitor. X11 uses those coordinates; Wayland compositors advertising Layer Shell
-use an anchored layer surface. GNOME Wayland does not provide this positioning
-protocol, so ordinary client-side window bounds cannot place the tray workbench
-beside the icon there. Ubuntu's AppIndicator extension also handles single left
-and right clicks as menu actions, reserving activation for a double click; the
-application's `ItemIsMenu=false` cannot override that host behavior. Matching the
-native clients on GNOME requires Shell-side integration, not just an SNI callback.
-
-The bundled `bibcitex-tray@tangxiangong.github.io` GNOME Shell extension supplies
-that integration for GNOME 45–50, alongside Ubuntu AppIndicators (or AppIndicator
-and KStatusNotifierItem Support). It intercepts only BibCiTeX's primary click;
-right-click menus and other applications remain with the existing host. It moves
-only the `BibCiTeX Tray` window with BibCiTeX's application ID. Disabling it removes
-its event handlers. Its supported-version metadata is not desktop acceptance.
-
-The `.deb` and portable installer copy the extension but never enable it. After
-installing, log out and back in so GNOME discovers the new extension, then run:
+The equivalent commands, from `linux/`, are:
 
 ```sh
-gnome-extensions enable bibcitex-tray@tangxiangong.github.io
+nsh check
+nsh build
+nsh package --target macos
+# On the corresponding platform:
+nsh package --target windows
+nsh package --target linux
 ```
 
-For a source checkout, copy the extension first (no application packaging needed):
+The output is under `linux/.nsh/out/`: macOS produces `BibCiTeX.app` and an
+update `.tar.gz`, Windows a runner directory and `.zip`, and Linux a runner
+bundle, `.desktop` file and `.tar.gz`. NSH's macOS package is ad hoc signed;
+Developer ID signing/notarization and publication are separate release work.
+It is not the previous hand-written Debian/portable updater pipeline.
+
+`public/logo.png` is the existing 512×512 square brand artwork, equal in source
+resolution to `public/favicon.png` and `assets/app-icons/icon.png`. The build
+script stages it as `.nsh/resources/app-icon.png`; NSH creates the platform icon.
+It is not upscaled or replaced by generated artwork.
+
+## Generated assets and localization
+
+The root `localization/en.json` and `localization/zh-Hans.json` are the **only
+editable text catalogs**. The Cargo build script `src/assets_build.rs`:
+
+- stages existing artwork/SVGs inside `.nsh/resources/`;
+- generates ignored `locales/en.json` and `locales/zh-Hans.json`;
+- generates `.nsh/generated/config.ts` from `nsh.json` for version/channel policy.
+
+Do not edit or commit these outputs. The build script watches the sources and
+outputs, so deleting a generated directory or editing a root catalog regenerates
+it. NSH's mixed-mode Cargo check/describe step runs the build script before TS
+checking, locale bundling and package icon loading. No prior Just command or
+manual asset bootstrap is required. This order was checked on a source copy
+starting with neither `locales/` nor `.nsh/`.
+
+The compiler encodes every source key as `k` followed by four lowercase hex
+characters per UTF-16 code unit. This reversible encoding preserves Chinese,
+periods, colons, spaces, parentheses and supplementary Unicode without relying
+on rust-i18n's dotted-key flattening. The frontend mirrors the encoding; screens
+continue calling `tr(originalKey, ...args)`.
+
+Numbered `{0}`, `{1}`, … markers become `%{p0}`, `%{p1}`, … . Original `%`
+characters become `%{pct}` and are restored by interpolation. Argument values
+are inserted once, without reinterpreting `%{...}` inside them; omitted numbered
+arguments retain their original `{n}` form. Non-UI tests run every root catalog
+entry through NSH's actual rust-i18n loader and runtime translator, verify
+reversible keys, complete entry counts and interpolation, and exercise literal
+percent patterns and astral Unicode explicitly.
+
+`src/i18n/index.ts` delegates to `nsh/i18n` (`t`, `setLocale`,
+`availableLocales`). There is no `L10n` bridge or startup dictionary transfer. A single
+`DesktopSession.systemLocale` OS tag prevents NSH's language override from being
+mistaken for the underlying system language when switching back to System.
+For the system preference, `zh`, `zh-Hans`, `zh-CN` and `zh-SG` select `zh-Hans`;
+Traditional Chinese and other languages select English. `setLocale` keeps
+translations, NSH `locale()` and `Intl` in the same selected language. The root
+catalogs and their existing UI wording remain unchanged.
+
+## Updates
+
+`src/store/updater.ts` owns the reactive update state for Settings, the main
+window badge, menus and tray actions. It uses `nsh/updater` directly:
+
+- `shellInfo().version` distinguishes an installed package from `nsh run`;
+  `runningPackage()` identifies separately updated code when present.
+- Manual checks pass the selected locale for release notes. Stable uses the
+  default GitHub source unless a signed stable channel is declared. An undeclared
+  beta/alpha channel shows the existing unavailable message instead of crashing.
+- Downloads report received/total bytes. A writable installation is verified and
+  staged with `installOnQuit()`; the existing restart action calls
+  `installAndRestart()`. A non-writable installation opens the update's URL.
+- Installed packages check after 10 seconds and every 12 hours. With
+  `automaticUpdates` enabled, installable updates download and stage for quit.
+  Development runs do not perform background update work.
+- The channel selector is disabled during a check/download or while an update
+  waits for installation. Checks and downloads also wait for optimistic
+  preference writes to settle, so a failed channel save cannot stage a package
+  from the reverted channel. Preferences still persist `updateChannel` and
+  `automaticUpdates`. Errors and progress use existing root catalog text.
+
+The current source is configured as:
+
+```json
+"updater": { "github": "tangxiangong/bibcitex" }
+```
+
+NSH reads `latest.json` from that repository's latest GitHub Release. This code
+connects the client APIs; a compatible manifest and archives still have to be
+published. Existing native Sparkle/Velopack feeds are not NSH manifests. The
+GitHub source permits unsigned metadata until a real `publicKey` is configured;
+no signing key has been invented, generated, or embedded by this change.
+
+### Signed multi-channel publication
+
+Before a production signed release, the release owner creates a real key in
+secure storage (do not run this in the repository or commit the secret):
 
 ```sh
-extension_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/bibcitex-tray@tangxiangong.github.io"
-mkdir -p "$extension_dir"
-cp linux/gnome-extension/extension.js linux/gnome-extension/metadata.json "$extension_dir/"
+nsh keygen /secure/release/bibcitex-update
 ```
 
-Then log out/in and enable it as above. To restore the host's default behavior:
-`gnome-extensions disable bibcitex-tray@tangxiangong.github.io`.
+Keep the resulting `.secret` offline or in the release secret store. Put the
+actual contents of its `.pub` in `updater.publicKey`. Only then declare
+`updater.channels`, mapping `stable`, `beta` and `alpha` to the release owner's
+real HTTPS manifest URLs. Do not put placeholder keys/URLs in the app's live
+configuration. NSH rejects channels without `publicKey`. Rebuild packages to
+embed the trusted key and channel URLs before those channels can be selected.
 
-The tray needs a StatusNotifier host; desktops without one keep the main-window
-and shortcut entry points available. GPU, input-method, accessibility, focus,
-clipboard, scaling, and tray behavior require desktop acceptance in addition to
-compilation. No GUI or interface-model automation tests are part of this project.
+Build each target with `nsh package --target <platform>` and collect the archives
+named `BibCiTeX-VERSION-OS-ARCH.ext`. From the repository root, use the real
+archive paths and notes files for that release, for example:
 
-## Updates and release configuration
+```sh
+nsh update-manifest --entry linux \
+  --key /secure/release/bibcitex-update.secret \
+  --notes release-notes/VERSION/default.md \
+  --notes en=release-notes/VERSION/en.md \
+  --notes zh-Hans=release-notes/VERSION/zh-Hans.md \
+  --base-url https://github.com/tangxiangong/bibcitex/releases/download/RELEASE_TAG/ \
+  --out target/nsh-release \
+  PATH_TO_MACOS_ARCHIVE PATH_TO_WINDOWS_ARCHIVE PATH_TO_LINUX_ARCHIVE
+```
 
-Set `BIBCITEX_LINUX_UPDATE_PUBLIC_KEY` to the base64 32-byte Ed25519 public key
-when building a release. The release environment uses the same-named GitHub
-variable and a `LINUX_UPDATE_PRIVATE_KEY` secret containing the base64 32-byte
-private seed. No private key is compiled into the client. Builds without a public
-key can run, but cannot accept updates.
+`VERSION`, `RELEASE_TAG`, archive paths and note paths above are placeholders for
+the release owner, not files this task generated. Publish the generated
+`latest.json`, its signature, notes and all referenced archives together. For
+beta/alpha, publish each manifest at its configured channel URL using the same
+trusted key. Verify the manifest/platform identity, downloads and installation
+on actual installed packages before claiming signed update deployment.
 
-Linux Release CI is temporarily disabled until the client is ready. The v0.8.2 release continues to
-ship only macOS and Windows: no Linux release binaries or packages are built,
-signed, uploaded, or published to GitHub/COS. Ordinary Linux Check CI remains
-enabled. See [release configuration](../ci/README.md#linux-releases) for the
-conditions for restoring Linux publication.
+## Desktop integration
 
-Portable updates verify Ed25519 metadata, exact version/architecture/file names,
-size and SHA-256, then replace only `bin/bibcitex` atomically. Settings offer restart
-after installation. System installs under `/usr`, `/opt`, or `/app` instead download
-the verified Debian package and hand it to the system package installer; automatic
-in-place replacement is disabled for those locations.
+The main workbench, compact helper, independent tray panel, settings and about
+window share one NSH engine. The helper captures its external target before
+opening, prepares the exact formatted citation, hides, commits once, and keeps
+failed citations available for manual copy. Rust owns Linux X11/portal shortcuts
+and StatusNotifier integration; NSH owns macOS/Windows tray and global shortcuts.
+`statusBar`, `application`, window, clipboard and HTTP(S) URL capabilities are
+explicitly declared.
 
-## Validation
+Linux uses GTK's clipboard provider and `xpaste::linux::Paste` for target tracking,
+XTest and Wayland RemoteDesktop permission/session management. X11 and Wayland
+acceptance still requires a real desktop. The optional GNOME extension in
+`gnome-extension/` uses the fixed `BibCiTeX Tray` title and application ID; it is
+not automatically enabled or installed by the NSH packager. Install/enable it
+manually only when requested. Other compositors apply their own placement and
+activation policies.
 
-`just check-rust`, `just test-ci`, Linux native Clippy/tests/build, and actual
-package-content/portable-install checks cover compilation, service semantics,
-single-instance IPC, signing, version policy, and installation mechanics. These
-checks do not launch the GPUI application and do not prove GNOME/KDE desktop
-interaction, real cross-application paste, or signed production update delivery.
-The Check workflow includes native Ubuntu x86-64 and ARM64 jobs; Linux Release
-jobs remain disabled.
+## Scoped validation
 
-On 2026-10-13, the xpaste migration and detail-tag changes passed native ARM64
-container Clippy, non-UI tests and a complete client build. The v0.8.2 acceptance
-record still requires a complete x86-64 native client build and desktop validation
-on both architectures. See [the roadmap](../TODO.md#验收与待定事项).
+```sh
+cargo test --locked -p bibcitex-linux --lib
+cargo clippy --locked -p bibcitex-linux --lib --tests -- -D warnings
+cargo fmt -p bibcitex-linux -- --check
+cargo check --locked -p bibcitex-linux --lib --target x86_64-pc-windows-gnu
+just --fmt --check
+git diff --check
+```
+
+No UI/interface-model tests are added. The macOS `.app` check does not launch the
+app, and does not prove Windows/Linux GUI behavior, notarization or a published
+update's end-to-end delivery.
