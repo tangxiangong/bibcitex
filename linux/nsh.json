@@ -1,0 +1,31 @@
+{
+  "name": "BibCiTeX",
+  "id": "io.github.tangxiangong.bibcitex",
+  "version": "0.8.4",
+  "build": 1,
+  "rust": ".",
+  "theme": "src/theme/theme.json",
+  "features": ["svg"],
+  "icon": ".nsh/resources/app-icon.png",
+  "locales": ["en", "zh-Hans"],
+  "updater": { "github": "tangxiangong/bibcitex" },
+  "singleInstance": true,
+  "window": {
+    "defaultSize": { "width": 1200, "height": 800 },
+    "minSize": { "width": 560, "height": 520 },
+    "closeOnPress": false,
+    "backdrop": "window",
+    "titleBar": { "style": "hidden", "height": 52 }
+  },
+  "capabilities": {
+    "application": true,
+    "statusBar": true,
+    "windows": {
+      "kinds": ["normal", "dialog", "panel", "popup"],
+      "levels": ["normal", "floating", "aboveDock"],
+      "max": 7
+    },
+    "clipboard": true,
+    "openUrl": { "schemes": ["https", "http"] }
+  }
+}
