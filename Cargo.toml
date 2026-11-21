@@ -34,7 +34,7 @@ bibcitex-csharp = { path = "crates/bibcitex-csharp" }
 bibcitex-service = { path = "crates/bibcitex-service" }
 biblatex = { version = "0.12", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-chumsky = "0.13"
+chumsky = "0.14"
 config = "0.15"
 dirs = "7"
 dispatch2 = "0.3"
