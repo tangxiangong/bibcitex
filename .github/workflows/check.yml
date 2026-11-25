@@ -52,11 +52,10 @@ jobs:
         env:
           NSH_ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}
         run: |
-          package="$(cargo pkgid --locked -p nsh-core)"
-          version="${package##*@}"
+          release="$(curl -fsS --retry 3 -o /dev/null -w '%{redirect_url}' https://github.com/longbridge/nsh/releases/latest)"
           cd "$RUNNER_TEMP"
           archive="nsh-linux-$NSH_ARCH.tar.gz"
-          url="https://github.com/longbridge/nsh/releases/download/v$version/$archive"
+          url="https://github.com/longbridge/nsh/releases/download/${release##*/}/$archive"
           curl -fsSL --retry 3 "$url" -o "$archive"
           curl -fsSL --retry 3 "$url.sha256" -o "$archive.sha256"
           sha256sum -c "$archive.sha256"

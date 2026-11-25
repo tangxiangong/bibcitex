@@ -28,10 +28,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang pkg-config libgtk-4-dev libxkbcommon-dev
-          package="$(cargo pkgid --locked -p nsh-core)"
+          release="$(curl -fsS --retry 3 -o /dev/null -w '%{redirect_url}' https://github.com/longbridge/nsh/releases/latest)"
           cd "$RUNNER_TEMP"
           archive=nsh-linux-x86_64.tar.gz
-          url="https://github.com/longbridge/nsh/releases/download/v${package##*@}/$archive"
+          url="https://github.com/longbridge/nsh/releases/download/${release##*/}/$archive"
           curl -fsSL --retry 3 "$url" -o "$archive"
           curl -fsSL --retry 3 "$url.sha256" -o "$archive.sha256"
           sha256sum -c "$archive.sha256"
@@ -58,7 +58,7 @@ jobs:
           printf '%s\n' "$OTA_NOTES" > "$keys/notes.md"
           mkdir -p dist/ota
           archive="dist/ota/bibcitex-$OTA_BUILD.nshpkg"
-          nsh publish linux --build "$OTA_BUILD" --key "$keys/release.secret" --cert "$keys/release.cert" --out "$archive"
+          nsh publish ./linux --build "$OTA_BUILD" --key "$keys/release.secret" --cert "$keys/release.cert" --out "$archive"
           nsh update-manifest --entry linux --package "$archive" --key "$keys/manifest.secret" --notes "$keys/notes.md" --out dist/ota
       - uses: actions/upload-artifact@v7
         with:

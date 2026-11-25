@@ -1,5 +1,5 @@
 import { effect, mount, View } from "nsh";
-import { currentWindow, displays, Menu, Window, type Display, type WindowRef } from "nsh/desktop";
+import { displays, Menu, Window, type Display, type WindowRef } from "nsh/desktop";
 import { installLanguage, tr } from "./src/i18n";
 import { helper as helperMetrics, settings as settingsMetrics, tray as trayMetrics } from "./src/theme";
 import { desktop, desktopCapabilities, desktopPlatform, prefs, preferencesPending, startDesktop, trayShown } from "./src/store/desktop";
@@ -30,8 +30,8 @@ import { Workbench } from "./src/screens/Workbench";
 import { isMac, windowMaterial } from "./src/ui";
 
 /** The display the floating panels open on: the main window's, else the primary one. */
-function activeDisplay(main: WindowRef): Display | undefined {
-  return main.state()?.display ?? displays().find((d) => d.primary) ?? displays()[0];
+function activeDisplay(): Display | undefined {
+  return Window.get("main")?.state()?.display ?? displays().find((d) => d.primary) ?? displays()[0];
 }
 
 function helperWidth(display: Display | undefined): number {
@@ -42,10 +42,6 @@ function helperWidth(display: Display | undefined): number {
 function App() {
   installLanguage(() => desktop.systemLocale);
   startUpdater(() => preferencesPending() ? null : prefs());
-  const main = currentWindow();
-  // One unified 52pt bar: the app draws the toolbar up to the window's top
-  // edge, the system's window controls centred in it.
-  main.set({ titleBar: { style: "hidden", height: 52 } });
   const mainWorkbench = createWorkbench("main");
   const trayWorkbench = createWorkbench("tray");
   const helper = createHelper(hideHelper, reopenHelper);
@@ -57,11 +53,13 @@ function App() {
   // back for certain: a tray icon that is actually shown, or a helper
   // shortcut this process registered. A platform that merely could have a
   // shortcut (Linux's portal, a refused key) does not count: it minimizes.
-  main.on("closePress", () => {
+  const closeMain = () => {
+    const main = Window.get("main");
+    if (!main) return;
     const trayReachable = (prefs()?.trayIconEnabled ?? false) && (desktopCapabilities()?.tray ?? false) && trayShown();
     if (trayReachable || shortcutRegistered()) main.hide();
     else main.minimize();
-  });
+  };
 
   // macOS keeps its application menu; Windows and Linux show none in the window.
   effect(() => {
@@ -106,7 +104,7 @@ function App() {
   });
 
   const placeHelper = (win: WindowRef) => {
-    const display = activeDisplay(main);
+    const display = activeDisplay();
     if (!display) return;
     const area = display.visibleBounds;
     const width = helperWidth(display);
@@ -121,7 +119,7 @@ function App() {
   // menu bar, above a bottom taskbar. Otherwise the corner the tray is in.
   const placeTray = (win: WindowRef) => {
     windowOpened("tray", win);
-    const display = activeDisplay(main);
+    const display = activeDisplay();
     if (!display) return;
     const area = display.visibleBounds;
     const anchor = trayPanelAnchor();
@@ -143,8 +141,22 @@ function App() {
   };
 
   return (
-    <View class="flex-1 bg-background">
-      <Workbench wb={mainWorkbench} />
+    <>
+      <Window
+        id="main"
+        title="BibCiTeX"
+        defaultSize={{ width: 1200, height: 800 }}
+        minSize={{ width: 560, height: 520 }}
+        backdrop="window"
+        titleBar={{ style: "hidden", height: 52 }}
+        closeOnPress={false}
+        onClosePress={closeMain}
+        ref={(win: WindowRef) => windowOpened("main", win)}
+      >
+        <View class="flex-1 bg-background">
+          <Workbench wb={mainWorkbench} />
+        </View>
+      </Window>
       <Window
         id="helper"
         kind="panel"
@@ -227,7 +239,7 @@ function App() {
       >
         <AboutPanel />
       </Window>
-    </View>
+    </>
   );
 }
 

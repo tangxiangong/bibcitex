@@ -1,6 +1,6 @@
 # BibCiTeX NSH desktop client
 
-`linux/` is the **NSH 0.6.1 mixed Rust + TSX client for macOS, Windows and
+`linux/` is the **NSH 0.7.0 mixed Rust + TSX client for macOS, Windows and
 Linux**. `App.tsx` owns the windows, stores and existing native-style UI; Rust
 exports library, search, tags, preferences, math and paste operations through
 `bibcitex/native`. The shared `bibcitex-service` remains the business core.
@@ -12,7 +12,8 @@ paste, compositor acceptance, or successful production update delivery.
 
 ## Commands
 
-Install the matching NSH CLI/runtime and stable Rust. From the repository root:
+Install the NSH CLI/runtime and stable Rust. CI downloads the latest official
+NSH release. From the repository root:
 
 ```sh
 just nsh-check
@@ -102,10 +103,15 @@ on the next natural launch. The current session continues uninterrupted. Failed
 checks and downloads retry after fifteen minutes. The Settings switch, channel
 selector and manual restart action apply to whole-app updates only.
 
+When releasing the v0.7 host, use a build number higher than any shipped v0.6
+OTA build. This ensures the host starts with the new window entry point even
+when an older OTA package is already installed.
+
 ### Publish an OTA build
 
 Dispatch **Publish NSH code update** on the revision to distribute. Supply a
 build number higher than the host and previous OTA builds, and release notes.
+The signing CLI sets its runtime version as the package minimum.
 The workflow signs a `.nshpkg` and its manifest, uploads the immutable package
 to COS, then advances the feed. A new application version or GitHub Release is
 not required. The feed directory `1` identifies the native bridge compatibility

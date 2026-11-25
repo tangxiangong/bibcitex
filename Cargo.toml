@@ -54,9 +54,9 @@ interoptopus_csharp = "0.16"
 ksni = { version = "0.3", default-features = false, features = ["async-io"] }
 latex-rust = "3.0"
 libloading = "0.9"
-nsh-base = { version = "0.6", default-features = false }
-nsh-core = "0.6"
-nsh-i18n = "0.6"
+nsh-base = { version = "0.7", default-features = false }
+nsh-core = "0.7"
+nsh-i18n = "0.7"
 objc2 = "0.6"
 objc2-app-kit = "0.3"
 objc2-foundation = "0.3"

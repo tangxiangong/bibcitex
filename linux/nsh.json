@@ -14,13 +14,6 @@
     "packages": { "roots": ["B/UKwIvXs77B+xVV25sQzKDQc/vgcW2Aj9u4dU1D4Mg="] }
   },
   "singleInstance": true,
-  "window": {
-    "defaultSize": { "width": 1200, "height": 800 },
-    "minSize": { "width": 560, "height": 520 },
-    "closeOnPress": false,
-    "backdrop": "window",
-    "titleBar": { "style": "hidden", "height": 52 }
-  },
   "capabilities": {
     "application": true,
     "statusBar": true,
