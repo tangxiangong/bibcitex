@@ -1,0 +1,85 @@
+name: Publish NSH code update
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: OTA build number (higher than the installed and published builds)
+        required: true
+        type: string
+      notes:
+        description: Changes in this code update
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: bibcitex-nsh-ota
+  cancel-in-progress: false
+jobs:
+  sign:
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install NSH and GTK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang pkg-config libgtk-4-dev libxkbcommon-dev
+          package="$(cargo pkgid --locked -p nsh-core)"
+          cd "$RUNNER_TEMP"
+          archive=nsh-linux-x86_64.tar.gz
+          url="https://github.com/longbridge/nsh/releases/download/v${package##*@}/$archive"
+          curl -fsSL --retry 3 "$url" -o "$archive"
+          curl -fsSL --retry 3 "$url.sha256" -o "$archive.sha256"
+          sha256sum -c "$archive.sha256"
+          tar -xzf "$archive"
+          echo "$RUNNER_TEMP/nsh/bin" >> "$GITHUB_PATH"
+      - name: Build OTA code and assets
+        working-directory: linux
+        run: nsh build
+      - name: Sign the package and manifest
+        env:
+          OTA_BUILD: ${{ inputs.build }}
+          OTA_NOTES: ${{ inputs.notes }}
+          MANIFEST_KEY: ${{ secrets.NSH_OTA_MANIFEST_KEY }}
+          RELEASE_KEY: ${{ secrets.NSH_OTA_RELEASE_KEY }}
+          RELEASE_CERT: ${{ vars.NSH_OTA_RELEASE_CERT }}
+        run: |
+          [[ "$OTA_BUILD" =~ ^[1-9][0-9]*$ ]]
+          umask 077
+          keys="$(mktemp -d)"
+          trap 'rm -rf "$keys"' EXIT
+          printf '%s\n' "$MANIFEST_KEY" > "$keys/manifest.secret"
+          printf '%s\n' "$RELEASE_KEY" > "$keys/release.secret"
+          printf '%s\n' "$RELEASE_CERT" > "$keys/release.cert"
+          printf '%s\n' "$OTA_NOTES" > "$keys/notes.md"
+          mkdir -p dist/ota
+          archive="dist/ota/bibcitex-$OTA_BUILD.nshpkg"
+          nsh publish linux --build "$OTA_BUILD" --key "$keys/release.secret" --cert "$keys/release.cert" --out "$archive"
+          nsh update-manifest --entry linux --package "$archive" --key "$keys/manifest.secret" --notes "$keys/notes.md" --out dist/ota
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nsh-ota
+          path: dist/ota/
+          if-no-files-found: error
+  publish:
+    needs: sign
+    runs-on: ubuntu-24.04
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v8
+        with:
+          name: nsh-ota
+          path: dist/ota
+      - name: Publish signed code update to COS
+        env:
+          COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
+          COS_SECRET_KEY: ${{ secrets.COS_SECRET_KEY }}
+        run: cargo run --locked -p xtask -- publish-nsh-ota dist/ota

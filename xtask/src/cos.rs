@@ -244,6 +244,78 @@ fn content_type(key: &str) -> &'static str {
     }
 }
 
+fn verify_nsh_manifest(public: &str, manifest: &[u8], signature: &str) -> Result<()> {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use ed25519_dalek::{Signature, VerifyingKey};
+
+    let key = STANDARD
+        .decode(public)?
+        .try_into()
+        .map_err(|_| "Invalid NSH manifest public key")?;
+    let signature = Signature::from_slice(&STANDARD.decode(signature.trim())?)?;
+    // NSH signs a domain-separated message, including the terminating NUL.
+    let message = [b"nsh-updater-manifest\0".as_slice(), manifest].concat();
+    VerifyingKey::from_bytes(&key)?.verify_strict(&message, &signature)?;
+    Ok(())
+}
+
+/// Publish the code package before switching the signed NSH feed.
+pub fn publish_nsh_ota(directory: &Path) -> Result<()> {
+    let config: serde_json::Value = serde_json::from_slice(include_bytes!("../../linux/nsh.json"))?;
+    let feed = config["updater"]["url"]
+        .as_str()
+        .and_then(|url| url.strip_prefix(PUBLIC_ROOT))
+        .and_then(|path| path.strip_prefix('/'))
+        .and_then(|path| path.strip_suffix("/latest.json"))
+        .ok_or("NSH OTA feed must be hosted on the BibCiTeX COS endpoint")?;
+    let manifest_path = crate::safe_file(directory, "latest.json")?;
+    let signature_path = crate::safe_file(directory, "latest.json.sig")?;
+    let bytes = fs::read(&manifest_path)?;
+    verify_nsh_manifest(
+        config["updater"]["publicKey"]
+            .as_str()
+            .ok_or("Missing NSH manifest public key")?,
+        &bytes,
+        &fs::read_to_string(&signature_path)?,
+    )?;
+    let manifest: serde_json::Value = serde_json::from_slice(&bytes)?;
+    ensure(manifest["id"] == config["id"], "Wrong NSH OTA application")?;
+    let package = &manifest["package"];
+    let build = package["build"].as_u64().ok_or("Missing OTA build")?;
+    ensure(
+        build > config["build"].as_u64().ok_or("Missing host build")?,
+        "OTA build must be newer than the host",
+    )?;
+    let name = format!("bibcitex-{build}.nshpkg");
+    ensure(package["url"] == name, "Unexpected OTA package URL")?;
+    let archive = crate::safe_file(directory, &name)?;
+    ensure(
+        package["sha256"] == hash(&archive)?,
+        "OTA package hash mismatch",
+    )?;
+
+    let cos = Cos::new()?;
+    let latest = format!("{feed}/latest.json");
+    let response = cos.request(Method::GET, &latest, None)?;
+    if response.status() != StatusCode::NOT_FOUND {
+        let current: serde_json::Value =
+            serde_json::from_slice(&response.error_for_status()?.bytes()?)?;
+        let previous = current["package"]["build"]
+            .as_u64()
+            .ok_or("Invalid published OTA build")?;
+        ensure(
+            build > previous || (build == previous && current == manifest),
+            "Refusing to replace or downgrade a published OTA build",
+        )?;
+    }
+    let key = format!("{feed}/{name}");
+    if !cos.matches(&key, &archive)? {
+        cos.upload(&key, &archive, true)?;
+    }
+    cos.upload(&format!("{latest}.sig"), &signature_path, false)?;
+    cos.upload(&latest, &manifest_path, false)
+}
+
 pub fn publish(
     tag: &str,
     directory: &Path,

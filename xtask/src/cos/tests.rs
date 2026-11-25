@@ -371,3 +371,19 @@ fn failed_version_reservation_prevents_any_client_feed_write() {
             .all(|name| name.starts_with("releases/") || name.ends_with(".nupkg"))
     );
 }
+
+#[test]
+fn nsh_ota_checks_the_framed_signature_before_publication() {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    use ed25519_dalek::{Signer, SigningKey};
+
+    let key = SigningKey::from_bytes(&[16; 32]);
+    let public = STANDARD.encode(key.verifying_key().as_bytes());
+    let manifest = br#"{"package":{"build":2}}"#;
+    let message = [b"nsh-updater-manifest\0".as_slice(), manifest].concat();
+    let signature = STANDARD.encode(key.sign(&message).to_bytes());
+    verify_nsh_manifest(&public, manifest, &signature).unwrap();
+    assert!(verify_nsh_manifest(&public, b"{}", &signature).is_err());
+    let unframed = STANDARD.encode(key.sign(manifest).to_bytes());
+    assert!(verify_nsh_manifest(&public, manifest, &unframed).is_err());
+}

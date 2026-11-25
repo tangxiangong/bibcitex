@@ -42,6 +42,7 @@ fn run() -> Result<()> {
             &UpdateKeys::from_env()?,
             github,
         ),
+        ["publish-nsh-ota", directory] => xtask::cos::publish_nsh_ota(Path::new(directory)),
         ["publish-cos"] => xtask::cos::publish(
             &env::var("RELEASE_TAG")?,
             Path::new(&env::var("RELEASE_ASSETS")?),
@@ -55,7 +56,7 @@ fn run() -> Result<()> {
             &UpdateKeys::from_env()?,
         ),
         _ => Err(
-            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | replace-cos-release | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch> | sign-windows <directory>".into(),
+            "Usage: xtask release-notes <source> <destination> | release-metadata | verify-release <directory> | publish-release | publish-cos | publish-nsh-ota <directory> | replace-cos-release | package-linux <binary> <directory> <arch> | sign-linux <directory> <arch> | sign-windows <directory>".into(),
         ),
     }
 }

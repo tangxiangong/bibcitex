@@ -5,10 +5,14 @@
   "build": 1,
   "rust": ".",
   "theme": "src/theme/theme.json",
-  "features": ["svg"],
+  "features": ["svg", "updater"],
   "icon": ".nsh/resources/app-icon.png",
   "locales": ["en", "zh-Hans"],
-  "updater": { "github": "tangxiangong/bibcitex" },
+  "updater": {
+    "url": "https://app-release-1302963684.cos.ap-guangzhou.myqcloud.com/bibcitex/nsh/ota/1/latest.json",
+    "publicKey": "R4bakCsdwzmr+GYyG+sjmfC/l8gckRxRa0hKt2sXsi0=",
+    "packages": { "roots": ["B/UKwIvXs77B+xVV25sQzKDQc/vgcW2Aj9u4dU1D4Mg="] }
+  },
   "singleInstance": true,
   "window": {
     "defaultSize": { "width": 1200, "height": 800 },

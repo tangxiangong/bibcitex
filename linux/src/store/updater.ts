@@ -1,5 +1,5 @@
 import { cleanup, effect, openUrl, signal, untracked } from "nsh";
-import { checkForUpdate, downloadUpdate, installAndRestart, installOnQuit, runningPackage, shellInfo, type AppUpdate } from "nsh/updater";
+import { checkForPackage, checkForUpdate, downloadPackage, downloadUpdate, installAndRestart, installOnQuit, runningPackage, shellInfo, type AppUpdate } from "nsh/updater";
 import { updateChannels, appVersion } from "../../.nsh/generated/config";
 import { language } from "../i18n";
 
@@ -26,6 +26,7 @@ let configuration: UpdatePreferences = { updateChannel: "stable", automaticUpdat
 let generation = 0;
 let found: AppUpdate | null = null;
 let operation: Promise<void> | null = null;
+let codeOperation: Promise<void> | null = null;
 let readPreferences: () => UpdatePreferences | null = () => null;
 const preferencesSettled = () => readPreferences()?.updateChannel === configuration.updateChannel;
 
@@ -56,6 +57,7 @@ function exclusive(work: () => Promise<void>): Promise<void> {
 
 /** One NSH host operation at a time: its last-found update and download are shared. */
 export function checkUpdates(): Promise<void> {
+  if (codeOperation) return codeOperation.then(checkUpdates);
   if (!state().canCheck || state().phase === "ready") return Promise.resolve();
   if (!preferencesSettled()) return Promise.reject(new Error("请等待当前操作完成后检查更新。"));
   return exclusive(async () => {
@@ -96,12 +98,14 @@ async function prepare(): Promise<void> {
 
 /** Manual download stages installation on quit; the ready action can restart now. */
 export function downloadAndPrepare(): Promise<void> {
+  if (codeOperation) return codeOperation.then(downloadAndPrepare);
   if (state().phase !== "available") return Promise.resolve();
   if (!preferencesSettled()) return Promise.reject(new Error("请等待当前操作完成后检查更新。"));
   return exclusive(prepare);
 }
 
 export function restartAfterUpdate(): Promise<void> {
+  if (codeOperation) return codeOperation.then(restartAfterUpdate);
   if (state().phase !== "ready") return Promise.resolve();
   return exclusive(async () => {
     try { await installAndRestart(); }
@@ -110,6 +114,36 @@ export function restartAfterUpdate(): Promise<void> {
       throw error;
     }
   });
+}
+
+/** Code packages stage silently for the next launch, independently of shell updates. */
+function startCodeUpdates(): void {
+  if (!shell.packages) return;
+  let stopped = false;
+  let stagedBuild = 0;
+  let timer: ReturnType<typeof setTimeout>;
+  const poll = async () => {
+    let delay = 10_000;
+    if (!operation) {
+      codeOperation = (async () => {
+        try {
+          const update = await checkForPackage({ locale: language() });
+          if (!stopped && update && update.build > stagedBuild) {
+            await downloadPackage();
+            stagedBuild = update.build;
+          }
+          delay = 12 * 60 * 60 * 1000;
+        } catch {
+          // Keep the current code running and retry a failed check or download.
+          delay = 15 * 60 * 1000;
+        }
+      })().finally(() => { codeOperation = null; });
+      await codeOperation;
+    }
+    if (!stopped) timer = setTimeout(() => void poll(), delay);
+  };
+  timer = setTimeout(() => void poll(), 10_000);
+  cleanup(() => { stopped = true; clearTimeout(timer); });
 }
 
 /** Install in the root, after preferences start loading; no work in a dev host. */
@@ -128,6 +162,7 @@ export function startUpdater(preferences: () => UpdatePreferences | null): void 
     });
   });
   if (!packaged) return;
+  startCodeUpdates();
   let stopped = false;
   let timer: ReturnType<typeof setTimeout>;
   const poll = async () => {
