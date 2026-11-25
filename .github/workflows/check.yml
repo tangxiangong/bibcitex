@@ -21,8 +21,26 @@ concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  nsh-toolchain:
+    name: Resolve the latest stable NSH
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          releases=https://github.com/longbridge/nsh/releases
+          release="$(curl -fsSL --head --retry 3 -o /dev/null -w '%{url_effective}' "$releases/latest")"
+          [[ "$release" == "$releases/tag/"?* ]]
+          tag="${release#"$releases/tag/"}"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
   linux:
-    if: ${{ !inputs.skip_linux }}
+    needs: nsh-toolchain
+    if: ${{ !cancelled() && !inputs.skip_linux }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,29 +59,76 @@ jobs:
         if: hashFiles('linux/Cargo.toml') != ''
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang pkg-config libgtk-4-dev libxkbcommon-dev
+          sudo apt-get install -y clang libclang-dev pkg-config libgtk-4-dev libxkbcommon-dev
+      - name: Install NSH native runner build dependencies
+        if: hashFiles('linux/nsh.json') != ''
+        run: sudo apt-get install -y libwebkitgtk-6.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
       - name: Check Justfile formatting
         run: just --fmt --check
       - name: Linux client checks and non-GUI tests
         if: hashFiles('linux/Cargo.toml') != ''
         run: just check-rust-linux
-      - name: Install NSH CLI
-        if: hashFiles('linux/Cargo.toml') != ''
+      - &setup-nsh
+        name: Install verified NSH CLI
+        if: hashFiles('linux/Cargo.toml') != '' && hashFiles('linux/nsh.json') != ''
+        shell: bash
         env:
-          NSH_ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x86_64' }}
+          NSH_TAG: ${{ needs.nsh-toolchain.outputs.tag }}
         run: |
-          release="$(curl -fsS --retry 3 -o /dev/null -w '%{redirect_url}' https://github.com/longbridge/nsh/releases/latest)"
-          cd "$RUNNER_TEMP"
-          archive="nsh-linux-$NSH_ARCH.tar.gz"
-          url="https://github.com/longbridge/nsh/releases/download/${release##*/}/$archive"
-          curl -fsSL --retry 3 "$url" -o "$archive"
-          curl -fsSL --retry 3 "$url.sha256" -o "$archive.sha256"
-          sha256sum -c "$archive.sha256"
-          tar -xzf "$archive"
-          printf '%s\n' "$RUNNER_TEMP/nsh/bin" >> "$GITHUB_PATH"
-      - name: Build NSH Linux client bundle
-        if: hashFiles('linux/Cargo.toml') != ''
-        run: just build
+          set -euo pipefail
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64)   asset=nsh-linux-x86_64.tar.gz ;;
+            Linux-ARM64) asset=nsh-linux-arm64.tar.gz ;;
+            macOS-ARM64) asset=nsh-macos-arm64.tar.gz ;;
+            macOS-X64)   asset=nsh-macos-x86_64.tar.gz ;;
+            Windows-X64) asset=nsh-windows-x86_64.zip ;;
+            *) echo "Unsupported NSH host: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+          esac
+          tools_dir="$(mktemp -d)"
+          cd "$tools_dir"
+          url="https://github.com/longbridge/nsh/releases/download/${NSH_TAG:?}/$asset"
+          curl -fsSL --retry 3 "$url" -o "$asset"
+          curl -fsSL --retry 3 "$url.sha256" -o "$asset.sha256"
+          digest="$(awk 'NR == 1 {print $1}' "$asset.sha256")"
+          [[ "$digest" =~ ^[0-9a-fA-F]{64}$ ]]
+          test "$(openssl dgst -sha256 "$asset" | awk '{print $NF}')" = "$digest"
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            unzip -q "$asset"
+            cygpath -w "$tools_dir/nsh/bin" >> "$GITHUB_PATH"
+            printf '%s\n' 'LIBCLANG_PATH=C:\Program Files\LLVM\bin' 'RUST_MIN_STACK=268435456' >> "$GITHUB_ENV"
+            "$tools_dir/nsh/bin/nsh.exe" --version
+          else
+            tar -xzf "$asset"
+            printf '%s\n' "$tools_dir/nsh/bin" >> "$GITHUB_PATH"
+            "$tools_dir/nsh/bin/nsh" --version
+          fi
+      - &nsh-check
+        name: Check NSH mixed source
+        if: hashFiles('linux/Cargo.toml') != '' && hashFiles('linux/nsh.json') != ''
+        run: just nsh-check
+      - &nsh-package
+        name: Build NSH native runner and package (no GUI)
+        if: hashFiles('linux/Cargo.toml') != '' && hashFiles('linux/nsh.json') != ''
+        run: just nsh-package
+  nsh-compatibility:
+    name: NSH compatibility (${{ matrix.os }})
+    needs: nsh-toolchain
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.revision || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: extractions/setup-just@v4
+      - *setup-nsh
+      - *nsh-check
+      - *nsh-package
   shared-rust:
     strategy:
       fail-fast: false
